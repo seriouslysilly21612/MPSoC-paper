@@ -1,0 +1,25 @@
+# Field goal coordinates replayed from the 2026-07-28 session logs.
+# x y z label
+0.828 0.234 0.300 mustard_E27_flip
+0.830 0.234 0.300 mustard_E27_ok
+0.831 0.234 0.300 mustard
+0.832 0.234 0.299 mustard
+0.828 0.233 0.303 mustard
+0.830 0.238 0.301 mustard
+0.831 0.240 0.295 mustard
+0.834 0.240 0.297 mustard
+0.835 0.223 0.311 mustard
+0.827 0.234 0.151 mustard_low
+0.827 0.234 0.150 mustard_low
+0.833 0.234 0.149 mustard_low
+0.879 0.049 0.339 orange
+0.878 0.051 0.335 orange
+0.882 0.050 0.338 orange
+0.877 0.050 0.186 orange_low
+0.875 -0.172 0.130 banana_low
+0.873 -0.172 0.280 banana
+0.870 -0.155 0.277 banana
+0.881 -0.166 0.286 banana
+0.814 -0.163 0.282 apple
+0.810 -0.317 0.349 tennis
+0.841 -0.102 0.179 apple_preE21_frame

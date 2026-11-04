@@ -1,0 +1,42 @@
+pick_target_3d_node:
+  ros__parameters:
+    pick_target_topic: /pick_target
+    # Raw (unaligned) depth + intrinsics + depth->color extrinsics.
+    # The node reverse-projects only the bbox-center pixel, so full-frame
+    # align_depth is no longer needed (keep align_depth.enable: false).
+    depth_topic: /camera/camera/depth/image_rect_raw
+    depth_info_topic: /camera/camera/depth/camera_info
+    color_info_topic: /camera/camera/color/camera_info
+    extrinsics_topic: /camera/camera/extrinsics/depth_to_color
+    output_topic: /pick_target_3d
+
+    depth_scale_16uc1: 0.001
+    patch_radius: 4
+    # Epipolar segment length ~ fx*baseline*(1/min - 1/max), dominated by min.
+    #
+    # min 0.19: D435i 848x480 physical min-z is ~0.195 m — below it the
+    #   sensor returns nothing, so 0.05 only walked a longer segment for
+    #   depths that cannot occur. This is the bound that costs: 1/min is
+    #   ~89% of the segment length.
+    #
+    # max 1.6: intentionally WIDER than the 0.95 base gate (target_base.yaml)
+    #   — the gap is deliberate, do NOT "fix" it by matching them. Narrowing
+    #   this one is not free the way narrowing the gate is:
+    #     - it masks epipolar candidates (pick_target_3d_node.py:127) and
+    #       re-tests the patch median (:546), so it changes WHAT IS FOUND,
+    #       not just what is accepted;
+    #     - the match is a bare argmin with no reprojection-error threshold
+    #       (:149-151), so a masked-out true correspondence does not fail —
+    #       it silently returns the least-bad survivor;
+    #     - keeping it wide means every reading in (0.95, 1.6] still reaches
+    #       pick_target_base and is rejected there BY NAME with a measured z
+    #       (camera_z_too_far), instead of a nameless depth_not_valid z=0.000.
+    #   Tighten only after adding a max-reprojection-error reject at :150.
+    #
+    # Widen BOTH together with target_base.yaml if the workspace grows.
+    min_depth_m: 0.19
+    max_depth_m: 1.6
+    log_period_sec: 1.0
+    # Cross-check vectorized epipolar vs loop reference (costs the loop again).
+    # Validated live 2026-07-14: 4500 picks, 0 mismatches — keep off.
+    epipolar_ab_check: false

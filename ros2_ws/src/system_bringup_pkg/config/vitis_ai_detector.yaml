@@ -1,0 +1,66 @@
+vitis_ai_detector_node:
+  ros__parameters:
+    # 검출 모델 = YOLOv3-tiny 6-class (apple/orange/banana/tennis_ball/
+    # mustard_bottle/person). 파일명의 "7class"는 초기 7-class 시절 잔재이고
+    # 실제 배포본은 6-class(D14, md5 9bc6520c) — decode_meta.json이 정본.
+    # person은 worker CLASS_THRESHOLDS_BY_NAME 2.0으로 /detections에 나오지 않는다.
+    #
+    # model_path / worker_script_path는 여기에 없다(2026-07-15):
+    #   - model_path       → launch가 FindPackageShare로 주입
+    #                        (vitis_ai_detector_pkg/models/ 에 동봉)
+    #   - worker_script_path → 노드가 자기 옆의 vitis_ai_worker_yolo.py 사용
+    # 둘 다 머신마다 달라지는 절대경로였고, 이제 clone만으로 해결된다.
+    # ⚠️ 정정(2026-09-08): "여기에 model_path를 적으면 launch 주입을 덮어쓴다"고 적혀 있었으나
+    #    사실과 반대다. launch가 parameters=[<이 yaml>, {'model_path': ...}] 순서로 넘기므로
+    #    뒤에 오는 launch 주입이 이 yaml을 이긴다. 여기에 적어도 무시된다.
+    #    다른 모델을 쓰려면 launch 쪽을 고쳐야 한다 — 모델 선택 인자화는
+    #    docs/vision/yolov5_migration_plan.md §5.2의 예정 작업.
+    detector_mode: "worker"
+    worker_log_path: ""
+    # 프레임을 stdin pipe(복사 3~4회, ipc ~9-12 ms) 대신 /dev/shm mmap(memcpy
+    # 1회)으로 worker에 전달 (2026-08-05, throughput.md §4 방법 0).
+    # false = 구 pipe 경로 (A/B·폴백용).
+    worker_shm: true
+    # letterbox를 worker가 직접 수행 → node는 원본 프레임을 그대로 전달해야 함
+    send_resized_input: false
+    input_topic: "/camera/camera/color/image_raw"
+    output_topic: "/detections"
+    # Minimum interval between the START of two detections. A frame that fails
+    # this gate is DISCARDED and the worker waits for the next arrival — so the
+    # gate does not produce its nominal period, it produces "the first color
+    # frame arriving after it". That rounding to the 33.3 ms arrival grid is
+    # what makes the exact value matter so much.
+    #
+    # 0.045 (2026-07-14 .. 2026-08-05): a deliberate 15 Hz cap. Uncapped was
+    #   ~19 Hz then and only spent the CPU saved by the letterbox speedup on
+    #   extra downstream frames; Gate6 targeted 15 Hz. 0.045 sits between one
+    #   frame period and two (33.3..66.6 ms), locking the 2-frame cadence
+    #   (0.062 was borderline — arrival jitter drifted it to 3 frames, 13.8 Hz).
+    #
+    # 0.030 (2026-08-05): the premise changed — the target is now MOVING
+    #   objects, where the update interval drives tracking quality, so the
+    #   15 Hz cap is no longer the right trade. Processing is ~43 ms, so a gate
+    #   below that never binds: period = processing = ~43 ms -> ~23 Hz
+    #   (65 -> 43 ms update interval). Expect roughly +0.5 cores as everything
+    #   downstream runs 1.5x (1.41 -> ~1.9 of the 3 cores vision may use;
+    #   CPU3 is RT-isolated and off limits).
+    #   Why 0.030 and not 0.033: it must sit SAFELY inside the first frame
+    #   period, the mirror image of the 0.062 lesson. At 0.033 the margin
+    #   against arrival jitter is 0.3 ms, so if processing ever dropped below
+    #   33 ms the gate would start skipping to a 2-frame cadence again.
+    #   Set 0.0 to remove the gate entirely (no backstop if processing ever
+    #   gets very fast). Revert to 0.045 to restore the 15 Hz cap.
+    # Measured baseline before this change: evidence/metrics/runs/
+    #   baseline_sync30_20260805 (43.2 ms processing, 62.9 ms period, 15.3 Hz).
+    # Rationale + the ladder for going past ~23 Hz: docs/vision/throughput.md
+    process_period_sec: 0.030
+    timeout_sec: 10.0
+    worker_startup_timeout_sec: 30.0
+    publish_empty_detections: true
+    log_period_sec: 1.0
+    # Metrics are OFF here and controlled by the launch flag `metrics:=true`,
+    # which injects metrics_csv_path / yield_csv_path / metrics_duration_sec for
+    # ALL nodes at once — a single source of truth (launch default is
+    # metrics_duration:=185, changed in pick_place_vitis_ai.launch.py). See
+    # evidence/metrics/README.md. To profile the detector alone via bare `ros2 run`
+    # (no launch), add metrics_csv_path (absolute) + metrics_duration_sec here.

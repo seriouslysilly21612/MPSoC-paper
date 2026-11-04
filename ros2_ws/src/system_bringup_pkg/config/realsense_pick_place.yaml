@@ -1,0 +1,55 @@
+# Hardware-reset the camera at node startup. 2026-07-14: the RGB sensor wedged
+# at the UVC level (repeated "Failed to query (GET_CUR) UVC control 1 ... -32"
+# in dmesg) ~3 s into a run — color frames stopped while depth kept streaming.
+# A reset at startup clears stale UVC state left by a previous wedge/hard reboot.
+initial_reset: true
+enable_color: true
+enable_depth: true
+# enable_sync 2026-08-04: librealsense pairs each color frame with the depth
+# frame captured at the same instant and ships them as one frameset, so the
+# depth the 3D stage uses carries the SAME timestamp as the color frame the
+# bbox came from. Measured (evidence/metrics/runs/sync30_compare_20260804.md,
+# 300 s x2 back-to-back on one scene): depth-color skew |mean| 28.5 -> 4.3 ms,
+# 89% of picks EXACTLY 0.0. Cost: +0.18 cores total; E2E p50 +1.8 ms and
+# throughput 0 (both inside run-to-run noise) — the syncer does not stall the
+# color path. Needs depth at the SAME fps as color to pair every frame; see
+# depth_module.depth_profile below. This matters because the pipeline moved
+# from static-object picking to MOVING objects: with unsynced streams the depth
+# was sampled up to a period away from the bbox, which on a moving object can
+# read the background behind it instead of the object.
+#
+# NOTE: sync alone is not enough. It makes a same-timestamp partner EXIST; the
+# 3D node must also SELECT it (pick_target_3d_node.nearest_by_stamp). With the
+# old 'newest depth' policy the same run measured p50 33.3 ms, not 0.
+enable_sync: true
+# Stays OFF. Full-frame align saturates the single-threaded camera node
+# (0.91 cores) and adds ~300 ms of queueing before the detector — E2E 113 ->
+# 355 ms for no accuracy gain (evidence/metrics/runs/ab_compare_20260731.md).
+# The skew benefit people reach for align to get is what enable_sync above
+# delivers, at 1/4 the CPU and no latency.
+align_depth.enable: false
+enable_rgbd: false
+pointcloud.enable: false
+colorizer.enable: false
+enable_infra: false
+enable_infra1: false
+enable_infra2: false
+enable_gyro: false
+enable_accel: false
+# Color lowered 1280x720 -> 848x480 (FPS kept at 30). At 1280x720 the
+# realsense2_camera node wedged in a 100% CPU busy-spin after ~70 s and stopped
+# delivering frames, silently stalling the whole downstream pipeline. The
+# detector downsizes every frame to 480x360 before inference anyway, so the
+# lower color resolution does not reduce detection quality, but it cuts the USB3
+# bandwidth and the on-CPU depth-to-color alignment cost by ~2.3x. Both streams
+# are 16:9, so the 480x360 resize aspect ratio is unchanged.
+# Depth 15 -> 30 fps (2026-08-04), back to matching color. It was dropped to 15
+# on 2026-07-14 to halve the depth pipeline cost, which was correct while the
+# target was a STATIC object (staleness 33->66 ms is harmless when nothing
+# moves). Moving objects changed that, and pairing needs both streams at the
+# same rate: enable_sync can only give a same-timestamp partner to every color
+# frame if depth is produced as often as color. Measured cost of 15->30 plus
+# sync: +0.072 cores on this node, +0.088 on target_3d (its depth callback
+# doubles), USB depth traffic 12.2 -> 24.4 MB/s.
+depth_module.depth_profile: 848x480x30
+rgb_camera.color_profile: 848x480x30

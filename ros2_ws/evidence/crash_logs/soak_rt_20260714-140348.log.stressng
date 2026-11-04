@@ -1,0 +1,13 @@
+stress-ng: info:  [5002] setting to a 75 second (1 min, 15.00 secs) run per stressor
+stress-ng: info:  [5002] dispatching hogs: 4 cpu, 2 vm, 4 fork, 2 clone, 2 pthread, 1 sysfs
+stress-ng: info:  [5017] stress-ng-pthread: maximum of 1024 concurrent pthreads created
+stress-ng: info:  [5018] stress-ng-pthread: maximum of 1024 concurrent pthreads created
+stress-ng: info:  [5002] successful run completed in 75.96s (1 min, 15.96 secs)
+stress-ng: info:  [5002] stressor       bogo ops real time  usr time  sys time   bogo ops/s     bogo ops/s
+stress-ng: info:  [5002]                           (secs)    (secs)    (secs)   (real time) (usr+sys time)
+stress-ng: info:  [5002] cpu                3251     75.57     64.41      0.42        43.02          50.15
+stress-ng: info:  [5002] vm               100492     75.14     32.64      1.36      1337.38        2955.65
+stress-ng: info:  [5002] fork               8440     75.07      2.36     18.23       112.43         409.91
+stress-ng: info:  [5002] clone              1052     75.40      0.01     34.31        13.95          30.65
+stress-ng: info:  [5002] pthread          124755     75.27      9.14     79.77      1657.43        1403.16
+stress-ng: info:  [5002] sysfs              1483     75.20      0.53     11.77        19.72         120.57

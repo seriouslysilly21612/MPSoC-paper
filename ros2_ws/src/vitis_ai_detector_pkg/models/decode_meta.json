@@ -1,0 +1,48 @@
+{
+  "names": [
+    "apple",
+    "orange",
+    "banana",
+    "tennis_ball",
+    "mustard_bottle",
+    "person"
+  ],
+  "strides": [
+    16,
+    32
+  ],
+  "anchors_pixel": [
+    [
+      [
+        10.0,
+        14.0
+      ],
+      [
+        23.0,
+        27.0
+      ],
+      [
+        37.0,
+        58.0
+      ]
+    ],
+    [
+      [
+        81.0,
+        82.0
+      ],
+      [
+        135.0,
+        169.0
+      ],
+      [
+        344.0,
+        319.0
+      ]
+    ]
+  ],
+  "num_classes": 6,
+  "input_size": 416,
+  "letterbox_pad_value": 114,
+  "output_order_note": "outputs[i]\ub294 strides[i] scale\uc758 raw conv (bs,3*(5+nc),H,W)"
+}

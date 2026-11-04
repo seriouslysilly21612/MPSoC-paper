@@ -1,0 +1,243 @@
+[INFO] [launch]: All log files can be found below /home/ubuntu/.ros/log/2026-08-06-13-53-35-596123-kria-12427
+[INFO] [launch]: Default logging verbosity is set to INFO
+[metrics] this run -> /home/ubuntu/ros2_ws/evidence/metrics/runs/smoke_shm_20260805  (also reachable as /home/ubuntu/ros2_ws/evidence/metrics/latest)
+[INFO] [launch.user]: 🚀 Launching as Normal ROS Node
+[INFO] [realsense2_camera_node-1]: process started with pid [12437]
+[INFO] [vitis_ai_detector_node-2]: process started with pid [12439]
+[INFO] [pick_logic-3]: process started with pid [12441]
+[INFO] [pick_target_3d_node-4]: process started with pid [12443]
+[INFO] [static_transform_publisher-5]: process started with pid [12447]
+[INFO] [pick_target_base_node-6]: process started with pid [12449]
+[INFO] [python3-7]: process started with pid [12451]
+[static_transform_publisher-5] [INFO] [1785992016.902432964] [base_to_camera_tf]: Spinning until stopped - publishing transform
+[static_transform_publisher-5] translation: ('0.811666', '0.087684', '0.924974')
+[static_transform_publisher-5] rotation: ('0.724628', '0.000084', '-0.687062', '0.053476')
+[static_transform_publisher-5] from 'base_link' to 'camera_link'
+[python3-7] [resource_sampler] tracking pids: {'camera': 12437, 'detector': 12439, 'pick_logic': 12441, 'target_3d': 12443, 'static_tf': 12447, 'target_base': 12449}
+[python3-7] [resource_sampler] hwmon sensors: 34
+[realsense2_camera_node-1] [0m[INFO] [1785992018.263426038] [camera.camera]: RealSense ROS v4.57.7[0m
+[realsense2_camera_node-1] [0m[INFO] [1785992018.272736356] [camera.camera]: Built with LibRealSense v2.57.7[0m
+[realsense2_camera_node-1] [0m[INFO] [1785992018.277201372] [camera.camera]: Running with LibRealSense v2.57.7[0m
+[realsense2_camera_node-1]  06/08 13:53:38,292 ERROR [281473416292576] (context.cpp:41) No valid configuration file found at : /home/ubuntu/.realsense-config.json loading defaults
+[realsense2_camera_node-1] [0m[INFO] [1785992018.606227643] [camera.camera]: Device with serial number 134322073014 was found.
+[realsense2_camera_node-1] [0m
+[realsense2_camera_node-1] [0m[INFO] [1785992018.614752841] [camera.camera]: Device with physical ID /sys/devices/platform/axi/ff9d0000.usb/fe200000.usb/xhci-hcd.0.auto/usb2/2-1/2-1.1/2-1.1:1.0/video4linux/video0 was found.[0m
+[realsense2_camera_node-1] [0m[INFO] [1785992018.616774766] [camera.camera]: Device with name Intel RealSense D435I was found.[0m
+[realsense2_camera_node-1] [0m[INFO] [1785992018.621559077] [camera.camera]: Device with port number 2-1.1 was found.[0m
+[realsense2_camera_node-1] [0m[INFO] [1785992018.622634700] [camera.camera]: Device USB type: 3.2[0m
+[realsense2_camera_node-1] [0m[INFO] [1785992018.623463521] [camera.camera]: Resetting device...[0m
+[realsense2_camera_node-1]  06/08 13:53:40,499 ERROR [281473407838432] (librealsense-exception.h:52) get_dev_capabilities: Cannot open '/dev/video0 Last Error: Permission denied
+[realsense2_camera_node-1]  06/08 13:53:40,519 ERROR [281473407838432] (librealsense-exception.h:52) get_dev_capabilities: Cannot open '/dev/video1 Last Error: Permission denied
+[realsense2_camera_node-1]  06/08 13:53:40,542 ERROR [281473407838432] (librealsense-exception.h:52) get_dev_capabilities: Cannot open '/dev/video4 Last Error: Permission denied
+[realsense2_camera_node-1]  06/08 13:53:40,556 ERROR [281473407838432] (backend-v4l2.cpp:1319) Metadata node for uvc device: id- /dev/video2
+[realsense2_camera_node-1] vid- 8086
+[realsense2_camera_node-1] pid- b3a
+[realsense2_camera_node-1] mi- 0
+[realsense2_camera_node-1] unique_id- 2-1.1-8
+[realsense2_camera_node-1] path- /sys/devices/platform/axi/ff9d0000.usb/fe200000.usb/xhci-hcd.0.auto/usb2/2-1/2-1.1/2-1.1:1.0/video4linux/video2
+[realsense2_camera_node-1] UVC capabilities- 4200001
+[realsense2_camera_node-1] UVC specification- 320
+[realsense2_camera_node-1] metadata node-/dev/video3
+[realsense2_camera_node-1]  was previously assigned 
+[pick_logic-3] [INFO] [1785992022.020693597] [pick_logic_node]: Pick logic node (v2) started: /detections -> /pick_target
+[pick_target_3d_node-4] [INFO] [1785992022.510996792] [pick_target_3d_node]: pick_target_3d_node started (raw-depth reverse projection): /pick_target + /camera/camera/depth/image_rect_raw -> /pick_target_3d
+[pick_target_base_node-6] [INFO] [1785992023.525852566] [pick_target_base_node]: pick_target_base_node started: /pick_target_3d -> /pick_target_base, target_frame=base_link
+[pick_target_base_node-6] [INFO] [1785992023.529549473] [pick_target_base_node]: Filters: require_depth_valid=True, camera_z_range=[0.20, 1.50]
+[realsense2_camera_node-1] [0m[INFO] [1785992024.704617927] [camera.camera]: Device with serial number 134322073014 was found.
+[realsense2_camera_node-1] [0m
+[realsense2_camera_node-1] [0m[INFO] [1785992024.704844620] [camera.camera]: Device with physical ID /sys/devices/platform/axi/ff9d0000.usb/fe200000.usb/xhci-hcd.0.auto/usb2/2-1/2-1.1/2-1.1:1.0/video4linux/video0 was found.[0m
+[realsense2_camera_node-1] [0m[INFO] [1785992024.704981192] [camera.camera]: Device with name Intel RealSense D435I was found.[0m
+[realsense2_camera_node-1] [0m[INFO] [1785992024.707007287] [camera.camera]: Device with port number 2-1.1 was found.[0m
+[realsense2_camera_node-1] [0m[INFO] [1785992024.707366892] [camera.camera]: Device USB type: 3.2[0m
+[realsense2_camera_node-1] [0m[INFO] [1785992024.707790207] [camera.camera]: getParameters...[0m
+[realsense2_camera_node-1] [0m[INFO] [1785992025.037507006] [camera.camera]: JSON file is not provided[0m
+[realsense2_camera_node-1] [0m[INFO] [1785992025.037691628] [camera.camera]: Device Name: Intel RealSense D435I[0m
+[realsense2_camera_node-1] [0m[INFO] [1785992025.037814900] [camera.camera]: Device Serial No: 134322073014[0m
+[realsense2_camera_node-1] [0m[INFO] [1785992025.037918921] [camera.camera]: Device physical port: /sys/devices/platform/axi/ff9d0000.usb/fe200000.usb/xhci-hcd.0.auto/usb2/2-1/2-1.1/2-1.1:1.0/video4linux/video0[0m
+[realsense2_camera_node-1] [0m[INFO] [1785992025.038248586] [camera.camera]: Device FW version: 5.17.0.10[0m
+[realsense2_camera_node-1] [0m[INFO] [1785992025.038354037] [camera.camera]: Device Product ID: 0x0B3A[0m
+[realsense2_camera_node-1] [0m[INFO] [1785992025.038451578] [camera.camera]: Sync Mode: On[0m
+[realsense2_camera_node-1] [0m[INFO] [1785992025.203348954] [camera.camera]: Set ROS param depth_module.infra_profile to default: 848x480x30[0m
+[realsense2_camera_node-1] [33m[WARN] [1785992025.228415201] [camera.camera]: Could not set param: rgb_camera.power_line_frequency with 3 Range: [0, 2]: parameter 'rgb_camera.power_line_frequency' could not be set: Parameter {rgb_camera.power_line_frequency} doesn't comply with integer range.[0m
+[realsense2_camera_node-1] [33m[WARN] [1785992025.257837003] [camera.camera]: re-enable the stream for the change to take effect.[0m
+[realsense2_camera_node-1] [0m[INFO] [1785992025.266681165] [camera.camera]: Set ROS param gyro_fps to default: 200[0m
+[realsense2_camera_node-1] [0m[INFO] [1785992025.267668567] [camera.camera]: Set ROS param accel_fps to default: 100[0m
+[realsense2_camera_node-1] [0m[INFO] [1785992025.319327631] [camera.camera]: Stopping Sensor: Depth Module[0m
+[realsense2_camera_node-1] [0m[INFO] [1785992025.322446720] [camera.camera]: Stopping Sensor: RGB Camera[0m
+[realsense2_camera_node-1] [0m[INFO] [1785992025.386715293] [camera.camera]: Starting Sensor: Depth Module[0m
+[realsense2_camera_node-1] [0m[INFO] [1785992025.422178921] [camera.camera]: Open profile: stream_type: Depth(0), Format: Z16, Width: 848, Height: 480, FPS: 30[0m
+[realsense2_camera_node-1] [0m[INFO] [1785992025.454928356] [camera.camera]: Starting Sensor: RGB Camera[0m
+[realsense2_camera_node-1] [0m[INFO] [1785992025.485560343] [camera.camera]: Open profile: stream_type: Color(0), Format: RGB8, Width: 848, Height: 480, FPS: 30[0m
+[realsense2_camera_node-1] [0m[INFO] [1785992025.557459862] [camera.camera]: RealSense Node Is Up![0m
+[vitis_ai_detector_node-2] [INFO] [1785992026.174554288] [vitis_ai_detector_node]: Starting Vitis-AI worker process
+[pick_target_3d_node-4] [INFO] [1785992026.345792244] [pick_target_3d_node]: Static camera_info/extrinsics captured — subscriptions pruned
+[vitis_ai_detector_node-2] [INFO] [1785992031.799967084] [vitis_ai_detector_node]: Vitis-AI worker ready: input_shape=[1, 416, 416, 3]
+[vitis_ai_detector_node-2] [INFO] [1785992031.811364919] [vitis_ai_detector_node]: Vitis-AI detector started in worker mode: /camera/camera/color/image_raw -> /detections
+[vitis_ai_detector_node-2] [INFO] [1785992031.822488180] [vitis_ai_detector_node]: Low-latency policy: sensor QoS depth=1, latest frame only, process_period_sec=0.030, send_resized_input=False, worker_shm=True, publish_overlay=False, publish_compressed_overlay=False
+[vitis_ai_detector_node-2] [INFO] [1785992031.913296131] [vitis_ai_detector_node]: Metrics window started: collecting 45s from the first frame
+[vitis_ai_detector_node-2] [INFO] [1785992031.921858559] [vitis_ai_detector_node]: Collecting metrics: 1 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/smoke_shm_20260805/performance/detector.csv)
+[pick_logic-3] [WARN] [1785992031.923650042] [pick_logic_node]: Rejected detection array: reason=target_unstable
+[pick_logic-3] [INFO] [1785992031.930443528] [pick_logic_node]: Metrics window started: collecting 45s from the first row -> /home/ubuntu/ros2_ws/evidence/metrics/runs/smoke_shm_20260805/performance/pick_logic.csv
+[pick_target_3d_node-4] [INFO] [1785992031.933038181] [pick_target_3d_node]: Metrics window started: collecting 45s from the first row -> /home/ubuntu/ros2_ws/evidence/metrics/runs/smoke_shm_20260805/performance/target_3d.csv
+[pick_target_base_node-6] [WARN] [1785992031.940949211] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[pick_target_base_node-6] [INFO] [1785992031.952440557] [pick_target_base_node]: Metrics window started: collecting 45s from the first row -> /home/ubuntu/ros2_ws/evidence/metrics/runs/smoke_shm_20260805/performance/base.csv
+[pick_logic-3] [INFO] [1785992032.035611801] [pick_logic_node]: Accepted target: class=apple, conf=0.88, cx=444.4, cy=219.3, score=0.726, stable=3, candidates=5
+[vitis_ai_detector_node-2] [INFO] [1785992032.906161519] [vitis_ai_detector_node]: Collecting metrics: 21 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/smoke_shm_20260805/performance/detector.csv)
+[pick_logic-3] [INFO] [1785992033.043838425] [pick_logic_node]: Accepted target: class=apple, conf=0.88, cx=444.4, cy=219.3, score=0.728, stable=24, candidates=5
+[vitis_ai_detector_node-2] [INFO] [1785992033.927493182] [vitis_ai_detector_node]: Collecting metrics: 42 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/smoke_shm_20260805/performance/detector.csv)
+[pick_logic-3] [INFO] [1785992034.069953069] [pick_logic_node]: Accepted target: class=apple, conf=0.90, cx=444.4, cy=220.2, score=0.737, stable=45, candidates=5
+[vitis_ai_detector_node-2] [INFO] [1785992034.964917505] [vitis_ai_detector_node]: Collecting metrics: 63 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/smoke_shm_20260805/performance/detector.csv)
+[pick_logic-3] [INFO] [1785992035.068970725] [pick_logic_node]: Accepted target: class=apple, conf=0.88, cx=445.3, cy=220.2, score=0.728, stable=65, candidates=5
+[pick_target_3d_node-4] [INFO] [1785992035.868719576] [pick_target_3d_node]: depth frombuffer view == cv_bridge: True (bigendian=0)
+[pick_target_base_node-6] [INFO] [1785992035.897399720] [pick_target_base_node]: Static TF cached (camera_depth_optical_frame -> base_link), matmul vs tf2 max diff 0.000e+00 m
+[vitis_ai_detector_node-2] [INFO] [1785992036.037894693] [vitis_ai_detector_node]: Collecting metrics: 84 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/smoke_shm_20260805/performance/detector.csv)
+[pick_logic-3] [INFO] [1785992036.100597429] [pick_logic_node]: Accepted target: class=apple, conf=0.88, cx=445.3, cy=220.2, score=0.727, stable=85, candidates=5
+[vitis_ai_detector_node-2] [INFO] [1785992037.027273775] [vitis_ai_detector_node]: Collecting metrics: 106 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/smoke_shm_20260805/performance/detector.csv)
+[pick_logic-3] [INFO] [1785992037.120123944] [pick_logic_node]: Accepted target: class=apple, conf=0.88, cx=445.3, cy=220.2, score=0.726, stable=108, candidates=5
+[vitis_ai_detector_node-2] [INFO] [1785992038.048951242] [vitis_ai_detector_node]: Collecting metrics: 124 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/smoke_shm_20260805/performance/detector.csv)
+[pick_logic-3] [INFO] [1785992038.140818089] [pick_logic_node]: Accepted target: class=apple, conf=0.88, cx=445.3, cy=220.2, score=0.726, stable=126, candidates=5
+[vitis_ai_detector_node-2] [INFO] [1785992039.119039138] [vitis_ai_detector_node]: Collecting metrics: 141 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/smoke_shm_20260805/performance/detector.csv)
+[pick_logic-3] [INFO] [1785992039.188417300] [pick_logic_node]: Accepted target: class=apple, conf=0.88, cx=445.3, cy=220.2, score=0.728, stable=142, candidates=5
+[vitis_ai_detector_node-2] [INFO] [1785992040.107248639] [vitis_ai_detector_node]: Collecting metrics: 160 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/smoke_shm_20260805/performance/detector.csv)
+[pick_logic-3] [INFO] [1785992040.216268285] [pick_logic_node]: Accepted target: class=apple, conf=0.88, cx=444.4, cy=219.3, score=0.728, stable=162, candidates=5
+[vitis_ai_detector_node-2] [INFO] [1785992041.184553297] [vitis_ai_detector_node]: Collecting metrics: 181 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/smoke_shm_20260805/performance/detector.csv)
+[pick_logic-3] [INFO] [1785992041.249792267] [pick_logic_node]: Accepted target: class=apple, conf=0.88, cx=444.4, cy=219.3, score=0.727, stable=182, candidates=5
+[vitis_ai_detector_node-2] [INFO] [1785992042.170456957] [vitis_ai_detector_node]: Collecting metrics: 202 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/smoke_shm_20260805/performance/detector.csv)
+[pick_logic-3] [INFO] [1785992042.296329628] [pick_logic_node]: Accepted target: class=apple, conf=0.88, cx=445.3, cy=220.2, score=0.726, stable=204, candidates=5
+[vitis_ai_detector_node-2] [INFO] [1785992043.181632643] [vitis_ai_detector_node]: Collecting metrics: 224 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/smoke_shm_20260805/performance/detector.csv)
+[pick_logic-3] [INFO] [1785992043.341203254] [pick_logic_node]: Accepted target: class=apple, conf=0.88, cx=445.3, cy=220.2, score=0.728, stable=227, candidates=5
+[vitis_ai_detector_node-2] [INFO] [1785992044.240457930] [vitis_ai_detector_node]: Collecting metrics: 246 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/smoke_shm_20260805/performance/detector.csv)
+[pick_logic-3] [INFO] [1785992044.374677879] [pick_logic_node]: Accepted target: class=apple, conf=0.88, cx=445.3, cy=220.2, score=0.727, stable=249, candidates=5
+[vitis_ai_detector_node-2] [INFO] [1785992045.304616080] [vitis_ai_detector_node]: Collecting metrics: 269 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/smoke_shm_20260805/performance/detector.csv)
+[pick_logic-3] [INFO] [1785992045.380973552] [pick_logic_node]: Accepted target: class=apple, conf=0.88, cx=444.4, cy=219.3, score=0.726, stable=270, candidates=5
+[vitis_ai_detector_node-2] [INFO] [1785992046.344791789] [vitis_ai_detector_node]: Collecting metrics: 291 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/smoke_shm_20260805/performance/detector.csv)
+[pick_logic-3] [INFO] [1785992046.388836860] [pick_logic_node]: Accepted target: class=apple, conf=0.88, cx=444.4, cy=219.3, score=0.728, stable=292, candidates=5
+[vitis_ai_detector_node-2] [INFO] [1785992047.382070606] [vitis_ai_detector_node]: Collecting metrics: 313 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/smoke_shm_20260805/performance/detector.csv)
+[pick_logic-3] [INFO] [1785992047.448584604] [pick_logic_node]: Accepted target: class=apple, conf=0.88, cx=445.3, cy=220.2, score=0.726, stable=314, candidates=5
+[vitis_ai_detector_node-2] [INFO] [1785992048.408604551] [vitis_ai_detector_node]: Collecting metrics: 335 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/smoke_shm_20260805/performance/detector.csv)
+[pick_logic-3] [INFO] [1785992048.457159260] [pick_logic_node]: Accepted target: class=apple, conf=0.88, cx=445.3, cy=220.2, score=0.726, stable=336, candidates=5
+[vitis_ai_detector_node-2] [INFO] [1785992049.417809199] [vitis_ai_detector_node]: Collecting metrics: 358 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/smoke_shm_20260805/performance/detector.csv)
+[pick_logic-3] [INFO] [1785992049.475718077] [pick_logic_node]: Accepted target: class=apple, conf=0.88, cx=445.3, cy=220.2, score=0.726, stable=359, candidates=5
+[vitis_ai_detector_node-2] [INFO] [1785992050.440827098] [vitis_ai_detector_node]: Collecting metrics: 379 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/smoke_shm_20260805/performance/detector.csv)
+[pick_logic-3] [INFO] [1785992050.508574542] [pick_logic_node]: Accepted target: class=apple, conf=0.88, cx=444.4, cy=219.3, score=0.728, stable=380, candidates=5
+[vitis_ai_detector_node-2] [INFO] [1785992051.459382344] [vitis_ai_detector_node]: Collecting metrics: 400 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/smoke_shm_20260805/performance/detector.csv)
+[pick_logic-3] [INFO] [1785992051.530530392] [pick_logic_node]: Accepted target: class=apple, conf=0.88, cx=444.4, cy=219.3, score=0.728, stable=401, candidates=5
+[vitis_ai_detector_node-2] [INFO] [1785992052.477602630] [vitis_ai_detector_node]: Collecting metrics: 422 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/smoke_shm_20260805/performance/detector.csv)
+[pick_logic-3] [INFO] [1785992052.553823123] [pick_logic_node]: Accepted target: class=apple, conf=0.88, cx=444.4, cy=219.3, score=0.728, stable=423, candidates=5
+[vitis_ai_detector_node-2] [INFO] [1785992053.499000642] [vitis_ai_detector_node]: Collecting metrics: 444 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/smoke_shm_20260805/performance/detector.csv)
+[pick_logic-3] [INFO] [1785992053.556702649] [pick_logic_node]: Accepted target: class=apple, conf=0.88, cx=444.4, cy=219.3, score=0.728, stable=445, candidates=5
+[vitis_ai_detector_node-2] [INFO] [1785992054.541768471] [vitis_ai_detector_node]: Collecting metrics: 466 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/smoke_shm_20260805/performance/detector.csv)
+[pick_logic-3] [INFO] [1785992054.594604606] [pick_logic_node]: Accepted target: class=apple, conf=0.88, cx=445.3, cy=220.2, score=0.726, stable=467, candidates=5
+[vitis_ai_detector_node-2] [INFO] [1785992055.578880112] [vitis_ai_detector_node]: Collecting metrics: 487 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/smoke_shm_20260805/performance/detector.csv)
+[pick_logic-3] [INFO] [1785992055.625753241] [pick_logic_node]: Accepted target: class=apple, conf=0.88, cx=445.3, cy=220.2, score=0.727, stable=488, candidates=5
+[vitis_ai_detector_node-2] [INFO] [1785992056.618300527] [vitis_ai_detector_node]: Collecting metrics: 510 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/smoke_shm_20260805/performance/detector.csv)
+[pick_logic-3] [INFO] [1785992056.676155977] [pick_logic_node]: Accepted target: class=apple, conf=0.88, cx=444.4, cy=219.3, score=0.728, stable=511, candidates=5
+[vitis_ai_detector_node-2] [INFO] [1785992057.614102530] [vitis_ai_detector_node]: Collecting metrics: 531 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/smoke_shm_20260805/performance/detector.csv)
+[pick_logic-3] [INFO] [1785992057.713206737] [pick_logic_node]: Accepted target: class=apple, conf=0.88, cx=444.4, cy=219.3, score=0.725, stable=533, candidates=5
+[vitis_ai_detector_node-2] [INFO] [1785992058.634663563] [vitis_ai_detector_node]: Collecting metrics: 552 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/smoke_shm_20260805/performance/detector.csv)
+[pick_logic-3] [INFO] [1785992058.722987692] [pick_logic_node]: Accepted target: class=apple, conf=0.88, cx=445.3, cy=220.2, score=0.727, stable=554, candidates=5
+[vitis_ai_detector_node-2] [INFO] [1785992059.655849858] [vitis_ai_detector_node]: Collecting metrics: 575 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/smoke_shm_20260805/performance/detector.csv)
+[pick_logic-3] [INFO] [1785992059.751804496] [pick_logic_node]: Accepted target: class=apple, conf=0.88, cx=445.3, cy=220.2, score=0.726, stable=577, candidates=5
+[vitis_ai_detector_node-2] [INFO] [1785992060.686533460] [vitis_ai_detector_node]: Collecting metrics: 597 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/smoke_shm_20260805/performance/detector.csv)
+[pick_logic-3] [INFO] [1785992060.802008428] [pick_logic_node]: Accepted target: class=apple, conf=0.88, cx=444.4, cy=219.3, score=0.728, stable=599, candidates=5
+[vitis_ai_detector_node-2] [INFO] [1785992061.723385904] [vitis_ai_detector_node]: Collecting metrics: 618 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/smoke_shm_20260805/performance/detector.csv)
+[pick_logic-3] [INFO] [1785992061.820887383] [pick_logic_node]: Accepted target: class=apple, conf=0.88, cx=444.4, cy=219.3, score=0.728, stable=620, candidates=5
+[python3-7] [resource_sampler] wrote 45 rows to /home/ubuntu/ros2_ws/evidence/metrics/runs/smoke_shm_20260805/resource/run.csv
+[INFO] [python3-7]: process has finished cleanly [pid 12451]
+[vitis_ai_detector_node-2] [INFO] [1785992062.737928878] [vitis_ai_detector_node]: Collecting metrics: 639 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/smoke_shm_20260805/performance/detector.csv)
+[pick_logic-3] [INFO] [1785992062.846507779] [pick_logic_node]: Accepted target: class=apple, conf=0.88, cx=444.4, cy=219.3, score=0.728, stable=641, candidates=5
+[vitis_ai_detector_node-2] [INFO] [1785992063.756821402] [vitis_ai_detector_node]: Collecting metrics: 660 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/smoke_shm_20260805/performance/detector.csv)
+[pick_logic-3] [INFO] [1785992063.925147938] [pick_logic_node]: Accepted target: class=apple, conf=0.88, cx=444.4, cy=219.3, score=0.728, stable=662, candidates=5
+[vitis_ai_detector_node-2] [INFO] [1785992064.789014270] [vitis_ai_detector_node]: Collecting metrics: 679 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/smoke_shm_20260805/performance/detector.csv)
+[pick_logic-3] [INFO] [1785992064.924930902] [pick_logic_node]: Accepted target: class=apple, conf=0.88, cx=445.3, cy=220.2, score=0.726, stable=682, candidates=5
+[vitis_ai_detector_node-2] [INFO] [1785992065.795181289] [vitis_ai_detector_node]: Collecting metrics: 700 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/smoke_shm_20260805/performance/detector.csv)
+[pick_logic-3] [INFO] [1785992065.953275696] [pick_logic_node]: Accepted target: class=apple, conf=0.88, cx=445.3, cy=220.2, score=0.726, stable=703, candidates=5
+[vitis_ai_detector_node-2] [INFO] [1785992066.883217183] [vitis_ai_detector_node]: Collecting metrics: 722 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/smoke_shm_20260805/performance/detector.csv)
+[pick_logic-3] [INFO] [1785992066.962160665] [pick_logic_node]: Accepted target: class=apple, conf=0.88, cx=445.3, cy=220.2, score=0.726, stable=723, candidates=5
+[vitis_ai_detector_node-2] [INFO] [1785992067.927262577] [vitis_ai_detector_node]: Collecting metrics: 743 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/smoke_shm_20260805/performance/detector.csv)
+[pick_logic-3] [INFO] [1785992067.976686881] [pick_logic_node]: Accepted target: class=apple, conf=0.88, cx=445.3, cy=220.2, score=0.726, stable=744, candidates=5
+[vitis_ai_detector_node-2] [INFO] [1785992068.955394291] [vitis_ai_detector_node]: Collecting metrics: 763 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/smoke_shm_20260805/performance/detector.csv)
+[pick_logic-3] [INFO] [1785992068.999214414] [pick_logic_node]: Accepted target: class=apple, conf=0.88, cx=445.3, cy=220.2, score=0.728, stable=764, candidates=5
+[vitis_ai_detector_node-2] [INFO] [1785992069.989957352] [vitis_ai_detector_node]: Collecting metrics: 786 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/smoke_shm_20260805/performance/detector.csv)
+[pick_logic-3] [INFO] [1785992070.046642740] [pick_logic_node]: Accepted target: class=apple, conf=0.88, cx=444.4, cy=219.3, score=0.728, stable=787, candidates=5
+[vitis_ai_detector_node-2] [INFO] [1785992071.043178048] [vitis_ai_detector_node]: Collecting metrics: 809 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/smoke_shm_20260805/performance/detector.csv)
+[pick_logic-3] [INFO] [1785992071.093846339] [pick_logic_node]: Accepted target: class=apple, conf=0.90, cx=444.4, cy=220.2, score=0.737, stable=810, candidates=5
+[vitis_ai_detector_node-2] [INFO] [1785992072.054942735] [vitis_ai_detector_node]: Collecting metrics: 831 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/smoke_shm_20260805/performance/detector.csv)
+[pick_logic-3] [INFO] [1785992072.118974638] [pick_logic_node]: Accepted target: class=apple, conf=0.88, cx=445.3, cy=220.2, score=0.726, stable=832, candidates=5
+[vitis_ai_detector_node-2] [INFO] [1785992073.061033904] [vitis_ai_detector_node]: Collecting metrics: 853 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/smoke_shm_20260805/performance/detector.csv)
+[pick_logic-3] [INFO] [1785992073.125776676] [pick_logic_node]: Accepted target: class=apple, conf=0.88, cx=444.4, cy=219.3, score=0.728, stable=854, candidates=5
+[vitis_ai_detector_node-2] [INFO] [1785992074.092860437] [vitis_ai_detector_node]: Collecting metrics: 876 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/smoke_shm_20260805/performance/detector.csv)
+[pick_logic-3] [INFO] [1785992074.160096382] [pick_logic_node]: Accepted target: class=apple, conf=0.88, cx=445.3, cy=220.2, score=0.727, stable=877, candidates=5
+[vitis_ai_detector_node-2] [INFO] [1785992075.126517889] [vitis_ai_detector_node]: Collecting metrics: 899 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/smoke_shm_20260805/performance/detector.csv)
+[pick_logic-3] [INFO] [1785992075.170566785] [pick_logic_node]: Accepted target: class=apple, conf=0.88, cx=444.4, cy=219.3, score=0.725, stable=900, candidates=5
+[vitis_ai_detector_node-2] [INFO] [1785992076.125564549] [vitis_ai_detector_node]: Collecting metrics: 921 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/smoke_shm_20260805/performance/detector.csv)
+[pick_logic-3] [INFO] [1785992076.181637161] [pick_logic_node]: Accepted target: class=apple, conf=0.88, cx=444.4, cy=219.3, score=0.728, stable=922, candidates=5
+[vitis_ai_detector_node-2] [INFO] [1785992076.985312351] [vitis_ai_detector_node]: Saved 936 metric rows to /home/ubuntu/ros2_ws/evidence/metrics/runs/smoke_shm_20260805/performance/detector.csv
+[vitis_ai_detector_node-2] [INFO] [1785992076.991057755] [vitis_ai_detector_node]: Metrics window 45s complete: 936 rows saved to /home/ubuntu/ros2_ws/evidence/metrics/runs/smoke_shm_20260805/performance/detector.csv. You can stop the launch now (Ctrl-C).
+[pick_logic-3] [INFO] [1785992077.095366298] [pick_logic_node]: Saved 937 metric rows to /home/ubuntu/ros2_ws/evidence/metrics/runs/smoke_shm_20260805/performance/pick_logic.csv
+[pick_logic-3] [INFO] [1785992077.098984864] [pick_logic_node]: Metrics window 45s complete: 937 rows -> /home/ubuntu/ros2_ws/evidence/metrics/runs/smoke_shm_20260805/performance/pick_logic.csv. You can stop now (Ctrl-C).
+[pick_target_3d_node-4] [INFO] [1785992077.119034592] [pick_target_3d_node]: Saved 869 metric rows to /home/ubuntu/ros2_ws/evidence/metrics/runs/smoke_shm_20260805/performance/target_3d.csv
+[pick_target_3d_node-4] [INFO] [1785992077.123115555] [pick_target_3d_node]: Metrics window 45s complete: 869 rows -> /home/ubuntu/ros2_ws/evidence/metrics/runs/smoke_shm_20260805/performance/target_3d.csv. You can stop now (Ctrl-C).
+[vitis_ai_detector_node-2] [INFO] [1785992077.169536632] [vitis_ai_detector_node]: Metrics window done: 936 rows saved. Idle (Ctrl-C to exit).
+[pick_target_base_node-6] [INFO] [1785992077.215322282] [pick_target_base_node]: Saved 869 metric rows to /home/ubuntu/ros2_ws/evidence/metrics/runs/smoke_shm_20260805/performance/base.csv
+[pick_target_base_node-6] [INFO] [1785992077.220005272] [pick_target_base_node]: Metrics window 45s complete: 869 rows -> /home/ubuntu/ros2_ws/evidence/metrics/runs/smoke_shm_20260805/performance/base.csv. You can stop now (Ctrl-C).
+[pick_logic-3] [INFO] [1785992077.233833390] [pick_logic_node]: Accepted target: class=apple, conf=0.88, cx=445.3, cy=220.2, score=0.726, stable=941, candidates=5
+[vitis_ai_detector_node-2] [INFO] [1785992078.189818795] [vitis_ai_detector_node]: Metrics window done: 936 rows saved. Idle (Ctrl-C to exit).
+[pick_logic-3] [INFO] [1785992078.238349619] [pick_logic_node]: Accepted target: class=apple, conf=0.88, cx=444.4, cy=219.3, score=0.728, stable=963, candidates=5
+[vitis_ai_detector_node-2] [INFO] [1785992079.218654741] [vitis_ai_detector_node]: Metrics window done: 936 rows saved. Idle (Ctrl-C to exit).
+[pick_logic-3] [INFO] [1785992079.294782792] [pick_logic_node]: Accepted target: class=apple, conf=0.88, cx=445.3, cy=220.2, score=0.726, stable=981, candidates=5
+[vitis_ai_detector_node-2] [INFO] [1785992080.226195128] [vitis_ai_detector_node]: Metrics window done: 936 rows saved. Idle (Ctrl-C to exit).
+[pick_logic-3] [INFO] [1785992080.328940112] [pick_logic_node]: Accepted target: class=apple, conf=0.90, cx=444.4, cy=220.2, score=0.738, stable=1004, candidates=5
+[vitis_ai_detector_node-2] [INFO] [1785992081.255838454] [vitis_ai_detector_node]: Metrics window done: 936 rows saved. Idle (Ctrl-C to exit).
+[pick_logic-3] [INFO] [1785992081.344362974] [pick_logic_node]: Accepted target: class=apple, conf=0.88, cx=444.4, cy=220.2, score=0.727, stable=1027, candidates=5
+[vitis_ai_detector_node-2] [INFO] [1785992082.262998764] [vitis_ai_detector_node]: Metrics window done: 936 rows saved. Idle (Ctrl-C to exit).
+[pick_logic-3] [INFO] [1785992082.357082906] [pick_logic_node]: Accepted target: class=apple, conf=0.88, cx=445.3, cy=220.2, score=0.727, stable=1049, candidates=5
+[vitis_ai_detector_node-2] [INFO] [1785992083.281325262] [vitis_ai_detector_node]: Metrics window done: 936 rows saved. Idle (Ctrl-C to exit).
+[pick_logic-3] [INFO] [1785992083.412543484] [pick_logic_node]: Accepted target: class=apple, conf=0.88, cx=444.4, cy=219.3, score=0.728, stable=1071, candidates=5
+[vitis_ai_detector_node-2] [INFO] [1785992084.301740971] [vitis_ai_detector_node]: Metrics window done: 936 rows saved. Idle (Ctrl-C to exit).
+[pick_logic-3] [INFO] [1785992084.445165091] [pick_logic_node]: Accepted target: class=apple, conf=0.90, cx=444.4, cy=220.2, score=0.739, stable=1093, candidates=5
+[vitis_ai_detector_node-2] [INFO] [1785992085.334284701] [vitis_ai_detector_node]: Metrics window done: 936 rows saved. Idle (Ctrl-C to exit).
+[pick_logic-3] [INFO] [1785992085.464954937] [pick_logic_node]: Accepted target: class=apple, conf=0.88, cx=444.4, cy=219.3, score=0.728, stable=1114, candidates=5
+[vitis_ai_detector_node-2] [INFO] [1785992086.353313671] [vitis_ai_detector_node]: Metrics window done: 936 rows saved. Idle (Ctrl-C to exit).
+[pick_logic-3] [INFO] [1785992086.467017818] [pick_logic_node]: Accepted target: class=apple, conf=0.88, cx=444.4, cy=219.3, score=0.728, stable=1136, candidates=5
+[vitis_ai_detector_node-2] [INFO] [1785992087.373327817] [vitis_ai_detector_node]: Metrics window done: 936 rows saved. Idle (Ctrl-C to exit).
+[pick_logic-3] [INFO] [1785992087.478018949] [pick_logic_node]: Accepted target: class=apple, conf=0.88, cx=445.3, cy=220.2, score=0.727, stable=1158, candidates=5
+[vitis_ai_detector_node-2] [INFO] [1785992088.397936418] [vitis_ai_detector_node]: Metrics window done: 936 rows saved. Idle (Ctrl-C to exit).
+[pick_logic-3] [INFO] [1785992088.484852420] [pick_logic_node]: Accepted target: class=apple, conf=0.88, cx=445.3, cy=220.2, score=0.726, stable=1181, candidates=5
+[vitis_ai_detector_node-2] [INFO] [1785992089.417250823] [vitis_ai_detector_node]: Metrics window done: 936 rows saved. Idle (Ctrl-C to exit).
+[pick_logic-3] [INFO] [1785992089.536528354] [pick_logic_node]: Accepted target: class=apple, conf=0.88, cx=444.4, cy=219.3, score=0.727, stable=1204, candidates=5
+[vitis_ai_detector_node-2] [INFO] [1785992090.438265696] [vitis_ai_detector_node]: Metrics window done: 936 rows saved. Idle (Ctrl-C to exit).
+[pick_logic-3] [INFO] [1785992090.547916543] [pick_logic_node]: Accepted target: class=apple, conf=0.88, cx=445.3, cy=220.2, score=0.727, stable=1226, candidates=5
+[vitis_ai_detector_node-2] [INFO] [1785992091.474119744] [vitis_ai_detector_node]: Metrics window done: 936 rows saved. Idle (Ctrl-C to exit).
+[pick_logic-3] [INFO] [1785992091.554876167] [pick_logic_node]: Accepted target: class=apple, conf=0.88, cx=445.3, cy=220.2, score=0.726, stable=1248, candidates=5
+[vitis_ai_detector_node-2] [INFO] [1785992092.506160036] [vitis_ai_detector_node]: Metrics window done: 936 rows saved. Idle (Ctrl-C to exit).
+[pick_logic-3] [INFO] [1785992092.605330269] [pick_logic_node]: Accepted target: class=apple, conf=0.88, cx=445.3, cy=220.2, score=0.727, stable=1272, candidates=5
+[WARNING] [launch]: user interrupted with ctrl-c (SIGINT)
+[INFO] [pick_target_base_node-6]: sending signal 'SIGINT' to process[pick_target_base_node-6]
+[INFO] [static_transform_publisher-5]: sending signal 'SIGINT' to process[static_transform_publisher-5]
+[INFO] [pick_target_3d_node-4]: sending signal 'SIGINT' to process[pick_target_3d_node-4]
+[INFO] [pick_logic-3]: sending signal 'SIGINT' to process[pick_logic-3]
+[INFO] [vitis_ai_detector_node-2]: sending signal 'SIGINT' to process[vitis_ai_detector_node-2]
+[INFO] [realsense2_camera_node-1]: sending signal 'SIGINT' to process[realsense2_camera_node-1]
+[pick_target_base_node-6] [INFO] [1785992093.417006006] [pick_target_base_node]: Saved yield summary (1 rows) to /home/ubuntu/ros2_ws/evidence/metrics/runs/smoke_shm_20260805/yield/base.csv
+[pick_target_base_node-6] Failed to publish log message to rosout: publisher's context is invalid, at ./src/rcl/publisher.c:389
+[static_transform_publisher-5] [INFO] [1785992093.431565124] [rclcpp]: signal_handler(SIGINT/SIGTERM)
+[pick_logic-3] [INFO] [1785992093.458748366] [pick_logic_node]: Saved yield summary (1 rows) to /home/ubuntu/ros2_ws/evidence/metrics/runs/smoke_shm_20260805/yield/pick_logic.csv
+[pick_logic-3] Failed to publish log message to rosout: publisher's context is invalid, at ./src/rcl/publisher.c:389
+[pick_target_3d_node-4] [INFO] [1785992093.466151822] [pick_target_3d_node]: Saved yield summary (1 rows) to /home/ubuntu/ros2_ws/evidence/metrics/runs/smoke_shm_20260805/yield/target_3d.csv
+[pick_target_3d_node-4] Failed to publish log message to rosout: publisher's context is invalid, at ./src/rcl/publisher.c:389
+[realsense2_camera_node-1] [0m[INFO] [1785992093.601989579] [rclcpp]: signal_handler(SIGINT/SIGTERM)[0m
+[realsense2_camera_node-1] [0m[INFO] [1785992093.604434120] [camera.camera]: Stop Sensor: Depth Module[0m
+[realsense2_camera_node-1] [0m[INFO] [1785992093.604685284] [camera.camera]: Close Sensor. [0m
+[vitis_ai_detector_node-2] [INFO] [1785992093.563771174] [vitis_ai_detector_node]: Saved detector yield summary to /home/ubuntu/ros2_ws/evidence/metrics/runs/smoke_shm_20260805/yield/detector.csv
+[vitis_ai_detector_node-2] Failed to publish log message to rosout: publisher's context is invalid, at ./src/rcl/publisher.c:389
+[realsense2_camera_node-1] [0m[INFO] [1785992093.619904120] [camera.camera]: Close Sensor - Done. [0m
+[realsense2_camera_node-1] [0m[INFO] [1785992093.620077353] [camera.camera]: Stop Sensor: RGB Camera[0m
+[realsense2_camera_node-1] [0m[INFO] [1785992093.620155704] [camera.camera]: Close Sensor. [0m
+[INFO] [static_transform_publisher-5]: process has finished cleanly [pid 12447]
+[realsense2_camera_node-1] [0m[INFO] [1785992094.051865468] [camera.camera]: Close Sensor - Done. [0m
+[INFO] [pick_target_base_node-6]: process has finished cleanly [pid 12449]
+[INFO] [pick_logic-3]: process has finished cleanly [pid 12441]
+[INFO] [pick_target_3d_node-4]: process has finished cleanly [pid 12443]
+[INFO] [realsense2_camera_node-1]: process has finished cleanly [pid 12437]
+[INFO] [vitis_ai_detector_node-2]: process has finished cleanly [pid 12439]

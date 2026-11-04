@@ -1,0 +1,10 @@
+=== RT 소크 v2 시작: Mon Jul 13 04:12:54 PM KST 2026 / 목표 1200s / 커널 5.15.199-rt91-rt-kv260 ===
+검출기: CONFIG_DEBUG_PREEMPT=y CONFIG_DEBUG_ATOMIC_SLEEP=y 
+시작 위반 baseline: 0 / MemAvail 2372MB / 안전장치: Mem<300MB or load>40 → 중단
+[load] stress-ng: cpu4 vm2(2x640M≈1.3G) fork4 clone2 pthread2 sysfs1 — 전 코어+메모리 공격적, fork만 억제
+[16:13:05 +11s] 위반델타=0 load=3 MemAvail=1572MB temp=?C
+[16:13:16 +22s] 위반델타=0 load=28 MemAvail=1585MB temp=?C
+[16:13:27 +33s] 위반델타=0 load=37 MemAvail=1692MB temp=?C
+[16:13:38 +44s] 위반델타=0 load=39 MemAvail=1653MB temp=?C
+[16:13:49 +54s] 위반델타=0 load=42 MemAvail=1611MB temp=?C
+[safety] 자원 임계(MemAvail=1611MB load=42) — 보드 보호 위해 부하 중단

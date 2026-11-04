@@ -1,0 +1,25 @@
+=== cyclictest RT 측정: Mon Jul 13 10:34:03 PM KST 2026 / 커널 5.15.199-rt91-rt-kv260b / 코어 4 ===
+검출기 무장(2=DEBUG_PREEMPT+ATOMIC_SLEEP): 2
+cmdline:  root=LABEL=writable rootwait earlycon console=ttyPS1,115200 console=tty1 clk_ignore_unused uio_pdrv_genirq.of_id=generic-uio xilinx_tsn_ep.st_pcp=4 cma=1000M skew_tick=1
+시작 위반 baseline: 0
+
+--- [1/2] IDLE baseline 120s (부하 없음) ---
+T: 0 ( 4522) P:90 I:200 C: 600000 Min:     11 Act:   14 Avg:   14 Max:     135
+T: 1 ( 4523) P:90 I:700 C: 171404 Min:     11 Act:   14 Avg:   14 Max:     127
+T: 2 ( 4524) P:90 I:1200 C:  99971 Min:     11 Act:   14 Avg:   14 Max:     104
+T: 3 ( 4525) P:90 I:1700 C:  70558 Min:     12 Act:   14 Avg:   14 Max:     143
+>>> IDLE 최대지연: 143 us
+
+--- [2/2] LOADED 300s (stress-ng cpu4 io2 vm1(20%) + hackbench 루프) ---
+T: 0 ( 5055) P:90 I:200 C:1500000 Min:     11 Act:   13 Avg:   16 Max:     165
+T: 1 ( 5056) P:90 I:700 C: 428004 Min:     12 Act:   15 Avg:   18 Max:     178
+T: 2 ( 5057) P:90 I:1200 C: 249537 Min:     12 Act:   22 Avg:   18 Max:     157
+T: 3 ( 5113) P:90 I:1700 C: 176088 Min:     12 Act:   16 Avg:   20 Max:     189
+>>> LOADED 최대지연: 189 us
+
+======================================================
+ IDLE   최대지연: 143 us
+ LOADED 최대지연: 189 us   ← RT 인증 핵심 숫자
+ 부하 중 커널 위반델타: 0  (0이어야 정상)
+ 참고: EtherCAT 1kHz 여유 기준 통상 Max<100us. kv260b는 DEBUG 커널이라 rev-6보다 높게 나옴.
+======================================================

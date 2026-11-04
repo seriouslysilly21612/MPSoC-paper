@@ -1,0 +1,2 @@
+node,frames_arrived,frames_overwritten_dropped,frames_gate_skipped,frames_processed,process_rate_of_arrived,frames_empty_out,empty_rate_of_processed,worker_restart_count,worker_timeout_count,worker_slow_count
+vitis_ai_detector,8775,2074,0,6701,0.7636,0,0.0,0,0,0

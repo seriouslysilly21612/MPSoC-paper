@@ -1,0 +1,161 @@
+Jul 14 15:03:46.058616 kria kernel: BUG: sleeping function called from invalid context at include/linux/sched/mm.h:229
+Jul 14 15:03:46.058759 kria kernel: in_atomic(): 0, irqs_disabled(): 0, non_block: 0, pid: 147289, name: python3
+Jul 14 15:03:46.058919 kria kernel: preempt_count: 0, expected: 0
+Jul 14 15:03:46.059052 kria kernel: RCU nest depth: 1, expected: 0
+Jul 14 15:03:46.059187 kria kernel: CPU: 1 PID: 147289 Comm: python3 Tainted: G         C        5.15.199-rt91-rt-kv260b #8
+Jul 14 15:03:46.059330 kria kernel: Hardware name: ZynqMP KV260 revB (DT)
+Jul 14 15:03:46.059494 kria kernel: Call trace:
+Jul 14 15:03:46.059627 kria kernel:  dump_backtrace+0x0/0x1f0
+Jul 14 15:03:46.059762 kria kernel:  show_stack+0x18/0x24
+Jul 14 15:03:46.059893 kria kernel:  dump_stack_lvl+0x68/0x84
+Jul 14 15:03:46.060054 kria kernel:  dump_stack+0x18/0x34
+Jul 14 15:03:46.060190 kria kernel:  __might_resched+0x148/0x1ac
+Jul 14 15:03:46.060329 kria kernel:  __might_sleep+0x4c/0xa0
+Jul 14 15:03:46.060650 kria kernel:  kmem_cache_alloc_node+0x22c/0x250
+Jul 14 15:03:46.060794 kria kernel:  __get_vm_area_node.constprop.0+0x88/0x1a0
+Jul 14 15:03:46.060937 kria kernel:  __vmalloc_node_range+0x64/0x404
+Jul 14 15:03:46.061087 kria kernel:  vmalloc+0x74/0x90
+Jul 14 15:03:46.061220 kria kernel:  zocl_read_sect+0x78/0x160 [zocl]
+Jul 14 15:03:46.061418 kria kernel:  zocl_xclbin_read_axlf+0x534/0xe00 [zocl]
+Jul 14 15:03:46.061616 kria kernel:  zocl_read_axlf_ioctl+0x18/0x24 [zocl]
+Jul 14 15:03:46.061755 kria kernel:  drm_ioctl_kernel+0xcc/0x120
+Jul 14 15:03:46.061894 kria kernel:  drm_ioctl+0x2b4/0x4e0
+Jul 14 15:03:46.062031 kria kernel:  __arm64_sys_ioctl+0xa8/0xf0
+Jul 14 15:03:46.062170 kria kernel:  invoke_syscall+0x70/0xf4
+Jul 14 15:03:46.062327 kria kernel:  el0_svc_common.constprop.0+0x4c/0x17c
+Jul 14 15:03:46.062537 kria kernel:  do_el0_svc+0x28/0xa0
+Jul 14 15:03:46.062681 kria kernel:  el0_svc+0x30/0x130
+Jul 14 15:03:46.062816 kria kernel:  el0t_64_sync_handler+0xa4/0x12c
+Jul 14 15:03:46.062953 kria kernel:  el0t_64_sync+0x1a4/0x1a8
+Jul 14 15:03:46.063091 kria kernel: [drm] skip kind 9(DEBUG_IP_LAYOUT) return code: -22
+Jul 14 15:03:46.063233 kria kernel: [drm] skip kind 25(AIE_METADATA) return code: -22
+Jul 14 15:03:46.063383 kria kernel: [drm] found kind 7(CONNECTIVITY)
+Jul 14 15:03:46.063560 kria kernel: [drm] found kind 6(MEM_TOPOLOGY)
+Jul 14 15:03:46.063699 kria kernel: [drm] Memory 0 is not reserved in device tree. Will allocate memory from CMA
+Jul 14 15:03:46.063872 kria kernel: [drm] Memory 1 is not reserved in device tree. Will allocate memory from CMA
+Jul 14 15:03:46.064000 kria kernel: [drm] Memory 2 is not reserved in device tree. Will allocate memory from CMA
+Jul 14 15:03:46.064133 kria kernel: [drm] Memory 3 is not reserved in device tree. Will allocate memory from CMA
+Jul 14 15:03:46.071563 kria kernel: cu_drv CU.6.auto: cu_probe: CU[0] created
+Jul 14 15:03:46.075417 kria kernel: cu_drv CU.7.auto: cu_probe: CU[1] created
+Jul 14 15:03:46.078302 kria kernel: cu_drv CU.6.auto:  ffff27aa05ce1c10 xrt_cu_intr_thread: CU[0] start
+Jul 14 15:03:46.082688 kria kernel: cu_drv CU.7.auto:  ffff27aa0bb0e010 xrt_cu_intr_thread: CU[1] start
+Jul 14 15:03:46.122709 kria kernel: [drm] zocl_xclbin_read_axlf d0af154e-769f-dc2d-8555-420ae4a7919b ret: 0
+Jul 14 15:03:46.123160 kria kernel: [drm] bitstream d0af154e-769f-dc2d-8555-420ae4a7919b locked, ref=1
+Jul 14 15:03:46.123379 kria kernel: zocl-drm axi:zyxclmm_drm:  ffff27aa0a4e7010 kds_add_context: Client pid(147289) add context Domain(0) CU(0xffffffff) shared(true)
+Jul 14 15:03:46.126047 kria kernel: zocl-drm axi:zyxclmm_drm:  ffff27aa0a4e7010 kds_del_context: Client pid(147289) del context Domain(0) CU(0xffffffff)
+Jul 14 15:03:46.127683 kria kernel: [drm] bitstream d0af154e-769f-dc2d-8555-420ae4a7919b unlocked, ref=0
+Jul 14 15:03:46.127861 kria kernel: zocl-drm axi:zyxclmm_drm: zocl_create_client: created KDS client for pid(147289), ret: 0
+Jul 14 15:03:46.129790 kria kernel: zocl-drm axi:zyxclmm_drm: zocl_destroy_client: client exits pid(147289)
+Jul 14 15:03:46.131096 kria kernel: zocl-drm axi:zyxclmm_drm: zocl_create_client: created KDS client for pid(147289), ret: 0
+Jul 14 15:03:46.132557 kria kernel: [drm] bitstream d0af154e-769f-dc2d-8555-420ae4a7919b locked, ref=1
+Jul 14 15:03:46.132756 kria kernel: zocl-drm axi:zyxclmm_drm:  ffff27aa0a4e7010 kds_add_context: Client pid(147289) add context Domain(0) CU(0x1) shared(true)
+Jul 14 15:03:46.134385 kria kernel: zocl-drm axi:zyxclmm_drm: zocl_create_client: created KDS client for pid(147289), ret: 0
+Jul 14 15:03:46.135926 kria kernel: zocl-drm axi:zyxclmm_drm: zocl_destroy_client: client exits pid(147289)
+Jul 14 15:03:46.137332 kria kernel: zocl-drm axi:zyxclmm_drm: zocl_create_client: created KDS client for pid(147289), ret: 0
+Jul 14 15:03:46.143212 kria kernel: [drm] bitstream d0af154e-769f-dc2d-8555-420ae4a7919b locked, ref=2
+Jul 14 15:03:46.143378 kria kernel: zocl-drm axi:zyxclmm_drm:  ffff27aa0a4e7010 kds_add_context: Client pid(147289) add context Domain(0) CU(0x0) shared(true)
+Jul 14 15:03:46.144744 kria kernel: zocl-drm axi:zyxclmm_drm: zocl_create_client: created KDS client for pid(147289), ret: 0
+Jul 14 15:03:46.146145 kria kernel: zocl-drm axi:zyxclmm_drm: zocl_destroy_client: client exits pid(147289)
+Jul 14 15:03:46.148194 kria kernel: zocl-drm axi:zyxclmm_drm: zocl_create_client: created KDS client for pid(147289), ret: 0
+Jul 14 15:03:46.149891 kria kernel: [drm] bitstream d0af154e-769f-dc2d-8555-420ae4a7919b locked, ref=3
+Jul 14 15:03:46.150108 kria kernel: zocl-drm axi:zyxclmm_drm:  ffff27aa0a4e7010 kds_add_context: Client pid(147289) add context Domain(0) CU(0x1) shared(true)
+Jul 14 15:03:46.574631 kria kernel: [drm] ERT_EXEC_WRITE is obsoleted, use ERT_START_KEY_VAL
+Jul 14 15:03:56.390397 kria kernel: usb 2-1.3: Failed to query (GET_CUR) UVC control 1 on unit 3: -32 (exp. 1024).
+Jul 14 15:03:57.401623 kria kernel: usb 2-1.3: Failed to query (GET_CUR) UVC control 1 on unit 3: -32 (exp. 1024).
+Jul 14 15:04:00.413614 kria kernel: usb 2-1.3: Failed to query (GET_CUR) UVC control 1 on unit 3: -32 (exp. 1024).
+Jul 14 15:04:03.427821 kria kernel: usb 2-1.3: Failed to query (GET_CUR) UVC control 1 on unit 3: -32 (exp. 1024).
+Jul 14 15:04:11.447732 kria kernel: usb 2-1.3: Failed to query (GET_CUR) UVC control 1 on unit 3: -32 (exp. 1024).
+Jul 14 15:04:13.461724 kria kernel: usb 2-1.3: Failed to query (GET_CUR) UVC control 1 on unit 3: -32 (exp. 1024).
+Jul 14 15:04:14.472760 kria kernel: usb 2-1.3: Failed to query (GET_CUR) UVC control 1 on unit 3: -32 (exp. 1024).
+Jul 14 15:04:15.568673 kria kernel: Unable to handle kernel paging request at virtual address 1b9b2a514fa690f9
+Jul 14 15:04:15.569874 kria kernel: Mem abort info:
+Jul 14 15:04:15.570463 kria kernel:   ESR = 0x0000000096000004
+Jul 14 15:04:15.695857 kria kernel:   EC = 0x25: DABT (current EL), IL = 32 bits
+Jul 14 15:04:15.696319 kria kernel:   SET = 0, FnV = 0
+Jul 14 15:04:15.715533 kria kernel:   EA = 0, S1PTW = 0
+Jul 14 15:04:15.731469 kria kernel:   FSC = 0x04: level 0 translation fault
+Jul 14 15:04:15.749049 kria kernel: Data abort info:
+Jul 14 15:04:15.771994 kria kernel:   ISV = 0, ISS = 0x00000004
+Jul 14 15:04:15.788998 kria kernel:   CM = 0, WnR = 0
+Jul 14 15:04:15.804312 kria kernel: [1b9b2a514fa690f9] address between user and kernel address ranges
+Jul 14 15:04:15.821964 kria kernel: Internal error: Oops: 0000000096000004 [#1] PREEMPT_RT SMP
+Jul 14 15:04:15.842159 kria kernel: Modules linked in: xt_conntrack xt_MASQUERADE bridge xt_set ip_set nft_counter nft_chain_nat nf_nat nf_conntrack nf_defrag_ipv6 nf_defrag_ipv4 xt_addrtype nft_compat nf_tables nfnetlink al5e(C) al5d(C) ap1302 allegro(C) zocl xlnx_vcu i2c_mux_pca954x binfmt_misc hid_sensor_accel_3d hid_sensor_gyro_3d hid_sensor_trigger hid_sensor_iio_common tpm_tis_spi ina260_adc uio_pdrv_genirq sch_fq_codel dm_multipath scsi_dh_rdac scsi_dh_emc scsi_dh_alua usb5744 dmaproxy(C) efi_pstore ip_tables x_tables autofs4 raid10 raid456 async_raid6_recov async_memcpy async_pq async_xor async_tx raid1 raid0 multipath linear hid_sensor_custom hid_sensor_hub usbhid da9121_regulator crct10dif_ce rtc_zynqmp spi_zynqmp_gqspi i2c_cadence aes_neon_bs aes_neon_blk aes_ce_blk crypto_simd cryptd aes_ce_cipher
+Jul 14 15:04:15.842899 kria kernel: CPU: 3 PID: 147289 Comm: python3 Tainted: G        WC        5.15.199-rt91-rt-kv260b #8
+Jul 14 15:04:15.843121 kria kernel: Hardware name: ZynqMP KV260 revB (DT)
+Jul 14 15:04:15.843272 kria kernel: pstate: 60400005 (nZCv daif +PAN -UAO -TCO -DIT -SSBS BTYPE=--)
+Jul 14 15:04:15.843442 kria kernel: pc : ___slab_alloc+0x518/0x890
+Jul 14 15:04:15.843672 kria kernel: lr : ___slab_alloc+0x504/0x890
+Jul 14 15:04:15.843820 kria kernel: sp : ffff80000e4c38e0
+Jul 14 15:04:15.843953 kria kernel: x29: ffff80000e4c3970 x28: 1b9b2a514fa69079 x27: fffffc9e8837cd80
+Jul 14 15:04:15.844147 kria kernel: x26: 0000000000000001 x25: 0000000000000dc0 x24: ffffdf824536a0c0
+Jul 14 15:04:15.844288 kria kernel: x23: ffffdf82455d99d8 x22: ffff27aa7f7a4fb0 x21: 0000000000000002
+Jul 14 15:04:15.844459 kria kernel: x20: ffffdf824536ffd0 x19: ffff27aa00001300 x18: 0000000000000000
+Jul 14 15:04:15.844634 kria kernel: x17: 0000000000000000 x16: ffffdf8243c53fd4 x15: 0000ffffd6471c90
+Jul 14 15:04:15.844771 kria kernel: x14: 0000000000000000 x13: 0000000000000000 x12: 0000000000000000
+Jul 14 15:04:15.844905 kria kernel: x11: 0000000000000040 x10: ffff27aa69631480 x9 : 0000000000000000
+Jul 14 15:04:15.845047 kria kernel: x8 : ffff27a20df36d00 x7 : 0000000000000000 x6 : 0000000000000000
+Jul 14 15:04:15.845176 kria kernel: x5 : ffffdf8244fd2540 x4 : 0000000000000000 x3 : 9bf7dd97f391548b
+Jul 14 15:04:15.845325 kria kernel: x2 : 0000000000000080 x1 : 0000000000050d63 x0 : f990a64f512a9b1b
+Jul 14 15:04:15.845545 kria kernel: Call trace:
+Jul 14 15:04:15.845667 kria kernel:  ___slab_alloc+0x518/0x890
+Jul 14 15:04:15.845794 kria kernel:  __kmalloc+0x118/0x2cc
+Jul 14 15:04:15.845928 kria kernel:  kds_alloc_command+0x74/0xb0 [zocl]
+Jul 14 15:04:15.846070 kria kernel:  zocl_command_ioctl+0x88/0x4c0 [zocl]
+Jul 14 15:04:15.846197 kria kernel:  zocl_execbuf_ioctl+0x14/0x20 [zocl]
+Jul 14 15:04:15.846311 kria kernel:  drm_ioctl_kernel+0xcc/0x120
+Jul 14 15:04:15.846459 kria kernel:  drm_ioctl+0x2b4/0x4e0
+Jul 14 15:04:15.846593 kria kernel:  __arm64_sys_ioctl+0xa8/0xf0
+Jul 14 15:04:15.846707 kria kernel:  invoke_syscall+0x70/0xf4
+Jul 14 15:04:15.846853 kria kernel:  el0_svc_common.constprop.0+0x4c/0x17c
+Jul 14 15:04:15.846978 kria kernel:  do_el0_svc+0x28/0xa0
+Jul 14 15:04:15.847093 kria kernel:  el0_svc+0x30/0x130
+Jul 14 15:04:15.847210 kria kernel:  el0t_64_sync_handler+0xa4/0x12c
+Jul 14 15:04:15.847327 kria kernel:  el0t_64_sync+0x1a4/0x1a8
+Jul 14 15:04:15.847426 kria kernel: Code: f9405e63 8b020380 f94006c1 dac00c00 (f8626b82) 
+Jul 14 15:04:15.847780 kria kernel: ---[ end trace 0000000000000002 ]---
+Jul 14 15:04:26.612691 kria kernel: zocl-drm axi:zyxclmm_drm:  ffff27aa0a4e7010 _kds_fini_client: Client pid(147289) has 1 opening context for 0 slot
+Jul 14 15:04:26.614563 kria kernel: zocl-drm axi:zyxclmm_drm:  ffff27aa0a4e7010 kds_del_context: Client pid(147289) del context Domain(0) CU(0x0)
+Jul 14 15:04:26.616164 kria kernel: zocl-drm axi:zyxclmm_drm:  ffff27aa0a4e7010 _kds_fini_client: Removing CU Domain[0] CU Index [0]
+Jul 14 15:04:26.618380 kria kernel: [drm] bitstream d0af154e-769f-dc2d-8555-420ae4a7919b unlocked, ref=2
+Jul 14 15:04:26.618761 kria kernel: zocl-drm axi:zyxclmm_drm: zocl_destroy_client: client exits pid(147289)
+Jul 14 15:04:26.620565 kria kernel: zocl-drm axi:zyxclmm_drm:  ffff27aa0a4e7010 _kds_fini_client: Client pid(147289) has 1 opening context for 0 slot
+Jul 14 15:04:26.622066 kria kernel: zocl-drm axi:zyxclmm_drm:  ffff27aa0a4e7010 kds_del_context: Client pid(147289) del context Domain(0) CU(0x1)
+Jul 14 15:04:26.623578 kria kernel: zocl-drm axi:zyxclmm_drm:  ffff27aa0a4e7010 _kds_fini_client: Removing CU Domain[0] CU Index [1]
+Jul 14 15:04:26.625669 kria kernel: [drm] bitstream d0af154e-769f-dc2d-8555-420ae4a7919b unlocked, ref=1
+Jul 14 15:04:26.625860 kria kernel: zocl-drm axi:zyxclmm_drm: zocl_destroy_client: client exits pid(147289)
+Jul 14 15:04:26.627412 kria kernel: zocl-drm axi:zyxclmm_drm: zocl_destroy_client: client exits pid(147289)
+Jul 14 15:04:32.212483 kria kernel: zocl-drm axi:zyxclmm_drm: zocl_create_client: created KDS client for pid(147379), ret: 0
+Jul 14 15:04:32.214207 kria kernel: zocl-drm axi:zyxclmm_drm: zocl_destroy_client: client exits pid(147379)
+Jul 14 15:04:32.215484 kria kernel: zocl-drm axi:zyxclmm_drm: zocl_create_client: created KDS client for pid(147379), ret: 0
+Jul 14 15:04:32.216660 kria kernel: zocl-drm axi:zyxclmm_drm: zocl_destroy_client: client exits pid(147379)
+Jul 14 15:04:32.218042 kria kernel: zocl-drm axi:zyxclmm_drm: zocl_create_client: created KDS client for pid(147379), ret: 0
+Jul 14 15:04:32.219112 kria kernel: zocl-drm axi:zyxclmm_drm: zocl_destroy_client: client exits pid(147379)
+Jul 14 15:04:32.220067 kria kernel: zocl-drm axi:zyxclmm_drm: zocl_create_client: created KDS client for pid(147379), ret: 0
+Jul 14 15:04:32.221785 kria kernel: zocl-drm axi:zyxclmm_drm: zocl_destroy_client: client exits pid(147379)
+Jul 14 15:04:32.224721 kria kernel: zocl-drm axi:zyxclmm_drm: zocl_create_client: created KDS client for pid(147379), ret: 0
+Jul 14 15:04:32.226443 kria kernel: zocl-drm axi:zyxclmm_drm: zocl_destroy_client: client exits pid(147379)
+Jul 14 15:04:32.227952 kria kernel: zocl-drm axi:zyxclmm_drm: zocl_create_client: created KDS client for pid(147379), ret: 0
+Jul 14 15:04:32.229516 kria kernel: zocl-drm axi:zyxclmm_drm: zocl_destroy_client: client exits pid(147379)
+Jul 14 15:04:32.231016 kria kernel: zocl-drm axi:zyxclmm_drm: zocl_create_client: created KDS client for pid(147379), ret: 0
+Jul 14 15:04:32.273826 kria kernel: [drm] skip kind 29(AIE_RESOURCES) return code: -22
+Jul 14 15:04:32.274178 kria kernel: [drm] zocl_xclbin_read_axlf The XCLBIN already loaded
+Jul 14 15:04:32.304450 kria kernel: [drm] zocl_xclbin_read_axlf d0af154e-769f-dc2d-8555-420ae4a7919b ret: 0
+Jul 14 15:04:32.304805 kria kernel: [drm] bitstream d0af154e-769f-dc2d-8555-420ae4a7919b locked, ref=2
+Jul 14 15:04:32.305084 kria kernel: zocl-drm axi:zyxclmm_drm:  ffff27aa0a4e7010 kds_add_context: Client pid(147379) add context Domain(0) CU(0xffffffff) shared(true)
+Jul 14 15:04:32.306525 kria kernel: zocl-drm axi:zyxclmm_drm:  ffff27aa0a4e7010 kds_del_context: Client pid(147379) del context Domain(0) CU(0xffffffff)
+Jul 14 15:04:32.307883 kria kernel: [drm] bitstream d0af154e-769f-dc2d-8555-420ae4a7919b unlocked, ref=1
+Jul 14 15:04:32.308201 kria kernel: zocl-drm axi:zyxclmm_drm: zocl_create_client: created KDS client for pid(147379), ret: 0
+Jul 14 15:04:32.309647 kria kernel: zocl-drm axi:zyxclmm_drm: zocl_destroy_client: client exits pid(147379)
+Jul 14 15:04:32.311033 kria kernel: zocl-drm axi:zyxclmm_drm: zocl_create_client: created KDS client for pid(147379), ret: 0
+Jul 14 15:04:32.312296 kria kernel: [drm] bitstream d0af154e-769f-dc2d-8555-420ae4a7919b locked, ref=2
+Jul 14 15:04:32.312455 kria kernel: zocl-drm axi:zyxclmm_drm:  ffff27aa0a4e7010 kds_add_context: Client pid(147379) add context Domain(0) CU(0x1) shared(true)
+Jul 14 15:04:32.313891 kria kernel: zocl-drm axi:zyxclmm_drm: zocl_create_client: created KDS client for pid(147379), ret: 0
+Jul 14 15:04:32.316585 kria kernel: zocl-drm axi:zyxclmm_drm: zocl_destroy_client: client exits pid(147379)
+Jul 14 15:04:32.318471 kria kernel: zocl-drm axi:zyxclmm_drm: zocl_create_client: created KDS client for pid(147379), ret: 0
+Jul 14 15:04:32.321382 kria kernel: [drm] bitstream d0af154e-769f-dc2d-8555-420ae4a7919b locked, ref=3
+Jul 14 15:04:32.321689 kria kernel: zocl-drm axi:zyxclmm_drm:  ffff27aa0a4e7010 kds_add_context: Client pid(147379) add context Domain(0) CU(0x0) shared(true)
+Jul 14 15:04:32.323800 kria kernel: zocl-drm axi:zyxclmm_drm: zocl_create_client: created KDS client for pid(147379), ret: 0
+Jul 14 15:04:32.326162 kria kernel: zocl-drm axi:zyxclmm_drm: zocl_destroy_client: client exits pid(147379)
+Jul 14 15:04:32.329039 kria kernel: zocl-drm axi:zyxclmm_drm: zocl_create_client: created KDS client for pid(147379), ret: 0
+Jul 14 15:04:32.333510 kria kernel: [drm] bitstream d0af154e-769f-dc2d-8555-420ae4a7919b locked, ref=4
+Jul 14 15:04:32.333768 kria kernel: zocl-drm axi:zyxclmm_drm:  ffff27aa0a4e7010 kds_add_context: Client pid(147379) add context Domain(0) CU(0x1) shared(true)

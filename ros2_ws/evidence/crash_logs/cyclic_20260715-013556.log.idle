@@ -1,0 +1,5 @@
+WARN: stat /dev/cpu_dma_latency failed: No such file or directory
+T: 0 ( 6118) P:90 I:200 C: 300000 Min:      9 Act:   21 Avg:   13 Max:     112
+T: 1 ( 6119) P:90 I:700 C:  85698 Min:      9 Act:   11 Avg:   11 Max:      84
+T: 2 ( 6120) P:90 I:1200 C:  49981 Min:      9 Act:   11 Avg:   11 Max:     105
+T: 3 ( 6121) P:90 I:1700 C:  35274 Min:      9 Act:   12 Avg:   12 Max:     134

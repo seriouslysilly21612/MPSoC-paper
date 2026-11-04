@@ -1,0 +1,139 @@
+FPU EVIDENCE REPORT   host=kria  kernel=5.15.199-rt91-rt-kv260c  date=2026-08-05T17:48:23+09:00
+robot: NOT CONNECTED — every number below is static analysis or offline replay
+
+== 1. Hardware — does the FPU exist ==
+cpu_part                       0xd03        (0xd03 = Cortex-A53)
+arch                           aarch64      
+cores                          4            (isolated: 3)
+hwcap_fp                       yes          scalar FPU, incl. double
+hwcap_asimd                    yes          NEON SIMD
+at_hwcap                       0x8ff        bit0=FP bit1=ASIMD
+fpcr                           0x00000000   FZ=0 -> full IEEE754, no flush-to-zero
+
+== 2. Toolchain — no FP flag appears in any RAON-RT Makefile, and none is needed ==
+gcc                            11.4.0       
+default_march                  armv8-a      
+default_mabi                   lp64         hard-float AAPCS64
+__ARM_FP                       14           14 = 0xE = half+single+double
+app_cflags                     -w -O2 -std=gnu++17 -Dlinux -mtune=native -std=c++17 -shared-libgcc -fexceptions 
+  -mfpu / -mfloat-abi do not exist on AArch64: FP is mandatory in ARMv8-A,
+  and there is no soft-float ABI to fall back to.
+
+== 3. Static census — FP instructions actually present in the shipped binaries ==
+  binary           scalarFP   neonFP    total  density  softfloat
+  Indy7Ctrl            1176      436   142787    1.13%          0
+  reachmap              577      418    25396    3.92%          0
+  fk_replay             542      418    24116    3.98%          0
+  softfloat=0 everywhere: no __adddf3/__muldf3/__divdf3 emulation call exists,
+  so every one of these operations is executed by the hardware FPU.
+
+  from FullDynControllerRT.o — the object the 1 kHz control law lives in:
+          1c:	1f410821 	fmadd	d1, d1, d1, d2
+          54:	1e61c021 	fsqrt	d1, d1
+         a00:	1f410040 	fmadd	d0, d2, d1, d0
+         a10:	1f400740 	fmadd	d0, d26, d0, d1
+        1c2c:	4e71d463 	fadd	v3.2d, v3.2d, v17.2d
+
+== 4. Measured FPU performance (core 3, isolated) ==
+core_clock                     1333         MHz (approx, dependent-add chain)
+f64_scalar_fma                 888          MFLOP/s  double, scalar
+f64_neon_fma                   592          MFLOP/s  double, NEON 2-wide
+f32_neon_fma                   1185         MFLOP/s  float,  NEON 4-wide
+normal_operand                 23.268       ns/iter
+subnormal_operand              24.000       ns/iter
+subnormal_penalty              1.03         x   ~1.0 => no FTZ / -ffast-math needed
+  NOTE: f64 NEON is SLOWER than f64 scalar. The A53 NEON datapath is 64-bit,
+  so a 128-bit double vector op is cracked into two micro-ops and gains
+  nothing. f32 NEON does speed up, which confirms this is the datapath
+  width and not a benchmark artefact. -O3 auto-vectorising our double
+  maths into fadd v.2d is therefore free of benefit, not free of cost.
+
+== 5. Real workload A — the shipped IK solver, re-run offline (no robot) ==
+    PASS 1441 | BRANCH 4 | TILT 3 | NO_SOLUTION 0 | LIMITS 0 | NO_SEED 0
+    solve time: mean 0.44 ms, max 39.94 ms  (the 1 kHz budget is 1.00 ms — see merge.md E25)
+    NOTE: no collision model. PASS means the IK accepts the point, not that the arm can safely reach it.
+ik_cells                       1449         grid cells, each a full SolveReadyIK
+ik_wall                        744          ms
+ik_rate                        1948         IK solves/s
+  reachmap links FullDynControllerRT.o, so this is the same solver code
+  the robot runs — pure double-precision FP, no I/O in the hot path.
+
+== 6. Real workload B — offline FK vs the FP the robot already computed ==
+fk_source                      DataLog_20260805_162107.csv 
+fk_cycles                      6290         logged 1 kHz cycles
+fk_wall                        309          ms (CSV-parse bound, NOT a control-loop timing)
+fk_agree_max                   0.001732     mm  max |robot TCP - offline FK|, n=6290
+fk_agree_mean                  0.000499     mm  mean
+  The robot computed tcp_* on its FPU during the run; this recomputes the
+  same FK from the logged joint angles now. Agreement at the micrometre
+  level is what a deterministic IEEE754 FPU looks like — a soft-float or
+  mis-rounded path would not land here.
+
+== 7. How much FP does one 1 kHz control cycle actually cost ==
+crba_us                        5.929        mass matrix M(q)        — CRBA
+nle_us                         5.139        h(q,qd) = C*qd + g(q)   — NonlinearEffects
+grav_us                        5.553        gravity g(q)            — InverseDynamics
+fk_us                          6.175        TCP position            — CalcBodyToBaseCoordinates
+bwo_us                         6.142        TCP orientation         — CalcBodyWorldOrientation
+jac6d_us                       7.032        6xN Jacobian            — IK modes only
+
+  Per control mode (the switch in Update()), RBDL portion only:
+  eGravityCompensation            5.6 us/cycle    0.6% of the 1000 us budget
+  eComputedTorque                11.1 us/cycle    1.1% of the 1000 us budget
+  eFullDynamics                  16.6 us/cycle    1.7% of the 1000 us budget
+  eTrackingServo                 23.4 us/cycle    2.3% of the 1000 us budget
+
+  All of these are dense double-precision linear algebra (Eigen + RBDL);
+  the arithmetic is what costs the time, not the I/O.
+
+  Two different denominators, do not confuse them:
+    vs the 1 ms DEADLINE      -> 2.3%, i.e. the loop finishes with room to spare
+    vs the loop's OWN runtime -> a substantial share of what the loop does
+  The second one is NOT quantified here: the figures above are means, while
+  the only RT loop timings we have (D10 A/B: max 33.9 us non-isolated /
+  51.1 us isolated) are maxima including jitter. Dividing a mean by a max
+  would overstate it. Establishing the share needs a mean loop time, which
+  requires the robot running.
+
+  Break-even, from the measured mean: FP would have to get 43x slower
+  (23.4 us -> 1000 us) to threaten the budget. Whether software emulation
+  crosses that line cannot be measured on this board — AArch64 has no
+  soft-float ABI and libgcc ships no __adddf3/__muldf3/__divdf3 to call.
+
+== 8. How MANY operations — exact dynamic instruction counts per 1 kHz cycle ==
+selftest_fp                    2000         expected exactly 2000 -> counter verified
+  Each row is ONE call of that RBDL function, single-stepped end to end.
+  call                      instr  FP arith   FP mov  SIMDint    ld/st   branch
+  CRBA                       6057      1570      183      160     2574      349
+  NonlinearEffects           4745      1386       88       30     2172      218
+  InverseDynamics            5031      1455       87       30     2353      211
+  FK                         5361       726      114       57     2431      573
+  Jacobian6D                 6255      1020      116       63     2759      631
+  BodyWorldOrientation       5322       718      114       57     2400      574
+
+  Per control mode — composed from the switch in Update() and the bodies of
+  ComputeGravityCompensation / ComputeComputedTorque / ComputeFullDynamics /
+  ComputeTcpFK in FullDynControllerRT.cpp. This is the RBDL portion of one
+  1 kHz cycle, NOT the whole loop: EtherCAT PDO copies, the safety gates,
+  friction feed-forward, trajectory update and logging are not counted.
+  control mode                  instr  FP arith     FP%
+  eGravityCompensation           5031      1455   28.9%
+  eComputedTorque               10802      2956   27.4%
+  eFullDynamics                 15833      4411   27.9%
+  eTrackingServo                21485      4400   20.5%
+  (eInverseKinematics also runs CalcPointJacobian6D, but the rest of
+   ComputeJacobianBasedInverseKinematics is not broken out here.)
+  Columns are decided by objdump on the actual instruction words, not by
+  the bit test — the x111 encoding group is the FP/SIMD *unit*, so it also
+  carries NEON integer ops (mov/zip/ext/bsl) and the crypto extensions.
+  'FP arith' is genuine floating-point work (fmadd/fmul/fadd/fmla/fdiv/
+  fsqrt/fcvt/fcmp...). 'FP mov' and 'SIMDint' still execute on the FP/SIMD
+  registers but compute no floating-point result.
+
+  FLOP ceiling: counting every FP arithmetic instruction as a 2-flop FMA
+  gives at most ~9 MFLOP/s, against the 888 MFLOP/s this core was
+  measured to sustain — roughly one percent of one core.
+
+== Output ==
+  report : /home/ubuntu/ros2_ws/evidence/fpu/fpu_report.txt
+  metrics: /home/ubuntu/ros2_ws/evidence/fpu/fpu_metrics.csv

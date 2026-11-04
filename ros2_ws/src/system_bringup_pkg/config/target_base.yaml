@@ -1,0 +1,40 @@
+pick_target_base_node:
+  ros__parameters:
+    input_topic: /pick_target_3d
+    output_topic: /pick_target_base
+    target_frame: base_link
+    transform_timeout_sec: 0.2
+
+    require_depth_valid: true
+
+    # Camera-frame Z gate. NOTE: this tests the OPTICAL-AXIS z component
+    # (what the depth image stores), not euclidean range to the point.
+    #
+    # min 0.20: D435i 848x480 physical min-z ~0.195 m. A sensor limit.
+    #
+    # max 0.95: derived 2026-09-03. WS_BOX (RAON App/Indy7/WorkspaceBox.h,
+    #   base_link x[0.30,0.94] y[-0.37,0.63], table plane z=0.10) pushed
+    #   through the launch base->camera TF (pick_place_vitis_ai.launch.py
+    #   base_to_camera_tf, composed with the RealSense optical rotation):
+    #       z_opt = 0.0559x - 0.0734y - 0.9957z + 0.8821
+    #   maxes at 0.862 m on corner (0.94,-0.37,0.10); ray-casting the whole
+    #   FOV onto the table plane maxes at ~0.93. +0.05 m covers the
+    #   2026-07-27 hand-eye residual (1.8 cm / 1.7 deg) and depth noise.
+    #   Cross-check: camera sits 0.825 m above the table by this TF, tape
+    #   measured ~0.80 m.
+    #
+    #   The old 1.50 was a pre-calibration placeholder (9c7b65e, whose own
+    #   message says "placeholder TF") and it passed below-table readings as
+    #   VALID: z_opt up to 1.006 maps to base z -0.050, which the bridge's
+    #   +0.15 m approach margin lifts back inside WS_BOX -> a goal ~5 cm
+    #   under the table that no downstream net rejected.
+    #
+    # Unlike target_3d.yaml's max_depth_m, tightening THIS is safe: it is a
+    # pure post-hoc filter, and a false reject is logged loudly with the
+    # measured z (reason=camera_z_too_far). Re-derive if the camera is
+    # remounted or WS_BOX grows.
+    min_camera_z_m: 0.20
+    max_camera_z_m: 0.95
+
+    publish_invalid_targets: true
+    log_period_sec: 1.0

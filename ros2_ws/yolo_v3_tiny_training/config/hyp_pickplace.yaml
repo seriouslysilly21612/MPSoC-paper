@@ -1,0 +1,40 @@
+# =============================================================================
+# hyp_pickplace.yaml — YOLOv3-tiny 7-class 학습 hyperparameter
+# base: yolov5 hyp.scratch-low → augmentation을 우리 배포 환경에 맞게 조정
+#
+# 핵심 조정 (근거):
+# - degrees 180 / flipud 0.5: 카메라가 수직 하방(top-down, 계획 D10)이라
+#   장면이 회전·상하반전에 대해 완전히 대칭 → 회전 augmentation이 전부 유효
+# - hsv/translate/scale 강화: 실환경 촬영 없이 학습하므로(D2/D3)
+#   augmentation이 domain gap의 주요 완충재
+# =============================================================================
+lr0: 0.01            # 초기 learning rate (SGD)
+lrf: 0.01            # 최종 lr = lr0 * lrf (cosine 스케줄)
+momentum: 0.937
+weight_decay: 0.0005
+warmup_epochs: 3.0
+warmup_momentum: 0.8
+warmup_bias_lr: 0.1
+box: 0.05            # box 손실 가중치
+cls: 0.5             # class 손실 가중치
+cls_pw: 1.0
+obj: 1.0             # objectness 손실 가중치
+obj_pw: 1.0
+iou_t: 0.20
+anchor_t: 4.0
+fl_gamma: 0.0
+# ---- augmentation ----
+hsv_h: 0.015         # 색상(hue) jitter
+hsv_s: 0.70          # 채도 jitter
+hsv_v: 0.50          # 밝기 jitter (0.40→0.50, apple의 YCB-어두움/실물-밝음 갭 완충, 2026-07-09)
+                     #   hsv_h는 의도적으로 유지: 키우면 apple↔orange 색 혼동 위험
+degrees: 180.0       # 회전 (top-down이라 전 범위 유효)
+translate: 0.15
+scale: 0.50          # 크기 ±50%
+shear: 2.0
+perspective: 0.0
+flipud: 0.5          # 상하 반전 (top-down이라 유효)
+fliplr: 0.5          # 좌우 반전
+mosaic: 1.0          # 4장 mosaic 합성 (작은 물체 + 배치 다양성)
+mixup: 0.05
+copy_paste: 0.0

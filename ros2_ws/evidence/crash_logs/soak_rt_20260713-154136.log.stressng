@@ -1,0 +1,2 @@
+stress-ng: info:  [4033] setting to a 1200 second (20 mins, 0.00 secs) run per stressor
+stress-ng: info:  [4033] dispatching hogs: 16 fork, 8 clone, 8 pthread, 2 sysfs, 3 cpu, 2 vm

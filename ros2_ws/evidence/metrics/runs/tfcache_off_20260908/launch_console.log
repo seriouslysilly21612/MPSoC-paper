@@ -1,0 +1,1065 @@
+[INFO] [launch]: All log files can be found below /home/ubuntu/.ros/log/2026-09-08-04-40-42-677231-kria-68036
+[INFO] [launch]: Default logging verbosity is set to INFO
+[metrics] this run -> /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908  (also reachable as /home/ubuntu/ros2_ws/evidence/metrics/latest)
+[INFO] [launch.user]: 🚀 Launching as Normal ROS Node
+[INFO] [realsense2_camera_node-1]: process started with pid [68048]
+[INFO] [vitis_ai_detector_node-2]: process started with pid [68050]
+[INFO] [pick_logic-3]: process started with pid [68052]
+[INFO] [pick_target_3d_node-4]: process started with pid [68054]
+[INFO] [static_transform_publisher-5]: process started with pid [68056]
+[INFO] [pick_target_base_node-6]: process started with pid [68058]
+[INFO] [python3-7]: process started with pid [68060]
+[python3-7] [resource_sampler] tracking pids: {'camera': 68048, 'detector': 68050, 'pick_logic': 68052, 'target_3d': 68054, 'static_tf': 68056, 'target_base': 68058}
+[python3-7] [resource_sampler] hwmon sensors: 34
+[static_transform_publisher-5] [INFO] [1788810051.602387011] [base_to_camera_tf]: Spinning until stopped - publishing transform
+[static_transform_publisher-5] translation: ('0.811666', '0.087684', '0.924974')
+[static_transform_publisher-5] rotation: ('0.724628', '0.000084', '-0.687062', '0.053476')
+[static_transform_publisher-5] from 'base_link' to 'camera_link'
+[pick_logic-3] [INFO] [1788810055.574020100] [pick_logic_node]: Pick logic node (v3) started: /detections -> /pick_target
+[pick_target_3d_node-4] [INFO] [1788810061.319866121] [pick_target_3d_node]: pick_target_3d_node started (raw-depth reverse projection): /pick_target + /camera/camera/depth/image_rect_raw -> /pick_target_3d
+[pick_target_base_node-6] [INFO] [1788810062.067680834] [pick_target_base_node]: pick_target_base_node started: /pick_target_3d -> /pick_target_base, target_frame=base_link
+[pick_target_base_node-6] [INFO] [1788810062.072333121] [pick_target_base_node]: Filters: require_depth_valid=True, camera_z_range=[0.20, 0.95]
+[realsense2_camera_node-1] [0m[INFO] [1788810064.392264819] [camera.camera]: RealSense ROS v4.57.7[0m
+[realsense2_camera_node-1] [0m[INFO] [1788810064.392844089] [camera.camera]: Built with LibRealSense v2.57.7[0m
+[realsense2_camera_node-1] [0m[INFO] [1788810064.392935221] [camera.camera]: Running with LibRealSense v2.57.7[0m
+[realsense2_camera_node-1]  08/09 04:41:04,433 ERROR [281472569960672] (context.cpp:41) No valid configuration file found at : /home/ubuntu/.realsense-config.json loading defaults
+[realsense2_camera_node-1] [0m[INFO] [1788810064.837634718] [camera.camera]: Device with serial number 134322073014 was found.
+[realsense2_camera_node-1] [0m
+[realsense2_camera_node-1] [0m[INFO] [1788810064.837964243] [camera.camera]: Device with physical ID /sys/devices/platform/axi/ff9d0000.usb/fe200000.usb/xhci-hcd.0.auto/usb2/2-1/2-1.1/2-1.1:1.0/video4linux/video0 was found.[0m
+[realsense2_camera_node-1] [0m[INFO] [1788810064.838088015] [camera.camera]: Device with name Intel RealSense D435I was found.[0m
+[realsense2_camera_node-1] [0m[INFO] [1788810064.840586347] [camera.camera]: Device with port number 2-1.1 was found.[0m
+[realsense2_camera_node-1] [0m[INFO] [1788810064.840805621] [camera.camera]: Device USB type: 3.2[0m
+[realsense2_camera_node-1] [0m[INFO] [1788810064.840871222] [camera.camera]: Resetting device...[0m
+[realsense2_camera_node-1]  08/09 04:41:07,153 ERROR [281472337930464] (librealsense-exception.h:52) get_dev_capabilities: Cannot open '/dev/video0 Last Error: Permission denied
+[realsense2_camera_node-1]  08/09 04:41:07,183 ERROR [281472337930464] (librealsense-exception.h:52) get_dev_capabilities: Cannot open '/dev/video1 Last Error: Permission denied
+[realsense2_camera_node-1]  08/09 04:41:07,184 ERROR [281472337930464] (librealsense-exception.h:52) get_dev_capabilities: Cannot open '/dev/video2 Last Error: Permission denied
+[realsense2_camera_node-1]  08/09 04:41:07,185 ERROR [281472337930464] (librealsense-exception.h:52) get_dev_capabilities: Cannot open '/dev/video3 Last Error: Permission denied
+[realsense2_camera_node-1]  08/09 04:41:07,186 ERROR [281472337930464] (librealsense-exception.h:52) get_dev_capabilities: Cannot open '/dev/video4 Last Error: Permission denied
+[realsense2_camera_node-1]  08/09 04:41:07,187 ERROR [281472337930464] (librealsense-exception.h:52) get_dev_capabilities: Cannot open '/dev/video5 Last Error: Permission denied
+[realsense2_camera_node-1]  08/09 04:41:07,333 ERROR [281472337930464] (librealsense-exception.h:52) get_dev_capabilities: Cannot open '/dev/video0 Last Error: Permission denied
+[realsense2_camera_node-1]  08/09 04:41:07,338 ERROR [281472337930464] (librealsense-exception.h:52) get_dev_capabilities: Cannot open '/dev/video1 Last Error: Permission denied
+[realsense2_camera_node-1]  08/09 04:41:07,344 ERROR [281472337930464] (librealsense-exception.h:52) get_dev_capabilities: Cannot open '/dev/video2 Last Error: Permission denied
+[realsense2_camera_node-1]  08/09 04:41:07,349 ERROR [281472337930464] (librealsense-exception.h:52) get_dev_capabilities: Cannot open '/dev/video3 Last Error: Permission denied
+[realsense2_camera_node-1]  08/09 04:41:07,353 ERROR [281472337930464] (librealsense-exception.h:52) get_dev_capabilities: Cannot open '/dev/video4 Last Error: Permission denied
+[realsense2_camera_node-1]  08/09 04:41:07,354 ERROR [281472337930464] (librealsense-exception.h:52) get_dev_capabilities: Cannot open '/dev/video5 Last Error: Permission denied
+[realsense2_camera_node-1]  08/09 04:41:07,549 ERROR [281472337930464] (librealsense-exception.h:52) get_dev_capabilities: Cannot open '/dev/video0 Last Error: Permission denied
+[realsense2_camera_node-1]  08/09 04:41:07,550 ERROR [281472337930464] (librealsense-exception.h:52) get_dev_capabilities: Cannot open '/dev/video1 Last Error: Permission denied
+[realsense2_camera_node-1]  08/09 04:41:07,551 ERROR [281472337930464] (librealsense-exception.h:52) get_dev_capabilities: Cannot open '/dev/video2 Last Error: Permission denied
+[realsense2_camera_node-1]  08/09 04:41:07,552 ERROR [281472337930464] (librealsense-exception.h:52) get_dev_capabilities: Cannot open '/dev/video3 Last Error: Permission denied
+[realsense2_camera_node-1]  08/09 04:41:07,553 ERROR [281472337930464] (librealsense-exception.h:52) get_dev_capabilities: Cannot open '/dev/video4 Last Error: Permission denied
+[realsense2_camera_node-1]  08/09 04:41:07,562 ERROR [281472337930464] (librealsense-exception.h:52) get_dev_capabilities: Cannot open '/dev/video5 Last Error: Permission denied
+[realsense2_camera_node-1]  08/09 04:41:07,900 ERROR [281472337930464] (librealsense-exception.h:52) get_dev_capabilities: Cannot open '/dev/video0 Last Error: Permission denied
+[realsense2_camera_node-1]  08/09 04:41:07,901 ERROR [281472337930464] (librealsense-exception.h:52) get_dev_capabilities: Cannot open '/dev/video1 Last Error: Permission denied
+[realsense2_camera_node-1]  08/09 04:41:07,902 ERROR [281472337930464] (librealsense-exception.h:52) get_dev_capabilities: Cannot open '/dev/video2 Last Error: Permission denied
+[realsense2_camera_node-1]  08/09 04:41:07,904 ERROR [281472337930464] (librealsense-exception.h:52) get_dev_capabilities: Cannot open '/dev/video4 Last Error: Permission denied
+[realsense2_camera_node-1]  08/09 04:41:07,905 ERROR [281472337930464] (librealsense-exception.h:52) get_dev_capabilities: Cannot open '/dev/video5 Last Error: Permission denied
+[realsense2_camera_node-1]  08/09 04:41:07,906 ERROR [281472337930464] (backend-v4l2.cpp:1304) UVC meta-node with no video streaming node encountered: id- /dev/video3
+[realsense2_camera_node-1] vid- 8086
+[realsense2_camera_node-1] pid- b3a
+[realsense2_camera_node-1] mi- 0
+[realsense2_camera_node-1] unique_id- 2-1.1-5
+[realsense2_camera_node-1] path- /sys/devices/platform/axi/ff9d0000.usb/fe200000.usb/xhci-hcd.0.auto/usb2/2-1/2-1.1/2-1.1:1.0/video4linux/video3
+[realsense2_camera_node-1] UVC capabilities- 4a00000
+[realsense2_camera_node-1] UVC specification- 320
+[realsense2_camera_node-1] 
+[realsense2_camera_node-1] [0m[INFO] [1788810070.903654185] [camera.camera]: Device with serial number 134322073014 was found.
+[realsense2_camera_node-1] [0m
+[realsense2_camera_node-1] [0m[INFO] [1788810070.904024171] [camera.camera]: Device with physical ID /sys/devices/platform/axi/ff9d0000.usb/fe200000.usb/xhci-hcd.0.auto/usb2/2-1/2-1.1/2-1.1:1.0/video4linux/video0 was found.[0m
+[realsense2_camera_node-1] [0m[INFO] [1788810070.904143363] [camera.camera]: Device with name Intel RealSense D435I was found.[0m
+[realsense2_camera_node-1] [0m[INFO] [1788810070.906088445] [camera.camera]: Device with port number 2-1.1 was found.[0m
+[realsense2_camera_node-1] [0m[INFO] [1788810070.906332679] [camera.camera]: Device USB type: 3.2[0m
+[realsense2_camera_node-1] [0m[INFO] [1788810070.932796529] [camera.camera]: getParameters...[0m
+[realsense2_camera_node-1] [0m[INFO] [1788810070.952690249] [camera.camera]: JSON file is not provided[0m
+[realsense2_camera_node-1] [0m[INFO] [1788810070.952890252] [camera.camera]: Device Name: Intel RealSense D435I[0m
+[realsense2_camera_node-1] [0m[INFO] [1788810070.952959144] [camera.camera]: Device Serial No: 134322073014[0m
+[realsense2_camera_node-1] [0m[INFO] [1788810070.953049685] [camera.camera]: Device physical port: /sys/devices/platform/axi/ff9d0000.usb/fe200000.usb/xhci-hcd.0.auto/usb2/2-1/2-1.1/2-1.1:1.0/video4linux/video0[0m
+[realsense2_camera_node-1] [0m[INFO] [1788810070.953112356] [camera.camera]: Device FW version: 5.17.0.10[0m
+[realsense2_camera_node-1] [0m[INFO] [1788810070.953171197] [camera.camera]: Device Product ID: 0x0B3A[0m
+[realsense2_camera_node-1] [0m[INFO] [1788810070.953229718] [camera.camera]: Sync Mode: On[0m
+[realsense2_camera_node-1] [0m[INFO] [1788810071.139209748] [camera.camera]: Set ROS param depth_module.infra_profile to default: 848x480x30[0m
+[realsense2_camera_node-1] [33m[WARN] [1788810071.230003446] [camera.camera]: Could not set param: rgb_camera.power_line_frequency with 3 Range: [0, 2]: parameter 'rgb_camera.power_line_frequency' could not be set: Parameter {rgb_camera.power_line_frequency} doesn't comply with integer range.[0m
+[realsense2_camera_node-1] [33m[WARN] [1788810071.256977414] [camera.camera]: re-enable the stream for the change to take effect.[0m
+[realsense2_camera_node-1] [0m[INFO] [1788810071.262737760] [camera.camera]: Set ROS param gyro_fps to default: 200[0m
+[realsense2_camera_node-1] [0m[INFO] [1788810071.268593227] [camera.camera]: Set ROS param accel_fps to default: 100[0m
+[realsense2_camera_node-1] [0m[INFO] [1788810071.353017819] [camera.camera]: Stopping Sensor: Depth Module[0m
+[realsense2_camera_node-1] [0m[INFO] [1788810071.354212229] [camera.camera]: Stopping Sensor: RGB Camera[0m
+[realsense2_camera_node-1] [0m[INFO] [1788810071.768216346] [camera.camera]: Starting Sensor: Depth Module[0m
+[realsense2_camera_node-1] [0m[INFO] [1788810071.812613404] [camera.camera]: Open profile: stream_type: Depth(0), Format: Z16, Width: 848, Height: 480, FPS: 30[0m
+[realsense2_camera_node-1] [0m[INFO] [1788810071.858914323] [camera.camera]: Starting Sensor: RGB Camera[0m
+[realsense2_camera_node-1] [0m[INFO] [1788810071.918981091] [camera.camera]: Open profile: stream_type: Color(0), Format: RGB8, Width: 848, Height: 480, FPS: 30[0m
+[pick_target_3d_node-4] [INFO] [1788810073.931684915] [pick_target_3d_node]: Static camera_info/extrinsics captured — subscriptions pruned
+[realsense2_camera_node-1] [0m[INFO] [1788810076.127582021] [camera.camera]: RealSense Node Is Up![0m
+[vitis_ai_detector_node-2] [INFO] [1788810083.489167705] [vitis_ai_detector_node]: Starting Vitis-AI worker process
+[vitis_ai_detector_node-2] [INFO] [1788810096.404721228] [vitis_ai_detector_node]: Vitis-AI worker ready: input_shape=[1, 416, 416, 3]
+[vitis_ai_detector_node-2] [INFO] [1788810096.409165492] [vitis_ai_detector_node]: Vitis-AI detector started in worker mode: /camera/camera/color/image_raw -> /detections
+[vitis_ai_detector_node-2] [INFO] [1788810096.412380406] [vitis_ai_detector_node]: Low-latency policy: sensor QoS depth=1, latest frame only, process_period_sec=0.030, send_resized_input=False, worker_shm=True
+[vitis_ai_detector_node-2] [INFO] [1788810098.233745339] [vitis_ai_detector_node]: Metrics window started: collecting 300s from the first frame
+[vitis_ai_detector_node-2] [INFO] [1788810098.237866697] [vitis_ai_detector_node]: Collecting metrics: 1 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/performance/detector.csv)
+[pick_logic-3] [WARN] [1788810098.255855766] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[pick_logic-3] [INFO] [1788810098.283913242] [pick_logic_node]: Metrics window started: collecting 300s from the first row -> /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/performance/pick_logic.csv
+[pick_target_3d_node-4] [INFO] [1788810098.288237184] [pick_target_3d_node]: Metrics window started: collecting 300s from the first row -> /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/performance/target_3d.csv
+[vitis_ai_detector_node-2] [INFO] [1788810098.290932659] [vitis_ai_detector_node]: Collecting metrics: 2 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/performance/detector.csv)
+[pick_target_base_node-6] [WARN] [1788810098.305352348] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[pick_target_base_node-6] [INFO] [1788810098.317328637] [pick_target_base_node]: Metrics window started: collecting 300s from the first row -> /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/performance/base.csv
+[pick_logic-3] [WARN] [1788810099.284633744] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[vitis_ai_detector_node-2] [INFO] [1788810099.345444934] [vitis_ai_detector_node]: Collecting metrics: 21 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/performance/detector.csv)
+[pick_target_base_node-6] [WARN] [1788810099.359533038] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[pick_logic-3] [WARN] [1788810100.301162729] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[vitis_ai_detector_node-2] [INFO] [1788810100.376035142] [vitis_ai_detector_node]: Collecting metrics: 39 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/performance/detector.csv)
+[pick_target_base_node-6] [WARN] [1788810100.386744170] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[pick_logic-3] [WARN] [1788810101.322146787] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[vitis_ai_detector_node-2] [INFO] [1788810101.407854541] [vitis_ai_detector_node]: Collecting metrics: 61 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/performance/detector.csv)
+[pick_target_base_node-6] [WARN] [1788810101.420226756] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[pick_logic-3] [WARN] [1788810102.370378978] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[vitis_ai_detector_node-2] [INFO] [1788810102.440822848] [vitis_ai_detector_node]: Collecting metrics: 83 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/performance/detector.csv)
+[pick_target_base_node-6] [WARN] [1788810102.447399877] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[pick_logic-3] [WARN] [1788810103.389461435] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[pick_target_base_node-6] [WARN] [1788810103.449120396] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[vitis_ai_detector_node-2] [INFO] [1788810103.481641666] [vitis_ai_detector_node]: Collecting metrics: 105 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/performance/detector.csv)
+[pick_logic-3] [WARN] [1788810104.415677240] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[pick_target_base_node-6] [WARN] [1788810104.477638919] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[vitis_ai_detector_node-2] [INFO] [1788810104.497292626] [vitis_ai_detector_node]: Collecting metrics: 126 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/performance/detector.csv)
+[pick_logic-3] [WARN] [1788810105.455754725] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[pick_target_base_node-6] [WARN] [1788810105.474238932] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[vitis_ai_detector_node-2] [INFO] [1788810105.576115355] [vitis_ai_detector_node]: Collecting metrics: 145 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/performance/detector.csv)
+[pick_logic-3] [WARN] [1788810106.481759817] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[pick_target_base_node-6] [WARN] [1788810106.502458401] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[vitis_ai_detector_node-2] [INFO] [1788810106.589615358] [vitis_ai_detector_node]: Collecting metrics: 163 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/performance/detector.csv)
+[pick_logic-3] [WARN] [1788810107.489594887] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[pick_target_base_node-6] [WARN] [1788810107.498184739] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[vitis_ai_detector_node-2] [INFO] [1788810107.619528835] [vitis_ai_detector_node]: Collecting metrics: 180 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/performance/detector.csv)
+[pick_logic-3] [WARN] [1788810108.557231320] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[pick_target_base_node-6] [WARN] [1788810108.581978311] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[vitis_ai_detector_node-2] [INFO] [1788810108.650916346] [vitis_ai_detector_node]: Collecting metrics: 202 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/performance/detector.csv)
+[pick_logic-3] [WARN] [1788810109.571445645] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[pick_target_base_node-6] [WARN] [1788810109.586260901] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[vitis_ai_detector_node-2] [INFO] [1788810109.702992170] [vitis_ai_detector_node]: Collecting metrics: 219 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/performance/detector.csv)
+[pick_logic-3] [WARN] [1788810110.618211112] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[pick_target_base_node-6] [WARN] [1788810110.632367657] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[vitis_ai_detector_node-2] [INFO] [1788810110.691206294] [vitis_ai_detector_node]: Collecting metrics: 241 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/performance/detector.csv)
+[pick_logic-3] [WARN] [1788810111.624517006] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[pick_target_base_node-6] [WARN] [1788810111.635118552] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[vitis_ai_detector_node-2] [INFO] [1788810111.709698011] [vitis_ai_detector_node]: Collecting metrics: 265 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/performance/detector.csv)
+[pick_logic-3] [WARN] [1788810112.624606267] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[pick_target_base_node-6] [WARN] [1788810112.668555327] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[vitis_ai_detector_node-2] [INFO] [1788810112.757667907] [vitis_ai_detector_node]: Collecting metrics: 289 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/performance/detector.csv)
+[pick_logic-3] [WARN] [1788810113.625148065] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[pick_target_base_node-6] [WARN] [1788810113.681073464] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[vitis_ai_detector_node-2] [INFO] [1788810113.759680579] [vitis_ai_detector_node]: Collecting metrics: 311 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/performance/detector.csv)
+[pick_logic-3] [WARN] [1788810114.628386778] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[pick_target_base_node-6] [WARN] [1788810114.702060492] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[vitis_ai_detector_node-2] [INFO] [1788810114.784762925] [vitis_ai_detector_node]: Collecting metrics: 334 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/performance/detector.csv)
+[pick_logic-3] [WARN] [1788810115.642179706] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[pick_target_base_node-6] [WARN] [1788810115.748945959] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[vitis_ai_detector_node-2] [INFO] [1788810115.795292089] [vitis_ai_detector_node]: Collecting metrics: 357 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/performance/detector.csv)
+[pick_logic-3] [WARN] [1788810116.657275416] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[pick_target_base_node-6] [WARN] [1788810116.814482397] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[vitis_ai_detector_node-2] [INFO] [1788810116.835641539] [vitis_ai_detector_node]: Collecting metrics: 380 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/performance/detector.csv)
+[pick_logic-3] [WARN] [1788810117.676387863] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[pick_target_base_node-6] [WARN] [1788810117.837335226] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[vitis_ai_detector_node-2] [INFO] [1788810117.887424608] [vitis_ai_detector_node]: Collecting metrics: 404 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/performance/detector.csv)
+[pick_logic-3] [WARN] [1788810118.692433758] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[pick_target_base_node-6] [WARN] [1788810118.849031219] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[vitis_ai_detector_node-2] [INFO] [1788810118.913258786] [vitis_ai_detector_node]: Collecting metrics: 427 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/performance/detector.csv)
+[pick_logic-3] [WARN] [1788810119.710303264] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[pick_target_base_node-6] [WARN] [1788810119.849624558] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[vitis_ai_detector_node-2] [INFO] [1788810119.969367757] [vitis_ai_detector_node]: Collecting metrics: 450 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/performance/detector.csv)
+[pick_logic-3] [WARN] [1788810120.718349157] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[pick_target_base_node-6] [WARN] [1788810120.892803384] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[vitis_ai_detector_node-2] [INFO] [1788810121.008051088] [vitis_ai_detector_node]: Collecting metrics: 470 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/performance/detector.csv)
+[pick_logic-3] [WARN] [1788810121.731109127] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[pick_target_base_node-6] [WARN] [1788810121.932136326] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[vitis_ai_detector_node-2] [INFO] [1788810121.998744493] [vitis_ai_detector_node]: Collecting metrics: 489 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/performance/detector.csv)
+[pick_logic-3] [WARN] [1788810122.734150227] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[pick_target_base_node-6] [WARN] [1788810122.963798351] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[vitis_ai_detector_node-2] [INFO] [1788810123.030229334] [vitis_ai_detector_node]: Collecting metrics: 513 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/performance/detector.csv)
+[pick_logic-3] [WARN] [1788810123.759743771] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[pick_target_base_node-6] [WARN] [1788810123.999432022] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[vitis_ai_detector_node-2] [INFO] [1788810124.073058024] [vitis_ai_detector_node]: Collecting metrics: 537 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/performance/detector.csv)
+[pick_logic-3] [WARN] [1788810124.773354005] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[pick_target_base_node-6] [WARN] [1788810125.023422309] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[vitis_ai_detector_node-2] [INFO] [1788810125.096192437] [vitis_ai_detector_node]: Collecting metrics: 561 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/performance/detector.csv)
+[pick_logic-3] [WARN] [1788810125.840337957] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[pick_target_base_node-6] [WARN] [1788810126.053781382] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[vitis_ai_detector_node-2] [INFO] [1788810126.130533246] [vitis_ai_detector_node]: Collecting metrics: 584 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/performance/detector.csv)
+[pick_logic-3] [WARN] [1788810126.894936352] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[pick_target_base_node-6] [WARN] [1788810127.073771032] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[vitis_ai_detector_node-2] [INFO] [1788810127.136572125] [vitis_ai_detector_node]: Collecting metrics: 608 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/performance/detector.csv)
+[pick_logic-3] [WARN] [1788810127.900190358] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[pick_target_base_node-6] [WARN] [1788810128.077233658] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[vitis_ai_detector_node-2] [INFO] [1788810128.156741529] [vitis_ai_detector_node]: Collecting metrics: 631 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/performance/detector.csv)
+[pick_logic-3] [WARN] [1788810128.907602340] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[pick_target_base_node-6] [WARN] [1788810129.076642537] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[vitis_ai_detector_node-2] [INFO] [1788810129.141548035] [vitis_ai_detector_node]: Collecting metrics: 654 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/performance/detector.csv)
+[pick_logic-3] [WARN] [1788810129.937028807] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[pick_target_base_node-6] [WARN] [1788810130.109362609] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[vitis_ai_detector_node-2] [INFO] [1788810130.170773139] [vitis_ai_detector_node]: Collecting metrics: 678 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/performance/detector.csv)
+[pick_logic-3] [WARN] [1788810130.971306405] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[pick_target_base_node-6] [WARN] [1788810131.142240934] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[vitis_ai_detector_node-2] [INFO] [1788810131.169594248] [vitis_ai_detector_node]: Collecting metrics: 701 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/performance/detector.csv)
+[pick_logic-3] [WARN] [1788810132.009305154] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[pick_target_base_node-6] [WARN] [1788810132.144741213] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[vitis_ai_detector_node-2] [INFO] [1788810132.196109697] [vitis_ai_detector_node]: Collecting metrics: 724 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/performance/detector.csv)
+[pick_logic-3] [WARN] [1788810133.022537012] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[pick_target_base_node-6] [WARN] [1788810133.144944285] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[vitis_ai_detector_node-2] [INFO] [1788810133.200911245] [vitis_ai_detector_node]: Collecting metrics: 747 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/performance/detector.csv)
+[pick_logic-3] [WARN] [1788810134.043293385] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[pick_target_base_node-6] [WARN] [1788810134.147695969] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[vitis_ai_detector_node-2] [INFO] [1788810134.178981509] [vitis_ai_detector_node]: Collecting metrics: 770 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/performance/detector.csv)
+[pick_logic-3] [WARN] [1788810135.049081670] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[pick_target_base_node-6] [WARN] [1788810135.179523986] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[vitis_ai_detector_node-2] [INFO] [1788810135.208855153] [vitis_ai_detector_node]: Collecting metrics: 794 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/performance/detector.csv)
+[pick_logic-3] [WARN] [1788810136.058998672] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[pick_target_base_node-6] [WARN] [1788810136.181594819] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[vitis_ai_detector_node-2] [INFO] [1788810136.241910230] [vitis_ai_detector_node]: Collecting metrics: 817 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/performance/detector.csv)
+[pick_logic-3] [WARN] [1788810137.086122501] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[pick_target_base_node-6] [WARN] [1788810137.181868041] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[vitis_ai_detector_node-2] [INFO] [1788810137.250914598] [vitis_ai_detector_node]: Collecting metrics: 840 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/performance/detector.csv)
+[pick_logic-3] [WARN] [1788810138.124142241] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[pick_target_base_node-6] [WARN] [1788810138.215651330] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[vitis_ai_detector_node-2] [INFO] [1788810138.295367964] [vitis_ai_detector_node]: Collecting metrics: 864 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/performance/detector.csv)
+[pick_logic-3] [WARN] [1788810139.126874704] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[pick_target_base_node-6] [WARN] [1788810139.249827396] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[vitis_ai_detector_node-2] [INFO] [1788810139.312296634] [vitis_ai_detector_node]: Collecting metrics: 888 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/performance/detector.csv)
+[pick_logic-3] [WARN] [1788810140.152171752] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[pick_target_base_node-6] [WARN] [1788810140.280156488] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[vitis_ai_detector_node-2] [INFO] [1788810140.369673425] [vitis_ai_detector_node]: Collecting metrics: 911 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/performance/detector.csv)
+[pick_logic-3] [WARN] [1788810141.153123266] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[pick_target_base_node-6] [WARN] [1788810141.297554145] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[vitis_ai_detector_node-2] [INFO] [1788810141.409522354] [vitis_ai_detector_node]: Collecting metrics: 935 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/performance/detector.csv)
+[pick_logic-3] [WARN] [1788810142.162144194] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[pick_target_base_node-6] [WARN] [1788810142.318024433] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[vitis_ai_detector_node-2] [INFO] [1788810142.438690447] [vitis_ai_detector_node]: Collecting metrics: 958 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/performance/detector.csv)
+[pick_logic-3] [WARN] [1788810143.174489917] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[pick_target_base_node-6] [WARN] [1788810143.344163355] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[vitis_ai_detector_node-2] [INFO] [1788810143.450675643] [vitis_ai_detector_node]: Collecting metrics: 982 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/performance/detector.csv)
+[pick_logic-3] [WARN] [1788810144.198996101] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[pick_target_base_node-6] [WARN] [1788810144.369687776] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[vitis_ai_detector_node-2] [INFO] [1788810144.492747810] [vitis_ai_detector_node]: Collecting metrics: 1006 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/performance/detector.csv)
+[pick_logic-3] [WARN] [1788810145.233335010] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[pick_target_base_node-6] [WARN] [1788810145.407630674] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[vitis_ai_detector_node-2] [INFO] [1788810145.516618554] [vitis_ai_detector_node]: Collecting metrics: 1029 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/performance/detector.csv)
+[pick_logic-3] [WARN] [1788810146.255590147] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[pick_target_base_node-6] [WARN] [1788810146.424125276] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[vitis_ai_detector_node-2] [INFO] [1788810146.541585787] [vitis_ai_detector_node]: Collecting metrics: 1052 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/performance/detector.csv)
+[pick_logic-3] [WARN] [1788810147.277074661] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[pick_target_base_node-6] [WARN] [1788810147.432841818] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[vitis_ai_detector_node-2] [INFO] [1788810147.548258145] [vitis_ai_detector_node]: Collecting metrics: 1074 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/performance/detector.csv)
+[pick_logic-3] [WARN] [1788810148.290362510] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[pick_target_base_node-6] [WARN] [1788810148.475959182] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[vitis_ai_detector_node-2] [INFO] [1788810148.592836943] [vitis_ai_detector_node]: Collecting metrics: 1097 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/performance/detector.csv)
+[pick_logic-3] [WARN] [1788810149.291244622] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[pick_target_base_node-6] [WARN] [1788810149.473694162] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[vitis_ai_detector_node-2] [INFO] [1788810149.620264756] [vitis_ai_detector_node]: Collecting metrics: 1120 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/performance/detector.csv)
+[pick_logic-3] [WARN] [1788810150.307022881] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[pick_target_base_node-6] [WARN] [1788810150.495993020] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[vitis_ai_detector_node-2] [INFO] [1788810150.645437792] [vitis_ai_detector_node]: Collecting metrics: 1144 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/performance/detector.csv)
+[pick_logic-3] [WARN] [1788810151.334657338] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[pick_target_base_node-6] [WARN] [1788810151.498201134] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[vitis_ai_detector_node-2] [INFO] [1788810151.680832147] [vitis_ai_detector_node]: Collecting metrics: 1167 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/performance/detector.csv)
+[pick_logic-3] [WARN] [1788810152.347718702] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[pick_target_base_node-6] [WARN] [1788810152.557509556] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[vitis_ai_detector_node-2] [INFO] [1788810152.698146602] [vitis_ai_detector_node]: Collecting metrics: 1189 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/performance/detector.csv)
+[pick_logic-3] [WARN] [1788810153.350367844] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[pick_target_base_node-6] [WARN] [1788810153.561384778] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[vitis_ai_detector_node-2] [INFO] [1788810153.726042843] [vitis_ai_detector_node]: Collecting metrics: 1212 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/performance/detector.csv)
+[pick_logic-3] [WARN] [1788810154.386668224] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[pick_target_base_node-6] [WARN] [1788810154.598042104] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[vitis_ai_detector_node-2] [INFO] [1788810154.748796948] [vitis_ai_detector_node]: Collecting metrics: 1235 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/performance/detector.csv)
+[pick_logic-3] [WARN] [1788810155.417484193] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[pick_target_base_node-6] [WARN] [1788810155.612898448] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[vitis_ai_detector_node-2] [INFO] [1788810155.796081550] [vitis_ai_detector_node]: Collecting metrics: 1259 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/performance/detector.csv)
+[pick_logic-3] [WARN] [1788810156.445118029] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[pick_target_base_node-6] [WARN] [1788810156.627835413] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[vitis_ai_detector_node-2] [INFO] [1788810156.829013384] [vitis_ai_detector_node]: Collecting metrics: 1282 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/performance/detector.csv)
+[pick_logic-3] [WARN] [1788810157.485115250] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[pick_target_base_node-6] [WARN] [1788810157.653230422] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[vitis_ai_detector_node-2] [INFO] [1788810157.854533935] [vitis_ai_detector_node]: Collecting metrics: 1304 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/performance/detector.csv)
+[pick_logic-3] [WARN] [1788810158.518187917] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[pick_target_base_node-6] [WARN] [1788810158.781504230] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[vitis_ai_detector_node-2] [INFO] [1788810158.956267302] [vitis_ai_detector_node]: Collecting metrics: 1326 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/performance/detector.csv)
+[pick_logic-3] [WARN] [1788810159.557443936] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[pick_target_base_node-6] [WARN] [1788810159.768119965] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[vitis_ai_detector_node-2] [INFO] [1788810159.939675844] [vitis_ai_detector_node]: Collecting metrics: 1343 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/performance/detector.csv)
+[pick_logic-3] [WARN] [1788810160.595485315] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[pick_target_base_node-6] [WARN] [1788810160.781478093] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[vitis_ai_detector_node-2] [INFO] [1788810160.953571061] [vitis_ai_detector_node]: Collecting metrics: 1364 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/performance/detector.csv)
+[pick_logic-3] [WARN] [1788810161.654960599] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[pick_target_base_node-6] [WARN] [1788810161.790083223] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[vitis_ai_detector_node-2] [INFO] [1788810161.961810715] [vitis_ai_detector_node]: Collecting metrics: 1387 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/performance/detector.csv)
+[pick_logic-3] [WARN] [1788810162.688894300] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[pick_target_base_node-6] [WARN] [1788810162.844033446] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[vitis_ai_detector_node-2] [INFO] [1788810162.994537926] [vitis_ai_detector_node]: Collecting metrics: 1411 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/performance/detector.csv)
+[pick_logic-3] [WARN] [1788810163.695229092] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[pick_target_base_node-6] [WARN] [1788810163.850701364] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[vitis_ai_detector_node-2] [INFO] [1788810164.028721120] [vitis_ai_detector_node]: Collecting metrics: 1434 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/performance/detector.csv)
+[pick_logic-3] [WARN] [1788810164.700993455] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[pick_target_base_node-6] [WARN] [1788810164.863814839] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[vitis_ai_detector_node-2] [INFO] [1788810165.066084148] [vitis_ai_detector_node]: Collecting metrics: 1458 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/performance/detector.csv)
+[pick_logic-3] [WARN] [1788810165.707076542] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[pick_target_base_node-6] [WARN] [1788810165.900449424] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[vitis_ai_detector_node-2] [INFO] [1788810166.099838685] [vitis_ai_detector_node]: Collecting metrics: 1482 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/performance/detector.csv)
+[pick_logic-3] [WARN] [1788810166.749848089] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[pick_target_base_node-6] [WARN] [1788810166.935130666] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[vitis_ai_detector_node-2] [INFO] [1788810167.105512956] [vitis_ai_detector_node]: Collecting metrics: 1503 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/performance/detector.csv)
+[pick_logic-3] [WARN] [1788810167.789693678] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[pick_target_base_node-6] [WARN] [1788810167.968549468] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[vitis_ai_detector_node-2] [INFO] [1788810168.155554914] [vitis_ai_detector_node]: Collecting metrics: 1527 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/performance/detector.csv)
+[pick_logic-3] [WARN] [1788810168.825763614] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[pick_target_base_node-6] [WARN] [1788810168.970568758] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[vitis_ai_detector_node-2] [INFO] [1788810169.179044950] [vitis_ai_detector_node]: Collecting metrics: 1551 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/performance/detector.csv)
+[pick_logic-3] [WARN] [1788810169.869571118] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[pick_target_base_node-6] [WARN] [1788810170.024334338] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[vitis_ai_detector_node-2] [INFO] [1788810170.187967755] [vitis_ai_detector_node]: Collecting metrics: 1574 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/performance/detector.csv)
+[pick_logic-3] [WARN] [1788810170.902671944] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[pick_target_base_node-6] [WARN] [1788810171.043270229] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[vitis_ai_detector_node-2] [INFO] [1788810171.193432883] [vitis_ai_detector_node]: Collecting metrics: 1596 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/performance/detector.csv)
+[pick_logic-3] [WARN] [1788810171.920650199] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[pick_target_base_node-6] [WARN] [1788810172.046506999] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[vitis_ai_detector_node-2] [INFO] [1788810172.201511993] [vitis_ai_detector_node]: Collecting metrics: 1620 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/performance/detector.csv)
+[pick_logic-3] [WARN] [1788810172.942276485] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[pick_target_base_node-6] [WARN] [1788810173.070540975] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[vitis_ai_detector_node-2] [INFO] [1788810173.233089024] [vitis_ai_detector_node]: Collecting metrics: 1644 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/performance/detector.csv)
+[pick_logic-3] [WARN] [1788810173.970128714] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[pick_target_base_node-6] [WARN] [1788810174.100061071] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[vitis_ai_detector_node-2] [INFO] [1788810174.262072682] [vitis_ai_detector_node]: Collecting metrics: 1669 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/performance/detector.csv)
+[pick_logic-3] [WARN] [1788810174.980836888] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[pick_target_base_node-6] [WARN] [1788810175.111468577] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[vitis_ai_detector_node-2] [INFO] [1788810175.260875548] [vitis_ai_detector_node]: Collecting metrics: 1693 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/performance/detector.csv)
+[pick_logic-3] [WARN] [1788810175.987223840] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[pick_target_base_node-6] [WARN] [1788810176.131280463] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[vitis_ai_detector_node-2] [INFO] [1788810176.322377286] [vitis_ai_detector_node]: Collecting metrics: 1715 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/performance/detector.csv)
+[pick_logic-3] [WARN] [1788810177.015933113] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[pick_target_base_node-6] [WARN] [1788810177.151832800] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[vitis_ai_detector_node-2] [INFO] [1788810177.352711456] [vitis_ai_detector_node]: Collecting metrics: 1737 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/performance/detector.csv)
+[pick_logic-3] [WARN] [1788810178.040548199] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[pick_target_base_node-6] [WARN] [1788810178.169817405] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[vitis_ai_detector_node-2] [INFO] [1788810178.366857037] [vitis_ai_detector_node]: Collecting metrics: 1761 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/performance/detector.csv)
+[pick_logic-3] [WARN] [1788810179.047178025] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[pick_target_base_node-6] [WARN] [1788810179.185189127] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[vitis_ai_detector_node-2] [INFO] [1788810179.402912752] [vitis_ai_detector_node]: Collecting metrics: 1784 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/performance/detector.csv)
+[pick_logic-3] [WARN] [1788810180.075574383] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[pick_target_base_node-6] [WARN] [1788810180.213924790] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[vitis_ai_detector_node-2] [INFO] [1788810180.391628001] [vitis_ai_detector_node]: Collecting metrics: 1807 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/performance/detector.csv)
+[pick_logic-3] [WARN] [1788810181.102821961] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[pick_target_base_node-6] [WARN] [1788810181.222765543] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[vitis_ai_detector_node-2] [INFO] [1788810181.413890117] [vitis_ai_detector_node]: Collecting metrics: 1829 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/performance/detector.csv)
+[pick_logic-3] [WARN] [1788810182.110609477] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[pick_target_base_node-6] [WARN] [1788810182.244919167] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[vitis_ai_detector_node-2] [INFO] [1788810182.438251707] [vitis_ai_detector_node]: Collecting metrics: 1853 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/performance/detector.csv)
+[pick_logic-3] [WARN] [1788810183.143136803] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[pick_target_base_node-6] [WARN] [1788810183.253376203] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[vitis_ai_detector_node-2] [INFO] [1788810183.464219505] [vitis_ai_detector_node]: Collecting metrics: 1877 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/performance/detector.csv)
+[pick_logic-3] [WARN] [1788810184.155715958] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[pick_target_base_node-6] [WARN] [1788810184.279275779] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[vitis_ai_detector_node-2] [INFO] [1788810184.479694388] [vitis_ai_detector_node]: Collecting metrics: 1901 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/performance/detector.csv)
+[pick_logic-3] [WARN] [1788810185.153643169] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[pick_target_base_node-6] [WARN] [1788810185.296035174] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[vitis_ai_detector_node-2] [INFO] [1788810185.506910736] [vitis_ai_detector_node]: Collecting metrics: 1924 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/performance/detector.csv)
+[pick_logic-3] [WARN] [1788810186.170953263] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[pick_target_base_node-6] [WARN] [1788810186.326095789] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[vitis_ai_detector_node-2] [INFO] [1788810186.529550887] [vitis_ai_detector_node]: Collecting metrics: 1945 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/performance/detector.csv)
+[pick_logic-3] [WARN] [1788810187.184541904] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[pick_target_base_node-6] [WARN] [1788810187.376852328] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[vitis_ai_detector_node-2] [INFO] [1788810187.542292755] [vitis_ai_detector_node]: Collecting metrics: 1967 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/performance/detector.csv)
+[pick_logic-3] [WARN] [1788810188.187887635] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[pick_target_base_node-6] [WARN] [1788810188.377326211] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[vitis_ai_detector_node-2] [INFO] [1788810188.549420299] [vitis_ai_detector_node]: Collecting metrics: 1989 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/performance/detector.csv)
+[pick_logic-3] [WARN] [1788810189.224170984] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[pick_target_base_node-6] [WARN] [1788810189.388529503] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[vitis_ai_detector_node-2] [INFO] [1788810189.582581725] [vitis_ai_detector_node]: Collecting metrics: 2012 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/performance/detector.csv)
+[pick_logic-3] [WARN] [1788810190.253029899] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[pick_target_base_node-6] [WARN] [1788810190.389161989] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[vitis_ai_detector_node-2] [INFO] [1788810190.605748876] [vitis_ai_detector_node]: Collecting metrics: 2036 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/performance/detector.csv)
+[pick_logic-3] [WARN] [1788810191.277228836] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[pick_target_base_node-6] [WARN] [1788810191.411390684] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[vitis_ai_detector_node-2] [INFO] [1788810191.611956065] [vitis_ai_detector_node]: Collecting metrics: 2059 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/performance/detector.csv)
+[pick_logic-3] [WARN] [1788810192.312020900] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[pick_target_base_node-6] [WARN] [1788810192.444501780] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[vitis_ai_detector_node-2] [INFO] [1788810192.641438300] [vitis_ai_detector_node]: Collecting metrics: 2082 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/performance/detector.csv)
+[pick_logic-3] [WARN] [1788810193.314401175] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[pick_target_base_node-6] [WARN] [1788810193.437395667] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[vitis_ai_detector_node-2] [INFO] [1788810193.633987822] [vitis_ai_detector_node]: Collecting metrics: 2105 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/performance/detector.csv)
+[pick_logic-3] [WARN] [1788810194.314455591] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[pick_target_base_node-6] [WARN] [1788810194.450137754] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[vitis_ai_detector_node-2] [INFO] [1788810194.647905168] [vitis_ai_detector_node]: Collecting metrics: 2127 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/performance/detector.csv)
+[pick_logic-3] [WARN] [1788810195.319993809] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[pick_target_base_node-6] [WARN] [1788810195.501150257] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[vitis_ai_detector_node-2] [INFO] [1788810195.676463678] [vitis_ai_detector_node]: Collecting metrics: 2147 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/performance/detector.csv)
+[pick_logic-3] [WARN] [1788810196.332839578] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[pick_target_base_node-6] [WARN] [1788810196.506006233] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[vitis_ai_detector_node-2] [INFO] [1788810196.726232590] [vitis_ai_detector_node]: Collecting metrics: 2166 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/performance/detector.csv)
+[pick_logic-3] [WARN] [1788810197.347324903] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[pick_target_base_node-6] [WARN] [1788810197.543036083] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[vitis_ai_detector_node-2] [INFO] [1788810197.692647828] [vitis_ai_detector_node]: Collecting metrics: 2186 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/performance/detector.csv)
+[pick_logic-3] [WARN] [1788810198.350474881] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[pick_target_base_node-6] [WARN] [1788810198.556574924] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[vitis_ai_detector_node-2] [INFO] [1788810198.710858345] [vitis_ai_detector_node]: Collecting metrics: 2209 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/performance/detector.csv)
+[pick_logic-3] [WARN] [1788810199.385136372] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[pick_target_base_node-6] [WARN] [1788810199.564317737] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[vitis_ai_detector_node-2] [INFO] [1788810199.733816282] [vitis_ai_detector_node]: Collecting metrics: 2233 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/performance/detector.csv)
+[pick_logic-3] [WARN] [1788810200.414823210] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[pick_target_base_node-6] [WARN] [1788810200.575298725] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[vitis_ai_detector_node-2] [INFO] [1788810200.751543862] [vitis_ai_detector_node]: Collecting metrics: 2258 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/performance/detector.csv)
+[pick_logic-3] [WARN] [1788810201.426942407] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[pick_target_base_node-6] [WARN] [1788810201.582310557] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[vitis_ai_detector_node-2] [INFO] [1788810201.789338305] [vitis_ai_detector_node]: Collecting metrics: 2283 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/performance/detector.csv)
+[pick_logic-3] [WARN] [1788810202.428101261] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[pick_target_base_node-6] [WARN] [1788810202.614140191] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[vitis_ai_detector_node-2] [INFO] [1788810202.838780501] [vitis_ai_detector_node]: Collecting metrics: 2307 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/performance/detector.csv)
+[pick_logic-3] [WARN] [1788810203.460452894] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[pick_target_base_node-6] [WARN] [1788810203.649040335] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[vitis_ai_detector_node-2] [INFO] [1788810203.851135171] [vitis_ai_detector_node]: Collecting metrics: 2331 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/performance/detector.csv)
+[pick_logic-3] [WARN] [1788810204.468074005] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[pick_target_base_node-6] [WARN] [1788810204.657108734] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[vitis_ai_detector_node-2] [INFO] [1788810204.880883030] [vitis_ai_detector_node]: Collecting metrics: 2353 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/performance/detector.csv)
+[pick_logic-3] [WARN] [1788810205.501984994] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[pick_target_base_node-6] [WARN] [1788810205.695127381] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[vitis_ai_detector_node-2] [INFO] [1788810205.893789219] [vitis_ai_detector_node]: Collecting metrics: 2376 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/performance/detector.csv)
+[pick_logic-3] [WARN] [1788810206.523255452] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[pick_target_base_node-6] [WARN] [1788810206.727897680] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[vitis_ai_detector_node-2] [INFO] [1788810206.887454949] [vitis_ai_detector_node]: Collecting metrics: 2399 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/performance/detector.csv)
+[pick_logic-3] [WARN] [1788810207.529746085] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[pick_target_base_node-6] [WARN] [1788810207.782219297] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[vitis_ai_detector_node-2] [INFO] [1788810207.889299185] [vitis_ai_detector_node]: Collecting metrics: 2422 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/performance/detector.csv)
+[pick_logic-3] [WARN] [1788810208.545533692] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[pick_target_base_node-6] [WARN] [1788810208.765149948] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[vitis_ai_detector_node-2] [INFO] [1788810208.900071329] [vitis_ai_detector_node]: Collecting metrics: 2446 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/performance/detector.csv)
+[pick_logic-3] [WARN] [1788810209.538513700] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[pick_target_base_node-6] [WARN] [1788810209.802735437] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[vitis_ai_detector_node-2] [INFO] [1788810209.928071959] [vitis_ai_detector_node]: Collecting metrics: 2470 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/performance/detector.csv)
+[pick_logic-3] [WARN] [1788810210.563216805] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[pick_target_base_node-6] [WARN] [1788810210.828550731] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[vitis_ai_detector_node-2] [INFO] [1788810210.960738556] [vitis_ai_detector_node]: Collecting metrics: 2493 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/performance/detector.csv)
+[pick_logic-3] [WARN] [1788810211.587953961] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[pick_target_base_node-6] [WARN] [1788810211.882868118] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[vitis_ai_detector_node-2] [INFO] [1788810212.002087937] [vitis_ai_detector_node]: Collecting metrics: 2516 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/performance/detector.csv)
+[pick_logic-3] [WARN] [1788810212.582772499] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[pick_target_base_node-6] [WARN] [1788810212.909540335] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[vitis_ai_detector_node-2] [INFO] [1788810213.022988009] [vitis_ai_detector_node]: Collecting metrics: 2540 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/performance/detector.csv)
+[pick_logic-3] [WARN] [1788810213.601664408] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[pick_target_base_node-6] [WARN] [1788810213.939690111] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[vitis_ai_detector_node-2] [INFO] [1788810214.060069830] [vitis_ai_detector_node]: Collecting metrics: 2563 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/performance/detector.csv)
+[pick_logic-3] [WARN] [1788810214.626830610] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[pick_target_base_node-6] [WARN] [1788810214.977232269] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[vitis_ai_detector_node-2] [INFO] [1788810215.061898645] [vitis_ai_detector_node]: Collecting metrics: 2585 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/performance/detector.csv)
+[pick_logic-3] [WARN] [1788810215.662546738] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[pick_target_base_node-6] [WARN] [1788810215.996793118] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[vitis_ai_detector_node-2] [INFO] [1788810216.064639835] [vitis_ai_detector_node]: Collecting metrics: 2609 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/performance/detector.csv)
+[pick_logic-3] [WARN] [1788810216.686381149] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[pick_target_base_node-6] [WARN] [1788810217.004789646] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[vitis_ai_detector_node-2] [INFO] [1788810217.069164345] [vitis_ai_detector_node]: Collecting metrics: 2633 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/performance/detector.csv)
+[pick_logic-3] [WARN] [1788810217.697085671] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[pick_target_base_node-6] [WARN] [1788810218.008425451] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[vitis_ai_detector_node-2] [INFO] [1788810218.072107058] [vitis_ai_detector_node]: Collecting metrics: 2655 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/performance/detector.csv)
+[pick_logic-3] [WARN] [1788810218.711913222] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[pick_target_base_node-6] [WARN] [1788810219.028077521] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[vitis_ai_detector_node-2] [INFO] [1788810219.097954252] [vitis_ai_detector_node]: Collecting metrics: 2680 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/performance/detector.csv)
+[pick_logic-3] [WARN] [1788810219.780536886] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[pick_target_base_node-6] [WARN] [1788810220.039204081] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[vitis_ai_detector_node-2] [INFO] [1788810220.102694425] [vitis_ai_detector_node]: Collecting metrics: 2703 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/performance/detector.csv)
+[pick_logic-3] [WARN] [1788810220.796250141] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[pick_target_base_node-6] [WARN] [1788810221.075069451] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[vitis_ai_detector_node-2] [INFO] [1788810221.141972512] [vitis_ai_detector_node]: Collecting metrics: 2728 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/performance/detector.csv)
+[pick_logic-3] [WARN] [1788810221.835195562] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[pick_target_base_node-6] [WARN] [1788810222.104901900] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[vitis_ai_detector_node-2] [INFO] [1788810222.175137877] [vitis_ai_detector_node]: Collecting metrics: 2752 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/performance/detector.csv)
+[pick_logic-3] [WARN] [1788810222.839062121] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[pick_target_base_node-6] [WARN] [1788810223.147619874] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[vitis_ai_detector_node-2] [INFO] [1788810223.209080455] [vitis_ai_detector_node]: Collecting metrics: 2776 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/performance/detector.csv)
+[pick_logic-3] [WARN] [1788810223.865826249] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[pick_target_base_node-6] [WARN] [1788810224.149085723] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[vitis_ai_detector_node-2] [INFO] [1788810224.221530176] [vitis_ai_detector_node]: Collecting metrics: 2800 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/performance/detector.csv)
+[pick_logic-3] [WARN] [1788810224.879550182] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[pick_target_base_node-6] [WARN] [1788810225.184626597] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[vitis_ai_detector_node-2] [INFO] [1788810225.265802545] [vitis_ai_detector_node]: Collecting metrics: 2825 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/performance/detector.csv)
+[pick_logic-3] [WARN] [1788810225.885203050] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[pick_target_base_node-6] [WARN] [1788810226.195394950] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[vitis_ai_detector_node-2] [INFO] [1788810226.263192286] [vitis_ai_detector_node]: Collecting metrics: 2848 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/performance/detector.csv)
+[pick_logic-3] [WARN] [1788810226.914033153] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[pick_target_base_node-6] [WARN] [1788810227.220438550] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[vitis_ai_detector_node-2] [INFO] [1788810227.288692173] [vitis_ai_detector_node]: Collecting metrics: 2871 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/performance/detector.csv)
+[pick_logic-3] [WARN] [1788810227.935739857] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[pick_target_base_node-6] [WARN] [1788810228.258066989] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[vitis_ai_detector_node-2] [INFO] [1788810228.299975845] [vitis_ai_detector_node]: Collecting metrics: 2895 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/performance/detector.csv)
+[pick_logic-3] [WARN] [1788810228.944166521] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[pick_target_base_node-6] [WARN] [1788810229.262321984] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[vitis_ai_detector_node-2] [INFO] [1788810229.336731349] [vitis_ai_detector_node]: Collecting metrics: 2919 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/performance/detector.csv)
+[pick_logic-3] [WARN] [1788810229.975086669] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[pick_target_base_node-6] [WARN] [1788810230.285530563] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[vitis_ai_detector_node-2] [INFO] [1788810230.346895552] [vitis_ai_detector_node]: Collecting metrics: 2942 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/performance/detector.csv)
+[pick_logic-3] [WARN] [1788810230.979453775] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[pick_target_base_node-6] [WARN] [1788810231.292955621] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[vitis_ai_detector_node-2] [INFO] [1788810231.372613493] [vitis_ai_detector_node]: Collecting metrics: 2966 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/performance/detector.csv)
+[pick_logic-3] [WARN] [1788810232.003556139] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[pick_target_base_node-6] [WARN] [1788810232.329119455] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[vitis_ai_detector_node-2] [INFO] [1788810232.389009310] [vitis_ai_detector_node]: Collecting metrics: 2989 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/performance/detector.csv)
+[pick_logic-3] [WARN] [1788810233.011316442] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[pick_target_base_node-6] [WARN] [1788810233.339878948] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[vitis_ai_detector_node-2] [INFO] [1788810233.415408192] [vitis_ai_detector_node]: Collecting metrics: 3013 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/performance/detector.csv)
+[pick_logic-3] [WARN] [1788810234.039681857] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[pick_target_base_node-6] [WARN] [1788810234.356231983] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[vitis_ai_detector_node-2] [INFO] [1788810234.438893816] [vitis_ai_detector_node]: Collecting metrics: 3036 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/performance/detector.csv)
+[pick_logic-3] [WARN] [1788810235.045949055] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[pick_target_base_node-6] [WARN] [1788810235.386365207] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[vitis_ai_detector_node-2] [INFO] [1788810235.438541614] [vitis_ai_detector_node]: Collecting metrics: 3059 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/performance/detector.csv)
+[pick_logic-3] [WARN] [1788810236.075736264] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[pick_target_base_node-6] [WARN] [1788810236.427541045] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[vitis_ai_detector_node-2] [INFO] [1788810236.475383959] [vitis_ai_detector_node]: Collecting metrics: 3083 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/performance/detector.csv)
+[pick_logic-3] [WARN] [1788810237.078609385] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[pick_target_base_node-6] [WARN] [1788810237.450915777] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[vitis_ai_detector_node-2] [INFO] [1788810237.480698781] [vitis_ai_detector_node]: Collecting metrics: 3106 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/performance/detector.csv)
+[pick_logic-3] [WARN] [1788810238.095189274] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[pick_target_base_node-6] [WARN] [1788810238.473610077] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[vitis_ai_detector_node-2] [INFO] [1788810238.514767941] [vitis_ai_detector_node]: Collecting metrics: 3129 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/performance/detector.csv)
+[pick_logic-3] [WARN] [1788810239.106142660] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[pick_target_base_node-6] [WARN] [1788810239.484118336] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[vitis_ai_detector_node-2] [INFO] [1788810239.514991418] [vitis_ai_detector_node]: Collecting metrics: 3153 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/performance/detector.csv)
+[pick_logic-3] [WARN] [1788810240.117302939] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[pick_target_base_node-6] [WARN] [1788810240.509212176] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[vitis_ai_detector_node-2] [INFO] [1788810240.535775437] [vitis_ai_detector_node]: Collecting metrics: 3177 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/performance/detector.csv)
+[pick_logic-3] [WARN] [1788810241.179113919] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[pick_target_base_node-6] [WARN] [1788810241.535339283] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[vitis_ai_detector_node-2] [INFO] [1788810241.562864790] [vitis_ai_detector_node]: Collecting metrics: 3200 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/performance/detector.csv)
+[pick_logic-3] [WARN] [1788810242.184130136] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[pick_target_base_node-6] [WARN] [1788810242.577538358] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[vitis_ai_detector_node-2] [INFO] [1788810242.610095038] [vitis_ai_detector_node]: Collecting metrics: 3225 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/performance/detector.csv)
+[pick_logic-3] [WARN] [1788810243.210015909] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[pick_target_base_node-6] [WARN] [1788810243.600058125] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[vitis_ai_detector_node-2] [INFO] [1788810243.622791582] [vitis_ai_detector_node]: Collecting metrics: 3248 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/performance/detector.csv)
+[pick_logic-3] [WARN] [1788810244.207836256] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[pick_target_base_node-6] [WARN] [1788810244.638486327] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[vitis_ai_detector_node-2] [INFO] [1788810244.681144335] [vitis_ai_detector_node]: Collecting metrics: 3272 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/performance/detector.csv)
+[pick_logic-3] [WARN] [1788810245.216613115] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[pick_target_base_node-6] [WARN] [1788810245.647513190] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[vitis_ai_detector_node-2] [INFO] [1788810245.682051753] [vitis_ai_detector_node]: Collecting metrics: 3295 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/performance/detector.csv)
+[pick_logic-3] [WARN] [1788810246.226934110] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[pick_target_base_node-6] [WARN] [1788810246.665267368] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[vitis_ai_detector_node-2] [INFO] [1788810246.698648682] [vitis_ai_detector_node]: Collecting metrics: 3319 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/performance/detector.csv)
+[pick_logic-3] [WARN] [1788810247.288220731] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[pick_target_base_node-6] [WARN] [1788810247.694334454] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[vitis_ai_detector_node-2] [INFO] [1788810247.726610190] [vitis_ai_detector_node]: Collecting metrics: 3343 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/performance/detector.csv)
+[pick_logic-3] [WARN] [1788810248.323664073] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[pick_target_base_node-6] [WARN] [1788810248.728402183] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[vitis_ai_detector_node-2] [INFO] [1788810248.769755850] [vitis_ai_detector_node]: Collecting metrics: 3367 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/performance/detector.csv)
+[pick_logic-3] [WARN] [1788810249.357464388] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[pick_target_base_node-6] [WARN] [1788810249.770123909] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[vitis_ai_detector_node-2] [INFO] [1788810249.790558498] [vitis_ai_detector_node]: Collecting metrics: 3391 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/performance/detector.csv)
+[pick_logic-3] [WARN] [1788810250.375983948] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[pick_target_base_node-6] [WARN] [1788810250.805846595] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[vitis_ai_detector_node-2] [INFO] [1788810250.855432709] [vitis_ai_detector_node]: Collecting metrics: 3415 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/performance/detector.csv)
+[pick_logic-3] [WARN] [1788810251.383654089] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[pick_target_base_node-6] [WARN] [1788810251.865832965] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[vitis_ai_detector_node-2] [INFO] [1788810251.926105795] [vitis_ai_detector_node]: Collecting metrics: 3436 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/performance/detector.csv)
+[pick_logic-3] [WARN] [1788810252.399642808] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[pick_target_base_node-6] [WARN] [1788810252.894077807] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[vitis_ai_detector_node-2] [INFO] [1788810252.923699999] [vitis_ai_detector_node]: Collecting metrics: 3460 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/performance/detector.csv)
+[pick_logic-3] [WARN] [1788810253.430505623] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[pick_target_base_node-6] [WARN] [1788810253.892110117] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[vitis_ai_detector_node-2] [INFO] [1788810253.932243084] [vitis_ai_detector_node]: Collecting metrics: 3483 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/performance/detector.csv)
+[pick_logic-3] [WARN] [1788810254.445446444] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[pick_target_base_node-6] [WARN] [1788810254.918481428] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[vitis_ai_detector_node-2] [INFO] [1788810254.943866990] [vitis_ai_detector_node]: Collecting metrics: 3507 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/performance/detector.csv)
+[pick_logic-3] [WARN] [1788810255.441116706] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[pick_target_base_node-6] [WARN] [1788810255.934099411] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[vitis_ai_detector_node-2] [INFO] [1788810255.964971523] [vitis_ai_detector_node]: Collecting metrics: 3531 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/performance/detector.csv)
+[pick_logic-3] [WARN] [1788810256.450467764] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[pick_target_base_node-6] [WARN] [1788810256.965130809] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[vitis_ai_detector_node-2] [INFO] [1788810257.003271472] [vitis_ai_detector_node]: Collecting metrics: 3555 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/performance/detector.csv)
+[pick_logic-3] [WARN] [1788810257.478801917] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[pick_target_base_node-6] [WARN] [1788810257.983700090] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[vitis_ai_detector_node-2] [INFO] [1788810258.012438397] [vitis_ai_detector_node]: Collecting metrics: 3579 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/performance/detector.csv)
+[pick_logic-3] [WARN] [1788810258.525928433] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[vitis_ai_detector_node-2] [INFO] [1788810259.012089145] [vitis_ai_detector_node]: Collecting metrics: 3602 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/performance/detector.csv)
+[pick_target_base_node-6] [WARN] [1788810259.020993322] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[pick_logic-3] [WARN] [1788810259.564103130] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[vitis_ai_detector_node-2] [INFO] [1788810260.051385340] [vitis_ai_detector_node]: Collecting metrics: 3626 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/performance/detector.csv)
+[pick_target_base_node-6] [WARN] [1788810260.064243063] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[pick_logic-3] [WARN] [1788810260.568537706] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[vitis_ai_detector_node-2] [INFO] [1788810261.072751498] [vitis_ai_detector_node]: Collecting metrics: 3651 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/performance/detector.csv)
+[pick_target_base_node-6] [WARN] [1788810261.085362767] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[pick_logic-3] [WARN] [1788810261.600835595] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[vitis_ai_detector_node-2] [INFO] [1788810262.093946952] [vitis_ai_detector_node]: Collecting metrics: 3675 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/performance/detector.csv)
+[pick_target_base_node-6] [WARN] [1788810262.101878854] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[pick_logic-3] [WARN] [1788810262.604178424] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[pick_target_base_node-6] [WARN] [1788810263.102934314] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[vitis_ai_detector_node-2] [INFO] [1788810263.131000100] [vitis_ai_detector_node]: Collecting metrics: 3698 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/performance/detector.csv)
+[pick_logic-3] [WARN] [1788810263.614881684] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[pick_target_base_node-6] [WARN] [1788810264.131254797] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[vitis_ai_detector_node-2] [INFO] [1788810264.156749531] [vitis_ai_detector_node]: Collecting metrics: 3722 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/performance/detector.csv)
+[pick_logic-3] [WARN] [1788810264.662006089] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[pick_target_base_node-6] [WARN] [1788810265.136160681] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[vitis_ai_detector_node-2] [INFO] [1788810265.165428897] [vitis_ai_detector_node]: Collecting metrics: 3746 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/performance/detector.csv)
+[pick_logic-3] [WARN] [1788810265.703028023] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[pick_target_base_node-6] [WARN] [1788810266.138017765] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[vitis_ai_detector_node-2] [INFO] [1788810266.198164234] [vitis_ai_detector_node]: Collecting metrics: 3769 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/performance/detector.csv)
+[pick_logic-3] [WARN] [1788810266.715349090] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[pick_target_base_node-6] [WARN] [1788810267.161386426] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[vitis_ai_detector_node-2] [INFO] [1788810267.230040485] [vitis_ai_detector_node]: Collecting metrics: 3793 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/performance/detector.csv)
+[pick_logic-3] [WARN] [1788810267.709415144] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[pick_target_base_node-6] [WARN] [1788810268.203379915] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[vitis_ai_detector_node-2] [INFO] [1788810268.230702419] [vitis_ai_detector_node]: Collecting metrics: 3816 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/performance/detector.csv)
+[pick_logic-3] [WARN] [1788810268.786798492] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[pick_target_base_node-6] [WARN] [1788810269.204074159] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[vitis_ai_detector_node-2] [INFO] [1788810269.237760219] [vitis_ai_detector_node]: Collecting metrics: 3839 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/performance/detector.csv)
+[pick_logic-3] [WARN] [1788810269.827515990] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[pick_target_base_node-6] [WARN] [1788810270.239497590] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[vitis_ai_detector_node-2] [INFO] [1788810270.266579800] [vitis_ai_detector_node]: Collecting metrics: 3862 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/performance/detector.csv)
+[pick_logic-3] [WARN] [1788810270.854961798] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[pick_target_base_node-6] [WARN] [1788810271.260108765] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[vitis_ai_detector_node-2] [INFO] [1788810271.298005724] [vitis_ai_detector_node]: Collecting metrics: 3886 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/performance/detector.csv)
+[pick_logic-3] [WARN] [1788810271.912891773] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[pick_target_base_node-6] [WARN] [1788810272.287837178] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[vitis_ai_detector_node-2] [INFO] [1788810272.310182539] [vitis_ai_detector_node]: Collecting metrics: 3909 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/performance/detector.csv)
+[pick_logic-3] [WARN] [1788810272.923175366] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[pick_target_base_node-6] [WARN] [1788810273.291138665] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[vitis_ai_detector_node-2] [INFO] [1788810273.328317812] [vitis_ai_detector_node]: Collecting metrics: 3933 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/performance/detector.csv)
+[pick_logic-3] [WARN] [1788810273.939381677] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[pick_target_base_node-6] [WARN] [1788810274.294294650] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[vitis_ai_detector_node-2] [INFO] [1788810274.367878331] [vitis_ai_detector_node]: Collecting metrics: 3956 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/performance/detector.csv)
+[pick_logic-3] [WARN] [1788810274.943684711] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[pick_target_base_node-6] [WARN] [1788810275.292521223] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[vitis_ai_detector_node-2] [INFO] [1788810275.407047994] [vitis_ai_detector_node]: Collecting metrics: 3980 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/performance/detector.csv)
+[pick_logic-3] [WARN] [1788810275.969876638] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[pick_target_base_node-6] [WARN] [1788810276.341069251] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[vitis_ai_detector_node-2] [INFO] [1788810276.441760903] [vitis_ai_detector_node]: Collecting metrics: 4003 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/performance/detector.csv)
+[pick_logic-3] [WARN] [1788810276.979628032] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[pick_target_base_node-6] [WARN] [1788810277.363468695] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[vitis_ai_detector_node-2] [INFO] [1788810277.469179040] [vitis_ai_detector_node]: Collecting metrics: 4027 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/performance/detector.csv)
+[pick_logic-3] [WARN] [1788810278.009099424] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[pick_target_base_node-6] [WARN] [1788810278.384044949] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[vitis_ai_detector_node-2] [INFO] [1788810278.511647517] [vitis_ai_detector_node]: Collecting metrics: 4052 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/performance/detector.csv)
+[pick_logic-3] [WARN] [1788810279.043212093] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[pick_target_base_node-6] [WARN] [1788810279.400198119] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[vitis_ai_detector_node-2] [INFO] [1788810279.515435593] [vitis_ai_detector_node]: Collecting metrics: 4075 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/performance/detector.csv)
+[pick_logic-3] [WARN] [1788810280.047715380] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[pick_target_base_node-6] [WARN] [1788810280.406112900] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[vitis_ai_detector_node-2] [INFO] [1788810280.540696784] [vitis_ai_detector_node]: Collecting metrics: 4099 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/performance/detector.csv)
+[pick_logic-3] [WARN] [1788810281.079531740] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[pick_target_base_node-6] [WARN] [1788810281.449415561] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[vitis_ai_detector_node-2] [INFO] [1788810281.579192255] [vitis_ai_detector_node]: Collecting metrics: 4123 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/performance/detector.csv)
+[pick_logic-3] [WARN] [1788810282.114740947] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[pick_target_base_node-6] [WARN] [1788810282.452154428] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[vitis_ai_detector_node-2] [INFO] [1788810282.580825175] [vitis_ai_detector_node]: Collecting metrics: 4146 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/performance/detector.csv)
+[pick_logic-3] [WARN] [1788810283.147897459] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[pick_target_base_node-6] [WARN] [1788810283.478860434] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[vitis_ai_detector_node-2] [INFO] [1788810283.582091418] [vitis_ai_detector_node]: Collecting metrics: 4170 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/performance/detector.csv)
+[pick_logic-3] [WARN] [1788810284.178058102] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[pick_target_base_node-6] [WARN] [1788810284.482778591] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[vitis_ai_detector_node-2] [INFO] [1788810284.580643916] [vitis_ai_detector_node]: Collecting metrics: 4194 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/performance/detector.csv)
+[pick_logic-3] [WARN] [1788810285.199356958] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[pick_target_base_node-6] [WARN] [1788810285.484401420] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[vitis_ai_detector_node-2] [INFO] [1788810285.589451094] [vitis_ai_detector_node]: Collecting metrics: 4218 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/performance/detector.csv)
+[pick_logic-3] [WARN] [1788810286.234385201] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[pick_target_base_node-6] [WARN] [1788810286.498389914] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[vitis_ai_detector_node-2] [INFO] [1788810286.609618581] [vitis_ai_detector_node]: Collecting metrics: 4241 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/performance/detector.csv)
+[pick_logic-3] [WARN] [1788810287.269300883] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[pick_target_base_node-6] [WARN] [1788810287.522980914] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[vitis_ai_detector_node-2] [INFO] [1788810287.640507385] [vitis_ai_detector_node]: Collecting metrics: 4265 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/performance/detector.csv)
+[pick_logic-3] [WARN] [1788810288.284153521] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[pick_target_base_node-6] [WARN] [1788810288.525375106] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[vitis_ai_detector_node-2] [INFO] [1788810288.667018097] [vitis_ai_detector_node]: Collecting metrics: 4288 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/performance/detector.csv)
+[pick_logic-3] [WARN] [1788810289.321011965] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[pick_target_base_node-6] [WARN] [1788810289.537475389] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[vitis_ai_detector_node-2] [INFO] [1788810289.697885312] [vitis_ai_detector_node]: Collecting metrics: 4311 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/performance/detector.csv)
+[pick_logic-3] [WARN] [1788810290.324160119] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[pick_target_base_node-6] [WARN] [1788810290.550568228] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[vitis_ai_detector_node-2] [INFO] [1788810290.714490439] [vitis_ai_detector_node]: Collecting metrics: 4334 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/performance/detector.csv)
+[pick_logic-3] [WARN] [1788810291.350029520] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[pick_target_base_node-6] [WARN] [1788810291.574835582] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[vitis_ai_detector_node-2] [INFO] [1788810291.733174491] [vitis_ai_detector_node]: Collecting metrics: 4357 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/performance/detector.csv)
+[pick_logic-3] [WARN] [1788810292.354937223] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[pick_target_base_node-6] [WARN] [1788810292.614993061] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[vitis_ai_detector_node-2] [INFO] [1788810292.790297601] [vitis_ai_detector_node]: Collecting metrics: 4381 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/performance/detector.csv)
+[pick_logic-3] [WARN] [1788810293.370250599] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[pick_target_base_node-6] [WARN] [1788810293.690412295] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[vitis_ai_detector_node-2] [INFO] [1788810293.817244190] [vitis_ai_detector_node]: Collecting metrics: 4405 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/performance/detector.csv)
+[pick_logic-3] [WARN] [1788810294.399430245] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[pick_target_base_node-6] [WARN] [1788810294.703985452] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[vitis_ai_detector_node-2] [INFO] [1788810294.858040969] [vitis_ai_detector_node]: Collecting metrics: 4428 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/performance/detector.csv)
+[pick_logic-3] [WARN] [1788810295.407633753] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[pick_target_base_node-6] [WARN] [1788810295.729286183] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[vitis_ai_detector_node-2] [INFO] [1788810295.886888570] [vitis_ai_detector_node]: Collecting metrics: 4452 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/performance/detector.csv)
+[pick_logic-3] [WARN] [1788810296.418525616] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[pick_target_base_node-6] [WARN] [1788810296.751172758] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[vitis_ai_detector_node-2] [INFO] [1788810296.901596665] [vitis_ai_detector_node]: Collecting metrics: 4475 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/performance/detector.csv)
+[pick_logic-3] [WARN] [1788810297.429264296] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[pick_target_base_node-6] [WARN] [1788810297.787428002] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[vitis_ai_detector_node-2] [INFO] [1788810297.922621806] [vitis_ai_detector_node]: Collecting metrics: 4498 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/performance/detector.csv)
+[pick_logic-3] [WARN] [1788810298.486619909] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[pick_target_base_node-6] [WARN] [1788810298.819218481] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[vitis_ai_detector_node-2] [INFO] [1788810298.929382400] [vitis_ai_detector_node]: Collecting metrics: 4520 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/performance/detector.csv)
+[pick_logic-3] [WARN] [1788810299.536266615] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[pick_target_base_node-6] [WARN] [1788810299.844783547] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[vitis_ai_detector_node-2] [INFO] [1788810299.929679866] [vitis_ai_detector_node]: Collecting metrics: 4538 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/performance/detector.csv)
+[pick_logic-3] [WARN] [1788810300.537187862] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[pick_target_base_node-6] [WARN] [1788810300.850044746] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[vitis_ai_detector_node-2] [INFO] [1788810300.967603237] [vitis_ai_detector_node]: Collecting metrics: 4558 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/performance/detector.csv)
+[pick_logic-3] [WARN] [1788810301.593263534] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[pick_target_base_node-6] [WARN] [1788810301.890348086] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[vitis_ai_detector_node-2] [INFO] [1788810301.966378258] [vitis_ai_detector_node]: Collecting metrics: 4577 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/performance/detector.csv)
+[pick_logic-3] [WARN] [1788810302.633764328] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[pick_target_base_node-6] [WARN] [1788810302.926083761] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[vitis_ai_detector_node-2] [INFO] [1788810303.022996520] [vitis_ai_detector_node]: Collecting metrics: 4596 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/performance/detector.csv)
+[pick_logic-3] [WARN] [1788810303.656533567] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[pick_target_base_node-6] [WARN] [1788810303.962023729] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[vitis_ai_detector_node-2] [INFO] [1788810304.028462112] [vitis_ai_detector_node]: Collecting metrics: 4620 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/performance/detector.csv)
+[pick_logic-3] [WARN] [1788810304.659477637] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[pick_target_base_node-6] [WARN] [1788810304.965567349] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[vitis_ai_detector_node-2] [INFO] [1788810305.033573458] [vitis_ai_detector_node]: Collecting metrics: 4644 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/performance/detector.csv)
+[pick_logic-3] [WARN] [1788810305.672445944] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[pick_target_base_node-6] [WARN] [1788810305.980525678] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[vitis_ai_detector_node-2] [INFO] [1788810306.060683019] [vitis_ai_detector_node]: Collecting metrics: 4669 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/performance/detector.csv)
+[pick_logic-3] [WARN] [1788810306.704557218] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[pick_target_base_node-6] [WARN] [1788810307.023046926] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[vitis_ai_detector_node-2] [INFO] [1788810307.213490137] [vitis_ai_detector_node]: Collecting metrics: 4688 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/performance/detector.csv)
+[pick_logic-3] [WARN] [1788810307.817988903] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[pick_target_base_node-6] [WARN] [1788810308.042393058] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[vitis_ai_detector_node-2] [INFO] [1788810308.253323380] [vitis_ai_detector_node]: Collecting metrics: 4699 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/performance/detector.csv)
+[pick_logic-3] [WARN] [1788810308.841695657] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[pick_target_base_node-6] [WARN] [1788810309.058361614] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[vitis_ai_detector_node-2] [INFO] [1788810309.200119137] [vitis_ai_detector_node]: Collecting metrics: 4713 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/performance/detector.csv)
+[pick_logic-3] [WARN] [1788810309.852675671] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[pick_target_base_node-6] [WARN] [1788810310.067293054] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[vitis_ai_detector_node-2] [INFO] [1788810310.204168726] [vitis_ai_detector_node]: Collecting metrics: 4736 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/performance/detector.csv)
+[pick_logic-3] [WARN] [1788810310.898354710] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[pick_target_base_node-6] [WARN] [1788810311.105949536] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[vitis_ai_detector_node-2] [INFO] [1788810311.207202497] [vitis_ai_detector_node]: Collecting metrics: 4759 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/performance/detector.csv)
+[pick_logic-3] [WARN] [1788810311.933816600] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[pick_target_base_node-6] [WARN] [1788810312.106224292] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[vitis_ai_detector_node-2] [INFO] [1788810312.234938709] [vitis_ai_detector_node]: Collecting metrics: 4782 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/performance/detector.csv)
+[pick_logic-3] [WARN] [1788810312.951633607] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[pick_target_base_node-6] [WARN] [1788810313.111169755] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[vitis_ai_detector_node-2] [INFO] [1788810313.271320534] [vitis_ai_detector_node]: Collecting metrics: 4807 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/performance/detector.csv)
+[pick_logic-3] [WARN] [1788810313.977307614] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[pick_target_base_node-6] [WARN] [1788810314.112327605] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[vitis_ai_detector_node-2] [INFO] [1788810314.298305683] [vitis_ai_detector_node]: Collecting metrics: 4830 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/performance/detector.csv)
+[pick_logic-3] [WARN] [1788810314.979041074] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[pick_target_base_node-6] [WARN] [1788810315.149013965] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[vitis_ai_detector_node-2] [INFO] [1788810315.303428709] [vitis_ai_detector_node]: Collecting metrics: 4852 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/performance/detector.csv)
+[pick_logic-3] [WARN] [1788810315.985972330] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[pick_target_base_node-6] [WARN] [1788810316.168315307] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[vitis_ai_detector_node-2] [INFO] [1788810316.374793534] [vitis_ai_detector_node]: Collecting metrics: 4872 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/performance/detector.csv)
+[pick_logic-3] [WARN] [1788810317.030440939] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[pick_target_base_node-6] [WARN] [1788810317.176803058] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[vitis_ai_detector_node-2] [INFO] [1788810317.371303137] [vitis_ai_detector_node]: Collecting metrics: 4892 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/performance/detector.csv)
+[pick_logic-3] [WARN] [1788810318.034532597] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[pick_target_base_node-6] [WARN] [1788810318.195295656] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[vitis_ai_detector_node-2] [INFO] [1788810318.458708989] [vitis_ai_detector_node]: Collecting metrics: 4914 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/performance/detector.csv)
+[pick_logic-3] [WARN] [1788810319.060630772] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[pick_target_base_node-6] [WARN] [1788810319.194275150] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[vitis_ai_detector_node-2] [INFO] [1788810319.959421132] [vitis_ai_detector_node]: Collecting metrics: 4929 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/performance/detector.csv)
+[pick_logic-3] [WARN] [1788810320.136408350] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[pick_target_base_node-6] [WARN] [1788810320.221837098] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[vitis_ai_detector_node-2] [INFO] [1788810320.645549192] [vitis_ai_detector_node]: Collecting metrics: 4940 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/performance/detector.csv)
+[pick_logic-3] [WARN] [1788810321.152463158] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[pick_target_base_node-6] [WARN] [1788810321.214472537] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[vitis_ai_detector_node-2] [INFO] [1788810321.677831779] [vitis_ai_detector_node]: Collecting metrics: 4963 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/performance/detector.csv)
+[pick_logic-3] [WARN] [1788810322.166326088] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[pick_target_base_node-6] [WARN] [1788810322.215111958] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[vitis_ai_detector_node-2] [INFO] [1788810322.678484941] [vitis_ai_detector_node]: Collecting metrics: 4985 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/performance/detector.csv)
+[pick_logic-3] [WARN] [1788810323.173061211] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[pick_target_base_node-6] [WARN] [1788810323.220700002] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[vitis_ai_detector_node-2] [INFO] [1788810323.701230889] [vitis_ai_detector_node]: Collecting metrics: 5009 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/performance/detector.csv)
+[pick_logic-3] [WARN] [1788810324.195581305] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[pick_target_base_node-6] [WARN] [1788810324.243036683] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[vitis_ai_detector_node-2] [INFO] [1788810324.725980630] [vitis_ai_detector_node]: Collecting metrics: 5032 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/performance/detector.csv)
+[pick_logic-3] [WARN] [1788810325.242902352] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[pick_target_base_node-6] [WARN] [1788810325.254444003] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[vitis_ai_detector_node-2] [INFO] [1788810325.775203608] [vitis_ai_detector_node]: Collecting metrics: 5057 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/performance/detector.csv)
+[pick_logic-3] [WARN] [1788810326.255669744] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[pick_target_base_node-6] [WARN] [1788810326.269291060] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[vitis_ai_detector_node-2] [INFO] [1788810326.808521682] [vitis_ai_detector_node]: Collecting metrics: 5081 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/performance/detector.csv)
+[pick_logic-3] [WARN] [1788810327.276009552] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[pick_target_base_node-6] [WARN] [1788810327.287034785] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[vitis_ai_detector_node-2] [INFO] [1788810327.812879755] [vitis_ai_detector_node]: Collecting metrics: 5104 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/performance/detector.csv)
+[pick_logic-3] [WARN] [1788810328.313038238] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[pick_target_base_node-6] [WARN] [1788810328.326289338] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[vitis_ai_detector_node-2] [INFO] [1788810328.930188123] [vitis_ai_detector_node]: Collecting metrics: 5127 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/performance/detector.csv)
+[pick_logic-3] [WARN] [1788810329.317288629] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[pick_target_base_node-6] [WARN] [1788810329.335416730] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[vitis_ai_detector_node-2] [INFO] [1788810329.881118898] [vitis_ai_detector_node]: Collecting metrics: 5148 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/performance/detector.csv)
+[pick_logic-3] [WARN] [1788810330.368367287] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[pick_target_base_node-6] [WARN] [1788810330.379980300] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[vitis_ai_detector_node-2] [INFO] [1788810330.932856568] [vitis_ai_detector_node]: Collecting metrics: 5170 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/performance/detector.csv)
+[pick_logic-3] [WARN] [1788810331.416964944] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[pick_target_base_node-6] [WARN] [1788810331.428866242] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[vitis_ai_detector_node-2] [INFO] [1788810332.046620037] [vitis_ai_detector_node]: Collecting metrics: 5187 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/performance/detector.csv)
+[pick_logic-3] [WARN] [1788810332.446763569] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[pick_target_base_node-6] [WARN] [1788810332.477129613] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[vitis_ai_detector_node-2] [INFO] [1788810333.044842857] [vitis_ai_detector_node]: Collecting metrics: 5208 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/performance/detector.csv)
+[pick_logic-3] [WARN] [1788810333.482623245] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[pick_target_base_node-6] [WARN] [1788810333.494896559] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[vitis_ai_detector_node-2] [INFO] [1788810334.082033645] [vitis_ai_detector_node]: Collecting metrics: 5227 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/performance/detector.csv)
+[pick_logic-3] [WARN] [1788810334.499443424] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[pick_target_base_node-6] [WARN] [1788810334.513884214] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[vitis_ai_detector_node-2] [INFO] [1788810335.093716099] [vitis_ai_detector_node]: Collecting metrics: 5245 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/performance/detector.csv)
+[pick_logic-3] [WARN] [1788810335.551965976] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[pick_target_base_node-6] [WARN] [1788810335.569282014] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[vitis_ai_detector_node-2] [INFO] [1788810336.110383586] [vitis_ai_detector_node]: Collecting metrics: 5268 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/performance/detector.csv)
+[pick_logic-3] [WARN] [1788810336.552307582] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[pick_target_base_node-6] [WARN] [1788810336.617478054] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[vitis_ai_detector_node-2] [INFO] [1788810337.194586054] [vitis_ai_detector_node]: Collecting metrics: 5287 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/performance/detector.csv)
+[pick_logic-3] [WARN] [1788810337.571164056] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[pick_target_base_node-6] [WARN] [1788810337.653540323] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[vitis_ai_detector_node-2] [INFO] [1788810338.168951909] [vitis_ai_detector_node]: Collecting metrics: 5307 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/performance/detector.csv)
+[pick_logic-3] [WARN] [1788810338.604780204] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[pick_target_base_node-6] [WARN] [1788810338.682006246] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[vitis_ai_detector_node-2] [INFO] [1788810339.185124618] [vitis_ai_detector_node]: Collecting metrics: 5327 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/performance/detector.csv)
+[pick_logic-3] [WARN] [1788810339.649842342] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[pick_target_base_node-6] [WARN] [1788810339.719366246] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[vitis_ai_detector_node-2] [INFO] [1788810340.185593816] [vitis_ai_detector_node]: Collecting metrics: 5349 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/performance/detector.csv)
+[pick_logic-3] [WARN] [1788810340.681675521] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[pick_target_base_node-6] [WARN] [1788810340.733917378] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[vitis_ai_detector_node-2] [INFO] [1788810341.212422621] [vitis_ai_detector_node]: Collecting metrics: 5373 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/performance/detector.csv)
+[pick_logic-3] [WARN] [1788810341.723373813] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[pick_target_base_node-6] [WARN] [1788810341.740575928] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[vitis_ai_detector_node-2] [INFO] [1788810342.226501335] [vitis_ai_detector_node]: Collecting metrics: 5395 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/performance/detector.csv)
+[pick_logic-3] [WARN] [1788810342.776198020] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[pick_target_base_node-6] [WARN] [1788810342.789507461] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[vitis_ai_detector_node-2] [INFO] [1788810343.287596279] [vitis_ai_detector_node]: Collecting metrics: 5419 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/performance/detector.csv)
+[pick_logic-3] [WARN] [1788810343.782842310] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[pick_target_base_node-6] [WARN] [1788810343.798551461] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[vitis_ai_detector_node-2] [INFO] [1788810344.297224439] [vitis_ai_detector_node]: Collecting metrics: 5442 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/performance/detector.csv)
+[pick_logic-3] [WARN] [1788810344.795331977] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[pick_target_base_node-6] [WARN] [1788810344.810106303] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[vitis_ai_detector_node-2] [INFO] [1788810345.297150358] [vitis_ai_detector_node]: Collecting metrics: 5465 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/performance/detector.csv)
+[pick_logic-3] [WARN] [1788810345.833936598] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[pick_target_base_node-6] [WARN] [1788810345.850436812] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[vitis_ai_detector_node-2] [INFO] [1788810346.336056363] [vitis_ai_detector_node]: Collecting metrics: 5489 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/performance/detector.csv)
+[pick_logic-3] [WARN] [1788810346.865466101] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[pick_target_base_node-6] [WARN] [1788810346.882987682] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[python3-7] [resource_sampler] wrote 300 rows to /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/resource/run.csv
+[INFO] [python3-7]: process has finished cleanly [pid 68060]
+[vitis_ai_detector_node-2] [INFO] [1788810347.365534923] [vitis_ai_detector_node]: Collecting metrics: 5511 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/performance/detector.csv)
+[pick_logic-3] [WARN] [1788810347.870440874] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[pick_target_base_node-6] [WARN] [1788810347.889545771] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[vitis_ai_detector_node-2] [INFO] [1788810348.381199842] [vitis_ai_detector_node]: Collecting metrics: 5532 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/performance/detector.csv)
+[pick_logic-3] [WARN] [1788810348.883765145] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[pick_target_base_node-6] [WARN] [1788810348.894965571] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[vitis_ai_detector_node-2] [INFO] [1788810349.430804816] [vitis_ai_detector_node]: Collecting metrics: 5552 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/performance/detector.csv)
+[pick_logic-3] [WARN] [1788810349.903440281] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[pick_target_base_node-6] [WARN] [1788810349.922557099] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[vitis_ai_detector_node-2] [INFO] [1788810350.440682239] [vitis_ai_detector_node]: Collecting metrics: 5575 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/performance/detector.csv)
+[pick_logic-3] [WARN] [1788810350.945531270] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[pick_target_base_node-6] [WARN] [1788810350.958634657] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[vitis_ai_detector_node-2] [INFO] [1788810351.440272212] [vitis_ai_detector_node]: Collecting metrics: 5598 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/performance/detector.csv)
+[pick_logic-3] [WARN] [1788810351.962883988] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[pick_target_base_node-6] [WARN] [1788810351.971107784] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[vitis_ai_detector_node-2] [INFO] [1788810352.472547458] [vitis_ai_detector_node]: Collecting metrics: 5621 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/performance/detector.csv)
+[pick_logic-3] [WARN] [1788810352.985463582] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[pick_target_base_node-6] [WARN] [1788810353.004120112] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[vitis_ai_detector_node-2] [INFO] [1788810353.532658915] [vitis_ai_detector_node]: Collecting metrics: 5645 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/performance/detector.csv)
+[pick_logic-3] [WARN] [1788810353.985830208] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[pick_target_base_node-6] [WARN] [1788810354.033632881] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[vitis_ai_detector_node-2] [INFO] [1788810354.526642555] [vitis_ai_detector_node]: Collecting metrics: 5668 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/performance/detector.csv)
+[pick_logic-3] [WARN] [1788810355.001001669] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[pick_target_base_node-6] [WARN] [1788810355.041540802] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[vitis_ai_detector_node-2] [INFO] [1788810355.538661744] [vitis_ai_detector_node]: Collecting metrics: 5693 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/performance/detector.csv)
+[pick_logic-3] [WARN] [1788810356.034656078] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[pick_target_base_node-6] [WARN] [1788810356.049504984] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[vitis_ai_detector_node-2] [INFO] [1788810356.578889952] [vitis_ai_detector_node]: Collecting metrics: 5716 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/performance/detector.csv)
+[pick_logic-3] [WARN] [1788810357.051391335] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[pick_target_base_node-6] [WARN] [1788810357.066201791] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[vitis_ai_detector_node-2] [INFO] [1788810357.604448466] [vitis_ai_detector_node]: Collecting metrics: 5735 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/performance/detector.csv)
+[pick_logic-3] [WARN] [1788810358.064922769] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[pick_target_base_node-6] [WARN] [1788810358.082663004] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[vitis_ai_detector_node-2] [INFO] [1788810358.631969782] [vitis_ai_detector_node]: Collecting metrics: 5755 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/performance/detector.csv)
+[pick_logic-3] [WARN] [1788810359.073193006] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[pick_target_base_node-6] [WARN] [1788810359.095320953] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[vitis_ai_detector_node-2] [INFO] [1788810359.725926041] [vitis_ai_detector_node]: Collecting metrics: 5774 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/performance/detector.csv)
+[pick_logic-3] [WARN] [1788810360.113118138] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[pick_target_base_node-6] [WARN] [1788810360.131031856] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[vitis_ai_detector_node-2] [INFO] [1788810360.741879155] [vitis_ai_detector_node]: Collecting metrics: 5796 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/performance/detector.csv)
+[pick_logic-3] [WARN] [1788810361.123885547] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[pick_target_base_node-6] [WARN] [1788810361.135999858] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[vitis_ai_detector_node-2] [INFO] [1788810361.787972130] [vitis_ai_detector_node]: Collecting metrics: 5821 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/performance/detector.csv)
+[pick_logic-3] [WARN] [1788810362.143312988] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[pick_target_base_node-6] [WARN] [1788810362.156162802] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[vitis_ai_detector_node-2] [INFO] [1788810362.824622388] [vitis_ai_detector_node]: Collecting metrics: 5840 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/performance/detector.csv)
+[pick_logic-3] [WARN] [1788810363.152799715] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[pick_target_base_node-6] [WARN] [1788810363.175452281] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[vitis_ai_detector_node-2] [INFO] [1788810363.865297212] [vitis_ai_detector_node]: Collecting metrics: 5862 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/performance/detector.csv)
+[pick_logic-3] [WARN] [1788810364.163028055] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[pick_target_base_node-6] [WARN] [1788810364.174318502] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[vitis_ai_detector_node-2] [INFO] [1788810364.878439620] [vitis_ai_detector_node]: Collecting metrics: 5885 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/performance/detector.csv)
+[pick_logic-3] [WARN] [1788810365.185085910] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[pick_target_base_node-6] [WARN] [1788810365.197776261] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[vitis_ai_detector_node-2] [INFO] [1788810365.874140618] [vitis_ai_detector_node]: Collecting metrics: 5909 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/performance/detector.csv)
+[pick_logic-3] [WARN] [1788810366.209888781] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[pick_target_base_node-6] [WARN] [1788810366.222444669] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[vitis_ai_detector_node-2] [INFO] [1788810366.887352026] [vitis_ai_detector_node]: Collecting metrics: 5933 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/performance/detector.csv)
+[pick_logic-3] [WARN] [1788810367.255962855] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[pick_target_base_node-6] [WARN] [1788810367.269345537] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[vitis_ai_detector_node-2] [INFO] [1788810367.937142802] [vitis_ai_detector_node]: Collecting metrics: 5957 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/performance/detector.csv)
+[pick_logic-3] [WARN] [1788810368.257267466] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[pick_target_base_node-6] [WARN] [1788810368.278433747] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[vitis_ai_detector_node-2] [INFO] [1788810368.939383649] [vitis_ai_detector_node]: Collecting metrics: 5981 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/performance/detector.csv)
+[pick_logic-3] [WARN] [1788810369.282864890] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[pick_target_base_node-6] [WARN] [1788810369.301066442] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[vitis_ai_detector_node-2] [INFO] [1788810369.955585787] [vitis_ai_detector_node]: Collecting metrics: 6005 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/performance/detector.csv)
+[pick_logic-3] [WARN] [1788810370.296725919] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[pick_target_base_node-6] [WARN] [1788810370.311073608] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[vitis_ai_detector_node-2] [INFO] [1788810370.994909189] [vitis_ai_detector_node]: Collecting metrics: 6030 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/performance/detector.csv)
+[pick_logic-3] [WARN] [1788810371.311129188] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[pick_target_base_node-6] [WARN] [1788810371.330878445] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[vitis_ai_detector_node-2] [INFO] [1788810372.013070909] [vitis_ai_detector_node]: Collecting metrics: 6054 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/performance/detector.csv)
+[pick_logic-3] [WARN] [1788810372.321143253] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[pick_target_base_node-6] [WARN] [1788810372.336574329] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[vitis_ai_detector_node-2] [INFO] [1788810373.044031752] [vitis_ai_detector_node]: Collecting metrics: 6078 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/performance/detector.csv)
+[pick_logic-3] [WARN] [1788810373.344012022] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[pick_target_base_node-6] [WARN] [1788810373.356353947] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[vitis_ai_detector_node-2] [INFO] [1788810374.066726298] [vitis_ai_detector_node]: Collecting metrics: 6101 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/performance/detector.csv)
+[pick_logic-3] [WARN] [1788810374.359210163] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[pick_target_base_node-6] [WARN] [1788810374.369311081] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[vitis_ai_detector_node-2] [INFO] [1788810375.058986319] [vitis_ai_detector_node]: Collecting metrics: 6126 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/performance/detector.csv)
+[pick_logic-3] [WARN] [1788810375.382492118] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[pick_target_base_node-6] [WARN] [1788810375.395437563] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[vitis_ai_detector_node-2] [INFO] [1788810376.113346690] [vitis_ai_detector_node]: Collecting metrics: 6151 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/performance/detector.csv)
+[pick_logic-3] [WARN] [1788810376.426138672] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[pick_target_base_node-6] [WARN] [1788810376.442987382] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[vitis_ai_detector_node-2] [INFO] [1788810377.143801804] [vitis_ai_detector_node]: Collecting metrics: 6175 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/performance/detector.csv)
+[pick_logic-3] [WARN] [1788810377.457997960] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[pick_target_base_node-6] [WARN] [1788810377.469252577] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[vitis_ai_detector_node-2] [INFO] [1788810378.151550852] [vitis_ai_detector_node]: Collecting metrics: 6200 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/performance/detector.csv)
+[pick_logic-3] [WARN] [1788810378.501411339] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[pick_target_base_node-6] [WARN] [1788810378.512353901] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[vitis_ai_detector_node-2] [INFO] [1788810379.184098641] [vitis_ai_detector_node]: Collecting metrics: 6224 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/performance/detector.csv)
+[pick_logic-3] [WARN] [1788810379.530779036] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[pick_target_base_node-6] [WARN] [1788810379.549370354] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[vitis_ai_detector_node-2] [INFO] [1788810380.224010713] [vitis_ai_detector_node]: Collecting metrics: 6249 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/performance/detector.csv)
+[pick_logic-3] [WARN] [1788810380.555738109] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[pick_target_base_node-6] [WARN] [1788810380.577406039] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[vitis_ai_detector_node-2] [INFO] [1788810381.221855986] [vitis_ai_detector_node]: Collecting metrics: 6274 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/performance/detector.csv)
+[pick_logic-3] [WARN] [1788810381.589093641] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[pick_target_base_node-6] [WARN] [1788810381.609330987] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[vitis_ai_detector_node-2] [INFO] [1788810382.263454175] [vitis_ai_detector_node]: Collecting metrics: 6298 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/performance/detector.csv)
+[pick_logic-3] [WARN] [1788810382.601808551] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[pick_target_base_node-6] [WARN] [1788810382.614397800] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[vitis_ai_detector_node-2] [INFO] [1788810383.272389932] [vitis_ai_detector_node]: Collecting metrics: 6322 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/performance/detector.csv)
+[pick_logic-3] [WARN] [1788810383.643627404] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[pick_target_base_node-6] [WARN] [1788810383.657861420] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[vitis_ai_detector_node-2] [INFO] [1788810384.279762013] [vitis_ai_detector_node]: Collecting metrics: 6346 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/performance/detector.csv)
+[pick_logic-3] [WARN] [1788810384.665501606] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[pick_target_base_node-6] [WARN] [1788810384.681018414] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[vitis_ai_detector_node-2] [INFO] [1788810385.314837254] [vitis_ai_detector_node]: Collecting metrics: 6371 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/performance/detector.csv)
+[pick_logic-3] [WARN] [1788810385.664297795] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[pick_target_base_node-6] [WARN] [1788810385.717581449] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[vitis_ai_detector_node-2] [INFO] [1788810386.354375959] [vitis_ai_detector_node]: Collecting metrics: 6396 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/performance/detector.csv)
+[pick_logic-3] [WARN] [1788810386.686547853] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[pick_target_base_node-6] [WARN] [1788810386.726118100] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[vitis_ai_detector_node-2] [INFO] [1788810387.365846228] [vitis_ai_detector_node]: Collecting metrics: 6420 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/performance/detector.csv)
+[pick_logic-3] [WARN] [1788810387.725870254] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[pick_target_base_node-6] [WARN] [1788810387.743105690] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[vitis_ai_detector_node-2] [INFO] [1788810388.393086819] [vitis_ai_detector_node]: Collecting metrics: 6443 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/performance/detector.csv)
+[pick_logic-3] [WARN] [1788810388.728681939] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[pick_target_base_node-6] [WARN] [1788810388.738040685] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[vitis_ai_detector_node-2] [INFO] [1788810389.427838284] [vitis_ai_detector_node]: Collecting metrics: 6466 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/performance/detector.csv)
+[pick_logic-3] [WARN] [1788810389.749976182] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[pick_target_base_node-6] [WARN] [1788810389.763325873] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[vitis_ai_detector_node-2] [INFO] [1788810390.456908406] [vitis_ai_detector_node]: Collecting metrics: 6490 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/performance/detector.csv)
+[pick_logic-3] [WARN] [1788810390.762958436] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[pick_target_base_node-6] [WARN] [1788810390.778901980] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[vitis_ai_detector_node-2] [INFO] [1788810391.456526178] [vitis_ai_detector_node]: Collecting metrics: 6513 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/performance/detector.csv)
+[pick_logic-3] [WARN] [1788810391.770376067] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[pick_target_base_node-6] [WARN] [1788810391.788651061] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[vitis_ai_detector_node-2] [INFO] [1788810392.485081060] [vitis_ai_detector_node]: Collecting metrics: 6537 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/performance/detector.csv)
+[pick_logic-3] [WARN] [1788810392.802203694] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[pick_target_base_node-6] [WARN] [1788810392.822836017] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[vitis_ai_detector_node-2] [INFO] [1788810393.489590344] [vitis_ai_detector_node]: Collecting metrics: 6561 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/performance/detector.csv)
+[pick_logic-3] [WARN] [1788810393.804357228] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[pick_target_base_node-6] [WARN] [1788810393.822169484] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[vitis_ai_detector_node-2] [INFO] [1788810394.526531605] [vitis_ai_detector_node]: Collecting metrics: 6586 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/performance/detector.csv)
+[pick_logic-3] [WARN] [1788810394.824970169] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[pick_target_base_node-6] [WARN] [1788810394.836449889] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[vitis_ai_detector_node-2] [INFO] [1788810395.544050224] [vitis_ai_detector_node]: Collecting metrics: 6610 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/performance/detector.csv)
+[pick_logic-3] [WARN] [1788810395.829894909] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[pick_target_base_node-6] [WARN] [1788810395.845870054] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[vitis_ai_detector_node-2] [INFO] [1788810397.296788527] [vitis_ai_detector_node]: Saved 6630 metric rows to /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/performance/detector.csv
+[vitis_ai_detector_node-2] [INFO] [1788810397.300100392] [vitis_ai_detector_node]: Metrics window 300s complete: 6630 rows saved to /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/performance/detector.csv. You can stop the launch now (Ctrl-C).
+[vitis_ai_detector_node-2] [INFO] [1788810397.340800648] [vitis_ai_detector_node]: Metrics window done: 6630 rows saved. Idle (Ctrl-C to exit).
+[pick_logic-3] [WARN] [1788810397.343011994] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[pick_target_base_node-6] [WARN] [1788810397.358762056] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[vitis_ai_detector_node-2] [INFO] [1788810398.379881365] [vitis_ai_detector_node]: Metrics window done: 6630 rows saved. Idle (Ctrl-C to exit).
+[pick_target_3d_node-4] [INFO] [1788810398.657363840] [pick_target_3d_node]: Saved 6654 metric rows to /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/performance/target_3d.csv
+[pick_target_3d_node-4] [INFO] [1788810398.681184686] [pick_target_3d_node]: Metrics window 300s complete: 6654 rows -> /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/performance/target_3d.csv. You can stop now (Ctrl-C).
+[pick_target_base_node-6] [WARN] [1788810398.693986658] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[pick_logic-3] [INFO] [1788810398.844045539] [pick_logic_node]: Saved 6654 metric rows to /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/performance/pick_logic.csv
+[pick_logic-3] [INFO] [1788810398.852603841] [pick_logic_node]: Metrics window 300s complete: 6654 rows -> /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/performance/pick_logic.csv. You can stop now (Ctrl-C).
+[pick_logic-3] [WARN] [1788810398.888125271] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[pick_target_base_node-6] [INFO] [1788810399.105313546] [pick_target_base_node]: Saved 6654 metric rows to /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/performance/base.csv
+[pick_target_base_node-6] [INFO] [1788810399.114304165] [pick_target_base_node]: Metrics window 300s complete: 6654 rows -> /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/performance/base.csv. You can stop now (Ctrl-C).
+[vitis_ai_detector_node-2] [INFO] [1788810399.417731581] [vitis_ai_detector_node]: Metrics window done: 6630 rows saved. Idle (Ctrl-C to exit).
+[pick_target_base_node-6] [WARN] [1788810399.737939396] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[pick_logic-3] [WARN] [1788810399.899899904] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[vitis_ai_detector_node-2] [INFO] [1788810400.456388971] [vitis_ai_detector_node]: Metrics window done: 6630 rows saved. Idle (Ctrl-C to exit).
+[pick_target_base_node-6] [WARN] [1788810400.771777476] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[pick_logic-3] [WARN] [1788810400.932351261] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[vitis_ai_detector_node-2] [INFO] [1788810401.477400118] [vitis_ai_detector_node]: Metrics window done: 6630 rows saved. Idle (Ctrl-C to exit).
+[pick_target_base_node-6] [WARN] [1788810401.773932060] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[pick_logic-3] [WARN] [1788810401.965804415] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[vitis_ai_detector_node-2] [INFO] [1788810402.524320595] [vitis_ai_detector_node]: Metrics window done: 6630 rows saved. Idle (Ctrl-C to exit).
+[pick_target_base_node-6] [WARN] [1788810402.800780504] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[pick_logic-3] [WARN] [1788810402.997802264] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[vitis_ai_detector_node-2] [INFO] [1788810403.549834517] [vitis_ai_detector_node]: Metrics window done: 6630 rows saved. Idle (Ctrl-C to exit).
+[pick_target_base_node-6] [WARN] [1788810403.825466052] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[pick_logic-3] [WARN] [1788810404.036000156] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[vitis_ai_detector_node-2] [INFO] [1788810404.568274101] [vitis_ai_detector_node]: Metrics window done: 6630 rows saved. Idle (Ctrl-C to exit).
+[pick_target_base_node-6] [WARN] [1788810404.863043364] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[pick_logic-3] [WARN] [1788810405.054977270] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[vitis_ai_detector_node-2] [INFO] [1788810405.599161202] [vitis_ai_detector_node]: Metrics window done: 6630 rows saved. Idle (Ctrl-C to exit).
+[pick_target_base_node-6] [WARN] [1788810405.878774283] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[pick_logic-3] [WARN] [1788810406.058063319] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[vitis_ai_detector_node-2] [INFO] [1788810406.618837607] [vitis_ai_detector_node]: Metrics window done: 6630 rows saved. Idle (Ctrl-C to exit).
+[pick_target_base_node-6] [WARN] [1788810406.913662810] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[pick_logic-3] [WARN] [1788810407.073439482] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[vitis_ai_detector_node-2] [INFO] [1788810407.636498048] [vitis_ai_detector_node]: Metrics window done: 6630 rows saved. Idle (Ctrl-C to exit).
+[pick_target_base_node-6] [WARN] [1788810407.923575343] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[pick_logic-3] [WARN] [1788810408.069715569] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[vitis_ai_detector_node-2] [INFO] [1788810408.641982657] [vitis_ai_detector_node]: Metrics window done: 6630 rows saved. Idle (Ctrl-C to exit).
+[pick_target_base_node-6] [WARN] [1788810408.963340001] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[pick_logic-3] [WARN] [1788810409.073984957] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[vitis_ai_detector_node-2] [INFO] [1788810409.677568436] [vitis_ai_detector_node]: Metrics window done: 6630 rows saved. Idle (Ctrl-C to exit).
+[pick_target_base_node-6] [WARN] [1788810410.008973966] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[pick_logic-3] [WARN] [1788810410.076423636] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[vitis_ai_detector_node-2] [INFO] [1788810410.700930632] [vitis_ai_detector_node]: Metrics window done: 6630 rows saved. Idle (Ctrl-C to exit).
+[pick_target_base_node-6] [WARN] [1788810411.031722012] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[pick_logic-3] [WARN] [1788810411.092099994] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[vitis_ai_detector_node-2] [INFO] [1788810411.735389681] [vitis_ai_detector_node]: Metrics window done: 6630 rows saved. Idle (Ctrl-C to exit).
+[pick_target_base_node-6] [WARN] [1788810412.039912406] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[pick_logic-3] [WARN] [1788810412.106483151] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[vitis_ai_detector_node-2] [INFO] [1788810412.769997724] [vitis_ai_detector_node]: Metrics window done: 6630 rows saved. Idle (Ctrl-C to exit).
+[pick_target_base_node-6] [WARN] [1788810413.068182403] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[pick_logic-3] [WARN] [1788810413.141787715] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[vitis_ai_detector_node-2] [INFO] [1788810413.771890513] [vitis_ai_detector_node]: Metrics window done: 6630 rows saved. Idle (Ctrl-C to exit).
+[pick_target_base_node-6] [WARN] [1788810414.072096206] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[pick_logic-3] [WARN] [1788810414.147297614] [pick_logic_node]: Rejected detection array: reason=no_class_selected
+[WARNING] [launch]: user interrupted with ctrl-c (SIGINT)
+[INFO] [pick_target_base_node-6]: sending signal 'SIGINT' to process[pick_target_base_node-6]
+[INFO] [static_transform_publisher-5]: sending signal 'SIGINT' to process[static_transform_publisher-5]
+[INFO] [pick_target_3d_node-4]: sending signal 'SIGINT' to process[pick_target_3d_node-4]
+[INFO] [pick_logic-3]: sending signal 'SIGINT' to process[pick_logic-3]
+[INFO] [vitis_ai_detector_node-2]: sending signal 'SIGINT' to process[vitis_ai_detector_node-2]
+[INFO] [realsense2_camera_node-1]: sending signal 'SIGINT' to process[realsense2_camera_node-1]
+[pick_target_base_node-6] [INFO] [1788810414.267133153] [pick_target_base_node]: Saved yield summary (1 rows) to /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/yield/base.csv
+[pick_target_base_node-6] Failed to publish log message to rosout: publisher's context is invalid, at ./src/rcl/publisher.c:389
+[pick_target_3d_node-4] [INFO] [1788810414.299570172] [pick_target_3d_node]: Saved yield summary (1 rows) to /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/yield/target_3d.csv
+[pick_target_3d_node-4] Failed to publish log message to rosout: publisher's context is invalid, at ./src/rcl/publisher.c:389
+[pick_logic-3] [INFO] [1788810414.308611362] [pick_logic_node]: Saved yield summary (1 rows) to /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/yield/pick_logic.csv
+[pick_logic-3] Failed to publish log message to rosout: publisher's context is invalid, at ./src/rcl/publisher.c:389
+[vitis_ai_detector_node-2] [INFO] [1788810414.367183944] [vitis_ai_detector_node]: Saved detector yield summary to /home/ubuntu/ros2_ws/evidence/metrics/runs/tfcache_off_20260908/yield/detector.csv
+[vitis_ai_detector_node-2] Failed to publish log message to rosout: publisher's context is invalid, at ./src/rcl/publisher.c:389
+[static_transform_publisher-5] [INFO] [1788810414.399647493] [rclcpp]: signal_handler(SIGINT/SIGTERM)
+[realsense2_camera_node-1] [0m[INFO] [1788810414.362631718] [rclcpp]: signal_handler(SIGINT/SIGTERM)[0m
+[realsense2_camera_node-1] [0m[INFO] [1788810414.641002609] [camera.camera]: Stop Sensor: Depth Module[0m
+[realsense2_camera_node-1] [0m[INFO] [1788810414.644866173] [camera.camera]: Close Sensor. [0m
+[realsense2_camera_node-1] [0m[INFO] [1788810414.780177719] [camera.camera]: Close Sensor - Done. [0m
+[realsense2_camera_node-1] [0m[INFO] [1788810414.780316971] [camera.camera]: Stop Sensor: RGB Camera[0m
+[realsense2_camera_node-1] [0m[INFO] [1788810414.780358552] [camera.camera]: Close Sensor. [0m
+[INFO] [pick_logic-3]: process has finished cleanly [pid 68052]
+[realsense2_camera_node-1] [0m[INFO] [1788810415.239171627] [camera.camera]: Close Sensor - Done. [0m
+[INFO] [static_transform_publisher-5]: process has finished cleanly [pid 68056]
+[INFO] [pick_target_base_node-6]: process has finished cleanly [pid 68058]
+[INFO] [pick_target_3d_node-4]: process has finished cleanly [pid 68054]
+[INFO] [realsense2_camera_node-1]: process has finished cleanly [pid 68048]
+[INFO] [vitis_ai_detector_node-2]: process has finished cleanly [pid 68050]

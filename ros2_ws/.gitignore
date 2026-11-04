@@ -1,0 +1,27 @@
+# --- colcon build artifacts (generated) ---
+/build/
+/install/
+/log/
+
+# --- third-party dependency (clone separately, not vendored here) ---
+# realsense-ros is cloned into src/ and built locally; it has its own git repo.
+/src/realsense-ros/
+
+# --- Python ---
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+
+# --- editor / agent tooling state ---
+/.vscode-server/
+/.codex/
+/.agents/
+*.swp
+*~
+
+# credentials
+*token*.txt
+*.pat
+graphify-out/
+.claude/settings.local.json

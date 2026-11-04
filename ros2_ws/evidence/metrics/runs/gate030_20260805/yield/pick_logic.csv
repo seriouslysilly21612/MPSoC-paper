@@ -1,0 +1,2 @@
+node,frames_total,frames_accepted,target_valid_rate,frames_empty,reject_target_unstable
+pick_logic,6460,6458,0.9997,0,2

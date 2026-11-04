@@ -1,0 +1,133 @@
+Jul  8 21:08:13 kria kernel: [ 3486.957657] zocl-drm axi:zyxclmm_drm:  ffff30aa49382410 kds_add_context: Client pid(7086) add context Domain(0) CU(0x1) shared(true)
+Jul  8 21:08:14 kria kernel: [ 3488.030614] usb 2-1.1: Failed to query (GET_CUR) UVC control 1 on unit 3: -32 (exp. 1024).
+Jul  8 21:08:19 kria kernel: [ 3493.044306] usb 2-1.1: Failed to query (GET_CUR) UVC control 1 on unit 3: -32 (exp. 1024).
+Jul  8 21:08:22 kria kernel: [ 3496.056670] usb 2-1.1: Failed to query (GET_CUR) UVC control 1 on unit 3: -32 (exp. 1024).
+Jul  8 21:08:23 kria kernel: [ 3497.067638] usb 2-1.1: Failed to query (GET_CUR) UVC control 1 on unit 3: -32 (exp. 1024).
+Jul  8 21:08:26 kria kernel: [ 3498.887505] Unable to handle kernel paging request at virtual address 006c06af430dc514
+Jul  8 21:08:26 kria kernel: [ 3498.887519] Mem abort info:
+Jul  8 21:08:26 kria kernel: [ 3498.887521]   ESR = 0x0000000096000004
+Jul  8 21:08:26 kria kernel: [ 3498.887524]   EC = 0x25: DABT (current EL), IL = 32 bits
+Jul  8 21:08:26 kria kernel: [ 3498.887528]   SET = 0, FnV = 0
+Jul  8 21:08:26 kria kernel: [ 3498.887531]   EA = 0, S1PTW = 0
+Jul  8 21:08:26 kria kernel: [ 3498.887533]   FSC = 0x04: level 0 translation fault
+Jul  8 21:08:26 kria kernel: [ 3498.887536] Data abort info:
+Jul  8 21:08:26 kria kernel: [ 3498.887538]   ISV = 0, ISS = 0x00000004
+Jul  8 21:08:26 kria kernel: [ 3498.887540]   CM = 0, WnR = 0
+Jul  8 21:08:26 kria kernel: [ 3498.887543] [006c06af430dc514] address between user and kernel address ranges
+Jul  8 21:08:26 kria kernel: [ 3498.887549] Internal error: Oops: 0000000096000004 [#1] PREEMPT_RT SMP
+Jul  8 21:08:26 kria kernel: [ 3498.887555] Modules linked in: bridge xt_set ip_set xt_addrtype xt_connmark xt_conntrack xt_MASQUERADE xt_tcpudp xt_mark nft_compat nft_chain_nat nf_nat nf_conntrack nf_defrag_ipv6 nf_defrag_ipv4 nft_counter nf_tables nfnetlink al5d(C) al5e(C) ap1302 allegro(C) zocl i2c_mux_pca954x xlnx_vcu binfmt_misc hid_sensor_accel_3d hid_sensor_gyro_3d hid_sensor_trigger input_leds hid_multitouch hid_sensor_iio_common joydev ina260_adc tpm_tis_spi uio_pdrv_genirq sch_fq_codel dm_multipath scsi_dh_rdac scsi_dh_emc scsi_dh_alua usb5744 dmaproxy(C) efi_pstore ip_tables x_tables autofs4 raid10 raid456 async_raid6_recov async_memcpy async_pq async_xor async_tx raid1 raid0 multipath linear hid_sensor_custom da9121_regulator hid_sensor_hub rtc_zynqmp i2c_cadence spi_zynqmp_gqspi zynqmp_dpsub crct10dif_ce usbhid aes_neon_bs aes_neon_blk aes_ce_blk crypto_simd cryptd aes_ce_cipher
+Jul  8 21:08:26 kria kernel: [ 3498.887709] CPU: 1 PID: 7086 Comm: python3 Tainted: G         C        5.15.199-rt91-rt-kria #1
+Jul  8 21:08:26 kria kernel: [ 3498.887716] Hardware name: ZynqMP KV260 revB (DT)
+Jul  8 21:08:26 kria kernel: [ 3498.887719] pstate: 60400005 (nZCv daif +PAN -UAO -TCO -DIT -SSBS BTYPE=--)
+Jul  8 21:08:26 kria kernel: [ 3498.887727] pc : get_freepointer.isra.0+0x8/0x20
+Jul  8 21:08:26 kria kernel: [ 3498.887740] lr : ___slab_alloc+0x4e0/0x82c
+Jul  8 21:08:26 kria kernel: [ 3498.887746] sp : ffff80000eae3a40
+Jul  8 21:08:26 kria kernel: [ 3498.887749] x29: ffff80000eae3ad0 x28: fffffcc289aa5c80 x27: ffffba7c7abe8000
+Jul  8 21:08:26 kria kernel: [ 3498.887758] x26: 3e6c06af430dc494 x25: 0000000000000000 x24: 0000000000000dc0
+Jul  8 21:08:26 kria kernel: [ 3498.887766] x23: ffffba7c7a6eaa48 x22: ffffba7c7a6f0910 x21: ffff30aabf7688f0
+Jul  8 21:08:26 kria kernel: [ 3498.887775] x20: 0000000000000002 x19: ffff30aa40001300 x18: 0000000000000000
+Jul  8 21:08:26 kria kernel: [ 3498.887783] x17: 0000000000000000 x16: ffffba7c78d054d0 x15: 0000fffff57caf90
+Jul  8 21:08:26 kria kernel: [ 3498.887791] x14: 0000000000000000 x13: 0000000000000000 x12: 0000000000000000
+Jul  8 21:08:26 kria kernel: [ 3498.887799] x11: 0000000000000040 x10: ffff30aa44074a80 x9 : ffffba7c79d53bb0
+Jul  8 21:08:26 kria kernel: [ 3498.887808] x8 : ffff30a26a973000 x7 : 0000000000000000 x6 : 0000000000000000
+Jul  8 21:08:26 kria kernel: [ 3498.887816] x5 : ffff30a246964100 x4 : ffff30aabf768928 x3 : 3e6c06af430dc514
+Jul  8 21:08:26 kria kernel: [ 3498.887824] x2 : 3e6c06af430dc494 x1 : be4392eb7fe630d2 x0 : 0000000000000080
+Jul  8 21:08:26 kria kernel: [ 3498.887833] Call trace:
+Jul  8 21:08:26 kria kernel: [ 3498.887836]  get_freepointer.isra.0+0x8/0x20
+Jul  8 21:08:26 kria kernel: [ 3498.887842]  __kmalloc+0x114/0x370
+Jul  8 21:08:26 kria kernel: [ 3498.887847]  kds_alloc_command+0x80/0xc0 [zocl]
+Jul  8 21:08:26 kria kernel: [ 3498.887896]  zocl_command_ioctl+0x90/0x4cc [zocl]
+Jul  8 21:08:26 kria kernel: [ 3498.887938]  zocl_execbuf_ioctl+0x1c/0x30 [zocl]
+Jul  8 21:08:26 kria kernel: [ 3498.887978]  drm_ioctl_kernel+0xd4/0x124
+Jul  8 21:08:26 kria kernel: [ 3498.887988]  drm_ioctl+0x2b4/0x5f0
+Jul  8 21:08:26 kria kernel: [ 3498.887994]  __arm64_sys_ioctl+0xb0/0xf4
+Jul  8 21:08:26 kria kernel: [ 3498.888001]  invoke_syscall+0x78/0x100
+Jul  8 21:08:26 kria kernel: [ 3498.888009]  el0_svc_common.constprop.0+0x54/0x184
+Jul  8 21:08:26 kria kernel: [ 3498.888017]  do_el0_svc+0x30/0xac
+Jul  8 21:08:26 kria kernel: [ 3498.888023]  el0_svc+0x28/0xb0
+Jul  8 21:08:26 kria kernel: [ 3498.888032]  el0t_64_sync_handler+0xa4/0x12c
+Jul  8 21:08:26 kria kernel: [ 3498.888037]  el0t_64_sync+0x1a4/0x1a8
+Jul  8 21:08:26 kria kernel: [ 3498.888048] Code: d503201f d503201f 8b204043 d503233f (f8604840) 
+Jul  8 21:08:26 kria kernel: [ 3498.888054] ---[ end trace 0000000000000002 ]---
+Jul  8 21:08:29 kria kernel: [ 3503.086399] usb 2-1.1: Failed to query (GET_CUR) UVC control 1 on unit 3: -32 (exp. 1024).
+Jul  8 21:08:34 kria kernel: [ 3508.100157] usb 2-1.1: Failed to query (GET_CUR) UVC control 1 on unit 3: -32 (exp. 1024).
+Jul  8 20:44:55 kria kernel: [    0.000000] Booting Linux on physical CPU 0x0000000000 [0x410fd034]
+Jul  8 20:44:55 kria kernel: [    0.000000] Linux version 5.15.199-rt91-rt-kria (jaehyeon@jaehyeon-Raimlab) (aarch64-linux-gnu-gcc (Ubuntu 11.4.0-1ubuntu1~22.04.3) 11.4.0, GNU ld (GNU Binutils for Ubuntu) 2.38) #1 SMP PREEMPT_RT Tue Jul 7 22:56:39 KST 2026 (Ubuntu 5.15.0-1070.74-xilinx-zynqmp 5.15.199)
+Jul  8 20:44:55 kria kernel: [    0.000000] Machine model: ZynqMP KV260 revB
+Jul  8 20:44:55 kria kernel: [    0.000000] efi: UEFI not found.
+Jul  8 20:44:55 kria kernel: [    0.000000] earlycon: cdns0 at MMIO 0x00000000ff010000 (options '115200n8')
+Jul  8 20:44:55 kria kernel: [    0.000000] printk: bootconsole [cdns0] enabled
+Jul  8 20:44:55 kria kernel: [    0.000000] NUMA: No NUMA configuration found
+Jul  8 20:44:55 kria kernel: [    0.000000] NUMA: Faking a node at [mem 0x0000000000000000-0x000000087fffffff]
+Jul  8 20:44:55 kria kernel: [    0.000000] NUMA: NODE_DATA [mem 0x87f7c2300-0x87f7c6fff]
+Jul  8 20:44:55 kria kernel: [    0.000000] Zone ranges:
+Jul  8 20:44:55 kria kernel: [    0.000000]   DMA      [mem 0x0000000000000000-0x00000000ffffffff]
+Jul  8 20:44:55 kria kernel: [    0.000000]   DMA32    empty
+Jul  8 20:44:55 kria kernel: [    0.000000]   Normal   [mem 0x0000000100000000-0x000000087fffffff]
+--
+Jul 10 21:04:53 kria kernel: [30760.153003] [drm] bitstream d0af154e-769f-dc2d-8555-420ae4a7919b locked, ref=3
+Jul 10 21:04:53 kria kernel: [30760.153024] zocl-drm axi:zyxclmm_drm:  ffff2086840e9c10 kds_add_context: Client pid(35185) add context Domain(0) CU(0x1) shared(true)
+Jul 10 21:05:00 kria kernel: [30766.828216] usb 2-1.1: Failed to query (GET_CUR) UVC control 1 on unit 3: -32 (exp. 1024).
+Jul 10 21:05:04 kria kernel: [30770.840998] usb 2-1.1: Failed to query (GET_CUR) UVC control 1 on unit 3: -32 (exp. 1024).
+Jul 10 21:05:05 kria kernel: [30771.852052] usb 2-1.1: Failed to query (GET_CUR) UVC control 1 on unit 3: -32 (exp. 1024).
+Jul 10 21:05:26 kria kernel: [30791.885450] Unable to handle kernel paging request at virtual address 003ac012c80b6228
+Jul 10 21:05:26 kria kernel: [30791.885468] Mem abort info:
+Jul 10 21:05:26 kria kernel: [30791.885470]   ESR = 0x0000000096000004
+Jul 10 21:05:26 kria kernel: [30791.885472]   EC = 0x25: DABT (current EL), IL = 32 bits
+Jul 10 21:05:26 kria kernel: [30791.885477]   SET = 0, FnV = 0
+Jul 10 21:05:26 kria kernel: [30791.885480]   EA = 0, S1PTW = 0
+Jul 10 21:05:26 kria kernel: [30791.885483]   FSC = 0x04: level 0 translation fault
+Jul 10 21:05:26 kria kernel: [30791.885485] Data abort info:
+Jul 10 21:05:26 kria kernel: [30791.885487]   ISV = 0, ISS = 0x00000004
+Jul 10 21:05:26 kria kernel: [30791.885490]   CM = 0, WnR = 0
+Jul 10 21:05:26 kria kernel: [30791.885492] [003ac012c80b6228] address between user and kernel address ranges
+Jul 10 21:05:26 kria kernel: [30791.885500] Internal error: Oops: 0000000096000004 [#1] PREEMPT_RT SMP
+Jul 10 21:05:26 kria kernel: [30791.885507] Modules linked in: tls xt_conntrack xt_MASQUERADE bridge xt_set ip_set nft_counter nft_chain_nat nf_nat nf_conntrack nf_defrag_ipv6 nf_defrag_ipv4 xt_addrtype nft_compat nf_tables nfnetlink al5e(C) al5d(C) ap1302 allegro(C) zocl xlnx_vcu i2c_mux_pca954x binfmt_misc hid_sensor_gyro_3d hid_sensor_accel_3d hid_sensor_trigger hid_sensor_iio_common ina260_adc tpm_tis_spi uio_pdrv_genirq sch_fq_codel dm_multipath scsi_dh_rdac scsi_dh_emc scsi_dh_alua usb5744 dmaproxy(C) efi_pstore ip_tables x_tables autofs4 raid10 raid456 async_raid6_recov async_memcpy async_pq async_xor async_tx raid1 raid0 multipath linear hid_sensor_custom hid_sensor_hub da9121_regulator usbhid crct10dif_ce rtc_zynqmp spi_zynqmp_gqspi i2c_cadence aes_neon_bs aes_neon_blk aes_ce_blk crypto_simd cryptd aes_ce_cipher
+Jul 10 21:05:26 kria kernel: [30791.885654] CPU: 0 PID: 35185 Comm: python3 Tainted: G         C        5.15.199-rt91-rt-kria #1
+Jul 10 21:05:26 kria kernel: [30791.885661] Hardware name: ZynqMP KV260 revB (DT)
+Jul 10 21:05:26 kria kernel: [30791.885665] pstate: 60400005 (nZCv daif +PAN -UAO -TCO -DIT -SSBS BTYPE=--)
+Jul 10 21:05:26 kria kernel: [30791.885673] pc : get_freepointer.isra.0+0x8/0x20
+Jul 10 21:05:26 kria kernel: [30791.885688] lr : ___slab_alloc+0x4e0/0x82c
+Jul 10 21:05:26 kria kernel: [30791.885694] sp : ffff80000e8db9a0
+Jul 10 21:05:26 kria kernel: [30791.885696] x29: ffff80000e8dba30 x28: fffffc81fa552d00 x27: ffffb2491abe8000
+Jul 10 21:05:26 kria kernel: [30791.885706] x26: 5b3ac012c80b61a8 x25: 0000000000000000 x24: 0000000000000dc0
+Jul 10 21:05:26 kria kernel: [30791.885714] x23: ffffb2491a6eaa48 x22: ffffb2491a6f0910 x21: ffff2086ff7488f0
+Jul 10 21:05:26 kria kernel: [30791.885723] x20: 0000000000000002 x19: ffff208680001300 x18: 0000000000000000
+Jul 10 21:05:26 kria kernel: [30791.885731] x17: 0000000000000000 x16: ffffb24918d054d0 x15: 0000ffffec4b7440
+Jul 10 21:05:26 kria kernel: [30791.885739] x14: 0000000000000000 x13: 0000000000000000 x12: 0000000000000000
+Jul 10 21:05:26 kria kernel: [30791.885748] x11: 0000000000000040 x10: ffff20868f329880 x9 : ffffb24919d53bb0
+Jul 10 21:05:26 kria kernel: [30791.885756] x8 : ffff207e954b4e00 x7 : 0000000000000000 x6 : 0000000000000000
+Jul 10 21:05:26 kria kernel: [30791.885764] x5 : ffff208686c18000 x4 : ffff2086ff748928 x3 : 5b3ac012c80b6228
+Jul 10 21:05:26 kria kernel: [30791.885773] x2 : 5b3ac012c80b61a8 x1 : db779786ff628aee x0 : 0000000000000080
+Jul 10 21:05:26 kria kernel: [30791.885781] Call trace:
+Jul 10 21:05:26 kria kernel: [30791.885786]  get_freepointer.isra.0+0x8/0x20
+Jul 10 21:05:26 kria kernel: [30791.885791]  __kmalloc+0x114/0x370
+Jul 10 21:05:26 kria kernel: [30791.885797]  kds_alloc_command+0x80/0xc0 [zocl]
+Jul 10 21:05:26 kria kernel: [30791.885852]  zocl_command_ioctl+0x90/0x4cc [zocl]
+Jul 10 21:05:26 kria kernel: [30791.885893]  zocl_execbuf_ioctl+0x1c/0x30 [zocl]
+Jul 10 21:05:26 kria kernel: [30791.885935]  drm_ioctl_kernel+0xd4/0x124
+Jul 10 21:05:26 kria kernel: [30791.885946]  drm_ioctl+0x2b4/0x5f0
+Jul 10 21:05:26 kria kernel: [30791.885952]  __arm64_sys_ioctl+0xb0/0xf4
+Jul 10 21:05:26 kria kernel: [30791.885960]  invoke_syscall+0x78/0x100
+Jul 10 21:05:26 kria kernel: [30791.885970]  el0_svc_common.constprop.0+0x54/0x184
+Jul 10 21:05:26 kria kernel: [30791.885977]  do_el0_svc+0x30/0xac
+Jul 10 21:05:26 kria kernel: [30791.885983]  el0_svc+0x28/0xb0
+Jul 10 21:05:26 kria kernel: [30791.885993]  el0t_64_sync_handler+0xa4/0x12c
+Jul 10 21:05:26 kria kernel: [30791.885998]  el0t_64_sync+0x1a4/0x1a8
+Jul 10 21:05:26 kria kernel: [30791.886009] Code: d503201f d503201f 8b204043 d503233f (f8604840) 
+Jul 10 21:05:26 kria kernel: [30791.886016] ---[ end trace 0000000000000002 ]---
+Jul 10 21:22:49 kria kernel: [    0.000000] Booting Linux on physical CPU 0x0000000000 [0x410fd034]
+Jul 10 21:22:49 kria kernel: [    0.000000] Linux version 5.15.199-rt91-rt-kria (jaehyeon@jaehyeon-Raimlab) (aarch64-linux-gnu-gcc (Ubuntu 11.4.0-1ubuntu1~22.04.3) 11.4.0, GNU ld (GNU Binutils for Ubuntu) 2.38) #1 SMP PREEMPT_RT Tue Jul 7 22:56:39 KST 2026 (Ubuntu 5.15.0-1070.74-xilinx-zynqmp 5.15.199)
+Jul 10 21:22:49 kria kernel: [    0.000000] Machine model: ZynqMP KV260 revB
+Jul 10 21:22:49 kria kernel: [    0.000000] efi: UEFI not found.
+Jul 10 21:22:49 kria kernel: [    0.000000] earlycon: cdns0 at MMIO 0x00000000ff010000 (options '115200n8')
+Jul 10 21:22:49 kria kernel: [    0.000000] printk: bootconsole [cdns0] enabled
+Jul 10 21:22:49 kria kernel: [    0.000000] NUMA: No NUMA configuration found
+Jul 10 21:22:49 kria kernel: [    0.000000] NUMA: Faking a node at [mem 0x0000000000000000-0x000000087fffffff]
+Jul 10 21:22:49 kria kernel: [    0.000000] NUMA: NODE_DATA [mem 0x87f7c2300-0x87f7c6fff]
+Jul 10 21:22:49 kria kernel: [    0.000000] Zone ranges:
+Jul 10 21:22:49 kria kernel: [    0.000000]   DMA      [mem 0x0000000000000000-0x00000000ffffffff]
+Jul 10 21:22:49 kria kernel: [    0.000000]   DMA32    empty
+Jul 10 21:22:49 kria kernel: [    0.000000]   Normal   [mem 0x0000000100000000-0x000000087fffffff]
+Jul 10 21:22:49 kria kernel: [    0.000000]   Device   empty
+Jul 10 21:22:49 kria kernel: [    0.000000] Movable zone start for each node

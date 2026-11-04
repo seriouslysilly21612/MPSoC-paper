@@ -1,0 +1,758 @@
+Jul 15 01:21:46 kernel: kauditd_printk_skb: 56 callbacks suppressed
+Jul 15 01:21:46 kernel: audit: type=1400 audit(1784046106.249:68): apparmor="DENIED" operation="capable" profile="/usr/sbin/cupsd" pid=1322 comm="cupsd" capability=12  capname="net_admin"
+Jul 15 01:21:47 kernel: macb ff0e0000.ethernet eth0: Link is Up - 1Gbps/Full - flow control off
+Jul 15 01:21:47 kernel: IPv6: ADDRCONF(NETDEV_CHANGE): eth0: link becomes ready
+Jul 15 01:21:48 kernel: audit: type=1400 audit(1784046108.153:69): apparmor="DENIED" operation="capable" profile="/usr/sbin/cups-browsed" pid=1428 comm="cups-browsed" capability=23  capname="sys_nice"
+Jul 15 01:21:50 kernel: overlayfs: idmapped layers are currently not supported
+Jul 15 01:21:57 kernel: audit: type=1400 audit(1784046117.383:70): apparmor="STATUS" operation="profile_load" profile="unconfined" name="docker-default" pid=1676 comm="apparmor_parser"
+Jul 15 01:21:58 kernel: bridge: filtering via arp/ip/ip6tables is no longer available by default. Update your scripts to load br_netfilter if you need this.
+Jul 15 01:22:41 kernel: set_capacity_and_notify: 12 callbacks suppressed
+Jul 15 01:22:41 kernel: loop22: detected capacity change from 0 to 8
+Jul 15 01:26:30 kernel: usb 2-1.1: Failed to query (GET_CUR) UVC control 1 on unit 3: -32 (exp. 1024).
+Jul 15 01:26:30 kernel: usb 2-1.1: Failed to query (GET_CUR) UVC control 1 on unit 3: -32 (exp. 1024).
+Jul 15 01:26:31 kernel: usb 2-1.1: USB disconnect, device number 3
+Jul 15 01:26:31 kernel: usb 2-1.1: new SuperSpeed USB device number 4 using xhci-hcd
+Jul 15 01:26:31 kernel: usb 2-1.1: New USB device found, idVendor=8086, idProduct=0b3a, bcdDevice=51.10
+Jul 15 01:26:32 kernel: usb 2-1.1: New USB device strings: Mfr=1, Product=2, SerialNumber=3
+Jul 15 01:26:32 kernel: usb 2-1.1: Product: Intel(R) RealSense(TM) Depth Camera 435i
+Jul 15 01:26:32 kernel: usb 2-1.1: Manufacturer: Intel(R) RealSense(TM) Depth Camera 435i
+Jul 15 01:26:32 kernel: usb 2-1.1: SerialNumber: 134523060150
+Jul 15 01:26:32 kernel: uvcvideo 2-1.1:1.1: Unknown video format 00000050-0000-0010-8000-00aa00389b71
+Jul 15 01:26:32 kernel: usb 2-1.1: Found UVC 1.50 device Intel(R) RealSense(TM) Depth Camera 435i (8086:0b3a)
+Jul 15 01:26:32 kernel: input: Intel(R) RealSense(TM) Depth Ca as /devices/platform/axi/ff9d0000.usb/fe200000.usb/xhci-hcd.0.auto/usb2/2-1/2-1.1/2-1.1:1.0/input/input2
+Jul 15 01:26:32 kernel: uvcvideo 2-1.1:1.4: Unknown video format 36315752-1a66-a242-9065-d01814a8ef8a
+Jul 15 01:26:32 kernel: usb 2-1.1: Found UVC 1.50 device Intel(R) RealSense(TM) Depth Camera 435i (8086:0b3a)
+Jul 15 01:26:33 kernel: hid-sensor-hub 0003:8086:0B3A.0002: No report with id 0xffffffff found
+Jul 15 01:26:36 kernel: usb 2-1.1: Failed to query (GET_CUR) UVC control 1 on unit 3: -32 (exp. 1024).
+Jul 15 01:26:36 kernel: usb 2-1.1: Failed to query (GET_CUR) UVC control 1 on unit 3: -32 (exp. 1024).
+Jul 15 01:26:36 kernel: usb 2-1.1: Failed to query (GET_CUR) UVC control 1 on unit 3: -32 (exp. 1024).
+Jul 15 01:26:36 kernel: usb 2-1.1: Failed to query (GET_CUR) UVC control 1 on unit 3: -32 (exp. 1024).
+Jul 15 01:26:36 kernel: usb 2-1.1: Failed to query (GET_CUR) UVC control 1 on unit 3: -32 (exp. 1024).
+Jul 15 01:26:36 kernel: usb 2-1.1: Failed to query (GET_CUR) UVC control 1 on unit 3: -32 (exp. 1024).
+Jul 15 01:26:36 kernel: usb 2-1.1: Failed to query (GET_CUR) UVC control 1 on unit 3: -32 (exp. 1024).
+Jul 15 01:26:37 kernel: usb 2-1.1: Failed to query (GET_CUR) UVC control 1 on unit 3: -32 (exp. 1024).
+Jul 15 01:26:37 kernel: usb 2-1.1: Failed to query (GET_CUR) UVC control 1 on unit 3: -32 (exp. 1024).
+Jul 15 01:26:37 kernel: usb 2-1.1: Failed to query (GET_CUR) UVC control 1 on unit 3: -32 (exp. 1024).
+Jul 15 01:26:37 kernel: usb 2-1.1: Failed to query (GET_CUR) UVC control 1 on unit 3: -32 (exp. 1024).
+Jul 15 01:26:38 kernel: usb 2-1.1: Failed to query (GET_CUR) UVC control 1 on unit 3: -32 (exp. 1024).
+Jul 15 01:26:40 kernel: usb 2-1.1: Failed to query (GET_CUR) UVC control 1 on unit 3: -32 (exp. 1024).
+Jul 15 01:26:44 kernel: usb 2-1.1: Failed to query (GET_CUR) UVC control 1 on unit 3: -32 (exp. 1024).
+Jul 15 01:26:44 kernel: zocl-drm axi:zyxclmm_drm: zocl_create_client: created KDS client for pid(3892), ret: 0
+Jul 15 01:26:44 kernel: zocl-drm axi:zyxclmm_drm: zocl_destroy_client: client exits pid(3892)
+Jul 15 01:26:44 kernel: zocl-drm axi:zyxclmm_drm: zocl_create_client: created KDS client for pid(3892), ret: 0
+Jul 15 01:26:44 kernel: zocl-drm axi:zyxclmm_drm: zocl_destroy_client: client exits pid(3892)
+Jul 15 01:26:44 kernel: zocl-drm axi:zyxclmm_drm: zocl_create_client: created KDS client for pid(3892), ret: 0
+Jul 15 01:26:44 kernel: zocl-drm axi:zyxclmm_drm: zocl_destroy_client: client exits pid(3892)
+Jul 15 01:26:44 kernel: zocl-drm axi:zyxclmm_drm: zocl_create_client: created KDS client for pid(3892), ret: 0
+Jul 15 01:26:44 kernel: zocl-drm axi:zyxclmm_drm: zocl_destroy_client: client exits pid(3892)
+Jul 15 01:26:44 kernel: zocl-drm axi:zyxclmm_drm: zocl_create_client: created KDS client for pid(3892), ret: 0
+Jul 15 01:26:44 kernel: zocl-drm axi:zyxclmm_drm: zocl_destroy_client: client exits pid(3892)
+Jul 15 01:26:44 kernel: zocl-drm axi:zyxclmm_drm: zocl_create_client: created KDS client for pid(3892), ret: 0
+Jul 15 01:26:44 kernel: zocl-drm axi:zyxclmm_drm: zocl_destroy_client: client exits pid(3892)
+Jul 15 01:26:44 kernel: zocl-drm axi:zyxclmm_drm: zocl_create_client: created KDS client for pid(3892), ret: 0
+Jul 15 01:26:44 kernel: [drm] skip kind 29(AIE_RESOURCES) return code: -22
+Jul 15 01:26:44 kernel: [drm] found kind 8(IP_LAYOUT)
+Jul 15 01:26:44 kernel: [drm] skip kind 9(DEBUG_IP_LAYOUT) return code: -22
+Jul 15 01:26:44 kernel: [drm] skip kind 25(AIE_METADATA) return code: -22
+Jul 15 01:26:44 kernel: [drm] found kind 7(CONNECTIVITY)
+Jul 15 01:26:44 kernel: [drm] found kind 6(MEM_TOPOLOGY)
+Jul 15 01:26:44 kernel: [drm] Memory 0 is not reserved in device tree. Will allocate memory from CMA
+Jul 15 01:26:44 kernel: [drm] Memory 1 is not reserved in device tree. Will allocate memory from CMA
+Jul 15 01:26:44 kernel: [drm] Memory 2 is not reserved in device tree. Will allocate memory from CMA
+Jul 15 01:26:44 kernel: [drm] Memory 3 is not reserved in device tree. Will allocate memory from CMA
+Jul 15 01:26:44 kernel: cu_drv CU.6.auto: cu_probe: CU[0] created
+Jul 15 01:26:44 kernel: cu_drv CU.7.auto: cu_probe: CU[1] created
+Jul 15 01:26:44 kernel: cu_drv CU.6.auto:  ffff00ddcc9b1010 xrt_cu_intr_thread: CU[0] start
+Jul 15 01:26:44 kernel: [drm] zocl_xclbin_read_axlf d0af154e-769f-dc2d-8555-420ae4a7919b ret: 0
+Jul 15 01:26:44 kernel: cu_drv CU.7.auto:  ffff00ddcd429810 xrt_cu_intr_thread: CU[1] start
+Jul 15 01:26:44 kernel: [drm] bitstream d0af154e-769f-dc2d-8555-420ae4a7919b locked, ref=1
+Jul 15 01:26:44 kernel: zocl-drm axi:zyxclmm_drm:  ffff00ddc81de810 kds_add_context: Client pid(3892) add context Domain(0) CU(0xffffffff) shared(true)
+Jul 15 01:26:44 kernel: zocl-drm axi:zyxclmm_drm:  ffff00ddc81de810 kds_del_context: Client pid(3892) del context Domain(0) CU(0xffffffff)
+Jul 15 01:26:44 kernel: [drm] bitstream d0af154e-769f-dc2d-8555-420ae4a7919b unlocked, ref=0
+Jul 15 01:26:44 kernel: zocl-drm axi:zyxclmm_drm: zocl_create_client: created KDS client for pid(3892), ret: 0
+Jul 15 01:26:44 kernel: zocl-drm axi:zyxclmm_drm: zocl_destroy_client: client exits pid(3892)
+Jul 15 01:26:44 kernel: zocl-drm axi:zyxclmm_drm: zocl_create_client: created KDS client for pid(3892), ret: 0
+Jul 15 01:26:44 kernel: [drm] bitstream d0af154e-769f-dc2d-8555-420ae4a7919b locked, ref=1
+Jul 15 01:26:44 kernel: zocl-drm axi:zyxclmm_drm:  ffff00ddc81de810 kds_add_context: Client pid(3892) add context Domain(0) CU(0x1) shared(true)
+Jul 15 01:26:44 kernel: zocl-drm axi:zyxclmm_drm: zocl_create_client: created KDS client for pid(3892), ret: 0
+Jul 15 01:26:44 kernel: zocl-drm axi:zyxclmm_drm: zocl_destroy_client: client exits pid(3892)
+Jul 15 01:26:44 kernel: zocl-drm axi:zyxclmm_drm: zocl_create_client: created KDS client for pid(3892), ret: 0
+Jul 15 01:26:44 kernel: [drm] bitstream d0af154e-769f-dc2d-8555-420ae4a7919b locked, ref=2
+Jul 15 01:26:44 kernel: zocl-drm axi:zyxclmm_drm:  ffff00ddc81de810 kds_add_context: Client pid(3892) add context Domain(0) CU(0x0) shared(true)
+Jul 15 01:26:44 kernel: zocl-drm axi:zyxclmm_drm: zocl_create_client: created KDS client for pid(3892), ret: 0
+Jul 15 01:26:44 kernel: zocl-drm axi:zyxclmm_drm: zocl_destroy_client: client exits pid(3892)
+Jul 15 01:26:44 kernel: zocl-drm axi:zyxclmm_drm: zocl_create_client: created KDS client for pid(3892), ret: 0
+Jul 15 01:26:44 kernel: [drm] bitstream d0af154e-769f-dc2d-8555-420ae4a7919b locked, ref=3
+Jul 15 01:26:44 kernel: zocl-drm axi:zyxclmm_drm:  ffff00ddc81de810 kds_add_context: Client pid(3892) add context Domain(0) CU(0x1) shared(true)
+Jul 15 01:26:45 kernel: [drm] ERT_EXEC_WRITE is obsoleted, use ERT_START_KEY_VAL
+Jul 15 01:26:47 kernel: usb 2-1.1: Failed to query (GET_CUR) UVC control 1 on unit 3: -32 (exp. 1024).
+Jul 15 01:27:00 kernel: usb 2-1.1: Failed to query (GET_CUR) UVC control 1 on unit 3: -32 (exp. 1024).
+Jul 15 01:27:01 kernel: usb 2-1.1: Failed to query (GET_CUR) UVC control 1 on unit 3: -32 (exp. 1024).
+Jul 15 01:27:02 kernel: usb 2-1.1: Failed to query (GET_CUR) UVC control 1 on unit 3: -32 (exp. 1024).
+Jul 15 01:27:03 kernel: usb 2-1.1: Failed to query (GET_CUR) UVC control 1 on unit 3: -32 (exp. 1024).
+Jul 15 01:27:16 kernel: usb 2-1.1: Failed to query (GET_CUR) UVC control 1 on unit 3: -32 (exp. 1024).
+Jul 15 01:27:19 kernel: usb 2-1.1: Failed to query (GET_CUR) UVC control 1 on unit 3: -32 (exp. 1024).
+Jul 15 01:27:20 kernel: usb 2-1.1: Failed to query (GET_CUR) UVC control 1 on unit 3: -32 (exp. 1024).
+Jul 15 01:27:21 kernel: usb 2-1.1: Failed to query (GET_CUR) UVC control 1 on unit 3: -32 (exp. 1024).
+Jul 15 01:27:22 kernel: usb 2-1.1: Failed to query (GET_CUR) UVC control 1 on unit 3: -32 (exp. 1024).
+Jul 15 01:27:30 kernel: usb 2-1.1: Failed to query (GET_CUR) UVC control 1 on unit 3: -32 (exp. 1024).
+Jul 15 01:27:31 kernel: zocl-drm axi:zyxclmm_drm:  ffff00ddc81de810 kds_del_context: Client pid(3892) del context Domain(0) CU(0x1)
+Jul 15 01:27:31 kernel: [drm] bitstream d0af154e-769f-dc2d-8555-420ae4a7919b unlocked, ref=2
+Jul 15 01:27:31 kernel: zocl-drm axi:zyxclmm_drm: zocl_destroy_client: client exits pid(3892)
+Jul 15 01:27:31 kernel: zocl-drm axi:zyxclmm_drm:  ffff00ddc81de810 kds_del_context: Client pid(3892) del context Domain(0) CU(0x1)
+Jul 15 01:27:31 kernel: [drm] bitstream d0af154e-769f-dc2d-8555-420ae4a7919b unlocked, ref=1
+Jul 15 01:27:31 kernel: zocl-drm axi:zyxclmm_drm: zocl_destroy_client: client exits pid(3892)
+Jul 15 01:27:31 kernel: zocl-drm axi:zyxclmm_drm:  ffff00ddc81de810 kds_del_context: Client pid(3892) del context Domain(0) CU(0x0)
+Jul 15 01:27:31 kernel: [drm] bitstream d0af154e-769f-dc2d-8555-420ae4a7919b unlocked, ref=0
+Jul 15 01:27:31 kernel: zocl-drm axi:zyxclmm_drm: zocl_destroy_client: client exits pid(3892)
+Jul 15 01:27:31 kernel: zocl-drm axi:zyxclmm_drm: zocl_destroy_client: client exits pid(3892)
+Jul 15 01:27:31 kernel: usb 2-1.1: Failed to query (GET_CUR) UVC control 1 on unit 3: -32 (exp. 1024).
+Jul 15 01:27:32 kernel: usb 2-1.1: Failed to query (GET_CUR) UVC control 1 on unit 3: -32 (exp. 1024).
+Jul 15 01:27:33 kernel: usb 2-1.1: Failed to query (GET_CUR) UVC control 1 on unit 3: -32 (exp. 1024).
+Jul 15 01:27:37 kernel: zocl-drm axi:zyxclmm_drm: zocl_create_client: created KDS client for pid(4024), ret: 0
+Jul 15 01:27:37 kernel: zocl-drm axi:zyxclmm_drm: zocl_destroy_client: client exits pid(4024)
+Jul 15 01:27:37 kernel: zocl-drm axi:zyxclmm_drm: zocl_create_client: created KDS client for pid(4024), ret: 0
+Jul 15 01:27:37 kernel: zocl-drm axi:zyxclmm_drm: zocl_destroy_client: client exits pid(4024)
+Jul 15 01:27:37 kernel: zocl-drm axi:zyxclmm_drm: zocl_create_client: created KDS client for pid(4024), ret: 0
+Jul 15 01:27:37 kernel: zocl-drm axi:zyxclmm_drm: zocl_destroy_client: client exits pid(4024)
+Jul 15 01:27:37 kernel: zocl-drm axi:zyxclmm_drm: zocl_create_client: created KDS client for pid(4024), ret: 0
+Jul 15 01:27:37 kernel: zocl-drm axi:zyxclmm_drm: zocl_destroy_client: client exits pid(4024)
+Jul 15 01:27:37 kernel: zocl-drm axi:zyxclmm_drm: zocl_create_client: created KDS client for pid(4024), ret: 0
+Jul 15 01:27:37 kernel: zocl-drm axi:zyxclmm_drm: zocl_destroy_client: client exits pid(4024)
+Jul 15 01:27:37 kernel: zocl-drm axi:zyxclmm_drm: zocl_create_client: created KDS client for pid(4024), ret: 0
+Jul 15 01:27:37 kernel: zocl-drm axi:zyxclmm_drm: zocl_destroy_client: client exits pid(4024)
+Jul 15 01:27:37 kernel: zocl-drm axi:zyxclmm_drm: zocl_create_client: created KDS client for pid(4024), ret: 0
+Jul 15 01:27:37 kernel: [drm] skip kind 29(AIE_RESOURCES) return code: -22
+Jul 15 01:27:37 kernel: [drm] zocl_xclbin_read_axlf The XCLBIN already loaded
+Jul 15 01:27:37 kernel: [drm] zocl_xclbin_read_axlf d0af154e-769f-dc2d-8555-420ae4a7919b ret: 0
+Jul 15 01:27:37 kernel: [drm] bitstream d0af154e-769f-dc2d-8555-420ae4a7919b locked, ref=1
+Jul 15 01:27:37 kernel: zocl-drm axi:zyxclmm_drm:  ffff00ddc81de810 kds_add_context: Client pid(4024) add context Domain(0) CU(0xffffffff) shared(true)
+Jul 15 01:27:37 kernel: zocl-drm axi:zyxclmm_drm:  ffff00ddc81de810 kds_del_context: Client pid(4024) del context Domain(0) CU(0xffffffff)
+Jul 15 01:27:37 kernel: [drm] bitstream d0af154e-769f-dc2d-8555-420ae4a7919b unlocked, ref=0
+Jul 15 01:27:37 kernel: zocl-drm axi:zyxclmm_drm: zocl_create_client: created KDS client for pid(4024), ret: 0
+Jul 15 01:27:37 kernel: zocl-drm axi:zyxclmm_drm: zocl_destroy_client: client exits pid(4024)
+Jul 15 01:27:37 kernel: zocl-drm axi:zyxclmm_drm: zocl_create_client: created KDS client for pid(4024), ret: 0
+Jul 15 01:27:37 kernel: [drm] bitstream d0af154e-769f-dc2d-8555-420ae4a7919b locked, ref=1
+Jul 15 01:27:37 kernel: zocl-drm axi:zyxclmm_drm:  ffff00ddc81de810 kds_add_context: Client pid(4024) add context Domain(0) CU(0x1) shared(true)
+Jul 15 01:27:37 kernel: zocl-drm axi:zyxclmm_drm: zocl_create_client: created KDS client for pid(4024), ret: 0
+Jul 15 01:27:37 kernel: zocl-drm axi:zyxclmm_drm: zocl_destroy_client: client exits pid(4024)
+Jul 15 01:27:37 kernel: zocl-drm axi:zyxclmm_drm: zocl_create_client: created KDS client for pid(4024), ret: 0
+Jul 15 01:27:37 kernel: [drm] bitstream d0af154e-769f-dc2d-8555-420ae4a7919b locked, ref=2
+Jul 15 01:27:37 kernel: zocl-drm axi:zyxclmm_drm:  ffff00ddc81de810 kds_add_context: Client pid(4024) add context Domain(0) CU(0x0) shared(true)
+Jul 15 01:27:37 kernel: zocl-drm axi:zyxclmm_drm: zocl_create_client: created KDS client for pid(4024), ret: 0
+Jul 15 01:27:37 kernel: zocl-drm axi:zyxclmm_drm: zocl_destroy_client: client exits pid(4024)
+Jul 15 01:27:37 kernel: zocl-drm axi:zyxclmm_drm: zocl_create_client: created KDS client for pid(4024), ret: 0
+Jul 15 01:27:37 kernel: [drm] bitstream d0af154e-769f-dc2d-8555-420ae4a7919b locked, ref=3
+Jul 15 01:27:37 kernel: zocl-drm axi:zyxclmm_drm:  ffff00ddc81de810 kds_add_context: Client pid(4024) add context Domain(0) CU(0x1) shared(true)
+Jul 15 01:27:37 kernel: zocl-drm axi:zyxclmm_drm:  ffff00ddc81de810 _kds_fini_client: Client pid(4024) has 1 opening context for 0 slot
+Jul 15 01:27:37 kernel: zocl-drm axi:zyxclmm_drm:  ffff00ddc81de810 kds_del_context: Client pid(4024) del context Domain(0) CU(0x1)
+Jul 15 01:27:37 kernel: zocl-drm axi:zyxclmm_drm:  ffff00ddc81de810 _kds_fini_client: Removing CU Domain[0] CU Index [1]
+Jul 15 01:27:37 kernel: [drm] bitstream d0af154e-769f-dc2d-8555-420ae4a7919b unlocked, ref=2
+Jul 15 01:27:37 kernel: zocl-drm axi:zyxclmm_drm: zocl_destroy_client: client exits pid(4024)
+Jul 15 01:27:37 kernel: zocl-drm axi:zyxclmm_drm:  ffff00ddc81de810 _kds_fini_client: Client pid(4024) has 1 opening context for 0 slot
+Jul 15 01:27:37 kernel: zocl-drm axi:zyxclmm_drm:  ffff00ddc81de810 kds_del_context: Client pid(4024) del context Domain(0) CU(0x0)
+Jul 15 01:27:37 kernel: zocl-drm axi:zyxclmm_drm:  ffff00ddc81de810 _kds_fini_client: Removing CU Domain[0] CU Index [0]
+Jul 15 01:27:37 kernel: [drm] bitstream d0af154e-769f-dc2d-8555-420ae4a7919b unlocked, ref=1
+Jul 15 01:27:37 kernel: zocl-drm axi:zyxclmm_drm: zocl_destroy_client: client exits pid(4024)
+Jul 15 01:27:37 kernel: zocl-drm axi:zyxclmm_drm:  ffff00ddc81de810 _kds_fini_client: Client pid(4024) has 1 opening context for 0 slot
+Jul 15 01:27:37 kernel: zocl-drm axi:zyxclmm_drm:  ffff00ddc81de810 kds_del_context: Client pid(4024) del context Domain(0) CU(0x1)
+Jul 15 01:27:37 kernel: zocl-drm axi:zyxclmm_drm:  ffff00ddc81de810 _kds_fini_client: Removing CU Domain[0] CU Index [1]
+Jul 15 01:27:37 kernel: [drm] bitstream d0af154e-769f-dc2d-8555-420ae4a7919b unlocked, ref=0
+Jul 15 01:27:37 kernel: zocl-drm axi:zyxclmm_drm: zocl_destroy_client: client exits pid(4024)
+Jul 15 01:27:37 kernel: zocl-drm axi:zyxclmm_drm: zocl_destroy_client: client exits pid(4024)
+Jul 15 01:27:48 kernel: usb 2-1.1: Failed to query (GET_CUR) UVC control 1 on unit 3: -32 (exp. 1024).
+Jul 15 01:27:49 kernel: usb 2-1.1: USB disconnect, device number 4
+Jul 15 01:27:50 kernel: usb 2-1.1: new SuperSpeed USB device number 5 using xhci-hcd
+Jul 15 01:27:50 kernel: usb 2-1.1: New USB device found, idVendor=8086, idProduct=0b3a, bcdDevice=51.10
+Jul 15 01:27:50 kernel: usb 2-1.1: New USB device strings: Mfr=1, Product=2, SerialNumber=3
+Jul 15 01:27:50 kernel: usb 2-1.1: Product: Intel(R) RealSense(TM) Depth Camera 435i
+Jul 15 01:27:50 kernel: usb 2-1.1: Manufacturer: Intel(R) RealSense(TM) Depth Camera 435i
+Jul 15 01:27:50 kernel: usb 2-1.1: SerialNumber: 134523060150
+Jul 15 01:27:50 kernel: uvcvideo 2-1.1:1.1: Unknown video format 00000050-0000-0010-8000-00aa00389b71
+Jul 15 01:27:50 kernel: usb 2-1.1: Found UVC 1.50 device Intel(R) RealSense(TM) Depth Camera 435i (8086:0b3a)
+Jul 15 01:27:50 kernel: input: Intel(R) RealSense(TM) Depth Ca as /devices/platform/axi/ff9d0000.usb/fe200000.usb/xhci-hcd.0.auto/usb2/2-1/2-1.1/2-1.1:1.0/input/input3
+Jul 15 01:27:50 kernel: uvcvideo 2-1.1:1.4: Unknown video format 36315752-1a66-a242-9065-d01814a8ef8a
+Jul 15 01:27:50 kernel: usb 2-1.1: Found UVC 1.50 device Intel(R) RealSense(TM) Depth Camera 435i (8086:0b3a)
+Jul 15 01:27:51 kernel: hid-sensor-hub 0003:8086:0B3A.0003: No report with id 0xffffffff found
+Jul 15 01:27:54 kernel: usb 2-1.1: Failed to query (GET_CUR) UVC control 1 on unit 3: -32 (exp. 1024).
+Jul 15 01:27:54 kernel: usb 2-1.1: Failed to query (GET_CUR) UVC control 1 on unit 3: -32 (exp. 1024).
+Jul 15 01:27:55 kernel: usb 2-1.1: Failed to query (GET_CUR) UVC control 1 on unit 3: -32 (exp. 1024).
+Jul 15 01:27:55 kernel: usb 2-1.1: Failed to query (GET_CUR) UVC control 1 on unit 3: -32 (exp. 1024).
+Jul 15 01:27:55 kernel: usb 2-1.1: Failed to query (GET_CUR) UVC control 1 on unit 3: -32 (exp. 1024).
+Jul 15 01:27:55 kernel: usb 2-1.1: Failed to query (GET_CUR) UVC control 1 on unit 3: -32 (exp. 1024).
+Jul 15 01:27:55 kernel: usb 2-1.1: Failed to query (GET_CUR) UVC control 1 on unit 3: -32 (exp. 1024).
+Jul 15 01:27:55 kernel: usb 2-1.1: Failed to query (GET_CUR) UVC control 1 on unit 3: -32 (exp. 1024).
+Jul 15 01:27:55 kernel: usb 2-1.1: Failed to query (GET_CUR) UVC control 1 on unit 3: -32 (exp. 1024).
+Jul 15 01:27:55 kernel: usb 2-1.1: Failed to query (GET_CUR) UVC control 1 on unit 3: -32 (exp. 1024).
+Jul 15 01:27:55 kernel: usb 2-1.1: Failed to query (GET_CUR) UVC control 1 on unit 3: -32 (exp. 1024).
+Jul 15 01:27:55 kernel: usb 2-1.1: Failed to query (GET_CUR) UVC control 1 on unit 3: -32 (exp. 1024).
+Jul 15 01:27:55 kernel: usb 2-1.1: Failed to query (GET_CUR) UVC control 1 on unit 3: -32 (exp. 1024).
+Jul 15 01:27:55 kernel: usb 2-1.1: Failed to query (GET_CUR) UVC control 1 on unit 3: -32 (exp. 1024).
+Jul 15 01:27:55 kernel: usb 2-1.1: Failed to query (GET_CUR) UVC control 1 on unit 3: -32 (exp. 1024).
+Jul 15 01:27:55 kernel: usb 2-1.1: Failed to query (GET_CUR) UVC control 1 on unit 3: -32 (exp. 1024).
+Jul 15 01:27:55 kernel: usb 2-1.1: Failed to query (GET_CUR) UVC control 1 on unit 3: -32 (exp. 1024).
+Jul 15 01:27:56 kernel: usb 2-1.1: Failed to query (GET_CUR) UVC control 1 on unit 3: -32 (exp. 1024).
+Jul 15 01:27:56 kernel: usb 2-1.1: Failed to query (GET_CUR) UVC control 1 on unit 3: -32 (exp. 1024).
+Jul 15 01:27:56 kernel: usb 2-1.1: Failed to query (GET_CUR) UVC control 1 on unit 3: -32 (exp. 1024).
+Jul 15 01:27:56 kernel: usb 2-1.1: Failed to query (GET_CUR) UVC control 1 on unit 3: -32 (exp. 1024).
+Jul 15 01:27:56 kernel: usb 2-1.1: Failed to query (GET_CUR) UVC control 1 on unit 3: -32 (exp. 1024).
+Jul 15 01:27:56 kernel: usb 2-1.1: Failed to query (GET_CUR) UVC control 1 on unit 3: -32 (exp. 1024).
+Jul 15 01:27:56 kernel: usb 2-1.1: Failed to query (GET_CUR) UVC control 1 on unit 3: -32 (exp. 1024).
+Jul 15 01:27:56 kernel: usb 2-1.1: Failed to query (GET_CUR) UVC control 1 on unit 3: -32 (exp. 1024).
+Jul 15 01:27:58 kernel: usb 2-1.1: Failed to query (GET_CUR) UVC control 1 on unit 3: -32 (exp. 1024).
+Jul 15 01:28:01 kernel: zocl-drm axi:zyxclmm_drm: zocl_create_client: created KDS client for pid(4352), ret: 0
+Jul 15 01:28:01 kernel: zocl-drm axi:zyxclmm_drm: zocl_destroy_client: client exits pid(4352)
+Jul 15 01:28:01 kernel: zocl-drm axi:zyxclmm_drm: zocl_create_client: created KDS client for pid(4352), ret: 0
+Jul 15 01:28:01 kernel: zocl-drm axi:zyxclmm_drm: zocl_destroy_client: client exits pid(4352)
+Jul 15 01:28:01 kernel: zocl-drm axi:zyxclmm_drm: zocl_create_client: created KDS client for pid(4352), ret: 0
+Jul 15 01:28:01 kernel: zocl-drm axi:zyxclmm_drm: zocl_destroy_client: client exits pid(4352)
+Jul 15 01:28:01 kernel: zocl-drm axi:zyxclmm_drm: zocl_create_client: created KDS client for pid(4352), ret: 0
+Jul 15 01:28:01 kernel: zocl-drm axi:zyxclmm_drm: zocl_destroy_client: client exits pid(4352)
+Jul 15 01:28:01 kernel: zocl-drm axi:zyxclmm_drm: zocl_create_client: created KDS client for pid(4352), ret: 0
+Jul 15 01:28:01 kernel: zocl-drm axi:zyxclmm_drm: zocl_destroy_client: client exits pid(4352)
+Jul 15 01:28:01 kernel: zocl-drm axi:zyxclmm_drm: zocl_create_client: created KDS client for pid(4352), ret: 0
+Jul 15 01:28:01 kernel: zocl-drm axi:zyxclmm_drm: zocl_destroy_client: client exits pid(4352)
+Jul 15 01:28:01 kernel: zocl-drm axi:zyxclmm_drm: zocl_create_client: created KDS client for pid(4352), ret: 0
+Jul 15 01:28:01 kernel: [drm] skip kind 29(AIE_RESOURCES) return code: -22
+Jul 15 01:28:01 kernel: [drm] zocl_xclbin_read_axlf The XCLBIN already loaded
+Jul 15 01:28:01 kernel: [drm] zocl_xclbin_read_axlf d0af154e-769f-dc2d-8555-420ae4a7919b ret: 0
+Jul 15 01:28:01 kernel: [drm] bitstream d0af154e-769f-dc2d-8555-420ae4a7919b locked, ref=1
+Jul 15 01:28:01 kernel: zocl-drm axi:zyxclmm_drm:  ffff00ddc81de810 kds_add_context: Client pid(4352) add context Domain(0) CU(0xffffffff) shared(true)
+Jul 15 01:28:01 kernel: zocl-drm axi:zyxclmm_drm:  ffff00ddc81de810 kds_del_context: Client pid(4352) del context Domain(0) CU(0xffffffff)
+Jul 15 01:28:01 kernel: [drm] bitstream d0af154e-769f-dc2d-8555-420ae4a7919b unlocked, ref=0
+Jul 15 01:28:01 kernel: zocl-drm axi:zyxclmm_drm: zocl_create_client: created KDS client for pid(4352), ret: 0
+Jul 15 01:28:01 kernel: zocl-drm axi:zyxclmm_drm: zocl_destroy_client: client exits pid(4352)
+Jul 15 01:28:01 kernel: zocl-drm axi:zyxclmm_drm: zocl_create_client: created KDS client for pid(4352), ret: 0
+Jul 15 01:28:01 kernel: [drm] bitstream d0af154e-769f-dc2d-8555-420ae4a7919b locked, ref=1
+Jul 15 01:28:01 kernel: zocl-drm axi:zyxclmm_drm:  ffff00ddc81de810 kds_add_context: Client pid(4352) add context Domain(0) CU(0x1) shared(true)
+Jul 15 01:28:01 kernel: zocl-drm axi:zyxclmm_drm: zocl_create_client: created KDS client for pid(4352), ret: 0
+Jul 15 01:28:01 kernel: zocl-drm axi:zyxclmm_drm: zocl_destroy_client: client exits pid(4352)
+Jul 15 01:28:01 kernel: zocl-drm axi:zyxclmm_drm: zocl_create_client: created KDS client for pid(4352), ret: 0
+Jul 15 01:28:01 kernel: [drm] bitstream d0af154e-769f-dc2d-8555-420ae4a7919b locked, ref=2
+Jul 15 01:28:01 kernel: zocl-drm axi:zyxclmm_drm:  ffff00ddc81de810 kds_add_context: Client pid(4352) add context Domain(0) CU(0x0) shared(true)
+Jul 15 01:28:01 kernel: zocl-drm axi:zyxclmm_drm: zocl_create_client: created KDS client for pid(4352), ret: 0
+Jul 15 01:28:01 kernel: zocl-drm axi:zyxclmm_drm: zocl_destroy_client: client exits pid(4352)
+Jul 15 01:28:01 kernel: zocl-drm axi:zyxclmm_drm: zocl_create_client: created KDS client for pid(4352), ret: 0
+Jul 15 01:28:01 kernel: [drm] bitstream d0af154e-769f-dc2d-8555-420ae4a7919b locked, ref=3
+Jul 15 01:28:01 kernel: zocl-drm axi:zyxclmm_drm:  ffff00ddc81de810 kds_add_context: Client pid(4352) add context Domain(0) CU(0x1) shared(true)
+Jul 15 01:28:04 kernel: usb 2-1.1: Failed to query (GET_CUR) UVC control 1 on unit 3: -32 (exp. 1024).
+Jul 15 01:28:05 kernel: usb 2-1.1: Failed to query (GET_CUR) UVC control 1 on unit 3: -32 (exp. 1024).
+Jul 15 01:28:06 kernel: usb 2-1.1: Failed to query (GET_CUR) UVC control 1 on unit 3: -32 (exp. 1024).
+Jul 15 01:28:20 kernel: usb 2-1.1: Failed to query (GET_CUR) UVC control 1 on unit 3: -32 (exp. 1024).
+Jul 15 01:28:21 kernel: usb 2-1.1: Failed to query (GET_CUR) UVC control 1 on unit 3: -32 (exp. 1024).
+Jul 15 01:28:27 kernel: usb 2-1.1: Failed to query (GET_CUR) UVC control 1 on unit 3: -32 (exp. 1024).
+Jul 15 01:28:29 kernel: usb 2-1.1: Failed to query (GET_CUR) UVC control 1 on unit 3: -32 (exp. 1024).
+Jul 15 01:28:32 kernel: usb 2-1.1: Failed to query (GET_CUR) UVC control 1 on unit 3: -32 (exp. 1024).
+Jul 15 01:28:33 kernel: usb 2-1.1: Failed to query (GET_CUR) UVC control 1 on unit 3: -32 (exp. 1024).
+Jul 15 01:28:34 kernel: usb 2-1.1: Failed to query (GET_CUR) UVC control 1 on unit 3: -32 (exp. 1024).
+Jul 15 01:28:42 kernel: usb 2-1.1: Failed to query (GET_CUR) UVC control 1 on unit 3: -32 (exp. 1024).
+Jul 15 01:28:43 kernel: usb 2-1.1: Failed to query (GET_CUR) UVC control 1 on unit 3: -32 (exp. 1024).
+Jul 15 01:28:43 kernel: zocl-drm axi:zyxclmm_drm:  ffff00ddc81de810 kds_del_context: Client pid(4352) del context Domain(0) CU(0x1)
+Jul 15 01:28:43 kernel: [drm] bitstream d0af154e-769f-dc2d-8555-420ae4a7919b unlocked, ref=2
+Jul 15 01:28:43 kernel: zocl-drm axi:zyxclmm_drm: zocl_destroy_client: client exits pid(4352)
+Jul 15 01:28:43 kernel: zocl-drm axi:zyxclmm_drm:  ffff00ddc81de810 kds_del_context: Client pid(4352) del context Domain(0) CU(0x1)
+Jul 15 01:28:43 kernel: [drm] bitstream d0af154e-769f-dc2d-8555-420ae4a7919b unlocked, ref=1
+Jul 15 01:28:43 kernel: zocl-drm axi:zyxclmm_drm: zocl_destroy_client: client exits pid(4352)
+Jul 15 01:28:43 kernel: zocl-drm axi:zyxclmm_drm:  ffff00ddc81de810 kds_del_context: Client pid(4352) del context Domain(0) CU(0x0)
+Jul 15 01:28:43 kernel: [drm] bitstream d0af154e-769f-dc2d-8555-420ae4a7919b unlocked, ref=0
+Jul 15 01:28:43 kernel: zocl-drm axi:zyxclmm_drm: zocl_destroy_client: client exits pid(4352)
+Jul 15 01:28:44 kernel: zocl-drm axi:zyxclmm_drm: zocl_destroy_client: client exits pid(4352)
+Jul 15 01:28:49 kernel: zocl-drm axi:zyxclmm_drm: zocl_create_client: created KDS client for pid(4451), ret: 0
+Jul 15 01:28:49 kernel: zocl-drm axi:zyxclmm_drm: zocl_destroy_client: client exits pid(4451)
+Jul 15 01:28:49 kernel: zocl-drm axi:zyxclmm_drm: zocl_create_client: created KDS client for pid(4451), ret: 0
+Jul 15 01:28:49 kernel: zocl-drm axi:zyxclmm_drm: zocl_destroy_client: client exits pid(4451)
+Jul 15 01:28:49 kernel: zocl-drm axi:zyxclmm_drm: zocl_create_client: created KDS client for pid(4451), ret: 0
+Jul 15 01:28:49 kernel: zocl-drm axi:zyxclmm_drm: zocl_destroy_client: client exits pid(4451)
+Jul 15 01:28:49 kernel: zocl-drm axi:zyxclmm_drm: zocl_create_client: created KDS client for pid(4451), ret: 0
+Jul 15 01:28:49 kernel: zocl-drm axi:zyxclmm_drm: zocl_destroy_client: client exits pid(4451)
+Jul 15 01:28:49 kernel: zocl-drm axi:zyxclmm_drm: zocl_create_client: created KDS client for pid(4451), ret: 0
+Jul 15 01:28:49 kernel: zocl-drm axi:zyxclmm_drm: zocl_destroy_client: client exits pid(4451)
+Jul 15 01:28:49 kernel: zocl-drm axi:zyxclmm_drm: zocl_create_client: created KDS client for pid(4451), ret: 0
+Jul 15 01:28:49 kernel: zocl-drm axi:zyxclmm_drm: zocl_destroy_client: client exits pid(4451)
+Jul 15 01:28:49 kernel: zocl-drm axi:zyxclmm_drm: zocl_create_client: created KDS client for pid(4451), ret: 0
+Jul 15 01:28:49 kernel: [drm] skip kind 29(AIE_RESOURCES) return code: -22
+Jul 15 01:28:49 kernel: [drm] zocl_xclbin_read_axlf The XCLBIN already loaded
+Jul 15 01:28:49 kernel: [drm] zocl_xclbin_read_axlf d0af154e-769f-dc2d-8555-420ae4a7919b ret: 0
+Jul 15 01:28:49 kernel: [drm] bitstream d0af154e-769f-dc2d-8555-420ae4a7919b locked, ref=1
+Jul 15 01:28:49 kernel: zocl-drm axi:zyxclmm_drm:  ffff00ddc81de810 kds_add_context: Client pid(4451) add context Domain(0) CU(0xffffffff) shared(true)
+Jul 15 01:28:49 kernel: zocl-drm axi:zyxclmm_drm:  ffff00ddc81de810 kds_del_context: Client pid(4451) del context Domain(0) CU(0xffffffff)
+Jul 15 01:28:49 kernel: [drm] bitstream d0af154e-769f-dc2d-8555-420ae4a7919b unlocked, ref=0
+Jul 15 01:28:49 kernel: zocl-drm axi:zyxclmm_drm: zocl_create_client: created KDS client for pid(4451), ret: 0
+Jul 15 01:28:49 kernel: zocl-drm axi:zyxclmm_drm: zocl_destroy_client: client exits pid(4451)
+Jul 15 01:28:49 kernel: zocl-drm axi:zyxclmm_drm: zocl_create_client: created KDS client for pid(4451), ret: 0
+Jul 15 01:28:49 kernel: [drm] bitstream d0af154e-769f-dc2d-8555-420ae4a7919b locked, ref=1
+Jul 15 01:28:49 kernel: zocl-drm axi:zyxclmm_drm:  ffff00ddc81de810 kds_add_context: Client pid(4451) add context Domain(0) CU(0x1) shared(true)
+Jul 15 01:28:49 kernel: zocl-drm axi:zyxclmm_drm: zocl_create_client: created KDS client for pid(4451), ret: 0
+Jul 15 01:28:49 kernel: zocl-drm axi:zyxclmm_drm: zocl_destroy_client: client exits pid(4451)
+Jul 15 01:28:49 kernel: zocl-drm axi:zyxclmm_drm: zocl_create_client: created KDS client for pid(4451), ret: 0
+Jul 15 01:28:49 kernel: [drm] bitstream d0af154e-769f-dc2d-8555-420ae4a7919b locked, ref=2
+Jul 15 01:28:49 kernel: zocl-drm axi:zyxclmm_drm:  ffff00ddc81de810 kds_add_context: Client pid(4451) add context Domain(0) CU(0x0) shared(true)
+Jul 15 01:28:49 kernel: zocl-drm axi:zyxclmm_drm: zocl_create_client: created KDS client for pid(4451), ret: 0
+Jul 15 01:28:49 kernel: zocl-drm axi:zyxclmm_drm: zocl_destroy_client: client exits pid(4451)
+Jul 15 01:28:49 kernel: zocl-drm axi:zyxclmm_drm: zocl_create_client: created KDS client for pid(4451), ret: 0
+Jul 15 01:28:49 kernel: [drm] bitstream d0af154e-769f-dc2d-8555-420ae4a7919b locked, ref=3
+Jul 15 01:28:49 kernel: zocl-drm axi:zyxclmm_drm:  ffff00ddc81de810 kds_add_context: Client pid(4451) add context Domain(0) CU(0x1) shared(true)
+Jul 15 01:28:49 kernel: zocl-drm axi:zyxclmm_drm:  ffff00ddc81de810 _kds_fini_client: Client pid(4451) has 1 opening context for 0 slot
+Jul 15 01:28:49 kernel: zocl-drm axi:zyxclmm_drm:  ffff00ddc81de810 kds_del_context: Client pid(4451) del context Domain(0) CU(0x1)
+Jul 15 01:28:49 kernel: zocl-drm axi:zyxclmm_drm:  ffff00ddc81de810 _kds_fini_client: Removing CU Domain[0] CU Index [1]
+Jul 15 01:28:49 kernel: [drm] bitstream d0af154e-769f-dc2d-8555-420ae4a7919b unlocked, ref=2
+Jul 15 01:28:49 kernel: zocl-drm axi:zyxclmm_drm: zocl_destroy_client: client exits pid(4451)
+Jul 15 01:28:49 kernel: zocl-drm axi:zyxclmm_drm:  ffff00ddc81de810 _kds_fini_client: Client pid(4451) has 1 opening context for 0 slot
+Jul 15 01:28:49 kernel: zocl-drm axi:zyxclmm_drm:  ffff00ddc81de810 kds_del_context: Client pid(4451) del context Domain(0) CU(0x0)
+Jul 15 01:28:49 kernel: zocl-drm axi:zyxclmm_drm:  ffff00ddc81de810 _kds_fini_client: Removing CU Domain[0] CU Index [0]
+Jul 15 01:28:49 kernel: [drm] bitstream d0af154e-769f-dc2d-8555-420ae4a7919b unlocked, ref=1
+Jul 15 01:28:49 kernel: zocl-drm axi:zyxclmm_drm: zocl_destroy_client: client exits pid(4451)
+Jul 15 01:28:49 kernel: zocl-drm axi:zyxclmm_drm:  ffff00ddc81de810 _kds_fini_client: Client pid(4451) has 1 opening context for 0 slot
+Jul 15 01:28:49 kernel: zocl-drm axi:zyxclmm_drm:  ffff00ddc81de810 kds_del_context: Client pid(4451) del context Domain(0) CU(0x1)
+Jul 15 01:28:49 kernel: zocl-drm axi:zyxclmm_drm:  ffff00ddc81de810 _kds_fini_client: Removing CU Domain[0] CU Index [1]
+Jul 15 01:28:49 kernel: [drm] bitstream d0af154e-769f-dc2d-8555-420ae4a7919b unlocked, ref=0
+Jul 15 01:28:49 kernel: zocl-drm axi:zyxclmm_drm: zocl_destroy_client: client exits pid(4451)
+Jul 15 01:28:49 kernel: zocl-drm axi:zyxclmm_drm: zocl_destroy_client: client exits pid(4451)
+Jul 15 01:29:02 kernel: usb 2-1.1: USB disconnect, device number 5
+Jul 15 01:29:02 kernel: usb 2-1.1: new SuperSpeed USB device number 6 using xhci-hcd
+Jul 15 01:29:02 kernel: usb 2-1.1: New USB device found, idVendor=8086, idProduct=0b3a, bcdDevice=51.10
+Jul 15 01:29:02 kernel: usb 2-1.1: New USB device strings: Mfr=1, Product=2, SerialNumber=3
+Jul 15 01:29:02 kernel: usb 2-1.1: Product: Intel(R) RealSense(TM) Depth Camera 435i
+Jul 15 01:29:02 kernel: usb 2-1.1: Manufacturer: Intel(R) RealSense(TM) Depth Camera 435i
+Jul 15 01:29:02 kernel: usb 2-1.1: SerialNumber: 134523060150
+Jul 15 01:29:02 kernel: uvcvideo 2-1.1:1.1: Unknown video format 00000050-0000-0010-8000-00aa00389b71
+Jul 15 01:29:02 kernel: usb 2-1.1: Found UVC 1.50 device Intel(R) RealSense(TM) Depth Camera 435i (8086:0b3a)
+Jul 15 01:29:02 kernel: input: Intel(R) RealSense(TM) Depth Ca as /devices/platform/axi/ff9d0000.usb/fe200000.usb/xhci-hcd.0.auto/usb2/2-1/2-1.1/2-1.1:1.0/input/input4
+Jul 15 01:29:02 kernel: uvcvideo 2-1.1:1.4: Unknown video format 36315752-1a66-a242-9065-d01814a8ef8a
+Jul 15 01:29:02 kernel: usb 2-1.1: Found UVC 1.50 device Intel(R) RealSense(TM) Depth Camera 435i (8086:0b3a)
+Jul 15 01:29:04 kernel: hid-sensor-hub 0003:8086:0B3A.0004: No report with id 0xffffffff found
+Jul 15 01:29:07 kernel: usb 2-1.1: Failed to query (GET_CUR) UVC control 1 on unit 3: -32 (exp. 1024).
+Jul 15 01:29:07 kernel: usb 2-1.1: Failed to query (GET_CUR) UVC control 1 on unit 3: -32 (exp. 1024).
+Jul 15 01:29:07 kernel: usb 2-1.1: Failed to query (GET_CUR) UVC control 1 on unit 3: -32 (exp. 1024).
+Jul 15 01:29:07 kernel: usb 2-1.1: Failed to query (GET_CUR) UVC control 1 on unit 3: -32 (exp. 1024).
+Jul 15 01:29:08 kernel: usb 2-1.1: Failed to query (GET_CUR) UVC control 1 on unit 3: -32 (exp. 1024).
+Jul 15 01:29:08 kernel: usb 2-1.1: Failed to query (GET_CUR) UVC control 1 on unit 3: -32 (exp. 1024).
+Jul 15 01:29:08 kernel: usb 2-1.1: Failed to query (GET_CUR) UVC control 1 on unit 3: -32 (exp. 1024).
+Jul 15 01:29:08 kernel: usb 2-1.1: Failed to query (GET_CUR) UVC control 1 on unit 3: -32 (exp. 1024).
+Jul 15 01:29:08 kernel: usb 2-1.1: Failed to query (GET_CUR) UVC control 1 on unit 3: -32 (exp. 1024).
+Jul 15 01:29:08 kernel: usb 2-1.1: Failed to query (GET_CUR) UVC control 1 on unit 3: -32 (exp. 1024).
+Jul 15 01:29:08 kernel: usb 2-1.1: Failed to query (GET_CUR) UVC control 1 on unit 3: -32 (exp. 1024).
+Jul 15 01:29:08 kernel: usb 2-1.1: Failed to query (GET_CUR) UVC control 1 on unit 3: -32 (exp. 1024).
+Jul 15 01:29:08 kernel: usb 2-1.1: Failed to query (GET_CUR) UVC control 1 on unit 3: -32 (exp. 1024).
+Jul 15 01:29:08 kernel: usb 2-1.1: Failed to query (GET_CUR) UVC control 1 on unit 3: -32 (exp. 1024).
+Jul 15 01:29:08 kernel: usb 2-1.1: Failed to query (GET_CUR) UVC control 1 on unit 3: -32 (exp. 1024).
+Jul 15 01:29:08 kernel: usb 2-1.1: Failed to query (GET_CUR) UVC control 1 on unit 3: -32 (exp. 1024).
+Jul 15 01:29:08 kernel: usb 2-1.1: Failed to query (GET_CUR) UVC control 1 on unit 3: -32 (exp. 1024).
+Jul 15 01:29:09 kernel: usb 2-1.1: Failed to query (GET_CUR) UVC control 1 on unit 3: -32 (exp. 1024).
+Jul 15 01:29:09 kernel: usb 2-1.1: Failed to query (GET_CUR) UVC control 1 on unit 3: -32 (exp. 1024).
+Jul 15 01:29:09 kernel: usb 2-1.1: Failed to query (GET_CUR) UVC control 1 on unit 3: -32 (exp. 1024).
+Jul 15 01:29:09 kernel: usb 2-1.1: Failed to query (GET_CUR) UVC control 1 on unit 3: -32 (exp. 1024).
+Jul 15 01:29:09 kernel: usb 2-1.1: Failed to query (GET_CUR) UVC control 1 on unit 3: -32 (exp. 1024).
+Jul 15 01:29:09 kernel: usb 2-1.1: Failed to query (GET_CUR) UVC control 1 on unit 3: -32 (exp. 1024).
+Jul 15 01:29:09 kernel: usb 2-1.1: Failed to query (GET_CUR) UVC control 1 on unit 3: -32 (exp. 1024).
+Jul 15 01:29:13 kernel: zocl-drm axi:zyxclmm_drm: zocl_create_client: created KDS client for pid(4808), ret: 0
+Jul 15 01:29:13 kernel: zocl-drm axi:zyxclmm_drm: zocl_destroy_client: client exits pid(4808)
+Jul 15 01:29:13 kernel: zocl-drm axi:zyxclmm_drm: zocl_create_client: created KDS client for pid(4808), ret: 0
+Jul 15 01:29:13 kernel: zocl-drm axi:zyxclmm_drm: zocl_destroy_client: client exits pid(4808)
+Jul 15 01:29:13 kernel: zocl-drm axi:zyxclmm_drm: zocl_create_client: created KDS client for pid(4808), ret: 0
+Jul 15 01:29:13 kernel: zocl-drm axi:zyxclmm_drm: zocl_destroy_client: client exits pid(4808)
+Jul 15 01:29:13 kernel: zocl-drm axi:zyxclmm_drm: zocl_create_client: created KDS client for pid(4808), ret: 0
+Jul 15 01:29:13 kernel: zocl-drm axi:zyxclmm_drm: zocl_destroy_client: client exits pid(4808)
+Jul 15 01:29:13 kernel: zocl-drm axi:zyxclmm_drm: zocl_create_client: created KDS client for pid(4808), ret: 0
+Jul 15 01:29:13 kernel: zocl-drm axi:zyxclmm_drm: zocl_destroy_client: client exits pid(4808)
+Jul 15 01:29:13 kernel: zocl-drm axi:zyxclmm_drm: zocl_create_client: created KDS client for pid(4808), ret: 0
+Jul 15 01:29:13 kernel: zocl-drm axi:zyxclmm_drm: zocl_destroy_client: client exits pid(4808)
+Jul 15 01:29:13 kernel: zocl-drm axi:zyxclmm_drm: zocl_create_client: created KDS client for pid(4808), ret: 0
+Jul 15 01:29:14 kernel: [drm] skip kind 29(AIE_RESOURCES) return code: -22
+Jul 15 01:29:14 kernel: [drm] zocl_xclbin_read_axlf The XCLBIN already loaded
+Jul 15 01:29:14 kernel: [drm] zocl_xclbin_read_axlf d0af154e-769f-dc2d-8555-420ae4a7919b ret: 0
+Jul 15 01:29:14 kernel: [drm] bitstream d0af154e-769f-dc2d-8555-420ae4a7919b locked, ref=1
+Jul 15 01:29:14 kernel: zocl-drm axi:zyxclmm_drm:  ffff00ddc81de810 kds_add_context: Client pid(4808) add context Domain(0) CU(0xffffffff) shared(true)
+Jul 15 01:29:14 kernel: zocl-drm axi:zyxclmm_drm:  ffff00ddc81de810 kds_del_context: Client pid(4808) del context Domain(0) CU(0xffffffff)
+Jul 15 01:29:14 kernel: [drm] bitstream d0af154e-769f-dc2d-8555-420ae4a7919b unlocked, ref=0
+Jul 15 01:29:14 kernel: zocl-drm axi:zyxclmm_drm: zocl_create_client: created KDS client for pid(4808), ret: 0
+Jul 15 01:29:14 kernel: zocl-drm axi:zyxclmm_drm: zocl_destroy_client: client exits pid(4808)
+Jul 15 01:29:14 kernel: zocl-drm axi:zyxclmm_drm: zocl_create_client: created KDS client for pid(4808), ret: 0
+Jul 15 01:29:14 kernel: [drm] bitstream d0af154e-769f-dc2d-8555-420ae4a7919b locked, ref=1
+Jul 15 01:29:14 kernel: zocl-drm axi:zyxclmm_drm:  ffff00ddc81de810 kds_add_context: Client pid(4808) add context Domain(0) CU(0x1) shared(true)
+Jul 15 01:29:14 kernel: zocl-drm axi:zyxclmm_drm: zocl_create_client: created KDS client for pid(4808), ret: 0
+Jul 15 01:29:14 kernel: zocl-drm axi:zyxclmm_drm: zocl_destroy_client: client exits pid(4808)
+Jul 15 01:29:14 kernel: zocl-drm axi:zyxclmm_drm: zocl_create_client: created KDS client for pid(4808), ret: 0
+Jul 15 01:29:14 kernel: [drm] bitstream d0af154e-769f-dc2d-8555-420ae4a7919b locked, ref=2
+Jul 15 01:29:14 kernel: zocl-drm axi:zyxclmm_drm:  ffff00ddc81de810 kds_add_context: Client pid(4808) add context Domain(0) CU(0x0) shared(true)
+Jul 15 01:29:14 kernel: zocl-drm axi:zyxclmm_drm: zocl_create_client: created KDS client for pid(4808), ret: 0
+Jul 15 01:29:14 kernel: zocl-drm axi:zyxclmm_drm: zocl_destroy_client: client exits pid(4808)
+Jul 15 01:29:14 kernel: zocl-drm axi:zyxclmm_drm: zocl_create_client: created KDS client for pid(4808), ret: 0
+Jul 15 01:29:14 kernel: [drm] bitstream d0af154e-769f-dc2d-8555-420ae4a7919b locked, ref=3
+Jul 15 01:29:14 kernel: zocl-drm axi:zyxclmm_drm:  ffff00ddc81de810 kds_add_context: Client pid(4808) add context Domain(0) CU(0x1) shared(true)
+Jul 15 01:29:16 kernel: usb 2-1.1: Failed to query (GET_CUR) UVC control 1 on unit 3: -32 (exp. 1024).
+Jul 15 01:29:20 kernel: usb 2-1.1: Failed to query (GET_CUR) UVC control 1 on unit 3: -32 (exp. 1024).
+Jul 15 01:29:23 kernel: usb 2-1.1: Failed to query (GET_CUR) UVC control 1 on unit 3: -32 (exp. 1024).
+Jul 15 01:29:26 kernel: usb 2-1.1: Failed to query (GET_CUR) UVC control 1 on unit 3: -32 (exp. 1024).
+Jul 15 01:29:30 kernel: usb 2-1.1: Failed to query (GET_CUR) UVC control 1 on unit 3: -32 (exp. 1024).
+Jul 15 01:29:31 kernel: usb 2-1.1: Failed to query (GET_CUR) UVC control 1 on unit 3: -32 (exp. 1024).
+Jul 15 01:29:34 kernel: usb 2-1.1: Failed to query (GET_CUR) UVC control 1 on unit 3: -32 (exp. 1024).
+Jul 15 01:29:38 kernel: usb 2-1.1: Failed to query (GET_CUR) UVC control 1 on unit 3: -32 (exp. 1024).
+Jul 15 01:29:39 kernel: usb 2-1.1: Failed to query (GET_CUR) UVC control 1 on unit 3: -32 (exp. 1024).
+Jul 15 01:29:40 kernel: usb 2-1.1: Failed to query (GET_CUR) UVC control 1 on unit 3: -32 (exp. 1024).
+Jul 15 01:29:43 kernel: usb 2-1.1: Failed to query (GET_CUR) UVC control 1 on unit 3: -32 (exp. 1024).
+Jul 15 01:29:44 kernel: usb 2-1.1: Failed to query (GET_CUR) UVC control 1 on unit 3: -32 (exp. 1024).
+Jul 15 01:29:47 kernel: usb 2-1.1: Failed to query (GET_CUR) UVC control 1 on unit 3: -32 (exp. 1024).
+Jul 15 01:29:50 kernel: usb 2-1.1: Failed to query (GET_CUR) UVC control 1 on unit 3: -32 (exp. 1024).
+Jul 15 01:29:53 kernel: usb 2-1.1: Failed to query (GET_CUR) UVC control 1 on unit 3: -32 (exp. 1024).
+Jul 15 01:29:56 kernel: usb 2-1.1: Failed to query (GET_CUR) UVC control 1 on unit 3: -32 (exp. 1024).
+Jul 15 01:30:01 kernel: zocl-drm axi:zyxclmm_drm:  ffff00ddc81de810 _kds_fini_client: Client pid(4808) has 1 opening context for 0 slot
+Jul 15 01:30:01 kernel: zocl-drm axi:zyxclmm_drm:  ffff00ddc81de810 kds_del_context: Client pid(4808) del context Domain(0) CU(0x1)
+Jul 15 01:30:01 kernel: zocl-drm axi:zyxclmm_drm:  ffff00ddc81de810 _kds_fini_client: Removing CU Domain[0] CU Index [1]
+Jul 15 01:30:01 kernel: [drm] bitstream d0af154e-769f-dc2d-8555-420ae4a7919b unlocked, ref=2
+Jul 15 01:30:01 kernel: zocl-drm axi:zyxclmm_drm: zocl_destroy_client: client exits pid(4808)
+Jul 15 01:30:01 kernel: zocl-drm axi:zyxclmm_drm:  ffff00ddc81de810 _kds_fini_client: Client pid(4808) has 1 opening context for 0 slot
+Jul 15 01:30:01 kernel: zocl-drm axi:zyxclmm_drm:  ffff00ddc81de810 kds_del_context: Client pid(4808) del context Domain(0) CU(0x0)
+Jul 15 01:30:01 kernel: zocl-drm axi:zyxclmm_drm:  ffff00ddc81de810 _kds_fini_client: Removing CU Domain[0] CU Index [0]
+Jul 15 01:30:01 kernel: [drm] bitstream d0af154e-769f-dc2d-8555-420ae4a7919b unlocked, ref=1
+Jul 15 01:30:01 kernel: zocl-drm axi:zyxclmm_drm: zocl_destroy_client: client exits pid(4808)
+Jul 15 01:30:01 kernel: zocl-drm axi:zyxclmm_drm:  ffff00ddc81de810 _kds_fini_client: Client pid(4808) has 1 opening context for 0 slot
+Jul 15 01:30:01 kernel: zocl-drm axi:zyxclmm_drm:  ffff00ddc81de810 kds_del_context: Client pid(4808) del context Domain(0) CU(0x1)
+Jul 15 01:30:01 kernel: zocl-drm axi:zyxclmm_drm:  ffff00ddc81de810 _kds_fini_client: Removing CU Domain[0] CU Index [1]
+Jul 15 01:30:01 kernel: [drm] bitstream d0af154e-769f-dc2d-8555-420ae4a7919b unlocked, ref=0
+Jul 15 01:30:01 kernel: zocl-drm axi:zyxclmm_drm: zocl_destroy_client: client exits pid(4808)
+Jul 15 01:30:01 kernel: zocl-drm axi:zyxclmm_drm: zocl_destroy_client: client exits pid(4808)
+Jul 15 01:30:05 kernel: zocl-drm axi:zyxclmm_drm: zocl_create_client: created KDS client for pid(4940), ret: 0
+Jul 15 01:30:05 kernel: zocl-drm axi:zyxclmm_drm: zocl_destroy_client: client exits pid(4940)
+Jul 15 01:30:05 kernel: zocl-drm axi:zyxclmm_drm: zocl_create_client: created KDS client for pid(4940), ret: 0
+Jul 15 01:30:05 kernel: zocl-drm axi:zyxclmm_drm: zocl_destroy_client: client exits pid(4940)
+Jul 15 01:30:05 kernel: zocl-drm axi:zyxclmm_drm: zocl_create_client: created KDS client for pid(4940), ret: 0
+Jul 15 01:30:05 kernel: zocl-drm axi:zyxclmm_drm: zocl_destroy_client: client exits pid(4940)
+Jul 15 01:30:05 kernel: zocl-drm axi:zyxclmm_drm: zocl_create_client: created KDS client for pid(4940), ret: 0
+Jul 15 01:30:05 kernel: zocl-drm axi:zyxclmm_drm: zocl_destroy_client: client exits pid(4940)
+Jul 15 01:30:05 kernel: zocl-drm axi:zyxclmm_drm: zocl_create_client: created KDS client for pid(4940), ret: 0
+Jul 15 01:30:05 kernel: zocl-drm axi:zyxclmm_drm: zocl_destroy_client: client exits pid(4940)
+Jul 15 01:30:05 kernel: zocl-drm axi:zyxclmm_drm: zocl_create_client: created KDS client for pid(4940), ret: 0
+Jul 15 01:30:05 kernel: zocl-drm axi:zyxclmm_drm: zocl_destroy_client: client exits pid(4940)
+Jul 15 01:30:05 kernel: zocl-drm axi:zyxclmm_drm: zocl_create_client: created KDS client for pid(4940), ret: 0
+Jul 15 01:30:06 kernel: [drm] skip kind 29(AIE_RESOURCES) return code: -22
+Jul 15 01:30:06 kernel: [drm] zocl_xclbin_read_axlf The XCLBIN already loaded
+Jul 15 01:30:06 kernel: [drm] zocl_xclbin_read_axlf d0af154e-769f-dc2d-8555-420ae4a7919b ret: 0
+Jul 15 01:30:06 kernel: [drm] bitstream d0af154e-769f-dc2d-8555-420ae4a7919b locked, ref=1
+Jul 15 01:30:06 kernel: zocl-drm axi:zyxclmm_drm:  ffff00ddc81de810 kds_add_context: Client pid(4940) add context Domain(0) CU(0xffffffff) shared(true)
+Jul 15 01:30:06 kernel: zocl-drm axi:zyxclmm_drm:  ffff00ddc81de810 kds_del_context: Client pid(4940) del context Domain(0) CU(0xffffffff)
+Jul 15 01:30:06 kernel: [drm] bitstream d0af154e-769f-dc2d-8555-420ae4a7919b unlocked, ref=0
+Jul 15 01:30:06 kernel: zocl-drm axi:zyxclmm_drm: zocl_create_client: created KDS client for pid(4940), ret: 0
+Jul 15 01:30:06 kernel: zocl-drm axi:zyxclmm_drm: zocl_destroy_client: client exits pid(4940)
+Jul 15 01:30:06 kernel: zocl-drm axi:zyxclmm_drm: zocl_create_client: created KDS client for pid(4940), ret: 0
+Jul 15 01:30:06 kernel: [drm] bitstream d0af154e-769f-dc2d-8555-420ae4a7919b locked, ref=1
+Jul 15 01:30:06 kernel: zocl-drm axi:zyxclmm_drm:  ffff00ddc81de810 kds_add_context: Client pid(4940) add context Domain(0) CU(0x1) shared(true)
+Jul 15 01:30:06 kernel: zocl-drm axi:zyxclmm_drm: zocl_create_client: created KDS client for pid(4940), ret: 0
+Jul 15 01:30:06 kernel: zocl-drm axi:zyxclmm_drm: zocl_destroy_client: client exits pid(4940)
+Jul 15 01:30:06 kernel: zocl-drm axi:zyxclmm_drm: zocl_create_client: created KDS client for pid(4940), ret: 0
+Jul 15 01:30:06 kernel: [drm] bitstream d0af154e-769f-dc2d-8555-420ae4a7919b locked, ref=2
+Jul 15 01:30:06 kernel: zocl-drm axi:zyxclmm_drm:  ffff00ddc81de810 kds_add_context: Client pid(4940) add context Domain(0) CU(0x0) shared(true)
+Jul 15 01:30:06 kernel: zocl-drm axi:zyxclmm_drm: zocl_create_client: created KDS client for pid(4940), ret: 0
+Jul 15 01:30:06 kernel: zocl-drm axi:zyxclmm_drm: zocl_destroy_client: client exits pid(4940)
+Jul 15 01:30:06 kernel: zocl-drm axi:zyxclmm_drm: zocl_create_client: created KDS client for pid(4940), ret: 0
+Jul 15 01:30:06 kernel: [drm] bitstream d0af154e-769f-dc2d-8555-420ae4a7919b locked, ref=3
+Jul 15 01:30:06 kernel: zocl-drm axi:zyxclmm_drm:  ffff00ddc81de810 kds_add_context: Client pid(4940) add context Domain(0) CU(0x1) shared(true)
+Jul 15 01:30:06 kernel: zocl-drm axi:zyxclmm_drm:  ffff00ddc81de810 _kds_fini_client: Client pid(4940) has 1 opening context for 0 slot
+Jul 15 01:30:06 kernel: zocl-drm axi:zyxclmm_drm:  ffff00ddc81de810 kds_del_context: Client pid(4940) del context Domain(0) CU(0x1)
+Jul 15 01:30:06 kernel: zocl-drm axi:zyxclmm_drm:  ffff00ddc81de810 _kds_fini_client: Removing CU Domain[0] CU Index [1]
+Jul 15 01:30:06 kernel: [drm] bitstream d0af154e-769f-dc2d-8555-420ae4a7919b unlocked, ref=2
+Jul 15 01:30:06 kernel: zocl-drm axi:zyxclmm_drm: zocl_destroy_client: client exits pid(4940)
+Jul 15 01:30:06 kernel: zocl-drm axi:zyxclmm_drm:  ffff00ddc81de810 _kds_fini_client: Client pid(4940) has 1 opening context for 0 slot
+Jul 15 01:30:06 kernel: zocl-drm axi:zyxclmm_drm:  ffff00ddc81de810 kds_del_context: Client pid(4940) del context Domain(0) CU(0x0)
+Jul 15 01:30:06 kernel: zocl-drm axi:zyxclmm_drm:  ffff00ddc81de810 _kds_fini_client: Removing CU Domain[0] CU Index [0]
+Jul 15 01:30:06 kernel: [drm] bitstream d0af154e-769f-dc2d-8555-420ae4a7919b unlocked, ref=1
+Jul 15 01:30:06 kernel: zocl-drm axi:zyxclmm_drm: zocl_destroy_client: client exits pid(4940)
+Jul 15 01:30:06 kernel: zocl-drm axi:zyxclmm_drm:  ffff00ddc81de810 _kds_fini_client: Client pid(4940) has 1 opening context for 0 slot
+Jul 15 01:30:06 kernel: zocl-drm axi:zyxclmm_drm:  ffff00ddc81de810 kds_del_context: Client pid(4940) del context Domain(0) CU(0x1)
+Jul 15 01:30:06 kernel: zocl-drm axi:zyxclmm_drm:  ffff00ddc81de810 _kds_fini_client: Removing CU Domain[0] CU Index [1]
+Jul 15 01:30:06 kernel: [drm] bitstream d0af154e-769f-dc2d-8555-420ae4a7919b unlocked, ref=0
+Jul 15 01:30:06 kernel: zocl-drm axi:zyxclmm_drm: zocl_destroy_client: client exits pid(4940)
+Jul 15 01:30:06 kernel: zocl-drm axi:zyxclmm_drm: zocl_destroy_client: client exits pid(4940)
+Jul 15 01:30:18 kernel: usb 2-1.1: USB disconnect, device number 6
+Jul 15 01:30:18 kernel: usb 2-1.1: new SuperSpeed USB device number 7 using xhci-hcd
+Jul 15 01:30:19 kernel: usb 2-1.1: New USB device found, idVendor=8086, idProduct=0b3a, bcdDevice=51.10
+Jul 15 01:30:19 kernel: usb 2-1.1: New USB device strings: Mfr=1, Product=2, SerialNumber=3
+Jul 15 01:30:19 kernel: usb 2-1.1: Product: Intel(R) RealSense(TM) Depth Camera 435i
+Jul 15 01:30:19 kernel: usb 2-1.1: Manufacturer: Intel(R) RealSense(TM) Depth Camera 435i
+Jul 15 01:30:19 kernel: usb 2-1.1: SerialNumber: 134523060150
+Jul 15 01:30:19 kernel: uvcvideo 2-1.1:1.1: Unknown video format 00000050-0000-0010-8000-00aa00389b71
+Jul 15 01:30:19 kernel: usb 2-1.1: Found UVC 1.50 device Intel(R) RealSense(TM) Depth Camera 435i (8086:0b3a)
+Jul 15 01:30:19 kernel: input: Intel(R) RealSense(TM) Depth Ca as /devices/platform/axi/ff9d0000.usb/fe200000.usb/xhci-hcd.0.auto/usb2/2-1/2-1.1/2-1.1:1.0/input/input5
+Jul 15 01:30:19 kernel: uvcvideo 2-1.1:1.4: Unknown video format 36315752-1a66-a242-9065-d01814a8ef8a
+Jul 15 01:30:19 kernel: usb 2-1.1: Found UVC 1.50 device Intel(R) RealSense(TM) Depth Camera 435i (8086:0b3a)
+Jul 15 01:30:20 kernel: hid-sensor-hub 0003:8086:0B3A.0005: No report with id 0xffffffff found
+Jul 15 01:30:23 kernel: usb 2-1.1: Failed to query (GET_CUR) UVC control 1 on unit 3: -32 (exp. 1024).
+Jul 15 01:30:23 kernel: usb 2-1.1: Failed to query (GET_CUR) UVC control 1 on unit 3: -32 (exp. 1024).
+Jul 15 01:30:23 kernel: usb 2-1.1: Failed to query (GET_CUR) UVC control 1 on unit 3: -32 (exp. 1024).
+Jul 15 01:30:24 kernel: usb 2-1.1: Failed to query (GET_CUR) UVC control 1 on unit 3: -32 (exp. 1024).
+Jul 15 01:30:24 kernel: usb 2-1.1: Failed to query (GET_CUR) UVC control 1 on unit 3: -32 (exp. 1024).
+Jul 15 01:30:24 kernel: usb 2-1.1: Failed to query (GET_CUR) UVC control 1 on unit 3: -32 (exp. 1024).
+Jul 15 01:30:24 kernel: usb 2-1.1: Failed to query (GET_CUR) UVC control 1 on unit 3: -32 (exp. 1024).
+Jul 15 01:30:24 kernel: usb 2-1.1: Failed to query (GET_CUR) UVC control 1 on unit 3: -32 (exp. 1024).
+Jul 15 01:30:24 kernel: usb 2-1.1: Failed to query (GET_CUR) UVC control 1 on unit 3: -32 (exp. 1024).
+Jul 15 01:30:25 kernel: usb 2-1.1: Failed to query (GET_CUR) UVC control 1 on unit 3: -32 (exp. 1024).
+Jul 15 01:30:25 kernel: usb 2-1.1: Failed to query (GET_CUR) UVC control 1 on unit 3: -32 (exp. 1024).
+Jul 15 01:30:25 kernel: usb 2-1.1: Failed to query (GET_CUR) UVC control 1 on unit 3: -32 (exp. 1024).
+Jul 15 01:30:25 kernel: usb 2-1.1: Failed to query (GET_CUR) UVC control 1 on unit 3: -32 (exp. 1024).
+Jul 15 01:30:25 kernel: usb 2-1.1: Failed to query (GET_CUR) UVC control 1 on unit 3: -32 (exp. 1024).
+Jul 15 01:30:25 kernel: usb 2-1.1: Failed to query (GET_CUR) UVC control 1 on unit 3: -32 (exp. 1024).
+Jul 15 01:30:25 kernel: usb 2-1.1: Failed to query (GET_CUR) UVC control 1 on unit 3: -32 (exp. 1024).
+Jul 15 01:30:29 kernel: zocl-drm axi:zyxclmm_drm: zocl_create_client: created KDS client for pid(5264), ret: 0
+Jul 15 01:30:30 kernel: zocl-drm axi:zyxclmm_drm: zocl_destroy_client: client exits pid(5264)
+Jul 15 01:30:30 kernel: zocl-drm axi:zyxclmm_drm: zocl_create_client: created KDS client for pid(5264), ret: 0
+Jul 15 01:30:30 kernel: zocl-drm axi:zyxclmm_drm: zocl_destroy_client: client exits pid(5264)
+Jul 15 01:30:30 kernel: zocl-drm axi:zyxclmm_drm: zocl_create_client: created KDS client for pid(5264), ret: 0
+Jul 15 01:30:30 kernel: zocl-drm axi:zyxclmm_drm: zocl_destroy_client: client exits pid(5264)
+Jul 15 01:30:30 kernel: zocl-drm axi:zyxclmm_drm: zocl_create_client: created KDS client for pid(5264), ret: 0
+Jul 15 01:30:30 kernel: zocl-drm axi:zyxclmm_drm: zocl_destroy_client: client exits pid(5264)
+Jul 15 01:30:30 kernel: zocl-drm axi:zyxclmm_drm: zocl_create_client: created KDS client for pid(5264), ret: 0
+Jul 15 01:30:30 kernel: zocl-drm axi:zyxclmm_drm: zocl_destroy_client: client exits pid(5264)
+Jul 15 01:30:30 kernel: zocl-drm axi:zyxclmm_drm: zocl_create_client: created KDS client for pid(5264), ret: 0
+Jul 15 01:30:30 kernel: zocl-drm axi:zyxclmm_drm: zocl_destroy_client: client exits pid(5264)
+Jul 15 01:30:30 kernel: zocl-drm axi:zyxclmm_drm: zocl_create_client: created KDS client for pid(5264), ret: 0
+Jul 15 01:30:30 kernel: [drm] skip kind 29(AIE_RESOURCES) return code: -22
+Jul 15 01:30:30 kernel: [drm] zocl_xclbin_read_axlf The XCLBIN already loaded
+Jul 15 01:30:30 kernel: [drm] zocl_xclbin_read_axlf d0af154e-769f-dc2d-8555-420ae4a7919b ret: 0
+Jul 15 01:30:30 kernel: [drm] bitstream d0af154e-769f-dc2d-8555-420ae4a7919b locked, ref=1
+Jul 15 01:30:30 kernel: zocl-drm axi:zyxclmm_drm:  ffff00ddc81de810 kds_add_context: Client pid(5264) add context Domain(0) CU(0xffffffff) shared(true)
+Jul 15 01:30:30 kernel: zocl-drm axi:zyxclmm_drm:  ffff00ddc81de810 kds_del_context: Client pid(5264) del context Domain(0) CU(0xffffffff)
+Jul 15 01:30:30 kernel: [drm] bitstream d0af154e-769f-dc2d-8555-420ae4a7919b unlocked, ref=0
+Jul 15 01:30:30 kernel: zocl-drm axi:zyxclmm_drm: zocl_create_client: created KDS client for pid(5264), ret: 0
+Jul 15 01:30:30 kernel: zocl-drm axi:zyxclmm_drm: zocl_destroy_client: client exits pid(5264)
+Jul 15 01:30:30 kernel: zocl-drm axi:zyxclmm_drm: zocl_create_client: created KDS client for pid(5264), ret: 0
+Jul 15 01:30:30 kernel: [drm] bitstream d0af154e-769f-dc2d-8555-420ae4a7919b locked, ref=1
+Jul 15 01:30:30 kernel: zocl-drm axi:zyxclmm_drm:  ffff00ddc81de810 kds_add_context: Client pid(5264) add context Domain(0) CU(0x1) shared(true)
+Jul 15 01:30:30 kernel: zocl-drm axi:zyxclmm_drm: zocl_create_client: created KDS client for pid(5264), ret: 0
+Jul 15 01:30:30 kernel: zocl-drm axi:zyxclmm_drm: zocl_destroy_client: client exits pid(5264)
+Jul 15 01:30:30 kernel: zocl-drm axi:zyxclmm_drm: zocl_create_client: created KDS client for pid(5264), ret: 0
+Jul 15 01:30:30 kernel: [drm] bitstream d0af154e-769f-dc2d-8555-420ae4a7919b locked, ref=2
+Jul 15 01:30:30 kernel: zocl-drm axi:zyxclmm_drm:  ffff00ddc81de810 kds_add_context: Client pid(5264) add context Domain(0) CU(0x0) shared(true)
+Jul 15 01:30:30 kernel: zocl-drm axi:zyxclmm_drm: zocl_create_client: created KDS client for pid(5264), ret: 0
+Jul 15 01:30:30 kernel: zocl-drm axi:zyxclmm_drm: zocl_destroy_client: client exits pid(5264)
+Jul 15 01:30:30 kernel: zocl-drm axi:zyxclmm_drm: zocl_create_client: created KDS client for pid(5264), ret: 0
+Jul 15 01:30:30 kernel: [drm] bitstream d0af154e-769f-dc2d-8555-420ae4a7919b locked, ref=3
+Jul 15 01:30:30 kernel: zocl-drm axi:zyxclmm_drm:  ffff00ddc81de810 kds_add_context: Client pid(5264) add context Domain(0) CU(0x1) shared(true)
+Jul 15 01:30:30 kernel: usb 2-1.1: Failed to query (GET_CUR) UVC control 1 on unit 3: -32 (exp. 1024).
+Jul 15 01:30:32 kernel: usb 2-1.1: Failed to query (GET_CUR) UVC control 1 on unit 3: -32 (exp. 1024).
+Jul 15 01:30:33 kernel: usb 2-1.1: Failed to query (GET_CUR) UVC control 1 on unit 3: -32 (exp. 1024).
+Jul 15 01:30:36 kernel: usb 2-1.1: Failed to query (GET_CUR) UVC control 1 on unit 3: -32 (exp. 1024).
+Jul 15 01:30:44 kernel: usb 2-1.1: Failed to query (GET_CUR) UVC control 1 on unit 3: -32 (exp. 1024).
+Jul 15 01:30:51 kernel: usb 2-1.1: Failed to query (GET_CUR) UVC control 1 on unit 3: -32 (exp. 1024).
+Jul 15 01:30:54 kernel: usb 2-1.1: Failed to query (GET_CUR) UVC control 1 on unit 3: -32 (exp. 1024).
+Jul 15 01:31:03 kernel: usb 2-1.1: Failed to query (GET_CUR) UVC control 1 on unit 3: -32 (exp. 1024).
+Jul 15 01:31:13 kernel: zocl-drm axi:zyxclmm_drm:  ffff00ddc81de810 _kds_fini_client: Client pid(5264) has 1 opening context for 0 slot
+Jul 15 01:31:13 kernel: zocl-drm axi:zyxclmm_drm:  ffff00ddc81de810 kds_del_context: Client pid(5264) del context Domain(0) CU(0x1)
+Jul 15 01:31:13 kernel: zocl-drm axi:zyxclmm_drm:  ffff00ddc81de810 _kds_fini_client: Removing CU Domain[0] CU Index [1]
+Jul 15 01:31:13 kernel: [drm] bitstream d0af154e-769f-dc2d-8555-420ae4a7919b unlocked, ref=2
+Jul 15 01:31:13 kernel: zocl-drm axi:zyxclmm_drm: zocl_destroy_client: client exits pid(5264)
+Jul 15 01:31:13 kernel: zocl-drm axi:zyxclmm_drm:  ffff00ddc81de810 _kds_fini_client: Client pid(5264) has 1 opening context for 0 slot
+Jul 15 01:31:13 kernel: zocl-drm axi:zyxclmm_drm:  ffff00ddc81de810 kds_del_context: Client pid(5264) del context Domain(0) CU(0x0)
+Jul 15 01:31:13 kernel: zocl-drm axi:zyxclmm_drm:  ffff00ddc81de810 _kds_fini_client: Removing CU Domain[0] CU Index [0]
+Jul 15 01:31:13 kernel: [drm] bitstream d0af154e-769f-dc2d-8555-420ae4a7919b unlocked, ref=1
+Jul 15 01:31:13 kernel: zocl-drm axi:zyxclmm_drm: zocl_destroy_client: client exits pid(5264)
+Jul 15 01:31:13 kernel: zocl-drm axi:zyxclmm_drm:  ffff00ddc81de810 _kds_fini_client: Client pid(5264) has 1 opening context for 0 slot
+Jul 15 01:31:13 kernel: zocl-drm axi:zyxclmm_drm:  ffff00ddc81de810 kds_del_context: Client pid(5264) del context Domain(0) CU(0x1)
+Jul 15 01:31:13 kernel: zocl-drm axi:zyxclmm_drm:  ffff00ddc81de810 _kds_fini_client: Removing CU Domain[0] CU Index [1]
+Jul 15 01:31:13 kernel: [drm] bitstream d0af154e-769f-dc2d-8555-420ae4a7919b unlocked, ref=0
+Jul 15 01:31:13 kernel: zocl-drm axi:zyxclmm_drm: zocl_destroy_client: client exits pid(5264)
+Jul 15 01:31:13 kernel: zocl-drm axi:zyxclmm_drm: zocl_destroy_client: client exits pid(5264)
+Jul 15 01:31:14 kernel: usb 2-1.1: Failed to query (GET_CUR) UVC control 1 on unit 3: -32 (exp. 1024).
+Jul 15 01:31:17 kernel: zocl-drm axi:zyxclmm_drm: zocl_create_client: created KDS client for pid(5370), ret: 0
+Jul 15 01:31:17 kernel: zocl-drm axi:zyxclmm_drm: zocl_destroy_client: client exits pid(5370)
+Jul 15 01:31:17 kernel: zocl-drm axi:zyxclmm_drm: zocl_create_client: created KDS client for pid(5370), ret: 0
+Jul 15 01:31:17 kernel: zocl-drm axi:zyxclmm_drm: zocl_destroy_client: client exits pid(5370)
+Jul 15 01:31:17 kernel: zocl-drm axi:zyxclmm_drm: zocl_create_client: created KDS client for pid(5370), ret: 0
+Jul 15 01:31:17 kernel: zocl-drm axi:zyxclmm_drm: zocl_destroy_client: client exits pid(5370)
+Jul 15 01:31:17 kernel: zocl-drm axi:zyxclmm_drm: zocl_create_client: created KDS client for pid(5370), ret: 0
+Jul 15 01:31:17 kernel: zocl-drm axi:zyxclmm_drm: zocl_destroy_client: client exits pid(5370)
+Jul 15 01:31:17 kernel: zocl-drm axi:zyxclmm_drm: zocl_create_client: created KDS client for pid(5370), ret: 0
+Jul 15 01:31:17 kernel: zocl-drm axi:zyxclmm_drm: zocl_destroy_client: client exits pid(5370)
+Jul 15 01:31:17 kernel: zocl-drm axi:zyxclmm_drm: zocl_create_client: created KDS client for pid(5370), ret: 0
+Jul 15 01:31:17 kernel: zocl-drm axi:zyxclmm_drm: zocl_destroy_client: client exits pid(5370)
+Jul 15 01:31:17 kernel: zocl-drm axi:zyxclmm_drm: zocl_create_client: created KDS client for pid(5370), ret: 0
+Jul 15 01:31:17 kernel: [drm] skip kind 29(AIE_RESOURCES) return code: -22
+Jul 15 01:31:17 kernel: [drm] zocl_xclbin_read_axlf The XCLBIN already loaded
+Jul 15 01:31:17 kernel: [drm] zocl_xclbin_read_axlf d0af154e-769f-dc2d-8555-420ae4a7919b ret: 0
+Jul 15 01:31:17 kernel: [drm] bitstream d0af154e-769f-dc2d-8555-420ae4a7919b locked, ref=1
+Jul 15 01:31:17 kernel: zocl-drm axi:zyxclmm_drm:  ffff00ddc81de810 kds_add_context: Client pid(5370) add context Domain(0) CU(0xffffffff) shared(true)
+Jul 15 01:31:17 kernel: zocl-drm axi:zyxclmm_drm:  ffff00ddc81de810 kds_del_context: Client pid(5370) del context Domain(0) CU(0xffffffff)
+Jul 15 01:31:17 kernel: [drm] bitstream d0af154e-769f-dc2d-8555-420ae4a7919b unlocked, ref=0
+Jul 15 01:31:17 kernel: zocl-drm axi:zyxclmm_drm: zocl_create_client: created KDS client for pid(5370), ret: 0
+Jul 15 01:31:17 kernel: zocl-drm axi:zyxclmm_drm: zocl_destroy_client: client exits pid(5370)
+Jul 15 01:31:17 kernel: zocl-drm axi:zyxclmm_drm: zocl_create_client: created KDS client for pid(5370), ret: 0
+Jul 15 01:31:17 kernel: [drm] bitstream d0af154e-769f-dc2d-8555-420ae4a7919b locked, ref=1
+Jul 15 01:31:17 kernel: zocl-drm axi:zyxclmm_drm:  ffff00ddc81de810 kds_add_context: Client pid(5370) add context Domain(0) CU(0x1) shared(true)
+Jul 15 01:31:17 kernel: zocl-drm axi:zyxclmm_drm: zocl_create_client: created KDS client for pid(5370), ret: 0
+Jul 15 01:31:17 kernel: zocl-drm axi:zyxclmm_drm: zocl_destroy_client: client exits pid(5370)
+Jul 15 01:31:17 kernel: zocl-drm axi:zyxclmm_drm: zocl_create_client: created KDS client for pid(5370), ret: 0
+Jul 15 01:31:17 kernel: [drm] bitstream d0af154e-769f-dc2d-8555-420ae4a7919b locked, ref=2
+Jul 15 01:31:17 kernel: zocl-drm axi:zyxclmm_drm:  ffff00ddc81de810 kds_add_context: Client pid(5370) add context Domain(0) CU(0x0) shared(true)
+Jul 15 01:31:17 kernel: zocl-drm axi:zyxclmm_drm: zocl_create_client: created KDS client for pid(5370), ret: 0
+Jul 15 01:31:17 kernel: zocl-drm axi:zyxclmm_drm: zocl_destroy_client: client exits pid(5370)
+Jul 15 01:31:17 kernel: zocl-drm axi:zyxclmm_drm: zocl_create_client: created KDS client for pid(5370), ret: 0
+Jul 15 01:31:17 kernel: [drm] bitstream d0af154e-769f-dc2d-8555-420ae4a7919b locked, ref=3
+Jul 15 01:31:17 kernel: zocl-drm axi:zyxclmm_drm:  ffff00ddc81de810 kds_add_context: Client pid(5370) add context Domain(0) CU(0x1) shared(true)
+Jul 15 01:31:18 kernel: zocl-drm axi:zyxclmm_drm:  ffff00ddc81de810 _kds_fini_client: Client pid(5370) has 1 opening context for 0 slot
+Jul 15 01:31:18 kernel: zocl-drm axi:zyxclmm_drm:  ffff00ddc81de810 kds_del_context: Client pid(5370) del context Domain(0) CU(0x1)
+Jul 15 01:31:18 kernel: zocl-drm axi:zyxclmm_drm:  ffff00ddc81de810 _kds_fini_client: Removing CU Domain[0] CU Index [1]
+Jul 15 01:31:18 kernel: [drm] bitstream d0af154e-769f-dc2d-8555-420ae4a7919b unlocked, ref=2
+Jul 15 01:31:18 kernel: zocl-drm axi:zyxclmm_drm: zocl_destroy_client: client exits pid(5370)
+Jul 15 01:31:18 kernel: zocl-drm axi:zyxclmm_drm:  ffff00ddc81de810 _kds_fini_client: Client pid(5370) has 1 opening context for 0 slot
+Jul 15 01:31:18 kernel: zocl-drm axi:zyxclmm_drm:  ffff00ddc81de810 kds_del_context: Client pid(5370) del context Domain(0) CU(0x0)
+Jul 15 01:31:18 kernel: zocl-drm axi:zyxclmm_drm:  ffff00ddc81de810 _kds_fini_client: Removing CU Domain[0] CU Index [0]
+Jul 15 01:31:18 kernel: [drm] bitstream d0af154e-769f-dc2d-8555-420ae4a7919b unlocked, ref=1
+Jul 15 01:31:18 kernel: zocl-drm axi:zyxclmm_drm: zocl_destroy_client: client exits pid(5370)
+Jul 15 01:31:18 kernel: zocl-drm axi:zyxclmm_drm:  ffff00ddc81de810 _kds_fini_client: Client pid(5370) has 1 opening context for 0 slot
+Jul 15 01:31:18 kernel: zocl-drm axi:zyxclmm_drm:  ffff00ddc81de810 kds_del_context: Client pid(5370) del context Domain(0) CU(0x1)
+Jul 15 01:31:18 kernel: zocl-drm axi:zyxclmm_drm:  ffff00ddc81de810 _kds_fini_client: Removing CU Domain[0] CU Index [1]
+Jul 15 01:31:18 kernel: [drm] bitstream d0af154e-769f-dc2d-8555-420ae4a7919b unlocked, ref=0
+Jul 15 01:31:18 kernel: zocl-drm axi:zyxclmm_drm: zocl_destroy_client: client exits pid(5370)
+Jul 15 01:31:18 kernel: zocl-drm axi:zyxclmm_drm: zocl_destroy_client: client exits pid(5370)
+Jul 15 01:31:35 kernel: usb 2-1.1: USB disconnect, device number 7
+Jul 15 01:31:35 kernel: usb 2-1.1: new SuperSpeed USB device number 8 using xhci-hcd
+Jul 15 01:31:35 kernel: usb 2-1.1: New USB device found, idVendor=8086, idProduct=0b3a, bcdDevice=51.10
+Jul 15 01:31:36 kernel: usb 2-1.1: New USB device strings: Mfr=1, Product=2, SerialNumber=3
+Jul 15 01:31:36 kernel: usb 2-1.1: Product: Intel(R) RealSense(TM) Depth Camera 435i
+Jul 15 01:31:36 kernel: usb 2-1.1: Manufacturer: Intel(R) RealSense(TM) Depth Camera 435i
+Jul 15 01:31:36 kernel: usb 2-1.1: SerialNumber: 134523060150
+Jul 15 01:31:36 kernel: uvcvideo 2-1.1:1.1: Unknown video format 00000050-0000-0010-8000-00aa00389b71
+Jul 15 01:31:36 kernel: usb 2-1.1: Found UVC 1.50 device Intel(R) RealSense(TM) Depth Camera 435i (8086:0b3a)
+Jul 15 01:31:36 kernel: input: Intel(R) RealSense(TM) Depth Ca as /devices/platform/axi/ff9d0000.usb/fe200000.usb/xhci-hcd.0.auto/usb2/2-1/2-1.1/2-1.1:1.0/input/input6
+Jul 15 01:31:36 kernel: uvcvideo 2-1.1:1.4: Unknown video format 36315752-1a66-a242-9065-d01814a8ef8a
+Jul 15 01:31:36 kernel: usb 2-1.1: Found UVC 1.50 device Intel(R) RealSense(TM) Depth Camera 435i (8086:0b3a)
+Jul 15 01:31:37 kernel: hid-sensor-hub 0003:8086:0B3A.0006: No report with id 0xffffffff found
+Jul 15 01:31:40 kernel: usb 2-1.1: Failed to query (GET_CUR) UVC control 1 on unit 3: -32 (exp. 1024).
+Jul 15 01:31:40 kernel: usb 2-1.1: Failed to query (GET_CUR) UVC control 1 on unit 3: -32 (exp. 1024).
+Jul 15 01:31:40 kernel: usb 2-1.1: Failed to query (GET_CUR) UVC control 1 on unit 3: -32 (exp. 1024).
+Jul 15 01:31:41 kernel: usb 2-1.1: Failed to query (GET_CUR) UVC control 1 on unit 3: -32 (exp. 1024).
+Jul 15 01:31:41 kernel: usb 2-1.1: Failed to query (GET_CUR) UVC control 1 on unit 3: -32 (exp. 1024).
+Jul 15 01:31:41 kernel: usb 2-1.1: Failed to query (GET_CUR) UVC control 1 on unit 3: -32 (exp. 1024).
+Jul 15 01:31:41 kernel: usb 2-1.1: Failed to query (GET_CUR) UVC control 1 on unit 3: -32 (exp. 1024).
+Jul 15 01:31:42 kernel: usb 2-1.1: Failed to query (GET_CUR) UVC control 1 on unit 3: -32 (exp. 1024).
+Jul 15 01:31:42 kernel: usb 2-1.1: Failed to query (GET_CUR) UVC control 1 on unit 3: -32 (exp. 1024).
+Jul 15 01:31:42 kernel: usb 2-1.1: Failed to query (GET_CUR) UVC control 1 on unit 3: -32 (exp. 1024).
+Jul 15 01:31:42 kernel: usb 2-1.1: Failed to query (GET_CUR) UVC control 1 on unit 3: -32 (exp. 1024).
+Jul 15 01:31:42 kernel: usb 2-1.1: Failed to query (GET_CUR) UVC control 1 on unit 3: -32 (exp. 1024).
+Jul 15 01:31:42 kernel: usb 2-1.1: Failed to query (GET_CUR) UVC control 1 on unit 3: -32 (exp. 1024).
+Jul 15 01:31:42 kernel: usb 2-1.1: Failed to query (GET_CUR) UVC control 1 on unit 3: -32 (exp. 1024).
+Jul 15 01:31:42 kernel: usb 2-1.1: Failed to query (GET_CUR) UVC control 1 on unit 3: -32 (exp. 1024).
+Jul 15 01:31:45 kernel: usb 2-1.1: Failed to query (GET_CUR) UVC control 1 on unit 3: -32 (exp. 1024).
+Jul 15 01:31:46 kernel: usb 2-1.1: Failed to query (GET_CUR) UVC control 1 on unit 3: -32 (exp. 1024).
+Jul 15 01:31:47 kernel: zocl-drm axi:zyxclmm_drm: zocl_create_client: created KDS client for pid(5709), ret: 0
+Jul 15 01:31:47 kernel: zocl-drm axi:zyxclmm_drm: zocl_destroy_client: client exits pid(5709)
+Jul 15 01:31:47 kernel: zocl-drm axi:zyxclmm_drm: zocl_create_client: created KDS client for pid(5709), ret: 0
+Jul 15 01:31:47 kernel: zocl-drm axi:zyxclmm_drm: zocl_destroy_client: client exits pid(5709)
+Jul 15 01:31:47 kernel: zocl-drm axi:zyxclmm_drm: zocl_create_client: created KDS client for pid(5709), ret: 0
+Jul 15 01:31:47 kernel: zocl-drm axi:zyxclmm_drm: zocl_destroy_client: client exits pid(5709)
+Jul 15 01:31:47 kernel: zocl-drm axi:zyxclmm_drm: zocl_create_client: created KDS client for pid(5709), ret: 0
+Jul 15 01:31:47 kernel: zocl-drm axi:zyxclmm_drm: zocl_destroy_client: client exits pid(5709)
+Jul 15 01:31:47 kernel: zocl-drm axi:zyxclmm_drm: zocl_create_client: created KDS client for pid(5709), ret: 0
+Jul 15 01:31:47 kernel: zocl-drm axi:zyxclmm_drm: zocl_destroy_client: client exits pid(5709)
+Jul 15 01:31:47 kernel: zocl-drm axi:zyxclmm_drm: zocl_create_client: created KDS client for pid(5709), ret: 0
+Jul 15 01:31:47 kernel: zocl-drm axi:zyxclmm_drm: zocl_destroy_client: client exits pid(5709)
+Jul 15 01:31:47 kernel: zocl-drm axi:zyxclmm_drm: zocl_create_client: created KDS client for pid(5709), ret: 0
+Jul 15 01:31:47 kernel: [drm] skip kind 29(AIE_RESOURCES) return code: -22
+Jul 15 01:31:47 kernel: [drm] zocl_xclbin_read_axlf The XCLBIN already loaded
+Jul 15 01:31:47 kernel: [drm] zocl_xclbin_read_axlf d0af154e-769f-dc2d-8555-420ae4a7919b ret: 0
+Jul 15 01:31:47 kernel: [drm] bitstream d0af154e-769f-dc2d-8555-420ae4a7919b locked, ref=1
+Jul 15 01:31:47 kernel: zocl-drm axi:zyxclmm_drm:  ffff00ddc81de810 kds_add_context: Client pid(5709) add context Domain(0) CU(0xffffffff) shared(true)
+Jul 15 01:31:47 kernel: zocl-drm axi:zyxclmm_drm:  ffff00ddc81de810 kds_del_context: Client pid(5709) del context Domain(0) CU(0xffffffff)
+Jul 15 01:31:47 kernel: [drm] bitstream d0af154e-769f-dc2d-8555-420ae4a7919b unlocked, ref=0
+Jul 15 01:31:47 kernel: zocl-drm axi:zyxclmm_drm: zocl_create_client: created KDS client for pid(5709), ret: 0
+Jul 15 01:31:47 kernel: zocl-drm axi:zyxclmm_drm: zocl_destroy_client: client exits pid(5709)
+Jul 15 01:31:47 kernel: zocl-drm axi:zyxclmm_drm: zocl_create_client: created KDS client for pid(5709), ret: 0
+Jul 15 01:31:47 kernel: [drm] bitstream d0af154e-769f-dc2d-8555-420ae4a7919b locked, ref=1
+Jul 15 01:31:47 kernel: zocl-drm axi:zyxclmm_drm:  ffff00ddc81de810 kds_add_context: Client pid(5709) add context Domain(0) CU(0x1) shared(true)
+Jul 15 01:31:47 kernel: zocl-drm axi:zyxclmm_drm: zocl_create_client: created KDS client for pid(5709), ret: 0
+Jul 15 01:31:47 kernel: zocl-drm axi:zyxclmm_drm: zocl_destroy_client: client exits pid(5709)
+Jul 15 01:31:47 kernel: zocl-drm axi:zyxclmm_drm: zocl_create_client: created KDS client for pid(5709), ret: 0
+Jul 15 01:31:47 kernel: [drm] bitstream d0af154e-769f-dc2d-8555-420ae4a7919b locked, ref=2
+Jul 15 01:31:47 kernel: zocl-drm axi:zyxclmm_drm:  ffff00ddc81de810 kds_add_context: Client pid(5709) add context Domain(0) CU(0x0) shared(true)
+Jul 15 01:31:47 kernel: zocl-drm axi:zyxclmm_drm: zocl_create_client: created KDS client for pid(5709), ret: 0
+Jul 15 01:31:47 kernel: zocl-drm axi:zyxclmm_drm: zocl_destroy_client: client exits pid(5709)
+Jul 15 01:31:47 kernel: zocl-drm axi:zyxclmm_drm: zocl_create_client: created KDS client for pid(5709), ret: 0
+Jul 15 01:31:47 kernel: [drm] bitstream d0af154e-769f-dc2d-8555-420ae4a7919b locked, ref=3
+Jul 15 01:31:47 kernel: zocl-drm axi:zyxclmm_drm:  ffff00ddc81de810 kds_add_context: Client pid(5709) add context Domain(0) CU(0x1) shared(true)
+Jul 15 01:31:51 kernel: usb 2-1.1: Failed to query (GET_CUR) UVC control 1 on unit 3: -32 (exp. 1024).
+Jul 15 01:31:54 kernel: usb 2-1.1: Failed to query (GET_CUR) UVC control 1 on unit 3: -32 (exp. 1024).
+Jul 15 01:31:57 kernel: usb 2-1.1: Failed to query (GET_CUR) UVC control 1 on unit 3: -32 (exp. 1024).
+Jul 15 01:32:05 kernel: usb 2-1.1: Failed to query (GET_CUR) UVC control 1 on unit 3: -32 (exp. 1024).
+Jul 15 01:32:13 kernel: usb 2-1.1: Failed to query (GET_CUR) UVC control 1 on unit 3: -32 (exp. 1024).
+Jul 15 01:32:16 kernel: usb 2-1.1: Failed to query (GET_CUR) UVC control 1 on unit 3: -32 (exp. 1024).
+Jul 15 01:32:35 kernel: usb 2-1.1: Failed to query (GET_CUR) UVC control 1 on unit 3: -32 (exp. 1024).
+Jul 15 01:32:41 kernel: usb 2-1.1: Failed to query (GET_CUR) UVC control 1 on unit 3: -32 (exp. 1024).
+Jul 15 01:32:42 kernel: usb 2-1.1: Failed to query (GET_CUR) UVC control 1 on unit 3: -32 (exp. 1024).
+Jul 15 01:32:43 kernel: usb 2-1.1: Failed to query (GET_CUR) UVC control 1 on unit 3: -32 (exp. 1024).
+Jul 15 01:32:44 kernel: usb 2-1.1: Failed to query (GET_CUR) UVC control 1 on unit 3: -32 (exp. 1024).
+Jul 15 01:32:45 kernel: usb 2-1.1: Failed to query (GET_CUR) UVC control 1 on unit 3: -32 (exp. 1024).
+Jul 15 01:32:49 kernel: usb 2-1.1: Failed to query (GET_CUR) UVC control 1 on unit 3: -32 (exp. 1024).
+Jul 15 01:32:52 kernel: usb 2-1.1: Failed to query (GET_CUR) UVC control 1 on unit 3: -32 (exp. 1024).
+Jul 15 01:32:56 kernel: usb 2-1.1: Failed to query (GET_CUR) UVC control 1 on unit 3: -32 (exp. 1024).
+Jul 15 01:32:57 kernel: usb 2-1.1: Failed to query (GET_CUR) UVC control 1 on unit 3: -32 (exp. 1024).
+Jul 15 01:33:01 kernel: usb 2-1.1: Failed to query (GET_CUR) UVC control 1 on unit 3: -32 (exp. 1024).
+Jul 15 01:33:07 kernel: usb 2-1.1: Failed to query (GET_CUR) UVC control 1 on unit 3: -32 (exp. 1024).
+Jul 15 01:33:11 kernel: usb 2-1.1: Failed to query (GET_CUR) UVC control 1 on unit 3: -32 (exp. 1024).
+Jul 15 01:33:14 kernel: usb 2-1.1: Failed to query (GET_CUR) UVC control 1 on unit 3: -32 (exp. 1024).
+Jul 15 01:33:20 kernel: usb 2-1.1: Failed to query (GET_CUR) UVC control 1 on unit 3: -32 (exp. 1024).
+Jul 15 01:33:39 kernel: usb 2-1.1: Failed to query (GET_CUR) UVC control 1 on unit 3: -32 (exp. 1024).
+Jul 15 01:33:44 kernel: usb 2-1.1: Failed to query (GET_CUR) UVC control 1 on unit 3: -32 (exp. 1024).
+Jul 15 01:33:53 kernel: usb 2-1.1: Failed to query (GET_CUR) UVC control 1 on unit 3: -32 (exp. 1024).
+Jul 15 01:34:09 kernel: usb 2-1.1: Failed to query (GET_CUR) UVC control 1 on unit 3: -32 (exp. 1024).
+Jul 15 01:34:10 kernel: usb 2-1.1: Failed to query (GET_CUR) UVC control 1 on unit 3: -32 (exp. 1024).
+Jul 15 01:34:11 kernel: usb 2-1.1: Failed to query (GET_CUR) UVC control 1 on unit 3: -32 (exp. 1024).
+Jul 15 01:34:20 kernel: zocl-drm axi:zyxclmm_drm:  ffff00ddc81de810 kds_del_context: Client pid(5709) del context Domain(0) CU(0x1)
+Jul 15 01:34:20 kernel: [drm] bitstream d0af154e-769f-dc2d-8555-420ae4a7919b unlocked, ref=2
+Jul 15 01:34:20 kernel: zocl-drm axi:zyxclmm_drm: zocl_destroy_client: client exits pid(5709)
+Jul 15 01:34:20 kernel: zocl-drm axi:zyxclmm_drm:  ffff00ddc81de810 kds_del_context: Client pid(5709) del context Domain(0) CU(0x1)
+Jul 15 01:34:20 kernel: [drm] bitstream d0af154e-769f-dc2d-8555-420ae4a7919b unlocked, ref=1
+Jul 15 01:34:20 kernel: zocl-drm axi:zyxclmm_drm: zocl_destroy_client: client exits pid(5709)
+Jul 15 01:34:20 kernel: zocl-drm axi:zyxclmm_drm:  ffff00ddc81de810 kds_del_context: Client pid(5709) del context Domain(0) CU(0x0)
+Jul 15 01:34:20 kernel: [drm] bitstream d0af154e-769f-dc2d-8555-420ae4a7919b unlocked, ref=0
+Jul 15 01:34:20 kernel: zocl-drm axi:zyxclmm_drm: zocl_destroy_client: client exits pid(5709)
+Jul 15 01:34:20 kernel: zocl-drm axi:zyxclmm_drm: zocl_destroy_client: client exits pid(5709)
+Jul 15 01:34:24 kernel: zocl-drm axi:zyxclmm_drm: zocl_create_client: created KDS client for pid(5932), ret: 0
+Jul 15 01:34:24 kernel: zocl-drm axi:zyxclmm_drm: zocl_destroy_client: client exits pid(5932)
+Jul 15 01:34:24 kernel: zocl-drm axi:zyxclmm_drm: zocl_create_client: created KDS client for pid(5932), ret: 0
+Jul 15 01:34:24 kernel: zocl-drm axi:zyxclmm_drm: zocl_destroy_client: client exits pid(5932)
+Jul 15 01:34:24 kernel: zocl-drm axi:zyxclmm_drm: zocl_create_client: created KDS client for pid(5932), ret: 0
+Jul 15 01:34:24 kernel: zocl-drm axi:zyxclmm_drm: zocl_destroy_client: client exits pid(5932)
+Jul 15 01:34:24 kernel: zocl-drm axi:zyxclmm_drm: zocl_create_client: created KDS client for pid(5932), ret: 0
+Jul 15 01:34:24 kernel: zocl-drm axi:zyxclmm_drm: zocl_destroy_client: client exits pid(5932)
+Jul 15 01:34:24 kernel: zocl-drm axi:zyxclmm_drm: zocl_create_client: created KDS client for pid(5932), ret: 0
+Jul 15 01:34:24 kernel: zocl-drm axi:zyxclmm_drm: zocl_destroy_client: client exits pid(5932)
+Jul 15 01:34:24 kernel: zocl-drm axi:zyxclmm_drm: zocl_create_client: created KDS client for pid(5932), ret: 0
+Jul 15 01:34:24 kernel: zocl-drm axi:zyxclmm_drm: zocl_destroy_client: client exits pid(5932)
+Jul 15 01:34:24 kernel: zocl-drm axi:zyxclmm_drm: zocl_create_client: created KDS client for pid(5932), ret: 0
+Jul 15 01:34:24 kernel: [drm] skip kind 29(AIE_RESOURCES) return code: -22
+Jul 15 01:34:24 kernel: [drm] zocl_xclbin_read_axlf The XCLBIN already loaded
+Jul 15 01:34:24 kernel: [drm] zocl_xclbin_read_axlf d0af154e-769f-dc2d-8555-420ae4a7919b ret: 0
+Jul 15 01:34:24 kernel: [drm] bitstream d0af154e-769f-dc2d-8555-420ae4a7919b locked, ref=1
+Jul 15 01:34:24 kernel: zocl-drm axi:zyxclmm_drm:  ffff00ddc81de810 kds_add_context: Client pid(5932) add context Domain(0) CU(0xffffffff) shared(true)
+Jul 15 01:34:24 kernel: zocl-drm axi:zyxclmm_drm:  ffff00ddc81de810 kds_del_context: Client pid(5932) del context Domain(0) CU(0xffffffff)
+Jul 15 01:34:24 kernel: [drm] bitstream d0af154e-769f-dc2d-8555-420ae4a7919b unlocked, ref=0
+Jul 15 01:34:24 kernel: zocl-drm axi:zyxclmm_drm: zocl_create_client: created KDS client for pid(5932), ret: 0
+Jul 15 01:34:24 kernel: zocl-drm axi:zyxclmm_drm: zocl_destroy_client: client exits pid(5932)
+Jul 15 01:34:24 kernel: zocl-drm axi:zyxclmm_drm: zocl_create_client: created KDS client for pid(5932), ret: 0
+Jul 15 01:34:24 kernel: [drm] bitstream d0af154e-769f-dc2d-8555-420ae4a7919b locked, ref=1
+Jul 15 01:34:24 kernel: zocl-drm axi:zyxclmm_drm:  ffff00ddc81de810 kds_add_context: Client pid(5932) add context Domain(0) CU(0x1) shared(true)
+Jul 15 01:34:24 kernel: zocl-drm axi:zyxclmm_drm: zocl_create_client: created KDS client for pid(5932), ret: 0
+Jul 15 01:34:24 kernel: zocl-drm axi:zyxclmm_drm: zocl_destroy_client: client exits pid(5932)
+Jul 15 01:34:24 kernel: zocl-drm axi:zyxclmm_drm: zocl_create_client: created KDS client for pid(5932), ret: 0
+Jul 15 01:34:24 kernel: [drm] bitstream d0af154e-769f-dc2d-8555-420ae4a7919b locked, ref=2
+Jul 15 01:34:24 kernel: zocl-drm axi:zyxclmm_drm:  ffff00ddc81de810 kds_add_context: Client pid(5932) add context Domain(0) CU(0x0) shared(true)
+Jul 15 01:34:24 kernel: zocl-drm axi:zyxclmm_drm: zocl_create_client: created KDS client for pid(5932), ret: 0
+Jul 15 01:34:24 kernel: zocl-drm axi:zyxclmm_drm: zocl_destroy_client: client exits pid(5932)
+Jul 15 01:34:24 kernel: zocl-drm axi:zyxclmm_drm: zocl_create_client: created KDS client for pid(5932), ret: 0
+Jul 15 01:34:24 kernel: [drm] bitstream d0af154e-769f-dc2d-8555-420ae4a7919b locked, ref=3
+Jul 15 01:34:24 kernel: zocl-drm axi:zyxclmm_drm:  ffff00ddc81de810 kds_add_context: Client pid(5932) add context Domain(0) CU(0x1) shared(true)
+Jul 15 01:34:25 kernel: zocl-drm axi:zyxclmm_drm:  ffff00ddc81de810 _kds_fini_client: Client pid(5932) has 1 opening context for 0 slot
+Jul 15 01:34:25 kernel: zocl-drm axi:zyxclmm_drm:  ffff00ddc81de810 kds_del_context: Client pid(5932) del context Domain(0) CU(0x1)
+Jul 15 01:34:25 kernel: zocl-drm axi:zyxclmm_drm:  ffff00ddc81de810 _kds_fini_client: Removing CU Domain[0] CU Index [1]
+Jul 15 01:34:25 kernel: [drm] bitstream d0af154e-769f-dc2d-8555-420ae4a7919b unlocked, ref=2
+Jul 15 01:34:25 kernel: zocl-drm axi:zyxclmm_drm: zocl_destroy_client: client exits pid(5932)
+Jul 15 01:34:25 kernel: zocl-drm axi:zyxclmm_drm:  ffff00ddc81de810 _kds_fini_client: Client pid(5932) has 1 opening context for 0 slot
+Jul 15 01:34:25 kernel: zocl-drm axi:zyxclmm_drm:  ffff00ddc81de810 kds_del_context: Client pid(5932) del context Domain(0) CU(0x0)
+Jul 15 01:34:25 kernel: zocl-drm axi:zyxclmm_drm:  ffff00ddc81de810 _kds_fini_client: Removing CU Domain[0] CU Index [0]
+Jul 15 01:34:25 kernel: [drm] bitstream d0af154e-769f-dc2d-8555-420ae4a7919b unlocked, ref=1
+Jul 15 01:34:25 kernel: zocl-drm axi:zyxclmm_drm: zocl_destroy_client: client exits pid(5932)
+Jul 15 01:34:25 kernel: zocl-drm axi:zyxclmm_drm:  ffff00ddc81de810 _kds_fini_client: Client pid(5932) has 1 opening context for 0 slot
+Jul 15 01:34:25 kernel: zocl-drm axi:zyxclmm_drm:  ffff00ddc81de810 kds_del_context: Client pid(5932) del context Domain(0) CU(0x1)
+Jul 15 01:34:25 kernel: zocl-drm axi:zyxclmm_drm:  ffff00ddc81de810 _kds_fini_client: Removing CU Domain[0] CU Index [1]
+Jul 15 01:34:25 kernel: [drm] bitstream d0af154e-769f-dc2d-8555-420ae4a7919b unlocked, ref=0
+Jul 15 01:34:25 kernel: zocl-drm axi:zyxclmm_drm: zocl_destroy_client: client exits pid(5932)
+Jul 15 01:34:25 kernel: zocl-drm axi:zyxclmm_drm: zocl_destroy_client: client exits pid(5932)

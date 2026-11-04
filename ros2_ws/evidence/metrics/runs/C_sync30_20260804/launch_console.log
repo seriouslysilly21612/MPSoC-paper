@@ -1,0 +1,737 @@
+[INFO] [launch]: All log files can be found below /home/ubuntu/.ros/log/2026-08-04-12-01-17-328336-kria-14410
+[INFO] [launch]: Default logging verbosity is set to INFO
+[metrics] this run -> /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804  (also reachable as /home/ubuntu/ros2_ws/evidence/metrics/latest)
+[INFO] [launch.user]: 🚀 Launching as Normal ROS Node
+[INFO] [realsense2_camera_node-1]: process started with pid [14416]
+[INFO] [vitis_ai_detector_node-2]: process started with pid [14418]
+[INFO] [pick_logic-3]: process started with pid [14420]
+[INFO] [pick_target_3d_node-4]: process started with pid [14422]
+[INFO] [static_transform_publisher-5]: process started with pid [14424]
+[INFO] [pick_target_base_node-6]: process started with pid [14426]
+[INFO] [python3-7]: process started with pid [14430]
+[static_transform_publisher-5] [INFO] [1785812478.350982093] [base_to_camera_tf]: Spinning until stopped - publishing transform
+[static_transform_publisher-5] translation: ('0.811666', '0.087684', '0.924974')
+[static_transform_publisher-5] rotation: ('0.724628', '0.000084', '-0.687062', '0.053476')
+[static_transform_publisher-5] from 'base_link' to 'camera_link'
+[python3-7] [resource_sampler] tracking pids: {'camera': 14416, 'detector': 14418, 'pick_logic': 14420, 'target_3d': 14422, 'static_tf': 14424, 'target_base': 14426}
+[python3-7] [resource_sampler] hwmon sensors: 34
+[realsense2_camera_node-1] [0m[INFO] [1785812479.742722254] [camera.camera]: RealSense ROS v4.57.7[0m
+[realsense2_camera_node-1] [0m[INFO] [1785812479.750091684] [camera.camera]: Built with LibRealSense v2.57.7[0m
+[realsense2_camera_node-1] [0m[INFO] [1785812479.755586727] [camera.camera]: Running with LibRealSense v2.57.7[0m
+[realsense2_camera_node-1]  04/08 12:01:19,776 ERROR [281472453372128] (context.cpp:41) No valid configuration file found at : /home/ubuntu/.realsense-config.json loading defaults
+[realsense2_camera_node-1] [0m[INFO] [1785812480.021898250] [camera.camera]: Device with serial number 134322073014 was found.
+[realsense2_camera_node-1] [0m
+[realsense2_camera_node-1] [0m[INFO] [1785812480.028572680] [camera.camera]: Device with physical ID /sys/devices/platform/axi/ff9d0000.usb/fe200000.usb/xhci-hcd.0.auto/usb2/2-1/2-1.1/2-1.1:1.0/video4linux/video0 was found.[0m
+[realsense2_camera_node-1] [0m[INFO] [1785812480.032517729] [camera.camera]: Device with name Intel RealSense D435I was found.[0m
+[realsense2_camera_node-1] [0m[INFO] [1785812480.035970121] [camera.camera]: Device with port number 2-1.1 was found.[0m
+[realsense2_camera_node-1] [0m[INFO] [1785812480.039919610] [camera.camera]: Device USB type: 3.2[0m
+[realsense2_camera_node-1] [0m[INFO] [1785812480.041533184] [camera.camera]: Resetting device...[0m
+[pick_logic-3] [INFO] [1785812481.782850534] [pick_logic_node]: Pick logic node (v2) started: /detections -> /pick_target
+[realsense2_camera_node-1]  04/08 12:01:22,047 ERROR [281472440195296] (librealsense-exception.h:52) get_dev_capabilities: Cannot open '/dev/video0 Last Error: Permission denied
+[realsense2_camera_node-1]  04/08 12:01:22,085 ERROR [281472440195296] (backend-v4l2.cpp:1304) UVC meta-node with no video streaming node encountered: id- /dev/video1
+[realsense2_camera_node-1] vid- 8086
+[realsense2_camera_node-1] pid- b3a
+[realsense2_camera_node-1] mi- 0
+[realsense2_camera_node-1] unique_id- 2-1.1-8
+[realsense2_camera_node-1] path- /sys/devices/platform/axi/ff9d0000.usb/fe200000.usb/xhci-hcd.0.auto/usb2/2-1/2-1.1/2-1.1:1.0/video4linux/video1
+[realsense2_camera_node-1] UVC capabilities- 4a00000
+[realsense2_camera_node-1] UVC specification- 320
+[realsense2_camera_node-1] 
+[pick_target_3d_node-4] [INFO] [1785812484.328595686] [pick_target_3d_node]: pick_target_3d_node started (raw-depth reverse projection): /pick_target + /camera/camera/depth/image_rect_raw -> /pick_target_3d
+[pick_target_base_node-6] [INFO] [1785812484.668064029] [pick_target_base_node]: pick_target_base_node started: /pick_target_3d -> /pick_target_base, target_frame=base_link
+[pick_target_base_node-6] [INFO] [1785812484.671817195] [pick_target_base_node]: Filters: require_depth_valid=True, camera_z_range=[0.20, 1.50]
+[realsense2_camera_node-1] [0m[INFO] [1785812486.158895043] [camera.camera]: Device with serial number 134322073014 was found.
+[realsense2_camera_node-1] [0m
+[realsense2_camera_node-1] [0m[INFO] [1785812486.159452061] [camera.camera]: Device with physical ID /sys/devices/platform/axi/ff9d0000.usb/fe200000.usb/xhci-hcd.0.auto/usb2/2-1/2-1.1/2-1.1:1.0/video4linux/video0 was found.[0m
+[realsense2_camera_node-1] [0m[INFO] [1785812486.159597463] [camera.camera]: Device with name Intel RealSense D435I was found.[0m
+[realsense2_camera_node-1] [0m[INFO] [1785812486.161389990] [camera.camera]: Device with port number 2-1.1 was found.[0m
+[realsense2_camera_node-1] [0m[INFO] [1785812486.161635544] [camera.camera]: Device USB type: 3.2[0m
+[realsense2_camera_node-1] [0m[INFO] [1785812486.162045210] [camera.camera]: getParameters...[0m
+[realsense2_camera_node-1] [0m[INFO] [1785812486.170810281] [camera.camera]: JSON file is not provided[0m
+[realsense2_camera_node-1] [0m[INFO] [1785812486.170992843] [camera.camera]: Device Name: Intel RealSense D435I[0m
+[realsense2_camera_node-1] [0m[INFO] [1785812486.171110055] [camera.camera]: Device Serial No: 134322073014[0m
+[realsense2_camera_node-1] [0m[INFO] [1785812486.171174276] [camera.camera]: Device physical port: /sys/devices/platform/axi/ff9d0000.usb/fe200000.usb/xhci-hcd.0.auto/usb2/2-1/2-1.1/2-1.1:1.0/video4linux/video0[0m
+[realsense2_camera_node-1] [0m[INFO] [1785812486.171238137] [camera.camera]: Device FW version: 5.17.0.10[0m
+[realsense2_camera_node-1] [0m[INFO] [1785812486.171377119] [camera.camera]: Device Product ID: 0x0B3A[0m
+[realsense2_camera_node-1] [0m[INFO] [1785812486.171437700] [camera.camera]: Sync Mode: On[0m
+[realsense2_camera_node-1] [0m[INFO] [1785812486.315634224] [camera.camera]: Set ROS param depth_module.infra_profile to default: 848x480x30[0m
+[realsense2_camera_node-1] [33m[WARN] [1785812486.333806415] [camera.camera]: Could not set param: rgb_camera.power_line_frequency with 3 Range: [0, 2]: parameter 'rgb_camera.power_line_frequency' could not be set: Parameter {rgb_camera.power_line_frequency} doesn't comply with integer range.[0m
+[realsense2_camera_node-1] [33m[WARN] [1785812486.363328296] [camera.camera]: re-enable the stream for the change to take effect.[0m
+[realsense2_camera_node-1] [0m[INFO] [1785812486.376541314] [camera.camera]: Set ROS param gyro_fps to default: 200[0m
+[realsense2_camera_node-1] [0m[INFO] [1785812486.378448392] [camera.camera]: Set ROS param accel_fps to default: 100[0m
+[realsense2_camera_node-1] [0m[INFO] [1785812486.446000381] [camera.camera]: Stopping Sensor: Depth Module[0m
+[realsense2_camera_node-1] [0m[INFO] [1785812486.447098838] [camera.camera]: Stopping Sensor: RGB Camera[0m
+[realsense2_camera_node-1] [0m[INFO] [1785812486.496592177] [camera.camera]: Starting Sensor: Depth Module[0m
+[realsense2_camera_node-1] [0m[INFO] [1785812486.515260806] [camera.camera]: Open profile: stream_type: Depth(0), Format: Z16, Width: 848, Height: 480, FPS: 30[0m
+[realsense2_camera_node-1] [0m[INFO] [1785812486.563251203] [camera.camera]: Starting Sensor: RGB Camera[0m
+[realsense2_camera_node-1] [0m[INFO] [1785812486.580273957] [camera.camera]: Open profile: stream_type: Color(0), Format: RGB8, Width: 848, Height: 480, FPS: 30[0m
+[realsense2_camera_node-1] [0m[INFO] [1785812486.636628939] [camera.camera]: RealSense Node Is Up![0m
+[vitis_ai_detector_node-2] [INFO] [1785812487.799744529] [vitis_ai_detector_node]: Starting Vitis-AI worker process
+[pick_target_3d_node-4] [INFO] [1785812488.107510715] [pick_target_3d_node]: Static camera_info/extrinsics captured — subscriptions pruned
+[vitis_ai_detector_node-2] [INFO] [1785812492.251877812] [vitis_ai_detector_node]: Vitis-AI worker ready: input_shape=[1, 416, 416, 3]
+[vitis_ai_detector_node-2] [INFO] [1785812492.255958193] [vitis_ai_detector_node]: Vitis-AI detector started in worker mode: /camera/camera/color/image_raw -> /detections
+[vitis_ai_detector_node-2] [INFO] [1785812492.259091650] [vitis_ai_detector_node]: Low-latency policy: sensor QoS depth=1, latest frame only, process_period_sec=0.045, send_resized_input=False, publish_overlay=False, publish_compressed_overlay=False
+[vitis_ai_detector_node-2] [INFO] [1785812492.358483413] [vitis_ai_detector_node]: Metrics window started: collecting 300s from the first frame
+[pick_logic-3] [WARN] [1785812492.361271774] [pick_logic_node]: Rejected detection array: reason=target_unstable
+[vitis_ai_detector_node-2] [INFO] [1785812492.362677745] [vitis_ai_detector_node]: Collecting metrics: 1 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/performance/detector.csv)
+[pick_target_3d_node-4] [INFO] [1785812492.370627094] [pick_target_3d_node]: Metrics window started: collecting 300s from the first row -> /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/performance/target_3d.csv
+[pick_logic-3] [INFO] [1785812492.385709599] [pick_logic_node]: Metrics window started: collecting 300s from the first row -> /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/performance/pick_logic.csv
+[pick_target_base_node-6] [WARN] [1785812492.389297862] [pick_target_base_node]: Rejected 3D target before TF: reason=target_not_valid, input_frame=, target_valid=False, depth_valid=False, z=0.000
+[pick_target_base_node-6] [INFO] [1785812492.394291147] [pick_target_base_node]: Metrics window started: collecting 300s from the first row -> /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/performance/base.csv
+[pick_logic-3] [INFO] [1785812492.470796798] [pick_logic_node]: Accepted target: class=apple, conf=0.90, cx=479.1, cy=187.6, score=0.709, stable=3, candidates=1
+[vitis_ai_detector_node-2] [INFO] [1785812493.376825363] [vitis_ai_detector_node]: Collecting metrics: 17 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/performance/detector.csv)
+[pick_logic-3] [INFO] [1785812493.493065027] [pick_logic_node]: Accepted target: class=apple, conf=0.90, cx=479.1, cy=187.6, score=0.709, stable=19, candidates=1
+[vitis_ai_detector_node-2] [INFO] [1785812494.355178685] [vitis_ai_detector_node]: Collecting metrics: 34 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/performance/detector.csv)
+[pick_logic-3] [INFO] [1785812494.559380790] [pick_logic_node]: Accepted target: class=apple, conf=0.88, cx=480.9, cy=187.7, score=0.695, stable=37, candidates=1
+[pick_target_3d_node-4] [INFO] [1785812494.820268171] [pick_target_3d_node]: depth frombuffer view == cv_bridge: True (bigendian=0)
+[pick_target_base_node-6] [INFO] [1785812494.847816681] [pick_target_base_node]: Static TF cached (camera_depth_optical_frame -> base_link), matmul vs tf2 max diff 0.000e+00 m
+[vitis_ai_detector_node-2] [INFO] [1785812495.364847060] [vitis_ai_detector_node]: Collecting metrics: 51 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/performance/detector.csv)
+[pick_logic-3] [INFO] [1785812495.601215595] [pick_logic_node]: Accepted target: class=apple, conf=0.90, cx=479.1, cy=187.6, score=0.709, stable=55, candidates=1
+[vitis_ai_detector_node-2] [INFO] [1785812496.431938539] [vitis_ai_detector_node]: Collecting metrics: 69 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/performance/detector.csv)
+[pick_logic-3] [INFO] [1785812496.604025714] [pick_logic_node]: Accepted target: class=apple, conf=0.88, cx=480.9, cy=186.7, score=0.696, stable=70, candidates=1
+[vitis_ai_detector_node-2] [INFO] [1785812497.393465990] [vitis_ai_detector_node]: Collecting metrics: 83 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/performance/detector.csv)
+[pick_logic-3] [INFO] [1785812497.660049053] [pick_logic_node]: Accepted target: class=apple, conf=0.90, cx=479.1, cy=187.6, score=0.709, stable=87, candidates=1
+[vitis_ai_detector_node-2] [INFO] [1785812498.459984294] [vitis_ai_detector_node]: Collecting metrics: 99 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/performance/detector.csv)
+[pick_logic-3] [INFO] [1785812498.691200209] [pick_logic_node]: Accepted target: class=apple, conf=0.90, cx=479.1, cy=187.6, score=0.709, stable=103, candidates=1
+[vitis_ai_detector_node-2] [INFO] [1785812499.460184105] [vitis_ai_detector_node]: Collecting metrics: 117 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/performance/detector.csv)
+[pick_logic-3] [INFO] [1785812499.727883583] [pick_logic_node]: Accepted target: class=apple, conf=0.90, cx=479.1, cy=187.6, score=0.709, stable=121, candidates=1
+[vitis_ai_detector_node-2] [INFO] [1785812500.524313766] [vitis_ai_detector_node]: Collecting metrics: 133 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/performance/detector.csv)
+[pick_logic-3] [INFO] [1785812500.796170895] [pick_logic_node]: Accepted target: class=apple, conf=0.90, cx=479.1, cy=187.6, score=0.709, stable=137, candidates=1
+[vitis_ai_detector_node-2] [INFO] [1785812501.526820536] [vitis_ai_detector_node]: Collecting metrics: 148 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/performance/detector.csv)
+[pick_logic-3] [INFO] [1785812501.796394681] [pick_logic_node]: Accepted target: class=apple, conf=0.90, cx=479.1, cy=187.6, score=0.709, stable=152, candidates=1
+[vitis_ai_detector_node-2] [INFO] [1785812502.591991456] [vitis_ai_detector_node]: Collecting metrics: 165 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/performance/detector.csv)
+[pick_logic-3] [INFO] [1785812502.861797073] [pick_logic_node]: Accepted target: class=apple, conf=0.90, cx=479.1, cy=187.6, score=0.709, stable=169, candidates=1
+[vitis_ai_detector_node-2] [INFO] [1785812503.626245073] [vitis_ai_detector_node]: Collecting metrics: 181 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/performance/detector.csv)
+[pick_logic-3] [INFO] [1785812503.898293772] [pick_logic_node]: Accepted target: class=apple, conf=0.88, cx=480.9, cy=187.7, score=0.696, stable=185, candidates=1
+[vitis_ai_detector_node-2] [INFO] [1785812504.628590581] [vitis_ai_detector_node]: Collecting metrics: 198 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/performance/detector.csv)
+[pick_logic-3] [INFO] [1785812504.899921839] [pick_logic_node]: Accepted target: class=apple, conf=0.90, cx=479.1, cy=187.6, score=0.709, stable=202, candidates=1
+[vitis_ai_detector_node-2] [INFO] [1785812505.633007567] [vitis_ai_detector_node]: Collecting metrics: 214 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/performance/detector.csv)
+[pick_logic-3] [INFO] [1785812505.932209629] [pick_logic_node]: Accepted target: class=apple, conf=0.90, cx=479.1, cy=187.6, score=0.709, stable=219, candidates=1
+[vitis_ai_detector_node-2] [INFO] [1785812506.674951898] [vitis_ai_detector_node]: Collecting metrics: 231 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/performance/detector.csv)
+[pick_logic-3] [INFO] [1785812506.970691348] [pick_logic_node]: Accepted target: class=apple, conf=0.88, cx=480.7, cy=187.6, score=0.696, stable=236, candidates=1
+[vitis_ai_detector_node-2] [INFO] [1785812507.702904938] [vitis_ai_detector_node]: Collecting metrics: 248 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/performance/detector.csv)
+[pick_logic-3] [INFO] [1785812508.001519970] [pick_logic_node]: Accepted target: class=apple, conf=0.90, cx=479.1, cy=187.6, score=0.709, stable=253, candidates=1
+[vitis_ai_detector_node-2] [INFO] [1785812508.697675562] [vitis_ai_detector_node]: Collecting metrics: 264 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/performance/detector.csv)
+[pick_logic-3] [INFO] [1785812509.034970717] [pick_logic_node]: Accepted target: class=apple, conf=0.90, cx=479.1, cy=187.6, score=0.709, stable=269, candidates=1
+[vitis_ai_detector_node-2] [INFO] [1785812509.768929849] [vitis_ai_detector_node]: Collecting metrics: 280 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/performance/detector.csv)
+[pick_logic-3] [INFO] [1785812510.105001046] [pick_logic_node]: Accepted target: class=apple, conf=0.88, cx=480.9, cy=187.7, score=0.697, stable=285, candidates=1
+[vitis_ai_detector_node-2] [INFO] [1785812510.835745528] [vitis_ai_detector_node]: Collecting metrics: 296 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/performance/detector.csv)
+[pick_logic-3] [INFO] [1785812511.126154294] [pick_logic_node]: Accepted target: class=apple, conf=0.88, cx=480.9, cy=186.7, score=0.695, stable=301, candidates=1
+[vitis_ai_detector_node-2] [INFO] [1785812511.867172867] [vitis_ai_detector_node]: Collecting metrics: 313 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/performance/detector.csv)
+[pick_logic-3] [INFO] [1785812512.138338356] [pick_logic_node]: Accepted target: class=apple, conf=0.90, cx=479.1, cy=187.6, score=0.709, stable=317, candidates=1
+[vitis_ai_detector_node-2] [INFO] [1785812512.866048449] [vitis_ai_detector_node]: Collecting metrics: 328 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/performance/detector.csv)
+[pick_logic-3] [INFO] [1785812513.141074055] [pick_logic_node]: Accepted target: class=apple, conf=0.90, cx=479.1, cy=187.6, score=0.709, stable=332, candidates=1
+[vitis_ai_detector_node-2] [INFO] [1785812513.907867986] [vitis_ai_detector_node]: Collecting metrics: 343 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/performance/detector.csv)
+[pick_logic-3] [INFO] [1785812514.178644488] [pick_logic_node]: Accepted target: class=apple, conf=0.88, cx=480.9, cy=186.7, score=0.695, stable=347, candidates=1
+[vitis_ai_detector_node-2] [INFO] [1785812514.904004662] [vitis_ai_detector_node]: Collecting metrics: 358 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/performance/detector.csv)
+[pick_logic-3] [INFO] [1785812515.212919039] [pick_logic_node]: Accepted target: class=apple, conf=0.90, cx=479.1, cy=187.6, score=0.709, stable=363, candidates=1
+[vitis_ai_detector_node-2] [INFO] [1785812515.905763598] [vitis_ai_detector_node]: Collecting metrics: 374 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/performance/detector.csv)
+[pick_logic-3] [INFO] [1785812516.271741362] [pick_logic_node]: Accepted target: class=apple, conf=0.90, cx=479.1, cy=187.6, score=0.708, stable=380, candidates=1
+[vitis_ai_detector_node-2] [INFO] [1785812516.937240682] [vitis_ai_detector_node]: Collecting metrics: 390 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/performance/detector.csv)
+[pick_logic-3] [INFO] [1785812517.271732138] [pick_logic_node]: Accepted target: class=apple, conf=0.90, cx=479.1, cy=187.6, score=0.708, stable=395, candidates=1
+[vitis_ai_detector_node-2] [INFO] [1785812517.939374058] [vitis_ai_detector_node]: Collecting metrics: 405 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/performance/detector.csv)
+[pick_logic-3] [INFO] [1785812518.278969308] [pick_logic_node]: Accepted target: class=apple, conf=0.90, cx=479.1, cy=187.6, score=0.709, stable=410, candidates=1
+[vitis_ai_detector_node-2] [INFO] [1785812518.973011769] [vitis_ai_detector_node]: Collecting metrics: 420 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/performance/detector.csv)
+[pick_logic-3] [INFO] [1785812519.309318079] [pick_logic_node]: Accepted target: class=apple, conf=0.90, cx=479.1, cy=187.6, score=0.708, stable=425, candidates=1
+[vitis_ai_detector_node-2] [INFO] [1785812519.974148114] [vitis_ai_detector_node]: Collecting metrics: 435 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/performance/detector.csv)
+[pick_logic-3] [INFO] [1785812520.340763183] [pick_logic_node]: Accepted target: class=apple, conf=0.90, cx=479.1, cy=187.6, score=0.709, stable=441, candidates=1
+[vitis_ai_detector_node-2] [INFO] [1785812521.005713147] [vitis_ai_detector_node]: Collecting metrics: 451 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/performance/detector.csv)
+[pick_logic-3] [INFO] [1785812521.411521796] [pick_logic_node]: Accepted target: class=apple, conf=0.90, cx=479.1, cy=187.6, score=0.707, stable=457, candidates=1
+[vitis_ai_detector_node-2] [INFO] [1785812522.049205675] [vitis_ai_detector_node]: Collecting metrics: 466 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/performance/detector.csv)
+[pick_logic-3] [INFO] [1785812522.441813777] [pick_logic_node]: Accepted target: class=apple, conf=0.90, cx=479.1, cy=187.6, score=0.709, stable=473, candidates=1
+[vitis_ai_detector_node-2] [INFO] [1785812523.044283411] [vitis_ai_detector_node]: Collecting metrics: 482 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/performance/detector.csv)
+[pick_logic-3] [INFO] [1785812523.442341293] [pick_logic_node]: Accepted target: class=apple, conf=0.90, cx=479.1, cy=187.6, score=0.709, stable=488, candidates=1
+[vitis_ai_detector_node-2] [INFO] [1785812524.059394951] [vitis_ai_detector_node]: Collecting metrics: 497 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/performance/detector.csv)
+[pick_logic-3] [INFO] [1785812524.484929659] [pick_logic_node]: Accepted target: class=apple, conf=0.88, cx=480.9, cy=186.7, score=0.695, stable=504, candidates=1
+[vitis_ai_detector_node-2] [INFO] [1785812525.085840487] [vitis_ai_detector_node]: Collecting metrics: 513 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/performance/detector.csv)
+[pick_logic-3] [INFO] [1785812525.517716838] [pick_logic_node]: Accepted target: class=apple, conf=0.90, cx=479.1, cy=187.6, score=0.709, stable=520, candidates=1
+[vitis_ai_detector_node-2] [INFO] [1785812526.115502017] [vitis_ai_detector_node]: Collecting metrics: 529 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/performance/detector.csv)
+[pick_logic-3] [INFO] [1785812526.545885164] [pick_logic_node]: Accepted target: class=apple, conf=0.90, cx=479.1, cy=187.6, score=0.709, stable=536, candidates=1
+[vitis_ai_detector_node-2] [INFO] [1785812527.149401797] [vitis_ai_detector_node]: Collecting metrics: 545 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/performance/detector.csv)
+[pick_logic-3] [INFO] [1785812527.581116943] [pick_logic_node]: Accepted target: class=apple, conf=0.90, cx=479.1, cy=187.6, score=0.708, stable=552, candidates=1
+[vitis_ai_detector_node-2] [INFO] [1785812528.163616702] [vitis_ai_detector_node]: Collecting metrics: 561 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/performance/detector.csv)
+[pick_logic-3] [INFO] [1785812528.613793610] [pick_logic_node]: Accepted target: class=apple, conf=0.90, cx=479.1, cy=187.6, score=0.709, stable=568, candidates=1
+[vitis_ai_detector_node-2] [INFO] [1785812529.212237734] [vitis_ai_detector_node]: Collecting metrics: 577 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/performance/detector.csv)
+[pick_logic-3] [INFO] [1785812529.647598542] [pick_logic_node]: Accepted target: class=apple, conf=0.90, cx=479.1, cy=187.6, score=0.708, stable=584, candidates=1
+[vitis_ai_detector_node-2] [INFO] [1785812530.247833010] [vitis_ai_detector_node]: Collecting metrics: 593 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/performance/detector.csv)
+[pick_logic-3] [INFO] [1785812530.715242661] [pick_logic_node]: Accepted target: class=apple, conf=0.90, cx=479.1, cy=187.6, score=0.709, stable=600, candidates=1
+[vitis_ai_detector_node-2] [INFO] [1785812531.249840776] [vitis_ai_detector_node]: Collecting metrics: 608 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/performance/detector.csv)
+[pick_logic-3] [INFO] [1785812531.718895769] [pick_logic_node]: Accepted target: class=apple, conf=0.90, cx=479.1, cy=187.6, score=0.709, stable=615, candidates=1
+[vitis_ai_detector_node-2] [INFO] [1785812532.313686144] [vitis_ai_detector_node]: Collecting metrics: 624 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/performance/detector.csv)
+[pick_logic-3] [INFO] [1785812532.785474067] [pick_logic_node]: Accepted target: class=apple, conf=0.88, cx=479.1, cy=187.6, score=0.697, stable=631, candidates=1
+[vitis_ai_detector_node-2] [INFO] [1785812533.316361933] [vitis_ai_detector_node]: Collecting metrics: 639 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/performance/detector.csv)
+[pick_logic-3] [INFO] [1785812533.786400899] [pick_logic_node]: Accepted target: class=apple, conf=0.90, cx=479.1, cy=187.6, score=0.708, stable=646, candidates=1
+[vitis_ai_detector_node-2] [INFO] [1785812534.314448132] [vitis_ai_detector_node]: Collecting metrics: 654 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/performance/detector.csv)
+[pick_logic-3] [INFO] [1785812534.787035414] [pick_logic_node]: Accepted target: class=apple, conf=0.90, cx=479.1, cy=187.6, score=0.709, stable=661, candidates=1
+[vitis_ai_detector_node-2] [INFO] [1785812535.319255678] [vitis_ai_detector_node]: Collecting metrics: 669 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/performance/detector.csv)
+[pick_logic-3] [INFO] [1785812535.854446084] [pick_logic_node]: Accepted target: class=apple, conf=0.90, cx=479.1, cy=187.6, score=0.709, stable=677, candidates=1
+[vitis_ai_detector_node-2] [INFO] [1785812536.350063825] [vitis_ai_detector_node]: Collecting metrics: 685 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/performance/detector.csv)
+[pick_logic-3] [INFO] [1785812536.886612810] [pick_logic_node]: Accepted target: class=apple, conf=0.90, cx=479.1, cy=187.6, score=0.709, stable=693, candidates=1
+[vitis_ai_detector_node-2] [INFO] [1785812537.383964765] [vitis_ai_detector_node]: Collecting metrics: 701 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/performance/detector.csv)
+[pick_logic-3] [INFO] [1785812537.923057586] [pick_logic_node]: Accepted target: class=apple, conf=0.90, cx=479.1, cy=187.6, score=0.708, stable=709, candidates=1
+[vitis_ai_detector_node-2] [INFO] [1785812538.389783537] [vitis_ai_detector_node]: Collecting metrics: 717 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/performance/detector.csv)
+[pick_logic-3] [INFO] [1785812538.957128174] [pick_logic_node]: Accepted target: class=apple, conf=0.88, cx=480.9, cy=187.7, score=0.696, stable=725, candidates=1
+[vitis_ai_detector_node-2] [INFO] [1785812539.418850269] [vitis_ai_detector_node]: Collecting metrics: 732 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/performance/detector.csv)
+[pick_logic-3] [INFO] [1785812539.960514176] [pick_logic_node]: Accepted target: class=apple, conf=0.90, cx=479.1, cy=187.6, score=0.709, stable=740, candidates=1
+[vitis_ai_detector_node-2] [INFO] [1785812540.486808804] [vitis_ai_detector_node]: Collecting metrics: 748 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/performance/detector.csv)
+[pick_logic-3] [INFO] [1785812541.021743499] [pick_logic_node]: Accepted target: class=apple, conf=0.90, cx=479.1, cy=187.6, score=0.708, stable=756, candidates=1
+[vitis_ai_detector_node-2] [INFO] [1785812541.526826562] [vitis_ai_detector_node]: Collecting metrics: 764 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/performance/detector.csv)
+[pick_logic-3] [INFO] [1785812542.025339638] [pick_logic_node]: Accepted target: class=apple, conf=0.90, cx=479.1, cy=187.6, score=0.709, stable=772, candidates=1
+[vitis_ai_detector_node-2] [INFO] [1785812542.522337250] [vitis_ai_detector_node]: Collecting metrics: 779 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/performance/detector.csv)
+[pick_logic-3] [INFO] [1785812543.062515190] [pick_logic_node]: Accepted target: class=apple, conf=0.90, cx=479.1, cy=187.6, score=0.709, stable=787, candidates=1
+[vitis_ai_detector_node-2] [INFO] [1785812543.588755273] [vitis_ai_detector_node]: Collecting metrics: 795 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/performance/detector.csv)
+[pick_logic-3] [INFO] [1785812544.103170740] [pick_logic_node]: Accepted target: class=apple, conf=0.90, cx=479.1, cy=187.6, score=0.709, stable=803, candidates=1
+[vitis_ai_detector_node-2] [INFO] [1785812544.660245827] [vitis_ai_detector_node]: Collecting metrics: 813 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/performance/detector.csv)
+[pick_logic-3] [INFO] [1785812545.106504737] [pick_logic_node]: Accepted target: class=apple, conf=0.88, cx=480.9, cy=186.7, score=0.695, stable=819, candidates=1
+[vitis_ai_detector_node-2] [INFO] [1785812545.726739334] [vitis_ai_detector_node]: Collecting metrics: 829 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/performance/detector.csv)
+[pick_logic-3] [INFO] [1785812546.121044686] [pick_logic_node]: Accepted target: class=apple, conf=0.88, cx=480.9, cy=186.7, score=0.695, stable=835, candidates=1
+[vitis_ai_detector_node-2] [INFO] [1785812546.725613860] [vitis_ai_detector_node]: Collecting metrics: 845 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/performance/detector.csv)
+[pick_logic-3] [INFO] [1785812547.132504107] [pick_logic_node]: Accepted target: class=apple, conf=0.90, cx=479.1, cy=187.6, score=0.709, stable=851, candidates=1
+[vitis_ai_detector_node-2] [INFO] [1785812547.728745987] [vitis_ai_detector_node]: Collecting metrics: 860 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/performance/detector.csv)
+[pick_logic-3] [INFO] [1785812548.134614047] [pick_logic_node]: Accepted target: class=apple, conf=0.90, cx=479.1, cy=187.6, score=0.708, stable=866, candidates=1
+[vitis_ai_detector_node-2] [INFO] [1785812548.726604562] [vitis_ai_detector_node]: Collecting metrics: 875 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/performance/detector.csv)
+[pick_logic-3] [INFO] [1785812549.170542183] [pick_logic_node]: Accepted target: class=apple, conf=0.90, cx=479.1, cy=187.6, score=0.708, stable=882, candidates=1
+[vitis_ai_detector_node-2] [INFO] [1785812549.760693090] [vitis_ai_detector_node]: Collecting metrics: 891 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/performance/detector.csv)
+[pick_logic-3] [INFO] [1785812550.228438900] [pick_logic_node]: Accepted target: class=apple, conf=0.90, cx=479.1, cy=187.6, score=0.709, stable=898, candidates=1
+[vitis_ai_detector_node-2] [INFO] [1785812550.761174178] [vitis_ai_detector_node]: Collecting metrics: 906 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/performance/detector.csv)
+[pick_logic-3] [INFO] [1785812551.264412211] [pick_logic_node]: Accepted target: class=apple, conf=0.90, cx=479.1, cy=187.6, score=0.709, stable=914, candidates=1
+[vitis_ai_detector_node-2] [INFO] [1785812551.798346925] [vitis_ai_detector_node]: Collecting metrics: 922 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/performance/detector.csv)
+[pick_logic-3] [INFO] [1785812552.267061897] [pick_logic_node]: Accepted target: class=apple, conf=0.88, cx=480.9, cy=186.7, score=0.695, stable=929, candidates=1
+[vitis_ai_detector_node-2] [INFO] [1785812552.797126464] [vitis_ai_detector_node]: Collecting metrics: 937 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/performance/detector.csv)
+[pick_logic-3] [INFO] [1785812553.331375070] [pick_logic_node]: Accepted target: class=apple, conf=0.90, cx=479.1, cy=187.6, score=0.709, stable=945, candidates=1
+[vitis_ai_detector_node-2] [INFO] [1785812553.796925984] [vitis_ai_detector_node]: Collecting metrics: 952 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/performance/detector.csv)
+[pick_logic-3] [INFO] [1785812554.334491018] [pick_logic_node]: Accepted target: class=apple, conf=0.90, cx=479.1, cy=187.6, score=0.709, stable=960, candidates=1
+[vitis_ai_detector_node-2] [INFO] [1785812554.797501573] [vitis_ai_detector_node]: Collecting metrics: 967 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/performance/detector.csv)
+[pick_logic-3] [INFO] [1785812555.399205201] [pick_logic_node]: Accepted target: class=apple, conf=0.90, cx=479.1, cy=187.6, score=0.709, stable=976, candidates=1
+[vitis_ai_detector_node-2] [INFO] [1785812555.799982438] [vitis_ai_detector_node]: Collecting metrics: 982 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/performance/detector.csv)
+[pick_logic-3] [INFO] [1785812556.403759835] [pick_logic_node]: Accepted target: class=apple, conf=0.90, cx=479.1, cy=187.6, score=0.709, stable=991, candidates=1
+[vitis_ai_detector_node-2] [INFO] [1785812556.802840725] [vitis_ai_detector_node]: Collecting metrics: 997 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/performance/detector.csv)
+[pick_logic-3] [INFO] [1785812557.466939529] [pick_logic_node]: Accepted target: class=apple, conf=0.90, cx=479.1, cy=187.6, score=0.709, stable=1007, candidates=1
+[vitis_ai_detector_node-2] [INFO] [1785812557.866501825] [vitis_ai_detector_node]: Collecting metrics: 1013 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/performance/detector.csv)
+[pick_logic-3] [INFO] [1785812558.468884048] [pick_logic_node]: Accepted target: class=apple, conf=0.90, cx=479.1, cy=187.6, score=0.708, stable=1022, candidates=1
+[vitis_ai_detector_node-2] [INFO] [1785812558.943250205] [vitis_ai_detector_node]: Collecting metrics: 1029 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/performance/detector.csv)
+[pick_logic-3] [INFO] [1785812559.500752656] [pick_logic_node]: Accepted target: class=apple, conf=0.90, cx=479.1, cy=187.6, score=0.709, stable=1038, candidates=1
+[vitis_ai_detector_node-2] [INFO] [1785812559.970397362] [vitis_ai_detector_node]: Collecting metrics: 1045 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/performance/detector.csv)
+[pick_logic-3] [INFO] [1785812560.502052310] [pick_logic_node]: Accepted target: class=apple, conf=0.90, cx=479.1, cy=187.6, score=0.709, stable=1053, candidates=1
+[vitis_ai_detector_node-2] [INFO] [1785812561.049953537] [vitis_ai_detector_node]: Collecting metrics: 1061 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/performance/detector.csv)
+[pick_logic-3] [INFO] [1785812561.508924524] [pick_logic_node]: Accepted target: class=apple, conf=0.88, cx=480.9, cy=187.7, score=0.696, stable=1068, candidates=1
+[vitis_ai_detector_node-2] [INFO] [1785812562.072958567] [vitis_ai_detector_node]: Collecting metrics: 1077 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/performance/detector.csv)
+[pick_logic-3] [INFO] [1785812562.572223526] [pick_logic_node]: Accepted target: class=apple, conf=0.90, cx=479.1, cy=187.6, score=0.709, stable=1085, candidates=1
+[vitis_ai_detector_node-2] [INFO] [1785812563.137506165] [vitis_ai_detector_node]: Collecting metrics: 1093 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/performance/detector.csv)
+[pick_logic-3] [INFO] [1785812563.605169018] [pick_logic_node]: Accepted target: class=apple, conf=0.90, cx=479.1, cy=187.6, score=0.708, stable=1100, candidates=1
+[vitis_ai_detector_node-2] [INFO] [1785812564.208986803] [vitis_ai_detector_node]: Collecting metrics: 1109 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/performance/detector.csv)
+[pick_logic-3] [INFO] [1785812564.641124701] [pick_logic_node]: Accepted target: class=apple, conf=0.90, cx=479.1, cy=187.6, score=0.709, stable=1116, candidates=1
+[vitis_ai_detector_node-2] [INFO] [1785812565.241503514] [vitis_ai_detector_node]: Collecting metrics: 1126 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/performance/detector.csv)
+[pick_logic-3] [INFO] [1785812565.676156998] [pick_logic_node]: Accepted target: class=apple, conf=0.90, cx=479.1, cy=187.6, score=0.709, stable=1133, candidates=1
+[vitis_ai_detector_node-2] [INFO] [1785812566.241896590] [vitis_ai_detector_node]: Collecting metrics: 1142 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/performance/detector.csv)
+[pick_logic-3] [INFO] [1785812566.709494407] [pick_logic_node]: Accepted target: class=apple, conf=0.90, cx=479.1, cy=187.6, score=0.709, stable=1149, candidates=1
+[vitis_ai_detector_node-2] [INFO] [1785812567.271839077] [vitis_ai_detector_node]: Collecting metrics: 1158 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/performance/detector.csv)
+[pick_logic-3] [INFO] [1785812567.743178819] [pick_logic_node]: Accepted target: class=apple, conf=0.90, cx=479.1, cy=187.6, score=0.709, stable=1165, candidates=1
+[vitis_ai_detector_node-2] [INFO] [1785812568.272196837] [vitis_ai_detector_node]: Collecting metrics: 1173 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/performance/detector.csv)
+[pick_logic-3] [INFO] [1785812568.743909733] [pick_logic_node]: Accepted target: class=apple, conf=0.90, cx=480.7, cy=187.6, score=0.708, stable=1180, candidates=1
+[vitis_ai_detector_node-2] [INFO] [1785812569.274570604] [vitis_ai_detector_node]: Collecting metrics: 1188 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/performance/detector.csv)
+[pick_logic-3] [INFO] [1785812569.809782262] [pick_logic_node]: Accepted target: class=apple, conf=0.90, cx=479.1, cy=187.6, score=0.709, stable=1196, candidates=1
+[vitis_ai_detector_node-2] [INFO] [1785812570.276211248] [vitis_ai_detector_node]: Collecting metrics: 1203 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/performance/detector.csv)
+[pick_logic-3] [INFO] [1785812570.810874576] [pick_logic_node]: Accepted target: class=apple, conf=0.90, cx=479.1, cy=187.6, score=0.709, stable=1211, candidates=1
+[vitis_ai_detector_node-2] [INFO] [1785812571.276412537] [vitis_ai_detector_node]: Collecting metrics: 1218 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/performance/detector.csv)
+[pick_logic-3] [INFO] [1785812571.811047604] [pick_logic_node]: Accepted target: class=apple, conf=0.90, cx=479.1, cy=187.6, score=0.709, stable=1226, candidates=1
+[vitis_ai_detector_node-2] [INFO] [1785812572.286754843] [vitis_ai_detector_node]: Collecting metrics: 1233 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/performance/detector.csv)
+[pick_logic-3] [INFO] [1785812572.814580578] [pick_logic_node]: Accepted target: class=apple, conf=0.90, cx=479.1, cy=187.6, score=0.709, stable=1242, candidates=1
+[vitis_ai_detector_node-2] [INFO] [1785812573.349076240] [vitis_ai_detector_node]: Collecting metrics: 1250 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/performance/detector.csv)
+[pick_logic-3] [INFO] [1785812573.849339279] [pick_logic_node]: Accepted target: class=apple, conf=0.90, cx=479.1, cy=187.6, score=0.709, stable=1258, candidates=1
+[vitis_ai_detector_node-2] [INFO] [1785812574.412224777] [vitis_ai_detector_node]: Collecting metrics: 1267 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/performance/detector.csv)
+[pick_logic-3] [INFO] [1785812574.912492664] [pick_logic_node]: Accepted target: class=apple, conf=0.90, cx=479.1, cy=187.6, score=0.709, stable=1274, candidates=1
+[vitis_ai_detector_node-2] [INFO] [1785812575.412026490] [vitis_ai_detector_node]: Collecting metrics: 1281 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/performance/detector.csv)
+[pick_logic-3] [INFO] [1785812575.948546448] [pick_logic_node]: Accepted target: class=apple, conf=0.90, cx=479.1, cy=187.6, score=0.709, stable=1289, candidates=1
+[vitis_ai_detector_node-2] [INFO] [1785812576.415971511] [vitis_ai_detector_node]: Collecting metrics: 1296 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/performance/detector.csv)
+[pick_logic-3] [INFO] [1785812576.952353506] [pick_logic_node]: Accepted target: class=apple, conf=0.90, cx=479.1, cy=187.6, score=0.709, stable=1304, candidates=1
+[vitis_ai_detector_node-2] [INFO] [1785812577.412639653] [vitis_ai_detector_node]: Collecting metrics: 1311 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/performance/detector.csv)
+[pick_logic-3] [INFO] [1785812577.982019911] [pick_logic_node]: Accepted target: class=apple, conf=0.90, cx=479.1, cy=187.6, score=0.709, stable=1319, candidates=1
+[vitis_ai_detector_node-2] [INFO] [1785812578.448563508] [vitis_ai_detector_node]: Collecting metrics: 1326 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/performance/detector.csv)
+[pick_logic-3] [INFO] [1785812579.018245749] [pick_logic_node]: Accepted target: class=apple, conf=0.90, cx=479.1, cy=187.6, score=0.709, stable=1336, candidates=1
+[vitis_ai_detector_node-2] [INFO] [1785812579.481132692] [vitis_ai_detector_node]: Collecting metrics: 1343 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/performance/detector.csv)
+[pick_logic-3] [INFO] [1785812580.019486731] [pick_logic_node]: Accepted target: class=apple, conf=0.90, cx=479.1, cy=187.6, score=0.708, stable=1351, candidates=1
+[vitis_ai_detector_node-2] [INFO] [1785812580.482416703] [vitis_ai_detector_node]: Collecting metrics: 1358 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/performance/detector.csv)
+[pick_logic-3] [INFO] [1785812581.085281628] [pick_logic_node]: Accepted target: class=apple, conf=0.90, cx=479.1, cy=187.6, score=0.708, stable=1367, candidates=1
+[vitis_ai_detector_node-2] [INFO] [1785812581.484580215] [vitis_ai_detector_node]: Collecting metrics: 1373 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/performance/detector.csv)
+[pick_logic-3] [INFO] [1785812582.097928892] [pick_logic_node]: Accepted target: class=apple, conf=0.90, cx=480.7, cy=187.6, score=0.708, stable=1382, candidates=1
+[vitis_ai_detector_node-2] [INFO] [1785812582.553935550] [vitis_ai_detector_node]: Collecting metrics: 1389 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/performance/detector.csv)
+[pick_logic-3] [INFO] [1785812583.125933099] [pick_logic_node]: Accepted target: class=apple, conf=0.88, cx=480.9, cy=186.7, score=0.695, stable=1398, candidates=1
+[vitis_ai_detector_node-2] [INFO] [1785812583.590995239] [vitis_ai_detector_node]: Collecting metrics: 1405 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/performance/detector.csv)
+[pick_logic-3] [INFO] [1785812584.193255530] [pick_logic_node]: Accepted target: class=apple, conf=0.90, cx=479.1, cy=187.6, score=0.709, stable=1414, candidates=1
+[vitis_ai_detector_node-2] [INFO] [1785812584.655581108] [vitis_ai_detector_node]: Collecting metrics: 1421 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/performance/detector.csv)
+[pick_logic-3] [INFO] [1785812585.222223845] [pick_logic_node]: Accepted target: class=apple, conf=0.90, cx=479.1, cy=187.6, score=0.709, stable=1429, candidates=1
+[vitis_ai_detector_node-2] [INFO] [1785812585.685562367] [vitis_ai_detector_node]: Collecting metrics: 1436 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/performance/detector.csv)
+[pick_logic-3] [INFO] [1785812586.290900920] [pick_logic_node]: Accepted target: class=apple, conf=0.90, cx=479.1, cy=187.6, score=0.709, stable=1445, candidates=1
+[vitis_ai_detector_node-2] [INFO] [1785812586.690105310] [vitis_ai_detector_node]: Collecting metrics: 1451 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/performance/detector.csv)
+[pick_logic-3] [INFO] [1785812587.290812644] [pick_logic_node]: Accepted target: class=apple, conf=0.90, cx=479.1, cy=187.6, score=0.709, stable=1461, candidates=1
+[vitis_ai_detector_node-2] [INFO] [1785812587.690033864] [vitis_ai_detector_node]: Collecting metrics: 1467 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/performance/detector.csv)
+[pick_logic-3] [INFO] [1785812588.323193041] [pick_logic_node]: Accepted target: class=apple, conf=0.88, cx=480.9, cy=186.7, score=0.695, stable=1478, candidates=1
+[vitis_ai_detector_node-2] [INFO] [1785812588.689433367] [vitis_ai_detector_node]: Collecting metrics: 1483 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/performance/detector.csv)
+[pick_logic-3] [INFO] [1785812589.329564125] [pick_logic_node]: Accepted target: class=apple, conf=0.90, cx=479.1, cy=187.6, score=0.709, stable=1492, candidates=1
+[vitis_ai_detector_node-2] [INFO] [1785812589.722231287] [vitis_ai_detector_node]: Collecting metrics: 1498 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/performance/detector.csv)
+[pick_logic-3] [INFO] [1785812590.359099935] [pick_logic_node]: Accepted target: class=apple, conf=0.90, cx=479.1, cy=187.6, score=0.709, stable=1508, candidates=1
+[vitis_ai_detector_node-2] [INFO] [1785812590.757342678] [vitis_ai_detector_node]: Collecting metrics: 1514 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/performance/detector.csv)
+[pick_logic-3] [INFO] [1785812591.426746461] [pick_logic_node]: Accepted target: class=apple, conf=0.88, cx=479.1, cy=187.6, score=0.697, stable=1524, candidates=1
+[vitis_ai_detector_node-2] [INFO] [1785812591.757314811] [vitis_ai_detector_node]: Collecting metrics: 1529 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/performance/detector.csv)
+[pick_logic-3] [INFO] [1785812592.429834138] [pick_logic_node]: Accepted target: class=apple, conf=0.90, cx=479.1, cy=187.6, score=0.709, stable=1539, candidates=1
+[vitis_ai_detector_node-2] [INFO] [1785812592.826622608] [vitis_ai_detector_node]: Collecting metrics: 1545 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/performance/detector.csv)
+[pick_logic-3] [INFO] [1785812593.493889046] [pick_logic_node]: Accepted target: class=apple, conf=0.90, cx=479.1, cy=187.6, score=0.709, stable=1555, candidates=1
+[vitis_ai_detector_node-2] [INFO] [1785812593.828171639] [vitis_ai_detector_node]: Collecting metrics: 1560 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/performance/detector.csv)
+[pick_logic-3] [INFO] [1785812594.529788659] [pick_logic_node]: Accepted target: class=apple, conf=0.90, cx=479.1, cy=187.6, score=0.709, stable=1572, candidates=1
+[vitis_ai_detector_node-2] [INFO] [1785812594.861330551] [vitis_ai_detector_node]: Collecting metrics: 1577 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/performance/detector.csv)
+[pick_logic-3] [INFO] [1785812595.560953789] [pick_logic_node]: Accepted target: class=apple, conf=0.90, cx=479.1, cy=187.6, score=0.709, stable=1588, candidates=1
+[vitis_ai_detector_node-2] [INFO] [1785812595.896362627] [vitis_ai_detector_node]: Collecting metrics: 1593 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/performance/detector.csv)
+[pick_logic-3] [INFO] [1785812596.597168321] [pick_logic_node]: Accepted target: class=apple, conf=0.90, cx=479.1, cy=187.6, score=0.709, stable=1604, candidates=1
+[vitis_ai_detector_node-2] [INFO] [1785812596.930404137] [vitis_ai_detector_node]: Collecting metrics: 1609 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/performance/detector.csv)
+[pick_logic-3] [INFO] [1785812597.663217647] [pick_logic_node]: Accepted target: class=apple, conf=0.90, cx=479.1, cy=187.6, score=0.708, stable=1621, candidates=1
+[vitis_ai_detector_node-2] [INFO] [1785812597.930108091] [vitis_ai_detector_node]: Collecting metrics: 1625 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/performance/detector.csv)
+[pick_logic-3] [INFO] [1785812598.667467206] [pick_logic_node]: Accepted target: class=apple, conf=0.90, cx=479.1, cy=187.6, score=0.709, stable=1636, candidates=1
+[vitis_ai_detector_node-2] [INFO] [1785812598.997283600] [vitis_ai_detector_node]: Collecting metrics: 1641 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/performance/detector.csv)
+[pick_logic-3] [INFO] [1785812599.767314620] [pick_logic_node]: Accepted target: class=apple, conf=0.90, cx=479.1, cy=187.6, score=0.709, stable=1652, candidates=1
+[vitis_ai_detector_node-2] [INFO] [1785812600.034905533] [vitis_ai_detector_node]: Collecting metrics: 1656 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/performance/detector.csv)
+[pick_logic-3] [INFO] [1785812600.802108111] [pick_logic_node]: Accepted target: class=apple, conf=0.90, cx=479.1, cy=187.6, score=0.709, stable=1668, candidates=1
+[vitis_ai_detector_node-2] [INFO] [1785812601.069789394] [vitis_ai_detector_node]: Collecting metrics: 1672 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/performance/detector.csv)
+[pick_logic-3] [INFO] [1785812601.835860873] [pick_logic_node]: Accepted target: class=apple, conf=0.88, cx=480.9, cy=186.7, score=0.696, stable=1684, candidates=1
+[vitis_ai_detector_node-2] [INFO] [1785812602.102724124] [vitis_ai_detector_node]: Collecting metrics: 1688 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/performance/detector.csv)
+[pick_logic-3] [INFO] [1785812602.902969841] [pick_logic_node]: Accepted target: class=apple, conf=0.90, cx=479.1, cy=187.6, score=0.709, stable=1700, candidates=1
+[vitis_ai_detector_node-2] [INFO] [1785812603.106966412] [vitis_ai_detector_node]: Collecting metrics: 1703 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/performance/detector.csv)
+[pick_logic-3] [INFO] [1785812603.934906611] [pick_logic_node]: Accepted target: class=apple, conf=0.90, cx=479.1, cy=187.6, score=0.709, stable=1716, candidates=1
+[vitis_ai_detector_node-2] [INFO] [1785812604.146408362] [vitis_ai_detector_node]: Collecting metrics: 1719 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/performance/detector.csv)
+[pick_logic-3] [INFO] [1785812604.970078637] [pick_logic_node]: Accepted target: class=apple, conf=0.90, cx=479.1, cy=187.6, score=0.709, stable=1733, candidates=1
+[vitis_ai_detector_node-2] [INFO] [1785812605.203090831] [vitis_ai_detector_node]: Collecting metrics: 1737 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/performance/detector.csv)
+[pick_logic-3] [INFO] [1785812606.005927469] [pick_logic_node]: Accepted target: class=apple, conf=0.90, cx=479.1, cy=187.6, score=0.709, stable=1750, candidates=1
+[vitis_ai_detector_node-2] [INFO] [1785812606.201116600] [vitis_ai_detector_node]: Collecting metrics: 1753 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/performance/detector.csv)
+[pick_logic-3] [INFO] [1785812607.077691333] [pick_logic_node]: Accepted target: class=apple, conf=0.90, cx=479.1, cy=187.6, score=0.709, stable=1766, candidates=1
+[vitis_ai_detector_node-2] [INFO] [1785812607.203035344] [vitis_ai_detector_node]: Collecting metrics: 1768 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/performance/detector.csv)
+[pick_logic-3] [INFO] [1785812608.140353092] [pick_logic_node]: Accepted target: class=apple, conf=0.90, cx=479.1, cy=187.6, score=0.709, stable=1782, candidates=1
+[vitis_ai_detector_node-2] [INFO] [1785812608.201816169] [vitis_ai_detector_node]: Collecting metrics: 1783 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/performance/detector.csv)
+[pick_logic-3] [INFO] [1785812609.145410667] [pick_logic_node]: Accepted target: class=apple, conf=0.88, cx=480.9, cy=187.6, score=0.696, stable=1797, candidates=1
+[vitis_ai_detector_node-2] [INFO] [1785812609.211718135] [vitis_ai_detector_node]: Collecting metrics: 1798 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/performance/detector.csv)
+[pick_logic-3] [INFO] [1785812610.206020750] [pick_logic_node]: Accepted target: class=apple, conf=0.90, cx=479.1, cy=187.6, score=0.709, stable=1814, candidates=1
+[vitis_ai_detector_node-2] [INFO] [1785812610.270978198] [vitis_ai_detector_node]: Collecting metrics: 1815 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/performance/detector.csv)
+[pick_logic-3] [INFO] [1785812611.206716336] [pick_logic_node]: Accepted target: class=apple, conf=0.90, cx=479.1, cy=187.6, score=0.709, stable=1829, candidates=1
+[vitis_ai_detector_node-2] [INFO] [1785812611.272423835] [vitis_ai_detector_node]: Collecting metrics: 1830 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/performance/detector.csv)
+[pick_logic-3] [INFO] [1785812612.241538868] [pick_logic_node]: Accepted target: class=apple, conf=0.88, cx=480.9, cy=186.7, score=0.695, stable=1844, candidates=1
+[vitis_ai_detector_node-2] [INFO] [1785812612.308639197] [vitis_ai_detector_node]: Collecting metrics: 1845 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/performance/detector.csv)
+[pick_logic-3] [INFO] [1785812613.242810708] [pick_logic_node]: Accepted target: class=apple, conf=0.90, cx=479.1, cy=187.6, score=0.709, stable=1859, candidates=1
+[vitis_ai_detector_node-2] [INFO] [1785812613.307031895] [vitis_ai_detector_node]: Collecting metrics: 1860 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/performance/detector.csv)
+[pick_logic-3] [INFO] [1785812614.245220282] [pick_logic_node]: Accepted target: class=apple, conf=0.90, cx=480.7, cy=187.6, score=0.707, stable=1874, candidates=1
+[vitis_ai_detector_node-2] [INFO] [1785812614.375326990] [vitis_ai_detector_node]: Collecting metrics: 1876 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/performance/detector.csv)
+[pick_logic-3] [INFO] [1785812615.246254453] [pick_logic_node]: Accepted target: class=apple, conf=0.90, cx=479.1, cy=187.6, score=0.709, stable=1891, candidates=1
+[vitis_ai_detector_node-2] [INFO] [1785812615.375591800] [vitis_ai_detector_node]: Collecting metrics: 1893 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/performance/detector.csv)
+[pick_logic-3] [INFO] [1785812616.276841743] [pick_logic_node]: Accepted target: class=apple, conf=0.90, cx=479.1, cy=187.6, score=0.708, stable=1907, candidates=1
+[vitis_ai_detector_node-2] [INFO] [1785812616.409518898] [vitis_ai_detector_node]: Collecting metrics: 1909 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/performance/detector.csv)
+[pick_logic-3] [INFO] [1785812617.281318810] [pick_logic_node]: Accepted target: class=apple, conf=0.90, cx=479.1, cy=187.6, score=0.709, stable=1922, candidates=1
+[vitis_ai_detector_node-2] [INFO] [1785812617.409287876] [vitis_ai_detector_node]: Collecting metrics: 1924 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/performance/detector.csv)
+[pick_logic-3] [INFO] [1785812618.348095802] [pick_logic_node]: Accepted target: class=apple, conf=0.90, cx=479.1, cy=187.6, score=0.709, stable=1939, candidates=1
+[vitis_ai_detector_node-2] [INFO] [1785812618.411245613] [vitis_ai_detector_node]: Collecting metrics: 1940 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/performance/detector.csv)
+[pick_logic-3] [INFO] [1785812619.350180999] [pick_logic_node]: Accepted target: class=apple, conf=0.90, cx=479.1, cy=187.6, score=0.709, stable=1954, candidates=1
+[vitis_ai_detector_node-2] [INFO] [1785812619.411827168] [vitis_ai_detector_node]: Collecting metrics: 1955 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/performance/detector.csv)
+[vitis_ai_detector_node-2] [INFO] [1785812620.411911653] [vitis_ai_detector_node]: Collecting metrics: 1970 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/performance/detector.csv)
+[pick_logic-3] [INFO] [1785812620.417340382] [pick_logic_node]: Accepted target: class=apple, conf=0.90, cx=479.1, cy=187.6, score=0.709, stable=1970, candidates=1
+[vitis_ai_detector_node-2] [INFO] [1785812621.415714280] [vitis_ai_detector_node]: Collecting metrics: 1985 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/performance/detector.csv)
+[pick_logic-3] [INFO] [1785812621.479851694] [pick_logic_node]: Accepted target: class=apple, conf=0.90, cx=480.7, cy=187.6, score=0.708, stable=1986, candidates=1
+[vitis_ai_detector_node-2] [INFO] [1785812622.481036861] [vitis_ai_detector_node]: Collecting metrics: 2001 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/performance/detector.csv)
+[pick_logic-3] [INFO] [1785812622.483763620] [pick_logic_node]: Accepted target: class=apple, conf=0.90, cx=479.1, cy=187.6, score=0.709, stable=2001, candidates=1
+[vitis_ai_detector_node-2] [INFO] [1785812623.481610346] [vitis_ai_detector_node]: Collecting metrics: 2017 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/performance/detector.csv)
+[pick_logic-3] [INFO] [1785812623.484197233] [pick_logic_node]: Accepted target: class=apple, conf=0.90, cx=479.1, cy=187.6, score=0.708, stable=2017, candidates=1
+[vitis_ai_detector_node-2] [INFO] [1785812624.483143052] [vitis_ai_detector_node]: Collecting metrics: 2032 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/performance/detector.csv)
+[pick_logic-3] [INFO] [1785812624.484718055] [pick_logic_node]: Accepted target: class=apple, conf=0.90, cx=479.1, cy=187.6, score=0.708, stable=2032, candidates=1
+[vitis_ai_detector_node-2] [INFO] [1785812625.485601900] [vitis_ai_detector_node]: Collecting metrics: 2048 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/performance/detector.csv)
+[pick_logic-3] [INFO] [1785812625.487322645] [pick_logic_node]: Accepted target: class=apple, conf=0.90, cx=479.1, cy=187.6, score=0.708, stable=2048, candidates=1
+[vitis_ai_detector_node-2] [INFO] [1785812626.520212263] [vitis_ai_detector_node]: Collecting metrics: 2064 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/performance/detector.csv)
+[pick_logic-3] [INFO] [1785812626.521735016] [pick_logic_node]: Accepted target: class=apple, conf=0.90, cx=479.1, cy=187.6, score=0.708, stable=2064, candidates=1
+[vitis_ai_detector_node-2] [INFO] [1785812627.553576716] [vitis_ai_detector_node]: Collecting metrics: 2080 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/performance/detector.csv)
+[pick_logic-3] [INFO] [1785812627.556172524] [pick_logic_node]: Accepted target: class=apple, conf=0.90, cx=479.1, cy=187.6, score=0.709, stable=2080, candidates=1
+[vitis_ai_detector_node-2] [INFO] [1785812628.551800735] [vitis_ai_detector_node]: Collecting metrics: 2096 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/performance/detector.csv)
+[pick_logic-3] [INFO] [1785812628.619787065] [pick_logic_node]: Accepted target: class=apple, conf=0.90, cx=479.1, cy=187.6, score=0.709, stable=2097, candidates=1
+[vitis_ai_detector_node-2] [INFO] [1785812629.584773027] [vitis_ai_detector_node]: Collecting metrics: 2111 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/performance/detector.csv)
+[pick_logic-3] [INFO] [1785812629.651801223] [pick_logic_node]: Accepted target: class=apple, conf=0.90, cx=479.1, cy=187.6, score=0.709, stable=2112, candidates=1
+[vitis_ai_detector_node-2] [INFO] [1785812630.588555222] [vitis_ai_detector_node]: Collecting metrics: 2126 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/performance/detector.csv)
+[pick_logic-3] [INFO] [1785812630.653478027] [pick_logic_node]: Accepted target: class=apple, conf=0.90, cx=479.1, cy=187.6, score=0.709, stable=2127, candidates=1
+[vitis_ai_detector_node-2] [INFO] [1785812631.622549014] [vitis_ai_detector_node]: Collecting metrics: 2142 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/performance/detector.csv)
+[pick_logic-3] [INFO] [1785812631.690826188] [pick_logic_node]: Accepted target: class=apple, conf=0.90, cx=479.1, cy=187.6, score=0.709, stable=2143, candidates=1
+[vitis_ai_detector_node-2] [INFO] [1785812632.619501115] [vitis_ai_detector_node]: Collecting metrics: 2157 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/performance/detector.csv)
+[pick_logic-3] [INFO] [1785812632.693039905] [pick_logic_node]: Accepted target: class=apple, conf=0.90, cx=479.1, cy=187.6, score=0.709, stable=2158, candidates=1
+[vitis_ai_detector_node-2] [INFO] [1785812633.654236523] [vitis_ai_detector_node]: Collecting metrics: 2172 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/performance/detector.csv)
+[pick_logic-3] [INFO] [1785812633.722588177] [pick_logic_node]: Accepted target: class=apple, conf=0.90, cx=479.1, cy=187.6, score=0.709, stable=2173, candidates=1
+[vitis_ai_detector_node-2] [INFO] [1785812634.654975295] [vitis_ai_detector_node]: Collecting metrics: 2187 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/performance/detector.csv)
+[pick_logic-3] [INFO] [1785812634.724468165] [pick_logic_node]: Accepted target: class=apple, conf=0.88, cx=480.7, cy=187.6, score=0.696, stable=2188, candidates=1
+[vitis_ai_detector_node-2] [INFO] [1785812635.655825435] [vitis_ai_detector_node]: Collecting metrics: 2202 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/performance/detector.csv)
+[pick_logic-3] [INFO] [1785812635.726754706] [pick_logic_node]: Accepted target: class=apple, conf=0.90, cx=479.1, cy=187.6, score=0.708, stable=2203, candidates=1
+[vitis_ai_detector_node-2] [INFO] [1785812636.689988118] [vitis_ai_detector_node]: Collecting metrics: 2217 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/performance/detector.csv)
+[pick_logic-3] [INFO] [1785812636.764324358] [pick_logic_node]: Accepted target: class=apple, conf=0.90, cx=479.1, cy=187.6, score=0.709, stable=2218, candidates=1
+[vitis_ai_detector_node-2] [INFO] [1785812637.761038924] [vitis_ai_detector_node]: Collecting metrics: 2233 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/performance/detector.csv)
+[pick_logic-3] [INFO] [1785812637.762359453] [pick_logic_node]: Accepted target: class=apple, conf=0.90, cx=479.1, cy=187.6, score=0.709, stable=2233, candidates=1
+[vitis_ai_detector_node-2] [INFO] [1785812638.792174767] [vitis_ai_detector_node]: Collecting metrics: 2249 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/performance/detector.csv)
+[pick_logic-3] [INFO] [1785812638.794036494] [pick_logic_node]: Accepted target: class=apple, conf=0.88, cx=480.9, cy=186.7, score=0.695, stable=2249, candidates=1
+[vitis_ai_detector_node-2] [INFO] [1785812639.825709603] [vitis_ai_detector_node]: Collecting metrics: 2265 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/performance/detector.csv)
+[pick_logic-3] [INFO] [1785812639.827251785] [pick_logic_node]: Accepted target: class=apple, conf=0.90, cx=479.1, cy=187.6, score=0.709, stable=2265, candidates=1
+[vitis_ai_detector_node-2] [INFO] [1785812640.828369108] [vitis_ai_detector_node]: Collecting metrics: 2281 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/performance/detector.csv)
+[pick_logic-3] [INFO] [1785812640.829976051] [pick_logic_node]: Accepted target: class=apple, conf=0.90, cx=479.1, cy=187.6, score=0.709, stable=2281, candidates=1
+[vitis_ai_detector_node-2] [INFO] [1785812641.828143729] [vitis_ai_detector_node]: Collecting metrics: 2296 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/performance/detector.csv)
+[pick_logic-3] [INFO] [1785812641.896989748] [pick_logic_node]: Accepted target: class=apple, conf=0.90, cx=479.1, cy=187.6, score=0.709, stable=2297, candidates=1
+[vitis_ai_detector_node-2] [INFO] [1785812642.828686888] [vitis_ai_detector_node]: Collecting metrics: 2311 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/performance/detector.csv)
+[pick_logic-3] [INFO] [1785812642.901296793] [pick_logic_node]: Accepted target: class=apple, conf=0.90, cx=479.1, cy=187.6, score=0.709, stable=2312, candidates=1
+[vitis_ai_detector_node-2] [INFO] [1785812643.897160972] [vitis_ai_detector_node]: Collecting metrics: 2327 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/performance/detector.csv)
+[pick_logic-3] [INFO] [1785812643.899347714] [pick_logic_node]: Accepted target: class=apple, conf=0.90, cx=479.1, cy=187.6, score=0.709, stable=2327, candidates=1
+[vitis_ai_detector_node-2] [INFO] [1785812644.898636720] [vitis_ai_detector_node]: Collecting metrics: 2342 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/performance/detector.csv)
+[pick_logic-3] [INFO] [1785812644.901784816] [pick_logic_node]: Accepted target: class=apple, conf=0.90, cx=479.1, cy=187.6, score=0.709, stable=2342, candidates=1
+[vitis_ai_detector_node-2] [INFO] [1785812645.899071861] [vitis_ai_detector_node]: Collecting metrics: 2357 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/performance/detector.csv)
+[pick_logic-3] [INFO] [1785812645.965075959] [pick_logic_node]: Accepted target: class=apple, conf=0.88, cx=479.1, cy=187.6, score=0.697, stable=2358, candidates=1
+[vitis_ai_detector_node-2] [INFO] [1785812646.930147105] [vitis_ai_detector_node]: Collecting metrics: 2373 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/performance/detector.csv)
+[pick_logic-3] [INFO] [1785812647.000318413] [pick_logic_node]: Accepted target: class=apple, conf=0.88, cx=480.9, cy=186.7, score=0.696, stable=2374, candidates=1
+[vitis_ai_detector_node-2] [INFO] [1785812647.930864495] [vitis_ai_detector_node]: Collecting metrics: 2388 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/performance/detector.csv)
+[pick_logic-3] [INFO] [1785812648.003159744] [pick_logic_node]: Accepted target: class=apple, conf=0.88, cx=480.9, cy=186.7, score=0.695, stable=2389, candidates=1
+[vitis_ai_detector_node-2] [INFO] [1785812649.003021030] [vitis_ai_detector_node]: Collecting metrics: 2404 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/performance/detector.csv)
+[pick_logic-3] [INFO] [1785812649.008771073] [pick_logic_node]: Accepted target: class=apple, conf=0.88, cx=479.1, cy=187.6, score=0.697, stable=2404, candidates=1
+[vitis_ai_detector_node-2] [INFO] [1785812650.074828257] [vitis_ai_detector_node]: Collecting metrics: 2421 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/performance/detector.csv)
+[pick_logic-3] [INFO] [1785812650.076989768] [pick_logic_node]: Accepted target: class=apple, conf=0.90, cx=479.1, cy=187.6, score=0.708, stable=2421, candidates=1
+[vitis_ai_detector_node-2] [INFO] [1785812651.070593359] [vitis_ai_detector_node]: Collecting metrics: 2437 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/performance/detector.csv)
+[pick_logic-3] [INFO] [1785812651.135065003] [pick_logic_node]: Accepted target: class=apple, conf=0.90, cx=479.1, cy=187.6, score=0.709, stable=2438, candidates=1
+[vitis_ai_detector_node-2] [INFO] [1785812652.140471473] [vitis_ai_detector_node]: Collecting metrics: 2454 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/performance/detector.csv)
+[pick_logic-3] [INFO] [1785812652.143243423] [pick_logic_node]: Accepted target: class=apple, conf=0.88, cx=480.9, cy=186.7, score=0.695, stable=2454, candidates=1
+[vitis_ai_detector_node-2] [INFO] [1785812653.142695963] [vitis_ai_detector_node]: Collecting metrics: 2470 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/performance/detector.csv)
+[pick_logic-3] [INFO] [1785812653.144344497] [pick_logic_node]: Accepted target: class=apple, conf=0.88, cx=480.9, cy=187.7, score=0.697, stable=2470, candidates=1
+[vitis_ai_detector_node-2] [INFO] [1785812654.173660068] [vitis_ai_detector_node]: Collecting metrics: 2486 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/performance/detector.csv)
+[pick_logic-3] [INFO] [1785812654.173659778] [pick_logic_node]: Accepted target: class=apple, conf=0.88, cx=479.1, cy=187.6, score=0.697, stable=2486, candidates=1
+[vitis_ai_detector_node-2] [INFO] [1785812655.210802591] [vitis_ai_detector_node]: Collecting metrics: 2503 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/performance/detector.csv)
+[pick_logic-3] [INFO] [1785812655.212966292] [pick_logic_node]: Accepted target: class=apple, conf=0.90, cx=479.1, cy=187.6, score=0.709, stable=2503, candidates=1
+[vitis_ai_detector_node-2] [INFO] [1785812656.223057020] [vitis_ai_detector_node]: Collecting metrics: 2519 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/performance/detector.csv)
+[pick_logic-3] [INFO] [1785812656.229065107] [pick_logic_node]: Accepted target: class=apple, conf=0.90, cx=480.7, cy=187.6, score=0.708, stable=2519, candidates=1
+[pick_logic-3] [INFO] [1785812657.278837177] [pick_logic_node]: Accepted target: class=apple, conf=0.90, cx=479.1, cy=187.6, score=0.708, stable=2536, candidates=1
+[vitis_ai_detector_node-2] [INFO] [1785812657.281357154] [vitis_ai_detector_node]: Collecting metrics: 2536 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/performance/detector.csv)
+[vitis_ai_detector_node-2] [INFO] [1785812658.310594584] [vitis_ai_detector_node]: Collecting metrics: 2552 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/performance/detector.csv)
+[pick_logic-3] [INFO] [1785812658.312217988] [pick_logic_node]: Accepted target: class=apple, conf=0.90, cx=479.1, cy=187.6, score=0.709, stable=2552, candidates=1
+[vitis_ai_detector_node-2] [INFO] [1785812659.320552333] [vitis_ai_detector_node]: Collecting metrics: 2568 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/performance/detector.csv)
+[pick_logic-3] [INFO] [1785812659.325704048] [pick_logic_node]: Accepted target: class=apple, conf=0.90, cx=479.1, cy=187.6, score=0.708, stable=2568, candidates=1
+[vitis_ai_detector_node-2] [INFO] [1785812660.340478464] [vitis_ai_detector_node]: Collecting metrics: 2584 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/performance/detector.csv)
+[pick_logic-3] [INFO] [1785812660.342570325] [pick_logic_node]: Accepted target: class=apple, conf=0.90, cx=479.1, cy=187.6, score=0.709, stable=2584, candidates=1
+[pick_logic-3] [INFO] [1785812661.342930340] [pick_logic_node]: Accepted target: class=apple, conf=0.88, cx=480.9, cy=186.7, score=0.695, stable=2599, candidates=1
+[vitis_ai_detector_node-2] [INFO] [1785812661.407601726] [vitis_ai_detector_node]: Collecting metrics: 2600 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/performance/detector.csv)
+[pick_logic-3] [INFO] [1785812662.378815878] [pick_logic_node]: Accepted target: class=apple, conf=0.88, cx=480.9, cy=186.7, score=0.695, stable=2615, candidates=1
+[vitis_ai_detector_node-2] [INFO] [1785812662.440688493] [vitis_ai_detector_node]: Collecting metrics: 2616 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/performance/detector.csv)
+[pick_logic-3] [INFO] [1785812663.380600199] [pick_logic_node]: Accepted target: class=apple, conf=0.90, cx=479.1, cy=187.6, score=0.709, stable=2630, candidates=1
+[vitis_ai_detector_node-2] [INFO] [1785812663.446082367] [vitis_ai_detector_node]: Collecting metrics: 2631 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/performance/detector.csv)
+[vitis_ai_detector_node-2] [INFO] [1785812664.444150803] [vitis_ai_detector_node]: Collecting metrics: 2646 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/performance/detector.csv)
+[pick_logic-3] [INFO] [1785812664.445917838] [pick_logic_node]: Accepted target: class=apple, conf=0.88, cx=480.9, cy=186.7, score=0.695, stable=2646, candidates=1
+[vitis_ai_detector_node-2] [INFO] [1785812665.477948713] [vitis_ai_detector_node]: Collecting metrics: 2663 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/performance/detector.csv)
+[pick_logic-3] [INFO] [1785812665.480125405] [pick_logic_node]: Accepted target: class=apple, conf=0.88, cx=480.9, cy=187.7, score=0.697, stable=2663, candidates=1
+[vitis_ai_detector_node-2] [INFO] [1785812666.511645190] [vitis_ai_detector_node]: Collecting metrics: 2679 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/performance/detector.csv)
+[pick_logic-3] [INFO] [1785812666.513635928] [pick_logic_node]: Accepted target: class=apple, conf=0.90, cx=480.7, cy=187.6, score=0.708, stable=2679, candidates=1
+[vitis_ai_detector_node-2] [INFO] [1785812667.548369518] [vitis_ai_detector_node]: Collecting metrics: 2695 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/performance/detector.csv)
+[pick_logic-3] [INFO] [1785812667.550051512] [pick_logic_node]: Accepted target: class=apple, conf=0.90, cx=479.1, cy=187.6, score=0.709, stable=2695, candidates=1
+[vitis_ai_detector_node-2] [INFO] [1785812668.586933380] [vitis_ai_detector_node]: Collecting metrics: 2711 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/performance/detector.csv)
+[pick_logic-3] [INFO] [1785812668.590195257] [pick_logic_node]: Accepted target: class=apple, conf=0.88, cx=480.9, cy=186.7, score=0.696, stable=2711, candidates=1
+[vitis_ai_detector_node-2] [INFO] [1785812669.583465692] [vitis_ai_detector_node]: Collecting metrics: 2727 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/performance/detector.csv)
+[pick_logic-3] [INFO] [1785812669.584940693] [pick_logic_node]: Accepted target: class=apple, conf=0.88, cx=480.9, cy=186.7, score=0.695, stable=2727, candidates=1
+[vitis_ai_detector_node-2] [INFO] [1785812670.617808729] [vitis_ai_detector_node]: Collecting metrics: 2743 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/performance/detector.csv)
+[pick_logic-3] [INFO] [1785812670.619214709] [pick_logic_node]: Accepted target: class=apple, conf=0.90, cx=479.1, cy=187.6, score=0.708, stable=2743, candidates=1
+[vitis_ai_detector_node-2] [INFO] [1785812671.652129063] [vitis_ai_detector_node]: Collecting metrics: 2759 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/performance/detector.csv)
+[pick_logic-3] [INFO] [1785812671.653734036] [pick_logic_node]: Accepted target: class=apple, conf=0.90, cx=479.1, cy=187.6, score=0.709, stable=2759, candidates=1
+[vitis_ai_detector_node-2] [INFO] [1785812672.685086545] [vitis_ai_detector_node]: Collecting metrics: 2774 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/performance/detector.csv)
+[pick_logic-3] [INFO] [1785812672.687572641] [pick_logic_node]: Accepted target: class=apple, conf=0.88, cx=479.1, cy=187.6, score=0.697, stable=2774, candidates=1
+[vitis_ai_detector_node-2] [INFO] [1785812673.682963568] [vitis_ai_detector_node]: Collecting metrics: 2789 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/performance/detector.csv)
+[pick_logic-3] [INFO] [1785812673.757960992] [pick_logic_node]: Accepted target: class=apple, conf=0.90, cx=479.1, cy=187.6, score=0.709, stable=2790, candidates=1
+[vitis_ai_detector_node-2] [INFO] [1785812674.719727080] [vitis_ai_detector_node]: Collecting metrics: 2805 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/performance/detector.csv)
+[pick_logic-3] [INFO] [1785812674.785545942] [pick_logic_node]: Accepted target: class=apple, conf=0.88, cx=480.9, cy=186.7, score=0.695, stable=2806, candidates=1
+[vitis_ai_detector_node-2] [INFO] [1785812675.718510712] [vitis_ai_detector_node]: Collecting metrics: 2820 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/performance/detector.csv)
+[pick_logic-3] [INFO] [1785812675.785933846] [pick_logic_node]: Accepted target: class=apple, conf=0.90, cx=479.1, cy=187.6, score=0.709, stable=2821, candidates=1
+[vitis_ai_detector_node-2] [INFO] [1785812676.718764683] [vitis_ai_detector_node]: Collecting metrics: 2835 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/performance/detector.csv)
+[pick_logic-3] [INFO] [1785812676.788117685] [pick_logic_node]: Accepted target: class=apple, conf=0.90, cx=479.1, cy=187.6, score=0.709, stable=2836, candidates=1
+[vitis_ai_detector_node-2] [INFO] [1785812677.752618066] [vitis_ai_detector_node]: Collecting metrics: 2851 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/performance/detector.csv)
+[pick_logic-3] [INFO] [1785812677.822173271] [pick_logic_node]: Accepted target: class=apple, conf=0.90, cx=479.1, cy=187.6, score=0.709, stable=2852, candidates=1
+[vitis_ai_detector_node-2] [INFO] [1785812678.787557344] [vitis_ai_detector_node]: Collecting metrics: 2866 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/performance/detector.csv)
+[pick_logic-3] [INFO] [1785812678.858391837] [pick_logic_node]: Accepted target: class=apple, conf=0.90, cx=479.1, cy=187.6, score=0.709, stable=2867, candidates=1
+[vitis_ai_detector_node-2] [INFO] [1785812679.821884870] [vitis_ai_detector_node]: Collecting metrics: 2883 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/performance/detector.csv)
+[pick_logic-3] [INFO] [1785812679.893394182] [pick_logic_node]: Accepted target: class=apple, conf=0.88, cx=480.9, cy=186.7, score=0.695, stable=2884, candidates=1
+[vitis_ai_detector_node-2] [INFO] [1785812680.824657658] [vitis_ai_detector_node]: Collecting metrics: 2899 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/performance/detector.csv)
+[pick_logic-3] [INFO] [1785812680.894198082] [pick_logic_node]: Accepted target: class=apple, conf=0.90, cx=479.1, cy=187.6, score=0.709, stable=2900, candidates=1
+[vitis_ai_detector_node-2] [INFO] [1785812681.859552438] [vitis_ai_detector_node]: Collecting metrics: 2915 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/performance/detector.csv)
+[pick_logic-3] [INFO] [1785812681.905669954] [pick_logic_node]: Accepted target: class=apple, conf=0.90, cx=479.1, cy=187.6, score=0.709, stable=2916, candidates=1
+[vitis_ai_detector_node-2] [INFO] [1785812682.892490287] [vitis_ai_detector_node]: Collecting metrics: 2931 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/performance/detector.csv)
+[pick_logic-3] [INFO] [1785812682.958423679] [pick_logic_node]: Accepted target: class=apple, conf=0.88, cx=479.1, cy=187.6, score=0.697, stable=2932, candidates=1
+[vitis_ai_detector_node-2] [INFO] [1785812683.891501065] [vitis_ai_detector_node]: Collecting metrics: 2946 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/performance/detector.csv)
+[pick_logic-3] [INFO] [1785812683.958728865] [pick_logic_node]: Accepted target: class=apple, conf=0.90, cx=479.1, cy=187.6, score=0.709, stable=2947, candidates=1
+[vitis_ai_detector_node-2] [INFO] [1785812684.925663698] [vitis_ai_detector_node]: Collecting metrics: 2962 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/performance/detector.csv)
+[pick_logic-3] [INFO] [1785812684.992973679] [pick_logic_node]: Accepted target: class=apple, conf=0.88, cx=480.9, cy=186.7, score=0.697, stable=2963, candidates=1
+[vitis_ai_detector_node-2] [INFO] [1785812685.993375332] [vitis_ai_detector_node]: Collecting metrics: 2978 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/performance/detector.csv)
+[pick_logic-3] [INFO] [1785812685.996107981] [pick_logic_node]: Accepted target: class=apple, conf=0.88, cx=480.9, cy=186.7, score=0.695, stable=2978, candidates=1
+[pick_logic-3] [INFO] [1785812687.033821811] [pick_logic_node]: Accepted target: class=apple, conf=0.90, cx=479.1, cy=187.6, score=0.709, stable=2994, candidates=1
+[vitis_ai_detector_node-2] [INFO] [1785812687.037520974] [vitis_ai_detector_node]: Collecting metrics: 2994 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/performance/detector.csv)
+[vitis_ai_detector_node-2] [INFO] [1785812688.037616479] [vitis_ai_detector_node]: Collecting metrics: 3010 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/performance/detector.csv)
+[pick_logic-3] [INFO] [1785812688.122448632] [pick_logic_node]: Accepted target: class=apple, conf=0.90, cx=479.1, cy=187.6, score=0.709, stable=3011, candidates=1
+[vitis_ai_detector_node-2] [INFO] [1785812689.079143388] [vitis_ai_detector_node]: Collecting metrics: 3026 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/performance/detector.csv)
+[pick_logic-3] [INFO] [1785812689.169961308] [pick_logic_node]: Accepted target: class=apple, conf=0.90, cx=479.1, cy=187.6, score=0.708, stable=3027, candidates=1
+[vitis_ai_detector_node-2] [INFO] [1785812690.118000327] [vitis_ai_detector_node]: Collecting metrics: 3042 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/performance/detector.csv)
+[pick_logic-3] [INFO] [1785812690.176784955] [pick_logic_node]: Accepted target: class=apple, conf=0.88, cx=480.9, cy=187.7, score=0.697, stable=3043, candidates=1
+[vitis_ai_detector_node-2] [INFO] [1785812691.155187110] [vitis_ai_detector_node]: Collecting metrics: 3058 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/performance/detector.csv)
+[pick_logic-3] [INFO] [1785812691.206657112] [pick_logic_node]: Accepted target: class=apple, conf=0.90, cx=479.1, cy=187.6, score=0.708, stable=3059, candidates=1
+[vitis_ai_detector_node-2] [INFO] [1785812692.166627040] [vitis_ai_detector_node]: Collecting metrics: 3074 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/performance/detector.csv)
+[pick_logic-3] [INFO] [1785812692.228195767] [pick_logic_node]: Accepted target: class=apple, conf=0.90, cx=479.1, cy=187.6, score=0.709, stable=3075, candidates=1
+[vitis_ai_detector_node-2] [INFO] [1785812693.181828211] [vitis_ai_detector_node]: Collecting metrics: 3091 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/performance/detector.csv)
+[pick_logic-3] [INFO] [1785812693.239803647] [pick_logic_node]: Accepted target: class=apple, conf=0.90, cx=479.1, cy=187.6, score=0.709, stable=3092, candidates=1
+[vitis_ai_detector_node-2] [INFO] [1785812694.191893807] [vitis_ai_detector_node]: Collecting metrics: 3107 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/performance/detector.csv)
+[pick_logic-3] [INFO] [1785812694.270351907] [pick_logic_node]: Accepted target: class=apple, conf=0.88, cx=480.9, cy=186.7, score=0.696, stable=3108, candidates=1
+[vitis_ai_detector_node-2] [INFO] [1785812695.232016063] [vitis_ai_detector_node]: Collecting metrics: 3123 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/performance/detector.csv)
+[pick_logic-3] [INFO] [1785812695.302055602] [pick_logic_node]: Accepted target: class=apple, conf=0.90, cx=479.1, cy=187.6, score=0.708, stable=3124, candidates=1
+[vitis_ai_detector_node-2] [INFO] [1785812696.271143603] [vitis_ai_detector_node]: Collecting metrics: 3139 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/performance/detector.csv)
+[pick_logic-3] [INFO] [1785812696.335884265] [pick_logic_node]: Accepted target: class=apple, conf=0.90, cx=479.1, cy=187.6, score=0.709, stable=3140, candidates=1
+[vitis_ai_detector_node-2] [INFO] [1785812697.335874869] [vitis_ai_detector_node]: Collecting metrics: 3155 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/performance/detector.csv)
+[pick_logic-3] [INFO] [1785812697.338236103] [pick_logic_node]: Accepted target: class=apple, conf=0.90, cx=479.1, cy=187.6, score=0.709, stable=3155, candidates=1
+[vitis_ai_detector_node-2] [INFO] [1785812698.344990972] [vitis_ai_detector_node]: Collecting metrics: 3171 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/performance/detector.csv)
+[pick_logic-3] [INFO] [1785812698.346671906] [pick_logic_node]: Accepted target: class=apple, conf=0.90, cx=479.1, cy=187.6, score=0.709, stable=3171, candidates=1
+[pick_logic-3] [INFO] [1785812699.356811192] [pick_logic_node]: Accepted target: class=apple, conf=0.90, cx=480.7, cy=187.6, score=0.707, stable=3187, candidates=1
+[vitis_ai_detector_node-2] [INFO] [1785812699.400816936] [vitis_ai_detector_node]: Collecting metrics: 3188 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/performance/detector.csv)
+[pick_logic-3] [INFO] [1785812700.373735983] [pick_logic_node]: Accepted target: class=apple, conf=0.90, cx=480.7, cy=187.6, score=0.708, stable=3204, candidates=1
+[vitis_ai_detector_node-2] [INFO] [1785812700.437601673] [vitis_ai_detector_node]: Collecting metrics: 3205 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/performance/detector.csv)
+[pick_logic-3] [INFO] [1785812701.375547445] [pick_logic_node]: Accepted target: class=apple, conf=0.90, cx=479.1, cy=187.6, score=0.709, stable=3219, candidates=1
+[vitis_ai_detector_node-2] [INFO] [1785812701.439609467] [vitis_ai_detector_node]: Collecting metrics: 3220 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/performance/detector.csv)
+[pick_logic-3] [INFO] [1785812702.440063227] [pick_logic_node]: Accepted target: class=apple, conf=0.90, cx=479.1, cy=187.6, score=0.709, stable=3236, candidates=1
+[vitis_ai_detector_node-2] [INFO] [1785812702.505084133] [vitis_ai_detector_node]: Collecting metrics: 3237 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/performance/detector.csv)
+[pick_logic-3] [INFO] [1785812703.477026181] [pick_logic_node]: Accepted target: class=apple, conf=0.90, cx=479.1, cy=187.6, score=0.709, stable=3253, candidates=1
+[vitis_ai_detector_node-2] [INFO] [1785812703.541689651] [vitis_ai_detector_node]: Collecting metrics: 3254 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/performance/detector.csv)
+[pick_logic-3] [INFO] [1785812704.510404320] [pick_logic_node]: Accepted target: class=apple, conf=0.90, cx=479.1, cy=187.6, score=0.708, stable=3270, candidates=1
+[vitis_ai_detector_node-2] [INFO] [1785812704.575531217] [vitis_ai_detector_node]: Collecting metrics: 3271 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/performance/detector.csv)
+[vitis_ai_detector_node-2] [INFO] [1785812705.574665182] [vitis_ai_detector_node]: Collecting metrics: 3286 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/performance/detector.csv)
+[pick_logic-3] [INFO] [1785812705.577037766] [pick_logic_node]: Accepted target: class=apple, conf=0.88, cx=480.7, cy=187.6, score=0.696, stable=3286, candidates=1
+[vitis_ai_detector_node-2] [INFO] [1785812706.574958861] [vitis_ai_detector_node]: Collecting metrics: 3301 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/performance/detector.csv)
+[pick_logic-3] [INFO] [1785812706.582429239] [pick_logic_node]: Accepted target: class=apple, conf=0.90, cx=479.1, cy=187.6, score=0.708, stable=3301, candidates=1
+[vitis_ai_detector_node-2] [INFO] [1785812707.574387026] [vitis_ai_detector_node]: Collecting metrics: 3316 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/performance/detector.csv)
+[pick_logic-3] [INFO] [1785812707.644350902] [pick_logic_node]: Accepted target: class=apple, conf=0.90, cx=479.1, cy=187.6, score=0.709, stable=3317, candidates=1
+[vitis_ai_detector_node-2] [INFO] [1785812708.574846604] [vitis_ai_detector_node]: Collecting metrics: 3332 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/performance/detector.csv)
+[pick_logic-3] [INFO] [1785812708.645009923] [pick_logic_node]: Accepted target: class=apple, conf=0.88, cx=479.1, cy=187.6, score=0.697, stable=3333, candidates=1
+[vitis_ai_detector_node-2] [INFO] [1785812709.578007759] [vitis_ai_detector_node]: Collecting metrics: 3347 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/performance/detector.csv)
+[pick_logic-3] [INFO] [1785812709.646994460] [pick_logic_node]: Accepted target: class=apple, conf=0.88, cx=479.1, cy=187.6, score=0.697, stable=3348, candidates=1
+[vitis_ai_detector_node-2] [INFO] [1785812710.611605569] [vitis_ai_detector_node]: Collecting metrics: 3362 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/performance/detector.csv)
+[pick_logic-3] [INFO] [1785812710.678968167] [pick_logic_node]: Accepted target: class=apple, conf=0.90, cx=479.1, cy=187.6, score=0.708, stable=3363, candidates=1
+[vitis_ai_detector_node-2] [INFO] [1785812711.611226228] [vitis_ai_detector_node]: Collecting metrics: 3377 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/performance/detector.csv)
+[pick_logic-3] [INFO] [1785812711.679969966] [pick_logic_node]: Accepted target: class=apple, conf=0.90, cx=479.1, cy=187.6, score=0.709, stable=3378, candidates=1
+[vitis_ai_detector_node-2] [INFO] [1785812712.644399148] [vitis_ai_detector_node]: Collecting metrics: 3393 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/performance/detector.csv)
+[pick_logic-3] [INFO] [1785812712.713352629] [pick_logic_node]: Accepted target: class=apple, conf=0.90, cx=479.1, cy=187.6, score=0.708, stable=3394, candidates=1
+[vitis_ai_detector_node-2] [INFO] [1785812713.678685122] [vitis_ai_detector_node]: Collecting metrics: 3408 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/performance/detector.csv)
+[pick_logic-3] [INFO] [1785812713.749413168] [pick_logic_node]: Accepted target: class=apple, conf=0.88, cx=480.9, cy=187.6, score=0.696, stable=3409, candidates=1
+[vitis_ai_detector_node-2] [INFO] [1785812714.679782007] [vitis_ai_detector_node]: Collecting metrics: 3423 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/performance/detector.csv)
+[pick_logic-3] [INFO] [1785812714.817663178] [pick_logic_node]: Accepted target: class=apple, conf=0.90, cx=479.1, cy=187.6, score=0.709, stable=3425, candidates=1
+[vitis_ai_detector_node-2] [INFO] [1785812715.713916864] [vitis_ai_detector_node]: Collecting metrics: 3438 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/performance/detector.csv)
+[pick_logic-3] [INFO] [1785812715.851403699] [pick_logic_node]: Accepted target: class=apple, conf=0.88, cx=480.9, cy=187.7, score=0.696, stable=3440, candidates=1
+[vitis_ai_detector_node-2] [INFO] [1785812716.717514500] [vitis_ai_detector_node]: Collecting metrics: 3453 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/performance/detector.csv)
+[pick_logic-3] [INFO] [1785812716.916059022] [pick_logic_node]: Accepted target: class=apple, conf=0.88, cx=480.9, cy=186.7, score=0.695, stable=3456, candidates=1
+[vitis_ai_detector_node-2] [INFO] [1785812717.715553175] [vitis_ai_detector_node]: Collecting metrics: 3468 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/performance/detector.csv)
+[pick_logic-3] [INFO] [1785812717.917885501] [pick_logic_node]: Accepted target: class=apple, conf=0.90, cx=479.1, cy=187.6, score=0.709, stable=3471, candidates=1
+[vitis_ai_detector_node-2] [INFO] [1785812718.718712962] [vitis_ai_detector_node]: Collecting metrics: 3483 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/performance/detector.csv)
+[pick_logic-3] [INFO] [1785812718.953863208] [pick_logic_node]: Accepted target: class=apple, conf=0.88, cx=480.9, cy=187.6, score=0.696, stable=3487, candidates=1
+[vitis_ai_detector_node-2] [INFO] [1785812719.749786327] [vitis_ai_detector_node]: Collecting metrics: 3499 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/performance/detector.csv)
+[pick_logic-3] [INFO] [1785812720.023400815] [pick_logic_node]: Accepted target: class=apple, conf=0.90, cx=479.1, cy=187.6, score=0.708, stable=3503, candidates=1
+[vitis_ai_detector_node-2] [INFO] [1785812720.788555910] [vitis_ai_detector_node]: Collecting metrics: 3514 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/performance/detector.csv)
+[pick_logic-3] [INFO] [1785812721.035736289] [pick_logic_node]: Accepted target: class=apple, conf=0.90, cx=479.1, cy=187.6, score=0.709, stable=3519, candidates=1
+[vitis_ai_detector_node-2] [INFO] [1785812721.818842570] [vitis_ai_detector_node]: Collecting metrics: 3532 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/performance/detector.csv)
+[pick_logic-3] [INFO] [1785812722.095713274] [pick_logic_node]: Accepted target: class=apple, conf=0.90, cx=479.1, cy=187.6, score=0.709, stable=3536, candidates=1
+[vitis_ai_detector_node-2] [INFO] [1785812722.819106557] [vitis_ai_detector_node]: Collecting metrics: 3547 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/performance/detector.csv)
+[pick_logic-3] [INFO] [1785812723.103008181] [pick_logic_node]: Accepted target: class=apple, conf=0.90, cx=479.1, cy=187.6, score=0.708, stable=3551, candidates=1
+[vitis_ai_detector_node-2] [INFO] [1785812723.823075965] [vitis_ai_detector_node]: Collecting metrics: 3562 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/performance/detector.csv)
+[pick_logic-3] [INFO] [1785812724.167070771] [pick_logic_node]: Accepted target: class=apple, conf=0.90, cx=479.1, cy=187.6, score=0.709, stable=3567, candidates=1
+[vitis_ai_detector_node-2] [INFO] [1785812724.820397745] [vitis_ai_detector_node]: Collecting metrics: 3577 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/performance/detector.csv)
+[pick_logic-3] [INFO] [1785812725.191726463] [pick_logic_node]: Accepted target: class=apple, conf=0.88, cx=480.9, cy=186.7, score=0.696, stable=3582, candidates=1
+[vitis_ai_detector_node-2] [INFO] [1785812725.855068510] [vitis_ai_detector_node]: Collecting metrics: 3592 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/performance/detector.csv)
+[pick_logic-3] [INFO] [1785812726.191907982] [pick_logic_node]: Accepted target: class=apple, conf=0.90, cx=480.7, cy=187.6, score=0.708, stable=3597, candidates=1
+[vitis_ai_detector_node-2] [INFO] [1785812726.856709549] [vitis_ai_detector_node]: Collecting metrics: 3607 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/performance/detector.csv)
+[pick_logic-3] [INFO] [1785812727.198941278] [pick_logic_node]: Accepted target: class=apple, conf=0.88, cx=480.9, cy=186.7, score=0.695, stable=3612, candidates=1
+[vitis_ai_detector_node-2] [INFO] [1785812727.858275534] [vitis_ai_detector_node]: Collecting metrics: 3622 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/performance/detector.csv)
+[pick_logic-3] [INFO] [1785812728.258215680] [pick_logic_node]: Accepted target: class=apple, conf=0.90, cx=480.7, cy=187.6, score=0.707, stable=3628, candidates=1
+[vitis_ai_detector_node-2] [INFO] [1785812728.924040469] [vitis_ai_detector_node]: Collecting metrics: 3638 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/performance/detector.csv)
+[pick_logic-3] [INFO] [1785812729.264800395] [pick_logic_node]: Accepted target: class=apple, conf=0.90, cx=479.1, cy=187.6, score=0.709, stable=3643, candidates=1
+[vitis_ai_detector_node-2] [INFO] [1785812729.993579265] [vitis_ai_detector_node]: Collecting metrics: 3654 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/performance/detector.csv)
+[pick_logic-3] [INFO] [1785812730.277584327] [pick_logic_node]: Accepted target: class=apple, conf=0.90, cx=480.7, cy=187.6, score=0.708, stable=3659, candidates=1
+[vitis_ai_detector_node-2] [INFO] [1785812731.027900734] [vitis_ai_detector_node]: Collecting metrics: 3671 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/performance/detector.csv)
+[pick_logic-3] [INFO] [1785812731.296423144] [pick_logic_node]: Accepted target: class=apple, conf=0.90, cx=479.1, cy=187.6, score=0.709, stable=3675, candidates=1
+[vitis_ai_detector_node-2] [INFO] [1785812732.030607058] [vitis_ai_detector_node]: Collecting metrics: 3685 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/performance/detector.csv)
+[pick_logic-3] [INFO] [1785812732.364129569] [pick_logic_node]: Accepted target: class=apple, conf=0.88, cx=480.9, cy=186.7, score=0.695, stable=3690, candidates=1
+[vitis_ai_detector_node-2] [INFO] [1785812733.099279306] [vitis_ai_detector_node]: Collecting metrics: 3701 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/performance/detector.csv)
+[pick_logic-3] [INFO] [1785812733.399208294] [pick_logic_node]: Accepted target: class=apple, conf=0.88, cx=480.9, cy=186.7, score=0.696, stable=3706, candidates=1
+[vitis_ai_detector_node-2] [INFO] [1785812734.138295526] [vitis_ai_detector_node]: Collecting metrics: 3717 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/performance/detector.csv)
+[pick_logic-3] [INFO] [1785812734.462813116] [pick_logic_node]: Accepted target: class=apple, conf=0.88, cx=480.9, cy=186.7, score=0.695, stable=3723, candidates=1
+[vitis_ai_detector_node-2] [INFO] [1785812735.134350189] [vitis_ai_detector_node]: Collecting metrics: 3733 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/performance/detector.csv)
+[pick_logic-3] [INFO] [1785812735.500326362] [pick_logic_node]: Accepted target: class=apple, conf=0.90, cx=479.1, cy=187.6, score=0.708, stable=3739, candidates=1
+[vitis_ai_detector_node-2] [INFO] [1785812736.165745826] [vitis_ai_detector_node]: Collecting metrics: 3749 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/performance/detector.csv)
+[pick_logic-3] [INFO] [1785812736.534166334] [pick_logic_node]: Accepted target: class=apple, conf=0.90, cx=479.1, cy=187.6, score=0.709, stable=3755, candidates=1
+[vitis_ai_detector_node-2] [INFO] [1785812737.198921896] [vitis_ai_detector_node]: Collecting metrics: 3765 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/performance/detector.csv)
+[pick_logic-3] [INFO] [1785812737.564541323] [pick_logic_node]: Accepted target: class=apple, conf=0.88, cx=479.1, cy=187.6, score=0.697, stable=3771, candidates=1
+[vitis_ai_detector_node-2] [INFO] [1785812738.230117217] [vitis_ai_detector_node]: Collecting metrics: 3781 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/performance/detector.csv)
+[pick_logic-3] [INFO] [1785812738.566820449] [pick_logic_node]: Accepted target: class=apple, conf=0.90, cx=479.1, cy=187.6, score=0.709, stable=3786, candidates=1
+[vitis_ai_detector_node-2] [INFO] [1785812739.263716139] [vitis_ai_detector_node]: Collecting metrics: 3796 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/performance/detector.csv)
+[pick_logic-3] [INFO] [1785812739.599914124] [pick_logic_node]: Accepted target: class=apple, conf=0.90, cx=479.1, cy=187.6, score=0.709, stable=3801, candidates=1
+[vitis_ai_detector_node-2] [INFO] [1785812740.265870790] [vitis_ai_detector_node]: Collecting metrics: 3811 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/performance/detector.csv)
+[pick_logic-3] [INFO] [1785812740.633291060] [pick_logic_node]: Accepted target: class=apple, conf=0.90, cx=479.1, cy=187.6, score=0.709, stable=3816, candidates=1
+[vitis_ai_detector_node-2] [INFO] [1785812741.302186417] [vitis_ai_detector_node]: Collecting metrics: 3826 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/performance/detector.csv)
+[pick_logic-3] [INFO] [1785812741.634965471] [pick_logic_node]: Accepted target: class=apple, conf=0.88, cx=480.9, cy=187.7, score=0.697, stable=3831, candidates=1
+[vitis_ai_detector_node-2] [INFO] [1785812742.334294702] [vitis_ai_detector_node]: Collecting metrics: 3842 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/performance/detector.csv)
+[pick_logic-3] [INFO] [1785812742.670624817] [pick_logic_node]: Accepted target: class=apple, conf=0.90, cx=479.1, cy=187.6, score=0.708, stable=3847, candidates=1
+[vitis_ai_detector_node-2] [INFO] [1785812743.400186879] [vitis_ai_detector_node]: Collecting metrics: 3858 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/performance/detector.csv)
+[pick_logic-3] [INFO] [1785812743.671155387] [pick_logic_node]: Accepted target: class=apple, conf=0.90, cx=479.1, cy=187.6, score=0.709, stable=3862, candidates=1
+[vitis_ai_detector_node-2] [INFO] [1785812744.402754668] [vitis_ai_detector_node]: Collecting metrics: 3873 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/performance/detector.csv)
+[pick_logic-3] [INFO] [1785812744.740872786] [pick_logic_node]: Accepted target: class=apple, conf=0.90, cx=479.1, cy=187.6, score=0.708, stable=3878, candidates=1
+[vitis_ai_detector_node-2] [INFO] [1785812745.402800558] [vitis_ai_detector_node]: Collecting metrics: 3889 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/performance/detector.csv)
+[pick_logic-3] [INFO] [1785812745.770925156] [pick_logic_node]: Accepted target: class=apple, conf=0.88, cx=480.9, cy=187.7, score=0.697, stable=3894, candidates=1
+[vitis_ai_detector_node-2] [INFO] [1785812746.469863556] [vitis_ai_detector_node]: Collecting metrics: 3905 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/performance/detector.csv)
+[pick_logic-3] [INFO] [1785812746.804641915] [pick_logic_node]: Accepted target: class=apple, conf=0.90, cx=479.1, cy=187.6, score=0.709, stable=3910, candidates=1
+[vitis_ai_detector_node-2] [INFO] [1785812747.540238859] [vitis_ai_detector_node]: Collecting metrics: 3921 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/performance/detector.csv)
+[pick_logic-3] [INFO] [1785812747.839110344] [pick_logic_node]: Accepted target: class=apple, conf=0.90, cx=479.1, cy=187.6, score=0.709, stable=3926, candidates=1
+[vitis_ai_detector_node-2] [INFO] [1785812748.575924373] [vitis_ai_detector_node]: Collecting metrics: 3937 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/performance/detector.csv)
+[pick_logic-3] [INFO] [1785812748.840410196] [pick_logic_node]: Accepted target: class=apple, conf=0.88, cx=480.9, cy=186.7, score=0.695, stable=3942, candidates=1
+[vitis_ai_detector_node-2] [INFO] [1785812749.607289444] [vitis_ai_detector_node]: Collecting metrics: 3954 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/performance/detector.csv)
+[pick_logic-3] [INFO] [1785812749.841813888] [pick_logic_node]: Accepted target: class=apple, conf=0.90, cx=479.1, cy=187.6, score=0.709, stable=3958, candidates=1
+[vitis_ai_detector_node-2] [INFO] [1785812750.605440368] [vitis_ai_detector_node]: Collecting metrics: 3969 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/performance/detector.csv)
+[pick_logic-3] [INFO] [1785812750.875601071] [pick_logic_node]: Accepted target: class=apple, conf=0.90, cx=479.1, cy=187.6, score=0.708, stable=3973, candidates=1
+[vitis_ai_detector_node-2] [INFO] [1785812751.672222951] [vitis_ai_detector_node]: Collecting metrics: 3985 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/performance/detector.csv)
+[pick_logic-3] [INFO] [1785812751.944895249] [pick_logic_node]: Accepted target: class=apple, conf=0.90, cx=479.1, cy=187.6, score=0.709, stable=3989, candidates=1
+[vitis_ai_detector_node-2] [INFO] [1785812752.707100446] [vitis_ai_detector_node]: Collecting metrics: 4001 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/performance/detector.csv)
+[pick_logic-3] [INFO] [1785812752.976506717] [pick_logic_node]: Accepted target: class=apple, conf=0.88, cx=480.9, cy=186.7, score=0.695, stable=4005, candidates=1
+[vitis_ai_detector_node-2] [INFO] [1785812753.741959319] [vitis_ai_detector_node]: Collecting metrics: 4017 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/performance/detector.csv)
+[pick_logic-3] [INFO] [1785812754.010701880] [pick_logic_node]: Accepted target: class=apple, conf=0.88, cx=480.9, cy=187.7, score=0.696, stable=4021, candidates=1
+[vitis_ai_detector_node-2] [INFO] [1785812754.812164525] [vitis_ai_detector_node]: Collecting metrics: 4032 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/performance/detector.csv)
+[pick_logic-3] [INFO] [1785812755.014281133] [pick_logic_node]: Accepted target: class=apple, conf=0.90, cx=479.1, cy=187.6, score=0.708, stable=4035, candidates=1
+[vitis_ai_detector_node-2] [INFO] [1785812755.878935160] [vitis_ai_detector_node]: Collecting metrics: 4048 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/performance/detector.csv)
+[pick_logic-3] [INFO] [1785812756.082518709] [pick_logic_node]: Accepted target: class=apple, conf=0.90, cx=480.7, cy=187.6, score=0.708, stable=4051, candidates=1
+[vitis_ai_detector_node-2] [INFO] [1785812756.910464819] [vitis_ai_detector_node]: Collecting metrics: 4064 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/performance/detector.csv)
+[pick_logic-3] [INFO] [1785812757.154919961] [pick_logic_node]: Accepted target: class=apple, conf=0.90, cx=479.1, cy=187.6, score=0.709, stable=4067, candidates=1
+[vitis_ai_detector_node-2] [INFO] [1785812757.944647864] [vitis_ai_detector_node]: Collecting metrics: 4079 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/performance/detector.csv)
+[pick_logic-3] [INFO] [1785812758.216757481] [pick_logic_node]: Accepted target: class=apple, conf=0.90, cx=479.1, cy=187.6, score=0.709, stable=4083, candidates=1
+[vitis_ai_detector_node-2] [INFO] [1785812758.979361275] [vitis_ai_detector_node]: Collecting metrics: 4094 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/performance/detector.csv)
+[pick_logic-3] [INFO] [1785812759.222019991] [pick_logic_node]: Accepted target: class=apple, conf=0.90, cx=479.1, cy=187.6, score=0.709, stable=4098, candidates=1
+[vitis_ai_detector_node-2] [INFO] [1785812760.013768369] [vitis_ai_detector_node]: Collecting metrics: 4110 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/performance/detector.csv)
+[pick_logic-3] [INFO] [1785812760.248658264] [pick_logic_node]: Accepted target: class=apple, conf=0.90, cx=479.1, cy=187.6, score=0.709, stable=4114, candidates=1
+[vitis_ai_detector_node-2] [INFO] [1785812761.061655444] [vitis_ai_detector_node]: Collecting metrics: 4126 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/performance/detector.csv)
+[pick_logic-3] [INFO] [1785812761.250164346] [pick_logic_node]: Accepted target: class=apple, conf=0.90, cx=479.1, cy=187.6, score=0.709, stable=4129, candidates=1
+[vitis_ai_detector_node-2] [INFO] [1785812762.085764808] [vitis_ai_detector_node]: Collecting metrics: 4142 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/performance/detector.csv)
+[pick_logic-3] [INFO] [1785812762.256462375] [pick_logic_node]: Accepted target: class=apple, conf=0.88, cx=480.9, cy=186.7, score=0.695, stable=4145, candidates=1
+[vitis_ai_detector_node-2] [INFO] [1785812763.132303330] [vitis_ai_detector_node]: Collecting metrics: 4159 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/performance/detector.csv)
+[pick_logic-3] [INFO] [1785812763.288437559] [pick_logic_node]: Accepted target: class=apple, conf=0.90, cx=479.1, cy=187.6, score=0.709, stable=4162, candidates=1
+[vitis_ai_detector_node-2] [INFO] [1785812764.161730605] [vitis_ai_detector_node]: Collecting metrics: 4175 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/performance/detector.csv)
+[pick_logic-3] [INFO] [1785812764.319972474] [pick_logic_node]: Accepted target: class=apple, conf=0.90, cx=479.1, cy=187.6, score=0.709, stable=4178, candidates=1
+[vitis_ai_detector_node-2] [INFO] [1785812765.186933449] [vitis_ai_detector_node]: Collecting metrics: 4191 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/performance/detector.csv)
+[pick_logic-3] [INFO] [1785812765.354948297] [pick_logic_node]: Accepted target: class=apple, conf=0.90, cx=480.7, cy=187.6, score=0.708, stable=4194, candidates=1
+[vitis_ai_detector_node-2] [INFO] [1785812766.219971932] [vitis_ai_detector_node]: Collecting metrics: 4207 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/performance/detector.csv)
+[pick_logic-3] [INFO] [1785812766.420541255] [pick_logic_node]: Accepted target: class=apple, conf=0.88, cx=480.9, cy=187.6, score=0.696, stable=4210, candidates=1
+[vitis_ai_detector_node-2] [INFO] [1785812767.220186545] [vitis_ai_detector_node]: Collecting metrics: 4222 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/performance/detector.csv)
+[pick_logic-3] [INFO] [1785812767.421535588] [pick_logic_node]: Accepted target: class=apple, conf=0.90, cx=479.1, cy=187.6, score=0.709, stable=4225, candidates=1
+[vitis_ai_detector_node-2] [INFO] [1785812768.252620136] [vitis_ai_detector_node]: Collecting metrics: 4237 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/performance/detector.csv)
+[pick_logic-3] [INFO] [1785812768.454873382] [pick_logic_node]: Accepted target: class=apple, conf=0.88, cx=480.9, cy=186.7, score=0.696, stable=4240, candidates=1
+[vitis_ai_detector_node-2] [INFO] [1785812769.295682897] [vitis_ai_detector_node]: Collecting metrics: 4253 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/performance/detector.csv)
+[pick_logic-3] [INFO] [1785812769.456269728] [pick_logic_node]: Accepted target: class=apple, conf=0.88, cx=480.9, cy=186.7, score=0.695, stable=4256, candidates=1
+[vitis_ai_detector_node-2] [INFO] [1785812770.320229972] [vitis_ai_detector_node]: Collecting metrics: 4269 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/performance/detector.csv)
+[pick_logic-3] [INFO] [1785812770.457286187] [pick_logic_node]: Accepted target: class=apple, conf=0.90, cx=479.1, cy=187.6, score=0.709, stable=4271, candidates=1
+[vitis_ai_detector_node-2] [INFO] [1785812771.322540778] [vitis_ai_detector_node]: Collecting metrics: 4284 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/performance/detector.csv)
+[pick_logic-3] [INFO] [1785812771.523550104] [pick_logic_node]: Accepted target: class=apple, conf=0.90, cx=480.7, cy=187.6, score=0.708, stable=4287, candidates=1
+[vitis_ai_detector_node-2] [INFO] [1785812772.356628105] [vitis_ai_detector_node]: Collecting metrics: 4300 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/performance/detector.csv)
+[pick_logic-3] [INFO] [1785812772.524087523] [pick_logic_node]: Accepted target: class=apple, conf=0.90, cx=479.1, cy=187.6, score=0.708, stable=4303, candidates=1
+[vitis_ai_detector_node-2] [INFO] [1785812773.391291958] [vitis_ai_detector_node]: Collecting metrics: 4317 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/performance/detector.csv)
+[pick_logic-3] [INFO] [1785812773.526295383] [pick_logic_node]: Accepted target: class=apple, conf=0.90, cx=479.1, cy=187.6, score=0.709, stable=4319, candidates=1
+[vitis_ai_detector_node-2] [INFO] [1785812774.426744701] [vitis_ai_detector_node]: Collecting metrics: 4333 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/performance/detector.csv)
+[pick_logic-3] [INFO] [1785812774.526910939] [pick_logic_node]: Accepted target: class=apple, conf=0.90, cx=479.1, cy=187.6, score=0.709, stable=4335, candidates=1
+[vitis_ai_detector_node-2] [INFO] [1785812775.464550625] [vitis_ai_detector_node]: Collecting metrics: 4349 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/performance/detector.csv)
+[pick_logic-3] [INFO] [1785812775.567112897] [pick_logic_node]: Accepted target: class=apple, conf=0.90, cx=479.1, cy=187.6, score=0.709, stable=4351, candidates=1
+[vitis_ai_detector_node-2] [INFO] [1785812776.461134950] [vitis_ai_detector_node]: Collecting metrics: 4366 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/performance/detector.csv)
+[pick_logic-3] [INFO] [1785812776.594183997] [pick_logic_node]: Accepted target: class=apple, conf=0.90, cx=480.7, cy=187.6, score=0.708, stable=4368, candidates=1
+[vitis_ai_detector_node-2] [INFO] [1785812777.494693530] [vitis_ai_detector_node]: Collecting metrics: 4383 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/performance/detector.csv)
+[pick_logic-3] [INFO] [1785812777.632145959] [pick_logic_node]: Accepted target: class=apple, conf=0.88, cx=480.9, cy=186.7, score=0.695, stable=4385, candidates=1
+[vitis_ai_detector_node-2] [INFO] [1785812778.559421583] [vitis_ai_detector_node]: Collecting metrics: 4399 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/performance/detector.csv)
+[pick_logic-3] [INFO] [1785812778.696192032] [pick_logic_node]: Accepted target: class=apple, conf=0.90, cx=479.1, cy=187.6, score=0.708, stable=4401, candidates=1
+[python3-7] [resource_sampler] wrote 300 rows to /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/resource/run.csv
+[INFO] [python3-7]: process has finished cleanly [pid 14430]
+[vitis_ai_detector_node-2] [INFO] [1785812779.603665102] [vitis_ai_detector_node]: Collecting metrics: 4415 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/performance/detector.csv)
+[pick_logic-3] [INFO] [1785812779.696469164] [pick_logic_node]: Accepted target: class=apple, conf=0.90, cx=479.1, cy=187.6, score=0.709, stable=4417, candidates=1
+[vitis_ai_detector_node-2] [INFO] [1785812780.630202236] [vitis_ai_detector_node]: Collecting metrics: 4431 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/performance/detector.csv)
+[pick_logic-3] [INFO] [1785812780.735158751] [pick_logic_node]: Accepted target: class=apple, conf=0.90, cx=479.1, cy=187.6, score=0.709, stable=4433, candidates=1
+[vitis_ai_detector_node-2] [INFO] [1785812781.665050567] [vitis_ai_detector_node]: Collecting metrics: 4448 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/performance/detector.csv)
+[pick_logic-3] [INFO] [1785812781.799497642] [pick_logic_node]: Accepted target: class=apple, conf=0.90, cx=479.1, cy=187.6, score=0.709, stable=4450, candidates=1
+[vitis_ai_detector_node-2] [INFO] [1785812782.729761192] [vitis_ai_detector_node]: Collecting metrics: 4464 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/performance/detector.csv)
+[pick_logic-3] [INFO] [1785812782.800523619] [pick_logic_node]: Accepted target: class=apple, conf=0.90, cx=479.1, cy=187.6, score=0.709, stable=4465, candidates=1
+[vitis_ai_detector_node-2] [INFO] [1785812783.796364521] [vitis_ai_detector_node]: Collecting metrics: 4480 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/performance/detector.csv)
+[pick_logic-3] [INFO] [1785812783.865342953] [pick_logic_node]: Accepted target: class=apple, conf=0.90, cx=479.1, cy=187.6, score=0.709, stable=4481, candidates=1
+[vitis_ai_detector_node-2] [INFO] [1785812784.799009188] [vitis_ai_detector_node]: Collecting metrics: 4495 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/performance/detector.csv)
+[pick_logic-3] [INFO] [1785812784.869013625] [pick_logic_node]: Accepted target: class=apple, conf=0.90, cx=480.7, cy=187.6, score=0.708, stable=4496, candidates=1
+[vitis_ai_detector_node-2] [INFO] [1785812785.799742426] [vitis_ai_detector_node]: Collecting metrics: 4510 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/performance/detector.csv)
+[pick_logic-3] [INFO] [1785812785.933226796] [pick_logic_node]: Accepted target: class=apple, conf=0.90, cx=479.1, cy=187.6, score=0.709, stable=4512, candidates=1
+[vitis_ai_detector_node-2] [INFO] [1785812786.798195710] [vitis_ai_detector_node]: Collecting metrics: 4525 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/performance/detector.csv)
+[pick_logic-3] [INFO] [1785812786.936558069] [pick_logic_node]: Accepted target: class=apple, conf=0.90, cx=479.1, cy=187.6, score=0.709, stable=4527, candidates=1
+[vitis_ai_detector_node-2] [INFO] [1785812787.802774079] [vitis_ai_detector_node]: Collecting metrics: 4540 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/performance/detector.csv)
+[pick_logic-3] [INFO] [1785812788.010494935] [pick_logic_node]: Accepted target: class=apple, conf=0.90, cx=479.1, cy=187.6, score=0.709, stable=4543, candidates=1
+[vitis_ai_detector_node-2] [INFO] [1785812788.866555979] [vitis_ai_detector_node]: Collecting metrics: 4556 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/performance/detector.csv)
+[pick_logic-3] [INFO] [1785812789.072118294] [pick_logic_node]: Accepted target: class=apple, conf=0.90, cx=479.1, cy=187.6, score=0.709, stable=4559, candidates=1
+[vitis_ai_detector_node-2] [INFO] [1785812789.867404201] [vitis_ai_detector_node]: Collecting metrics: 4571 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/performance/detector.csv)
+[pick_logic-3] [INFO] [1785812790.075577394] [pick_logic_node]: Accepted target: class=apple, conf=0.90, cx=479.1, cy=187.6, score=0.709, stable=4574, candidates=1
+[vitis_ai_detector_node-2] [INFO] [1785812790.868736389] [vitis_ai_detector_node]: Collecting metrics: 4586 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/performance/detector.csv)
+[pick_logic-3] [INFO] [1785812791.140360934] [pick_logic_node]: Accepted target: class=apple, conf=0.90, cx=479.1, cy=187.6, score=0.709, stable=4590, candidates=1
+[vitis_ai_detector_node-2] [INFO] [1785812791.934791206] [vitis_ai_detector_node]: Collecting metrics: 4602 rows (CSV -> /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/performance/detector.csv)
+[pick_logic-3] [INFO] [1785812792.208023973] [pick_logic_node]: Accepted target: class=apple, conf=0.90, cx=479.1, cy=187.6, score=0.709, stable=4606, candidates=1
+[vitis_ai_detector_node-2] [INFO] [1785812792.878608202] [vitis_ai_detector_node]: Saved 4608 metric rows to /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/performance/detector.csv
+[vitis_ai_detector_node-2] [INFO] [1785812792.881719976] [vitis_ai_detector_node]: Metrics window 300s complete: 4608 rows saved to /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/performance/detector.csv. You can stop the launch now (Ctrl-C).
+[vitis_ai_detector_node-2] [INFO] [1785812792.995388393] [vitis_ai_detector_node]: Metrics window done: 4608 rows saved. Idle (Ctrl-C to exit).
+[pick_target_3d_node-4] [INFO] [1785812793.106640306] [pick_target_3d_node]: Saved 4581 metric rows to /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/performance/target_3d.csv
+[pick_target_3d_node-4] [INFO] [1785812793.113758467] [pick_target_3d_node]: Metrics window 300s complete: 4581 rows -> /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/performance/target_3d.csv. You can stop now (Ctrl-C).
+[pick_logic-3] [INFO] [1785812793.197602309] [pick_logic_node]: Saved 4609 metric rows to /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/performance/pick_logic.csv
+[pick_logic-3] [INFO] [1785812793.213956102] [pick_logic_node]: Metrics window 300s complete: 4609 rows -> /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/performance/pick_logic.csv. You can stop now (Ctrl-C).
+[pick_logic-3] [INFO] [1785812793.246212141] [pick_logic_node]: Accepted target: class=apple, conf=0.90, cx=479.1, cy=187.6, score=0.709, stable=4610, candidates=1
+[pick_target_base_node-6] [INFO] [1785812793.289765090] [pick_target_base_node]: Saved 4581 metric rows to /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/performance/base.csv
+[pick_target_base_node-6] [INFO] [1785812793.297771474] [pick_target_base_node]: Metrics window 300s complete: 4581 rows -> /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/performance/base.csv. You can stop now (Ctrl-C).
+[vitis_ai_detector_node-2] [INFO] [1785812794.039047478] [vitis_ai_detector_node]: Metrics window done: 4608 rows saved. Idle (Ctrl-C to exit).
+[pick_logic-3] [INFO] [1785812794.309419053] [pick_logic_node]: Accepted target: class=apple, conf=0.88, cx=480.9, cy=186.7, score=0.696, stable=4631, candidates=1
+[vitis_ai_detector_node-2] [INFO] [1785812795.072542875] [vitis_ai_detector_node]: Metrics window done: 4608 rows saved. Idle (Ctrl-C to exit).
+[pick_logic-3] [INFO] [1785812795.345993544] [pick_logic_node]: Accepted target: class=apple, conf=0.90, cx=479.1, cy=187.6, score=0.709, stable=4646, candidates=1
+[vitis_ai_detector_node-2] [INFO] [1785812796.074883789] [vitis_ai_detector_node]: Metrics window done: 4608 rows saved. Idle (Ctrl-C to exit).
+[pick_logic-3] [INFO] [1785812796.411700808] [pick_logic_node]: Accepted target: class=apple, conf=0.88, cx=480.9, cy=187.7, score=0.696, stable=4663, candidates=1
+[vitis_ai_detector_node-2] [INFO] [1785812797.072377881] [vitis_ai_detector_node]: Metrics window done: 4608 rows saved. Idle (Ctrl-C to exit).
+[pick_logic-3] [INFO] [1785812797.408733713] [pick_logic_node]: Accepted target: class=apple, conf=0.90, cx=479.1, cy=187.6, score=0.709, stable=4678, candidates=1
+[vitis_ai_detector_node-2] [INFO] [1785812798.144646425] [vitis_ai_detector_node]: Metrics window done: 4608 rows saved. Idle (Ctrl-C to exit).
+[pick_logic-3] [INFO] [1785812798.443822908] [pick_logic_node]: Accepted target: class=apple, conf=0.88, cx=479.1, cy=187.6, score=0.697, stable=4694, candidates=1
+[vitis_ai_detector_node-2] [INFO] [1785812799.176347431] [vitis_ai_detector_node]: Metrics window done: 4608 rows saved. Idle (Ctrl-C to exit).
+[pick_logic-3] [INFO] [1785812799.512280525] [pick_logic_node]: Accepted target: class=apple, conf=0.90, cx=479.1, cy=187.6, score=0.709, stable=4710, candidates=1
+[vitis_ai_detector_node-2] [INFO] [1785812800.178518324] [vitis_ai_detector_node]: Metrics window done: 4608 rows saved. Idle (Ctrl-C to exit).
+[pick_logic-3] [INFO] [1785812800.541542194] [pick_logic_node]: Accepted target: class=apple, conf=0.90, cx=479.1, cy=187.6, score=0.709, stable=4726, candidates=1
+[vitis_ai_detector_node-2] [INFO] [1785812801.181211474] [vitis_ai_detector_node]: Metrics window done: 4608 rows saved. Idle (Ctrl-C to exit).
+[pick_logic-3] [INFO] [1785812801.547471659] [pick_logic_node]: Accepted target: class=apple, conf=0.90, cx=479.1, cy=187.6, score=0.709, stable=4742, candidates=1
+[vitis_ai_detector_node-2] [INFO] [1785812802.213948619] [vitis_ai_detector_node]: Metrics window done: 4608 rows saved. Idle (Ctrl-C to exit).
+[pick_logic-3] [INFO] [1785812802.611904713] [pick_logic_node]: Accepted target: class=apple, conf=0.90, cx=479.1, cy=187.6, score=0.709, stable=4758, candidates=1
+[vitis_ai_detector_node-2] [INFO] [1785812803.279186624] [vitis_ai_detector_node]: Metrics window done: 4608 rows saved. Idle (Ctrl-C to exit).
+[pick_logic-3] [INFO] [1785812803.647191012] [pick_logic_node]: Accepted target: class=apple, conf=0.90, cx=479.1, cy=187.6, score=0.709, stable=4774, candidates=1
+[vitis_ai_detector_node-2] [INFO] [1785812804.312456642] [vitis_ai_detector_node]: Metrics window done: 4608 rows saved. Idle (Ctrl-C to exit).
+[pick_logic-3] [INFO] [1785812804.679106611] [pick_logic_node]: Accepted target: class=apple, conf=0.90, cx=479.1, cy=187.6, score=0.709, stable=4790, candidates=1
+[vitis_ai_detector_node-2] [INFO] [1785812805.345906322] [vitis_ai_detector_node]: Metrics window done: 4608 rows saved. Idle (Ctrl-C to exit).
+[pick_logic-3] [INFO] [1785812805.686555740] [pick_logic_node]: Accepted target: class=apple, conf=0.88, cx=480.9, cy=186.7, score=0.695, stable=4805, candidates=1
+[vitis_ai_detector_node-2] [INFO] [1785812806.345354007] [vitis_ai_detector_node]: Metrics window done: 4608 rows saved. Idle (Ctrl-C to exit).
+[pick_logic-3] [INFO] [1785812806.681306238] [pick_logic_node]: Accepted target: class=apple, conf=0.90, cx=479.1, cy=187.6, score=0.708, stable=4820, candidates=1
+[vitis_ai_detector_node-2] [INFO] [1785812807.346833459] [vitis_ai_detector_node]: Metrics window done: 4608 rows saved. Idle (Ctrl-C to exit).
+[pick_logic-3] [INFO] [1785812807.683264656] [pick_logic_node]: Accepted target: class=apple, conf=0.90, cx=479.1, cy=187.6, score=0.709, stable=4834, candidates=1
+[vitis_ai_detector_node-2] [INFO] [1785812808.350571251] [vitis_ai_detector_node]: Metrics window done: 4608 rows saved. Idle (Ctrl-C to exit).
+[pick_logic-3] [INFO] [1785812808.685388505] [pick_logic_node]: Accepted target: class=apple, conf=0.90, cx=479.1, cy=187.6, score=0.709, stable=4849, candidates=1
+[WARNING] [launch]: user interrupted with ctrl-c (SIGINT)
+[INFO] [pick_target_base_node-6]: sending signal 'SIGINT' to process[pick_target_base_node-6]
+[INFO] [static_transform_publisher-5]: sending signal 'SIGINT' to process[static_transform_publisher-5]
+[INFO] [pick_target_3d_node-4]: sending signal 'SIGINT' to process[pick_target_3d_node-4]
+[INFO] [pick_logic-3]: sending signal 'SIGINT' to process[pick_logic-3]
+[INFO] [vitis_ai_detector_node-2]: sending signal 'SIGINT' to process[vitis_ai_detector_node-2]
+[INFO] [realsense2_camera_node-1]: sending signal 'SIGINT' to process[realsense2_camera_node-1]
+[static_transform_publisher-5] [INFO] [1785812809.135965723] [rclcpp]: signal_handler(SIGINT/SIGTERM)
+[pick_target_3d_node-4] [INFO] [1785812809.151664065] [pick_target_3d_node]: Saved yield summary (1 rows) to /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/yield/target_3d.csv
+[pick_target_3d_node-4] Failed to publish log message to rosout: publisher's context is invalid, at ./src/rcl/publisher.c:389
+[pick_target_base_node-6] [INFO] [1785812809.135892482] [pick_target_base_node]: Saved yield summary (1 rows) to /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/yield/base.csv
+[pick_target_base_node-6] Failed to publish log message to rosout: publisher's context is invalid, at ./src/rcl/publisher.c:389
+[realsense2_camera_node-1] [0m[INFO] [1785812809.195122122] [rclcpp]: signal_handler(SIGINT/SIGTERM)[0m
+[realsense2_camera_node-1] [0m[INFO] [1785812809.196539003] [camera.camera]: Stop Sensor: Depth Module[0m
+[realsense2_camera_node-1] [0m[INFO] [1785812809.196871227] [camera.camera]: Close Sensor. [0m
+[pick_logic-3] [INFO] [1785812809.208104477] [pick_logic_node]: Saved yield summary (1 rows) to /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/yield/pick_logic.csv
+[pick_logic-3] Failed to publish log message to rosout: publisher's context is invalid, at ./src/rcl/publisher.c:389
+[vitis_ai_detector_node-2] [INFO] [1785812809.218168630] [vitis_ai_detector_node]: Saved detector yield summary to /home/ubuntu/ros2_ws/evidence/metrics/runs/C_sync30_20260804/yield/detector.csv
+[vitis_ai_detector_node-2] Failed to publish log message to rosout: publisher's context is invalid, at ./src/rcl/publisher.c:389
+[realsense2_camera_node-1] [0m[INFO] [1785812809.228115771] [camera.camera]: Close Sensor - Done. [0m
+[realsense2_camera_node-1] [0m[INFO] [1785812809.228596608] [camera.camera]: Stop Sensor: RGB Camera[0m
+[realsense2_camera_node-1] [0m[INFO] [1785812809.228734390] [camera.camera]: Close Sensor. [0m
+[INFO] [static_transform_publisher-5]: process has finished cleanly [pid 14424]
+[INFO] [pick_logic-3]: process has finished cleanly [pid 14420]
+[realsense2_camera_node-1] [0m[INFO] [1785812809.714733879] [camera.camera]: Close Sensor - Done. [0m
+[INFO] [pick_target_3d_node-4]: process has finished cleanly [pid 14422]
+[INFO] [pick_target_base_node-6]: process has finished cleanly [pid 14426]
+[INFO] [vitis_ai_detector_node-2]: process has finished cleanly [pid 14418]
+[INFO] [realsense2_camera_node-1]: process has finished cleanly [pid 14416]

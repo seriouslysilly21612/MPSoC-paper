@@ -1,0 +1,93 @@
+section,metric,value,unit
+hw,cpu_part,0xd03,(0xd03 = Cortex-A53)
+hw,arch,aarch64,
+hw,cores,4,(isolated: 3)
+hw,hwcap_fp,yes,scalar FPU, incl. double
+hw,hwcap_asimd,yes,NEON SIMD
+hw,at_hwcap,0x8ff,bit0=FP bit1=ASIMD
+hw,fpcr,0x00000000,FZ=0 -> full IEEE754, no flush-to-zero
+cc,gcc,11.4.0,
+cc,default_march,armv8-a,
+cc,default_mabi,lp64,hard-float AAPCS64
+cc,__ARM_FP,14,14 = 0xE = half+single+double
+cc,app_cflags,-w -O2 -std=gnu++17 -Dlinux -mtune=native -std=c++17 -shared-libgcc -fexceptions,
+static,Indy7Ctrl.scalar_fp,1176,instr
+static,Indy7Ctrl.neon_fp,436,instr
+static,Indy7Ctrl.total,142787,instr
+static,Indy7Ctrl.softfloat_helpers,0,instr
+static,reachmap.scalar_fp,577,instr
+static,reachmap.neon_fp,418,instr
+static,reachmap.total,25396,instr
+static,reachmap.softfloat_helpers,0,instr
+static,fk_replay.scalar_fp,542,instr
+static,fk_replay.neon_fp,418,instr
+static,fk_replay.total,24116,instr
+static,fk_replay.softfloat_helpers,0,instr
+bench,core_clock,1333,MHz (approx, dependent-add chain)
+bench,f64_scalar_fma,888,MFLOP/s  double, scalar
+bench,f64_neon_fma,592,MFLOP/s  double, NEON 2-wide
+bench,f32_neon_fma,1185,MFLOP/s  float,  NEON 4-wide
+bench,normal_operand,23.268,ns/iter
+bench,subnormal_operand,24.000,ns/iter
+bench,subnormal_penalty,1.03,x   ~1.0 => no FTZ / -ffast-math needed
+workload,ik_cells,1449,grid cells, each a full SolveReadyIK
+workload,ik_wall,744,ms
+workload,ik_rate,1948,IK solves/s
+workload,fk_source,DataLog_20260805_162107.csv,
+workload,fk_cycles,6290,logged 1 kHz cycles
+workload,fk_wall,309,ms (CSV-parse bound, NOT a control-loop timing)
+workload,fk_agree_max,0.001732,mm  max |robot TCP - offline FK|, n=6290
+workload,fk_agree_mean,0.000499,mm  mean
+cycle,crba_us,5.929,mass matrix M(q)        — CRBA
+cycle,nle_us,5.139,h(q,qd) = C*qd + g(q)   — NonlinearEffects
+cycle,grav_us,5.553,gravity g(q)            — InverseDynamics
+cycle,fk_us,6.175,TCP position            — CalcBodyToBaseCoordinates
+cycle,bwo_us,6.142,TCP orientation         — CalcBodyWorldOrientation
+cycle,jac6d_us,7.032,6xN Jacobian            — IK modes only
+mode,eGravityCompensation.us,5.553,us per cycle
+mode,eComputedTorque.us,11.068,us per cycle
+mode,eFullDynamics.us,16.621,us per cycle
+mode,eTrackingServo.us,23.385,us per cycle
+opcount,selftest_fp,2000,expected exactly 2000 -> counter verified
+opcount,CRBA.instr,6057,instructions
+opcount,CRBA.fp_arith,1570,instructions
+opcount,CRBA.fp_mov,183,instructions
+opcount,CRBA.simd_int,160,instructions
+opcount,CRBA.crypto,0,instructions
+opcount,NonlinearEffects.instr,4745,instructions
+opcount,NonlinearEffects.fp_arith,1386,instructions
+opcount,NonlinearEffects.fp_mov,88,instructions
+opcount,NonlinearEffects.simd_int,30,instructions
+opcount,NonlinearEffects.crypto,0,instructions
+opcount,InverseDynamics.instr,5031,instructions
+opcount,InverseDynamics.fp_arith,1455,instructions
+opcount,InverseDynamics.fp_mov,87,instructions
+opcount,InverseDynamics.simd_int,30,instructions
+opcount,InverseDynamics.crypto,0,instructions
+opcount,FK.instr,5361,instructions
+opcount,FK.fp_arith,726,instructions
+opcount,FK.fp_mov,114,instructions
+opcount,FK.simd_int,57,instructions
+opcount,FK.crypto,0,instructions
+opcount,Jacobian6D.instr,6255,instructions
+opcount,Jacobian6D.fp_arith,1020,instructions
+opcount,Jacobian6D.fp_mov,116,instructions
+opcount,Jacobian6D.simd_int,63,instructions
+opcount,Jacobian6D.crypto,0,instructions
+opcount,BodyWorldOrientation.instr,5322,instructions
+opcount,BodyWorldOrientation.fp_arith,718,instructions
+opcount,BodyWorldOrientation.fp_mov,114,instructions
+opcount,BodyWorldOrientation.simd_int,57,instructions
+opcount,BodyWorldOrientation.crypto,0,instructions
+mode,eGravityCompensation.instr,5031,instructions per cycle
+mode,eGravityCompensation.fp_arith,1455,instructions per cycle
+mode,eGravityCompensation.fp_rate,1.46,M FP-arith/s at 1 kHz
+mode,eComputedTorque.instr,10802,instructions per cycle
+mode,eComputedTorque.fp_arith,2956,instructions per cycle
+mode,eComputedTorque.fp_rate,2.96,M FP-arith/s at 1 kHz
+mode,eFullDynamics.instr,15833,instructions per cycle
+mode,eFullDynamics.fp_arith,4411,instructions per cycle
+mode,eFullDynamics.fp_rate,4.41,M FP-arith/s at 1 kHz
+mode,eTrackingServo.instr,21485,instructions per cycle
+mode,eTrackingServo.fp_arith,4400,instructions per cycle
+mode,eTrackingServo.fp_rate,4.40,M FP-arith/s at 1 kHz

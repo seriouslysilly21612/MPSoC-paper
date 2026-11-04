@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- FastDDS same-host SHM profile for the perception pipeline (2026-07-14).
+     Why: all pipeline nodes run on one board; 848x480 images (1.22 MB) at
+     30 Hz over CycloneDDS go through UDP loopback (2 copies + syscalls per
+     message). FastDDS SHM transport moves them through a shared-memory
+     segment instead. segment_size must exceed the largest message —
+     default 512 KB is too small for Image, so 16 MB here.
+
+     Use: nothing to do — pick_place_vitis_ai.launch.py points
+     FASTRTPS_DEFAULT_PROFILES_FILE at this file's installed copy
+     (FindPackageShare) and pins RMW_IMPLEMENTATION=rmw_fastrtps_cpp.
+     Do not also export these in ~/.bashrc: the shell would win over launch
+     for nothing, and an absolute path there breaks on every other machine.
+
+     To use this outside the launch file (a standalone node, a benchmark):
+       export FASTRTPS_DEFAULT_PROFILES_FILE=$(ros2 pkg prefix system_bringup_pkg)/share/system_bringup_pkg/config/fastdds_shm_profile.xml
+     (all participants must use the same RMW to communicate; rmw_fastrtps_cpp
+     is already Humble's default, so unset == fastrtps here) -->
+<profiles xmlns="http://www.eprosima.com/XMLSchemas/fastRTPS_Profiles">
+  <transport_descriptors>
+    <transport_descriptor>
+      <transport_id>shm_big</transport_id>
+      <type>SHM</type>
+      <segment_size>16777216</segment_size>
+    </transport_descriptor>
+    <transport_descriptor>
+      <transport_id>udp_fallback</transport_id>
+      <type>UDPv4</type>
+    </transport_descriptor>
+  </transport_descriptors>
+  <participant profile_name="shm_participant" is_default_profile="true">
+    <rtps>
+      <userTransports>
+        <transport_id>shm_big</transport_id>
+        <transport_id>udp_fallback</transport_id>
+      </userTransports>
+      <useBuiltinTransports>false</useBuiltinTransports>
+    </rtps>
+  </participant>
+</profiles>

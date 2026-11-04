@@ -1,0 +1,6 @@
+# reachmap urdf=/home/ubuntu/RAON-RT-Revision/App/Indy7/indy7.urdf seed=/home/ubuntu/.indy7_ready_seed.live-20260729T1257
+# q_ready = [0.451831030 -0.427326162 -2.133360803 -0.038542217 0.670223355 -0.557867805]
+# rmax=0.920 clamp_r=0 step=0.0100
+x,y,z,verdict,w,tilt_deg,gap_rad,gap_axis,pos_err_mm,solves,ms,label,,
+0.6990,0.3590,0.3890,BRANCH,0.00,0.00,2.9660,5,0.00,5,25.058,mustard_live,,BASELINE
+0.6990,0.3590,0.3890,PASS,0.00,29.32,0.3884,2,0.00,8,16.345,0,1,mustard_live,MULTISTART

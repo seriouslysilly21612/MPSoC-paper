@@ -1,0 +1,803 @@
+Jul  8 14:56:17 kria kernel: [    4.706206] cdns-i2c ff030000.i2c: 400 kHz mmio ff030000 irq 39
+Jul  8 14:56:17 kria kernel: [    4.739067] spi-nor spi0.0: mt25qu512a (65536 Kbytes)
+Jul  8 14:56:17 kria kernel: [    4.739133] 17 fixed-partitions partitions found on MTD device spi0.0
+Jul  8 14:56:17 kria kernel: [    4.739137] Creating 17 MTD partitions on "spi0.0":
+Jul  8 14:56:17 kria kernel: [    4.739143] 0x000000000000-0x000000080000 : "Image Selector"
+Jul  8 14:56:17 kria kernel: [    4.763159] 0x000000080000-0x000000100000 : "Image Selector Golden"
+Jul  8 14:56:17 kria kernel: [    4.780981] 0x000000100000-0x000000120000 : "Persistent Register"
+Jul  8 14:56:17 kria kernel: [    4.786328] 0x000000120000-0x000000140000 : "Persistent Register Backup"
+Jul  8 14:56:17 kria kernel: [    4.789861] BUG: scheduling while atomic: systemd-udevd/310/0x00000002
+Jul  8 14:56:17 kria kernel: [    4.789871] Modules linked in: spi_zynqmp_gqspi(+) i2c_cadence zynqmp_dpsub(+) usbhid aes_neon_bs aes_neon_blk aes_ce_blk crypto_simd cryptd aes_ce_cipher
+Jul  8 14:56:17 kria kernel: [    4.789902] CPU: 3 PID: 310 Comm: systemd-udevd Not tainted 5.15.199-rt91-rt-kria #1
+Jul  8 14:56:17 kria kernel: [    4.789908] Hardware name: ZynqMP KV260 revB (DT)
+Jul  8 14:56:17 kria kernel: [    4.789912] Call trace:
+Jul  8 14:56:17 kria kernel: [    4.789914]  dump_backtrace+0x0/0x1f0
+Jul  8 14:56:17 kria kernel: [    4.789926]  show_stack+0x20/0x2c
+Jul  8 14:56:17 kria kernel: [    4.789931]  dump_stack_lvl+0x68/0x84
+Jul  8 14:56:17 kria kernel: [    4.789939]  dump_stack+0x18/0x34
+Jul  8 14:56:17 kria kernel: [    4.789945]  __schedule_bug+0x5c/0x7c
+Jul  8 14:56:17 kria kernel: [    4.789953]  __schedule+0x114c/0x13f0
+Jul  8 14:56:17 kria kernel: [    4.789960]  schedule_rtlock+0x28/0x54
+Jul  8 14:56:17 kria kernel: [    4.789966]  rtlock_slowlock_locked+0x364/0xb50
+Jul  8 14:56:17 kria kernel: [    4.789974]  rt_spin_lock+0x94/0xbc
+Jul  8 14:56:17 kria kernel: [    4.789980]  crng_make_state+0x11c/0x1d0
+Jul  8 14:56:17 kria kernel: [    4.789988]  _get_random_bytes.part.0+0x5c/0x130
+Jul  8 14:56:17 kria kernel: [    4.789994]  get_random_u32+0x11c/0x130
+Jul  8 14:56:17 kria kernel: [    4.790000]  new_slab+0x184/0x4f0
+Jul  8 14:56:17 kria kernel: [    4.790006]  ___slab_alloc+0x6ec/0x82c
+Jul  8 14:56:17 kria kernel: [    4.790011]  kmem_cache_alloc+0x104/0x2e0
+Jul  8 14:56:17 kria kernel: [    4.790017]  radix_tree_node_alloc.constprop.0+0xc0/0x100
+Jul  8 14:56:17 kria kernel: [    4.790024]  idr_get_free+0x220/0x2d0
+Jul  8 14:56:17 kria kernel: [    4.790029]  idr_alloc_u32+0x74/0x110
+Jul  8 14:56:17 kria kernel: [    4.790036]  idr_alloc_cyclic+0x6c/0xf0
+Jul  8 14:56:17 kria kernel: [    4.790042]  __kernfs_new_node+0xb4/0x240
+Jul  8 14:56:17 kria kernel: [    4.790050]  kernfs_new_node+0x70/0x9c
+Jul  8 14:56:17 kria kernel: [    4.790056]  kernfs_create_link+0xc8/0xf0
+Jul  8 14:56:17 kria kernel: [    4.790063]  sysfs_do_create_link_sd+0x74/0x100
+Jul  8 14:56:17 kria kernel: [    4.790070]  sysfs_create_link+0x28/0x50
+Jul  8 14:56:17 kria kernel: [    4.790076]  device_add+0x298/0x8e0
+Jul  8 14:56:17 kria kernel: [    4.790083]  device_add_disk+0xbc/0x3c0
+Jul  8 14:56:17 kria kernel: [    4.790091]  add_mtd_blktrans_dev+0x2a8/0x3e0
+Jul  8 14:56:17 kria kernel: [    4.790100]  mtdblock_add_mtd+0x6c/0xb4
+Jul  8 14:56:17 kria kernel: [    4.790106]  blktrans_notify_add+0x58/0x80
+Jul  8 14:56:17 kria kernel: [    4.790113]  add_mtd_device+0x2bc/0x4c0
+Jul  8 14:56:17 kria kernel: [    4.790118]  add_mtd_partitions+0x114/0x1ac
+Jul  8 14:56:17 kria kernel: [    4.790125]  parse_mtd_partitions+0xe4/0x464
+Jul  8 14:56:17 kria kernel: [    4.790131]  mtd_device_parse_register+0x10c/0x324
+Jul  8 14:56:17 kria kernel: [    4.790137]  spi_nor_probe+0x234/0x310
+Jul  8 14:56:17 kria kernel: [    4.790144]  spi_mem_probe+0x74/0xb0
+Jul  8 14:56:17 kria kernel: [    4.790150]  spi_probe+0xa0/0x140
+--
+Jul  8 14:56:17 kria kernel: [    4.790337]  __do_sys_finit_module+0xac/0x11c
+Jul  8 14:56:17 kria kernel: [    4.790344]  __arm64_sys_finit_module+0x28/0x34
+Jul  8 14:56:17 kria kernel: [    4.790351]  invoke_syscall+0x78/0x100
+Jul  8 14:56:17 kria kernel: [    4.790358]  el0_svc_common.constprop.0+0x54/0x184
+Jul  8 14:56:17 kria kernel: [    4.790365]  do_el0_svc+0x30/0xac
+Jul  8 14:56:17 kria kernel: [    4.790371]  el0_svc+0x28/0xb0
+Jul  8 14:56:17 kria kernel: [    4.790379]  el0t_64_sync_handler+0xa4/0x12c
+Jul  8 14:56:17 kria kernel: [    4.790385]  el0t_64_sync+0x1a4/0x1a8
+Jul  8 14:56:17 kria kernel: [    4.792934] BUG: scheduling while atomic: systemd-udevd/310/0x00000000
+Jul  8 14:56:17 kria kernel: [    4.792942] Modules linked in: spi_zynqmp_gqspi(+) i2c_cadence zynqmp_dpsub(+) usbhid aes_neon_bs aes_neon_blk aes_ce_blk crypto_simd cryptd aes_ce_cipher
+Jul  8 14:56:17 kria kernel: [    4.792969] CPU: 3 PID: 310 Comm: systemd-udevd Tainted: G        W         5.15.199-rt91-rt-kria #1
+Jul  8 14:56:17 kria kernel: [    4.792975] Hardware name: ZynqMP KV260 revB (DT)
+Jul  8 14:56:17 kria kernel: [    4.792979] Call trace:
+Jul  8 14:56:17 kria kernel: [    4.792980]  dump_backtrace+0x0/0x1f0
+Jul  8 14:56:17 kria kernel: [    4.792989]  show_stack+0x20/0x2c
+Jul  8 14:56:17 kria kernel: [    4.792993]  dump_stack_lvl+0x68/0x84
+Jul  8 14:56:17 kria kernel: [    4.793001]  dump_stack+0x18/0x34
+Jul  8 14:56:17 kria kernel: [    4.793006]  __schedule_bug+0x5c/0x7c
+Jul  8 14:56:17 kria kernel: [    4.793014]  __schedule+0x114c/0x13f0
+Jul  8 14:56:17 kria kernel: [    4.793021]  schedule+0x70/0x144
+Jul  8 14:56:17 kria kernel: [    4.793027]  __rt_mutex_slowlock_locked.constprop.0+0x220/0x8a0
+Jul  8 14:56:17 kria kernel: [    4.793035]  rwbase_write_lock+0x17c/0x240
+Jul  8 14:56:17 kria kernel: [    4.793042]  down_write+0x1c/0x30
+Jul  8 14:56:17 kria kernel: [    4.793048]  kernfs_activate+0x44/0x174
+Jul  8 14:56:17 kria kernel: [    4.793055]  kernfs_add_one+0x114/0x15c
+Jul  8 14:56:17 kria kernel: [    4.793061]  __kernfs_create_file+0x98/0x100
+Jul  8 14:56:17 kria kernel: [    4.793068]  sysfs_add_file_mode_ns+0xac/0x1ac
+Jul  8 14:56:17 kria kernel: [    4.793074]  internal_create_group+0x110/0x3d4
+Jul  8 14:56:17 kria kernel: [    4.793082]  internal_create_groups.part.0+0x54/0xcc
+Jul  8 14:56:17 kria kernel: [    4.793089]  sysfs_create_groups+0x24/0x40
+Jul  8 14:56:17 kria kernel: [    4.793096]  device_add+0x2fc/0x8e0
+Jul  8 14:56:17 kria kernel: [    4.793102]  device_add_disk+0xbc/0x3c0
+Jul  8 14:56:17 kria kernel: [    4.793109]  add_mtd_blktrans_dev+0x2a8/0x3e0
+Jul  8 14:56:17 kria kernel: [    4.793118]  mtdblock_add_mtd+0x6c/0xb4
+Jul  8 14:56:17 kria kernel: [    4.793125]  blktrans_notify_add+0x58/0x80
+Jul  8 14:56:17 kria kernel: [    4.793131]  add_mtd_device+0x2bc/0x4c0
+Jul  8 14:56:17 kria kernel: [    4.793137]  add_mtd_partitions+0x114/0x1ac
+Jul  8 14:56:17 kria kernel: [    4.793143]  parse_mtd_partitions+0xe4/0x464
+Jul  8 14:56:17 kria kernel: [    4.793149]  mtd_device_parse_register+0x10c/0x324
+Jul  8 14:56:17 kria kernel: [    4.793156]  spi_nor_probe+0x234/0x310
+Jul  8 14:56:17 kria kernel: [    4.793162]  spi_mem_probe+0x74/0xb0
+Jul  8 14:56:17 kria kernel: [    4.793168]  spi_probe+0xa0/0x140
+Jul  8 14:56:17 kria kernel: [    4.793175]  really_probe+0xc4/0x470
+Jul  8 14:56:17 kria kernel: [    4.793181]  __driver_probe_device+0x10c/0x160
+Jul  8 14:56:17 kria kernel: [    4.793187]  driver_probe_device+0x48/0x130
+Jul  8 14:56:17 kria kernel: [    4.793192]  __device_attach_driver+0xc4/0x160
+Jul  8 14:56:17 kria kernel: [    4.793198]  bus_for_each_drv+0x84/0xe0
+Jul  8 14:56:17 kria kernel: [    4.793203]  __device_attach+0xb4/0x1fc
+Jul  8 14:56:17 kria kernel: [    4.793209]  device_initial_probe+0x1c/0x30
+--
+Jul  8 16:15:17 kria kernel: [    4.830986] 17 fixed-partitions partitions found on MTD device spi0.0
+Jul  8 16:15:17 kria kernel: [    4.830990] Creating 17 MTD partitions on "spi0.0":
+Jul  8 16:15:17 kria kernel: [    4.830997] 0x000000000000-0x000000080000 : "Image Selector"
+Jul  8 16:15:17 kria kernel: [    4.840090] 0x000000080000-0x000000100000 : "Image Selector Golden"
+Jul  8 16:15:17 kria kernel: [    4.869659] 0x000000100000-0x000000120000 : "Persistent Register"
+Jul  8 16:15:17 kria kernel: [    4.879292] 0x000000120000-0x000000140000 : "Persistent Register Backup"
+Jul  8 16:15:17 kria kernel: [    4.892695] 0x000000140000-0x000000200000 : "Open_1"
+Jul  8 16:15:17 kria kernel: [    4.899894] 0x000000200000-0x000000f00000 : "Image A (FSBL, PMU, ATF, U-Boot)"
+Jul  8 16:15:17 kria kernel: [    4.900582] BUG: scheduling while atomic: systemd-udevd/304/0x00000002
+Jul  8 16:15:17 kria kernel: [    4.900589] Modules linked in: spi_zynqmp_gqspi(+) zynqmp_dpsub(+) i2c_cadence usbhid aes_neon_bs aes_neon_blk aes_ce_blk crypto_simd cryptd aes_ce_cipher
+Jul  8 16:15:17 kria kernel: [    4.900618] CPU: 2 PID: 304 Comm: systemd-udevd Not tainted 5.15.199-rt91-rt-kria #1
+Jul  8 16:15:17 kria kernel: [    4.900625] Hardware name: ZynqMP KV260 revB (DT)
+Jul  8 16:15:17 kria kernel: [    4.900629] Call trace:
+Jul  8 16:15:17 kria kernel: [    4.900631]  dump_backtrace+0x0/0x1f0
+Jul  8 16:15:17 kria kernel: [    4.900642]  show_stack+0x20/0x2c
+Jul  8 16:15:17 kria kernel: [    4.900648]  dump_stack_lvl+0x68/0x84
+Jul  8 16:15:17 kria kernel: [    4.900655]  dump_stack+0x18/0x34
+Jul  8 16:15:17 kria kernel: [    4.900661]  __schedule_bug+0x5c/0x7c
+Jul  8 16:15:17 kria kernel: [    4.900670]  __schedule+0x114c/0x13f0
+Jul  8 16:15:17 kria kernel: [    4.900677]  schedule_rtlock+0x28/0x54
+Jul  8 16:15:17 kria kernel: [    4.900683]  rtlock_slowlock_locked+0x364/0xb50
+Jul  8 16:15:17 kria kernel: [    4.900691]  rt_spin_lock+0x94/0xbc
+Jul  8 16:15:17 kria kernel: [    4.900698]  crng_make_state+0x11c/0x1d0
+Jul  8 16:15:17 kria kernel: [    4.900705]  _get_random_bytes.part.0+0x5c/0x130
+Jul  8 16:15:17 kria kernel: [    4.900712]  get_random_u32+0x11c/0x130
+Jul  8 16:15:17 kria kernel: [    4.900718]  new_slab+0x184/0x4f0
+Jul  8 16:15:17 kria kernel: [    4.900724]  ___slab_alloc+0x6ec/0x82c
+Jul  8 16:15:17 kria kernel: [    4.900729]  kmem_cache_alloc+0x104/0x2e0
+Jul  8 16:15:17 kria kernel: [    4.900735]  radix_tree_node_alloc.constprop.0+0xc0/0x100
+Jul  8 16:15:17 kria kernel: [    4.900742]  idr_get_free+0x220/0x2d0
+Jul  8 16:15:17 kria kernel: [    4.900747]  idr_alloc_u32+0x74/0x110
+Jul  8 16:15:17 kria kernel: [    4.900754]  idr_alloc_cyclic+0x6c/0xf0
+Jul  8 16:15:17 kria kernel: [    4.900760]  __kernfs_new_node+0xb4/0x240
+Jul  8 16:15:17 kria kernel: [    4.900767]  kernfs_new_node+0x70/0x9c
+Jul  8 16:15:17 kria kernel: [    4.900773]  kernfs_create_dir_ns+0x3c/0xa0
+Jul  8 16:15:17 kria kernel: [    4.900779]  internal_create_group+0x2bc/0x3d4
+Jul  8 16:15:17 kria kernel: [    4.900787]  sysfs_create_group+0x20/0x2c
+Jul  8 16:15:17 kria kernel: [    4.900794]  dpm_sysfs_add+0x50/0x130
+Jul  8 16:15:17 kria kernel: [    4.900802]  device_add+0x368/0x8e0
+Jul  8 16:15:17 kria kernel: [    4.900808]  device_create+0x138/0x170
+Jul  8 16:15:17 kria kernel: [    4.900812]  add_mtd_device+0x29c/0x4c0
+Jul  8 16:15:17 kria kernel: [    4.900820]  add_mtd_partitions+0x114/0x1ac
+Jul  8 16:15:17 kria kernel: [    4.900826]  parse_mtd_partitions+0xe4/0x464
+Jul  8 16:15:17 kria kernel: [    4.900833]  mtd_device_parse_register+0x10c/0x324
+Jul  8 16:15:17 kria kernel: [    4.900839]  spi_nor_probe+0x234/0x310
+Jul  8 16:15:17 kria kernel: [    4.900846]  spi_mem_probe+0x74/0xb0
+Jul  8 16:15:17 kria kernel: [    4.900852]  spi_probe+0xa0/0x140
+Jul  8 16:15:17 kria kernel: [    4.900859]  really_probe+0xc4/0x470
+Jul  8 16:15:17 kria kernel: [    4.900865]  __driver_probe_device+0x10c/0x160
+--
+Jul  8 16:15:17 kria kernel: [    4.901040]  __do_sys_finit_module+0xac/0x11c
+Jul  8 16:15:17 kria kernel: [    4.901047]  __arm64_sys_finit_module+0x28/0x34
+Jul  8 16:15:17 kria kernel: [    4.901053]  invoke_syscall+0x78/0x100
+Jul  8 16:15:17 kria kernel: [    4.901061]  el0_svc_common.constprop.0+0x54/0x184
+Jul  8 16:15:17 kria kernel: [    4.901068]  do_el0_svc+0x30/0xac
+Jul  8 16:15:17 kria kernel: [    4.901075]  el0_svc+0x28/0xb0
+Jul  8 16:15:17 kria kernel: [    4.901082]  el0t_64_sync_handler+0xa4/0x12c
+Jul  8 16:15:17 kria kernel: [    4.901088]  el0t_64_sync+0x1a4/0x1a8
+Jul  8 16:15:17 kria kernel: [    4.901339] BUG: scheduling while atomic: systemd-udevd/304/0x00000000
+Jul  8 16:15:17 kria kernel: [    4.901345] Modules linked in: spi_zynqmp_gqspi(+) zynqmp_dpsub(+) i2c_cadence usbhid aes_neon_bs aes_neon_blk aes_ce_blk crypto_simd cryptd aes_ce_cipher
+Jul  8 16:15:17 kria kernel: [    4.901367] CPU: 2 PID: 304 Comm: systemd-udevd Tainted: G        W         5.15.199-rt91-rt-kria #1
+Jul  8 16:15:17 kria kernel: [    4.901374] Hardware name: ZynqMP KV260 revB (DT)
+Jul  8 16:15:17 kria kernel: [    4.901377] Call trace:
+Jul  8 16:15:17 kria kernel: [    4.901378]  dump_backtrace+0x0/0x1f0
+Jul  8 16:15:17 kria kernel: [    4.901386]  show_stack+0x20/0x2c
+Jul  8 16:15:17 kria kernel: [    4.901390]  dump_stack_lvl+0x68/0x84
+Jul  8 16:15:17 kria kernel: [    4.901397]  dump_stack+0x18/0x34
+Jul  8 16:15:17 kria kernel: [    4.901403]  __schedule_bug+0x5c/0x7c
+Jul  8 16:15:17 kria kernel: [    4.901410]  __schedule+0x114c/0x13f0
+Jul  8 16:15:17 kria kernel: [    4.901416]  schedule_rtlock+0x28/0x54
+Jul  8 16:15:17 kria kernel: [    4.901422]  rtlock_slowlock_locked+0x364/0xb50
+Jul  8 16:15:17 kria kernel: [    4.901429]  rt_spin_lock+0x94/0xbc
+Jul  8 16:15:17 kria kernel: [    4.901436]  crng_make_state+0x11c/0x1d0
+Jul  8 16:15:17 kria kernel: [    4.901443]  _get_random_bytes.part.0+0x5c/0x130
+Jul  8 16:15:17 kria kernel: [    4.901449]  get_random_u32+0x11c/0x130
+Jul  8 16:15:17 kria kernel: [    4.901455]  new_slab+0x184/0x4f0
+Jul  8 16:15:17 kria kernel: [    4.901460]  ___slab_alloc+0x6ec/0x82c
+Jul  8 16:15:17 kria kernel: [    4.901465]  kmem_cache_alloc_node_trace+0x108/0x2e4
+Jul  8 16:15:17 kria kernel: [    4.901471]  sbitmap_queue_init_node+0xf0/0x190
+Jul  8 16:15:17 kria kernel: [    4.901479]  blk_mq_init_bitmaps+0x50/0xc0
+Jul  8 16:15:17 kria kernel: [    4.901485]  blk_mq_init_tags+0xa0/0x100
+Jul  8 16:15:17 kria kernel: [    4.901490]  blk_mq_alloc_rq_map+0x58/0xec
+Jul  8 16:15:17 kria kernel: [    4.901496]  __blk_mq_alloc_map_and_request+0x3c/0xf4
+Jul  8 16:15:17 kria kernel: [    4.901501]  blk_mq_alloc_tag_set+0x168/0x37c
+Jul  8 16:15:17 kria kernel: [    4.901506]  blk_mq_alloc_sq_tag_set+0x5c/0x70
+Jul  8 16:15:17 kria kernel: [    4.901511]  add_mtd_blktrans_dev+0x15c/0x3e0
+Jul  8 16:15:17 kria kernel: [    4.901519]  mtdblock_add_mtd+0x6c/0xb4
+Jul  8 16:15:17 kria kernel: [    4.901525]  blktrans_notify_add+0x58/0x80
+Jul  8 16:15:17 kria kernel: [    4.901532]  add_mtd_device+0x2bc/0x4c0
+Jul  8 16:15:17 kria kernel: [    4.901537]  add_mtd_partitions+0x114/0x1ac
+Jul  8 16:15:17 kria kernel: [    4.901543]  parse_mtd_partitions+0xe4/0x464
+Jul  8 16:15:17 kria kernel: [    4.901550]  mtd_device_parse_register+0x10c/0x324
+Jul  8 16:15:17 kria kernel: [    4.901556]  spi_nor_probe+0x234/0x310
+Jul  8 16:15:17 kria kernel: [    4.901561]  spi_mem_probe+0x74/0xb0
+Jul  8 16:15:17 kria kernel: [    4.901567]  spi_probe+0xa0/0x140
+Jul  8 16:15:17 kria kernel: [    4.901573]  really_probe+0xc4/0x470
+Jul  8 16:15:17 kria kernel: [    4.901579]  __driver_probe_device+0x10c/0x160
+Jul  8 16:15:17 kria kernel: [    4.901585]  driver_probe_device+0x48/0x130
+Jul  8 16:15:17 kria kernel: [    4.901591]  __device_attach_driver+0xc4/0x160
+--
+Jul  8 21:37:27 kria kernel: [    2.780235] usb 1-1: New USB device found, idVendor=0424, idProduct=2744, bcdDevice= 1.21
+Jul  8 21:37:27 kria kernel: [    2.780250] usb 1-1: New USB device strings: Mfr=1, Product=2, SerialNumber=0
+Jul  8 21:37:27 kria kernel: [    2.780256] usb 1-1: Product: USB2734
+Jul  8 21:37:27 kria kernel: [    2.780260] usb 1-1: Manufacturer: Microchip Tech
+Jul  8 21:37:27 kria kernel: [    2.833922] hub 1-1:1.0: USB hub found
+Jul  8 21:37:27 kria kernel: [    2.833984] hub 1-1:1.0: 4 ports detected
+Jul  8 21:37:27 kria kernel: [    3.727439] mmc1: new high speed SDXC card at address aaaa
+Jul  8 21:37:27 kria kernel: [    3.738728] mmcblk1: mmc1:aaaa SD256 238 GiB 
+Jul  8 21:37:27 kria kernel: [    3.759845] BUG: scheduling while atomic: kworker/0:1/20/0x00000002
+Jul  8 21:37:27 kria kernel: [    3.759857] Modules linked in: aes_neon_bs aes_neon_blk aes_ce_blk crypto_simd cryptd aes_ce_cipher
+Jul  8 21:37:27 kria kernel: [    3.759878] CPU: 0 PID: 20 Comm: kworker/0:1 Not tainted 5.15.199-rt91-rt-kria #1
+Jul  8 21:37:27 kria kernel: [    3.759885] Hardware name: ZynqMP KV260 revB (DT)
+Jul  8 21:37:27 kria kernel: [    3.759890] Workqueue: events_freezable mmc_rescan
+Jul  8 21:37:27 kria kernel: [    3.759906] Call trace:
+Jul  8 21:37:27 kria kernel: [    3.759908]  dump_backtrace+0x0/0x1f0
+Jul  8 21:37:27 kria kernel: [    3.759917]  show_stack+0x20/0x2c
+Jul  8 21:37:27 kria kernel: [    3.759921]  dump_stack_lvl+0x68/0x84
+Jul  8 21:37:27 kria kernel: [    3.759929]  dump_stack+0x18/0x34
+Jul  8 21:37:27 kria kernel: [    3.759935]  __schedule_bug+0x5c/0x7c
+Jul  8 21:37:27 kria kernel: [    3.759944]  __schedule+0x114c/0x13f0
+Jul  8 21:37:27 kria kernel: [    3.759951]  schedule_rtlock+0x28/0x54
+Jul  8 21:37:27 kria kernel: [    3.759957]  rtlock_slowlock_locked+0x364/0xb50
+Jul  8 21:37:27 kria kernel: [    3.759965]  rt_spin_lock+0x94/0xbc
+Jul  8 21:37:27 kria kernel: [    3.759971]  crng_make_state+0x11c/0x1d0
+Jul  8 21:37:27 kria kernel: [    3.759979]  _get_random_bytes.part.0+0x5c/0x130
+Jul  8 21:37:27 kria kernel: [    3.759986]  get_random_u32+0x11c/0x130
+Jul  8 21:37:27 kria kernel: [    3.759991]  new_slab+0x184/0x4f0
+Jul  8 21:37:27 kria kernel: [    3.759998]  ___slab_alloc+0x6ec/0x82c
+Jul  8 21:37:27 kria kernel: [    3.760003]  kmem_cache_alloc+0x104/0x2e0
+Jul  8 21:37:27 kria kernel: [    3.760008]  radix_tree_node_alloc.constprop.0+0xc0/0x100
+Jul  8 21:37:27 kria kernel: [    3.760016]  idr_get_free+0x220/0x2d0
+Jul  8 21:37:27 kria kernel: [    3.760021]  idr_alloc_u32+0x74/0x110
+Jul  8 21:37:27 kria kernel: [    3.760028]  idr_alloc_cyclic+0x6c/0xf0
+Jul  8 21:37:27 kria kernel: [    3.760035]  __kernfs_new_node+0xb4/0x240
+Jul  8 21:37:27 kria kernel: [    3.760042]  kernfs_new_node+0x70/0x9c
+Jul  8 21:37:27 kria kernel: [    3.760048]  __kernfs_create_file+0x38/0x100
+Jul  8 21:37:27 kria kernel: [    3.760055]  sysfs_add_file_mode_ns+0xac/0x1ac
+Jul  8 21:37:27 kria kernel: [    3.760062]  internal_create_group+0x110/0x3d4
+Jul  8 21:37:27 kria kernel: [    3.760069]  internal_create_groups.part.0+0x54/0xcc
+Jul  8 21:37:27 kria kernel: [    3.760076]  sysfs_create_groups+0x24/0x40
+Jul  8 21:37:27 kria kernel: [    3.760083]  device_add+0x2fc/0x8e0
+Jul  8 21:37:27 kria kernel: [    3.760089]  device_add_disk+0xbc/0x3c0
+Jul  8 21:37:27 kria kernel: [    3.760097]  mmc_blk_alloc_req+0x278/0x370
+Jul  8 21:37:27 kria kernel: [    3.760104]  mmc_blk_probe+0x1c4/0x650
+Jul  8 21:37:27 kria kernel: [    3.760109]  mmc_bus_probe+0x28/0x34
+Jul  8 21:37:27 kria kernel: [    3.760116]  really_probe+0xc4/0x470
+Jul  8 21:37:27 kria kernel: [    3.760123]  __driver_probe_device+0x10c/0x160
+Jul  8 21:37:27 kria kernel: [    3.760128]  driver_probe_device+0x48/0x130
+Jul  8 21:37:27 kria kernel: [    3.760134]  __device_attach_driver+0xc4/0x160
+--
+Jul  8 21:37:27 kria kernel: [    3.760162]  device_add+0x3c4/0x8e0
+Jul  8 21:37:27 kria kernel: [    3.760167]  mmc_add_card+0x134/0x2cc
+Jul  8 21:37:27 kria kernel: [    3.760174]  mmc_attach_sd+0x108/0x180
+Jul  8 21:37:27 kria kernel: [    3.760181]  mmc_rescan+0x284/0x330
+Jul  8 21:37:27 kria kernel: [    3.760187]  process_one_work+0x204/0x504
+Jul  8 21:37:27 kria kernel: [    3.760196]  worker_thread+0x138/0x480
+Jul  8 21:37:27 kria kernel: [    3.760203]  kthread+0x194/0x1ac
+Jul  8 21:37:27 kria kernel: [    3.760210]  ret_from_fork+0x10/0x20
+Jul  8 21:37:27 kria kernel: [    3.772998] BUG: scheduling while atomic: kworker/0:1/20/0x00000000
+Jul  8 21:37:27 kria kernel: [    3.773009] Modules linked in: aes_neon_bs aes_neon_blk aes_ce_blk crypto_simd cryptd aes_ce_cipher
+Jul  8 21:37:27 kria kernel: [    3.773029] CPU: 0 PID: 20 Comm: kworker/0:1 Tainted: G        W         5.15.199-rt91-rt-kria #1
+Jul  8 21:37:27 kria kernel: [    3.773036] Hardware name: ZynqMP KV260 revB (DT)
+Jul  8 21:37:27 kria kernel: [    3.773041] Workqueue: events_freezable mmc_rescan
+Jul  8 21:37:27 kria kernel: [    3.773055] Call trace:
+Jul  8 21:37:27 kria kernel: [    3.773057]  dump_backtrace+0x0/0x1f0
+Jul  8 21:37:27 kria kernel: [    3.773065]  show_stack+0x20/0x2c
+Jul  8 21:37:27 kria kernel: [    3.773070]  dump_stack_lvl+0x68/0x84
+Jul  8 21:37:27 kria kernel: [    3.773077]  dump_stack+0x18/0x34
+Jul  8 21:37:27 kria kernel: [    3.773083]  __schedule_bug+0x5c/0x7c
+Jul  8 21:37:27 kria kernel: [    3.773091]  __schedule+0x114c/0x13f0
+Jul  8 21:37:27 kria kernel: [    3.773100]  schedule+0x70/0x144
+Jul  8 21:37:27 kria kernel: [    3.773105]  schedule_timeout+0x1a4/0x1f0
+Jul  8 21:37:27 kria kernel: [    3.773113]  wait_for_completion+0x8c/0x130
+Jul  8 21:37:27 kria kernel: [    3.773119]  devtmpfs_submit_req+0x74/0x94
+Jul  8 21:37:27 kria kernel: [    3.773128]  devtmpfs_create_node+0xa8/0xf0
+Jul  8 21:37:27 kria kernel: [    3.773135]  device_add+0x834/0x8e0
+Jul  8 21:37:27 kria kernel: [    3.773141]  device_add_disk+0xbc/0x3c0
+Jul  8 21:37:27 kria kernel: [    3.773148]  mmc_blk_alloc_req+0x278/0x370
+Jul  8 21:37:27 kria kernel: [    3.773155]  mmc_blk_probe+0x1c4/0x650
+Jul  8 21:37:27 kria kernel: [    3.773160]  mmc_bus_probe+0x28/0x34
+Jul  8 21:37:27 kria kernel: [    3.773167]  really_probe+0xc4/0x470
+Jul  8 21:37:27 kria kernel: [    3.773173]  __driver_probe_device+0x10c/0x160
+Jul  8 21:37:27 kria kernel: [    3.773179]  driver_probe_device+0x48/0x130
+Jul  8 21:37:27 kria kernel: [    3.773185]  __device_attach_driver+0xc4/0x160
+Jul  8 21:37:27 kria kernel: [    3.773191]  bus_for_each_drv+0x84/0xe0
+Jul  8 21:37:27 kria kernel: [    3.773196]  __device_attach+0xb4/0x1fc
+Jul  8 21:37:27 kria kernel: [    3.773201]  device_initial_probe+0x1c/0x30
+Jul  8 21:37:27 kria kernel: [    3.773207]  bus_probe_device+0xa4/0xb0
+Jul  8 21:37:27 kria kernel: [    3.773213]  device_add+0x3c4/0x8e0
+Jul  8 21:37:27 kria kernel: [    3.773217]  mmc_add_card+0x134/0x2cc
+Jul  8 21:37:27 kria kernel: [    3.773224]  mmc_attach_sd+0x108/0x180
+Jul  8 21:37:27 kria kernel: [    3.773231]  mmc_rescan+0x284/0x330
+Jul  8 21:37:27 kria kernel: [    3.773237]  process_one_work+0x204/0x504
+Jul  8 21:37:27 kria kernel: [    3.773245]  worker_thread+0x138/0x480
+Jul  8 21:37:27 kria kernel: [    3.773252]  kthread+0x194/0x1ac
+Jul  8 21:37:27 kria kernel: [    3.773260]  ret_from_fork+0x10/0x20
+Jul  8 21:37:27 kria kernel: [    3.786119]  mmcblk1: p1 p2
+Jul  8 21:37:27 kria kernel: [    3.945392] usb 2-1: new SuperSpeed USB device number 2 using xhci-hcd
+Jul  8 21:37:27 kria kernel: [    3.961910] usb 2-1: New USB device found, idVendor=0424, idProduct=5744, bcdDevice= 1.21
+--
+Jul  9 22:59:54 kria kernel: [    4.542445] 0x000000100000-0x000000120000 : "Persistent Register"
+Jul  9 22:59:54 kria kernel: [    4.568847] 0x000000120000-0x000000140000 : "Persistent Register Backup"
+Jul  9 22:59:54 kria kernel: [    4.570823] 0x000000140000-0x000000200000 : "Open_1"
+Jul  9 22:59:54 kria kernel: [    4.573881] rtc_zynqmp ffa60000.rtc: registered as rtc0
+Jul  9 22:59:54 kria kernel: [    4.573910] rtc_zynqmp ffa60000.rtc: setting system clock to 1970-01-01T00:00:19 UTC (19)
+Jul  9 22:59:54 kria kernel: [    4.578617] 0x000000200000-0x000000f00000 : "Image A (FSBL, PMU, ATF, U-Boot)"
+Jul  9 22:59:54 kria kernel: [    4.590593] 0x000000f00000-0x000000f80000 : "ImgSel Image A Catch"
+Jul  9 22:59:54 kria kernel: [    4.605323] 0x000000f80000-0x000001c80000 : "Image B (FSBL, PMU, ATF, U-Boot)"
+Jul  9 22:59:54 kria kernel: [    4.612321] BUG: scheduling while atomic: systemd-udevd/276/0x00000002
+Jul  9 22:59:54 kria kernel: [    4.612332] Modules linked in: rtc_zynqmp spi_zynqmp_gqspi(+) i2c_cadence aes_neon_bs aes_neon_blk aes_ce_blk crypto_simd cryptd aes_ce_cipher
+Jul  9 22:59:54 kria kernel: [    4.612360] CPU: 0 PID: 276 Comm: systemd-udevd Not tainted 5.15.199-rt91-rt-kria #1
+Jul  9 22:59:54 kria kernel: [    4.612367] Hardware name: ZynqMP KV260 revB (DT)
+Jul  9 22:59:54 kria kernel: [    4.612371] Call trace:
+Jul  9 22:59:54 kria kernel: [    4.612372]  dump_backtrace+0x0/0x1f0
+Jul  9 22:59:54 kria kernel: [    4.612385]  show_stack+0x20/0x2c
+Jul  9 22:59:54 kria kernel: [    4.612390]  dump_stack_lvl+0x68/0x84
+Jul  9 22:59:54 kria kernel: [    4.612398]  dump_stack+0x18/0x34
+Jul  9 22:59:54 kria kernel: [    4.612404]  __schedule_bug+0x5c/0x7c
+Jul  9 22:59:54 kria kernel: [    4.612412]  __schedule+0x114c/0x13f0
+Jul  9 22:59:54 kria kernel: [    4.612419]  schedule_rtlock+0x28/0x54
+Jul  9 22:59:54 kria kernel: [    4.612425]  rtlock_slowlock_locked+0x364/0xb50
+Jul  9 22:59:54 kria kernel: [    4.612433]  rt_spin_lock+0x94/0xbc
+Jul  9 22:59:54 kria kernel: [    4.612439]  crng_make_state+0x11c/0x1d0
+Jul  9 22:59:54 kria kernel: [    4.612447]  _get_random_bytes.part.0+0x5c/0x130
+Jul  9 22:59:54 kria kernel: [    4.612453]  get_random_u32+0x11c/0x130
+Jul  9 22:59:54 kria kernel: [    4.612460]  new_slab+0x184/0x4f0
+Jul  9 22:59:54 kria kernel: [    4.612466]  ___slab_alloc+0x6ec/0x82c
+Jul  9 22:59:54 kria kernel: [    4.612471]  kmem_cache_alloc+0x104/0x2e0
+Jul  9 22:59:54 kria kernel: [    4.612477]  radix_tree_node_alloc.constprop.0+0xc0/0x100
+Jul  9 22:59:54 kria kernel: [    4.612484]  idr_get_free+0x220/0x2d0
+Jul  9 22:59:54 kria kernel: [    4.612489]  idr_alloc_u32+0x74/0x110
+Jul  9 22:59:54 kria kernel: [    4.612496]  idr_alloc_cyclic+0x6c/0xf0
+Jul  9 22:59:54 kria kernel: [    4.612502]  __kernfs_new_node+0xb4/0x240
+Jul  9 22:59:54 kria kernel: [    4.612510]  kernfs_new_node+0x70/0x9c
+Jul  9 22:59:54 kria kernel: [    4.612517]  __kernfs_create_file+0x38/0x100
+Jul  9 22:59:54 kria kernel: [    4.612524]  sysfs_add_file_mode_ns+0xac/0x1ac
+Jul  9 22:59:54 kria kernel: [    4.612530]  internal_create_group+0x110/0x3d4
+Jul  9 22:59:54 kria kernel: [    4.612537]  internal_create_groups.part.0+0x54/0xcc
+Jul  9 22:59:54 kria kernel: [    4.612545]  sysfs_create_groups+0x24/0x40
+Jul  9 22:59:54 kria kernel: [    4.612551]  kobject_add_internal+0x1d0/0x320
+Jul  9 22:59:54 kria kernel: [    4.612558]  kobject_add+0x98/0x110
+Jul  9 22:59:54 kria kernel: [    4.612565]  blk_mq_register_hctx+0x64/0x130
+Jul  9 22:59:54 kria kernel: [    4.612572]  __blk_mq_register_dev+0x98/0x144
+Jul  9 22:59:54 kria kernel: [    4.612578]  blk_register_queue+0xec/0x220
+Jul  9 22:59:54 kria kernel: [    4.612585]  device_add_disk+0x1c8/0x3c0
+Jul  9 22:59:54 kria kernel: [    4.612591]  add_mtd_blktrans_dev+0x2a8/0x3e0
+Jul  9 22:59:54 kria kernel: [    4.612600]  mtdblock_add_mtd+0x6c/0xb4
+Jul  9 22:59:54 kria kernel: [    4.612606]  blktrans_notify_add+0x58/0x80
+Jul  9 22:59:54 kria kernel: [    4.612613]  add_mtd_device+0x2bc/0x4c0
+--
+Jul  9 22:59:54 kria kernel: [    4.612842]  __do_sys_finit_module+0xac/0x11c
+Jul  9 22:59:54 kria kernel: [    4.612849]  __arm64_sys_finit_module+0x28/0x34
+Jul  9 22:59:54 kria kernel: [    4.612856]  invoke_syscall+0x78/0x100
+Jul  9 22:59:54 kria kernel: [    4.612864]  el0_svc_common.constprop.0+0x54/0x184
+Jul  9 22:59:54 kria kernel: [    4.612871]  do_el0_svc+0x30/0xac
+Jul  9 22:59:54 kria kernel: [    4.612878]  el0_svc+0x28/0xb0
+Jul  9 22:59:54 kria kernel: [    4.612886]  el0t_64_sync_handler+0xa4/0x12c
+Jul  9 22:59:54 kria kernel: [    4.612891]  el0t_64_sync+0x1a4/0x1a8
+Jul  9 22:59:54 kria kernel: [    4.619232] BUG: scheduling while atomic: systemd-udevd/276/0x00000000
+Jul  9 22:59:54 kria kernel: [    4.619242] Modules linked in: rtc_zynqmp spi_zynqmp_gqspi(+) i2c_cadence aes_neon_bs aes_neon_blk aes_ce_blk crypto_simd cryptd aes_ce_cipher
+Jul  9 22:59:54 kria kernel: [    4.619269] CPU: 0 PID: 276 Comm: systemd-udevd Tainted: G        W         5.15.199-rt91-rt-kria #1
+Jul  9 22:59:54 kria kernel: [    4.619275] Hardware name: ZynqMP KV260 revB (DT)
+Jul  9 22:59:54 kria kernel: [    4.619280] Call trace:
+Jul  9 22:59:54 kria kernel: [    4.619281]  dump_backtrace+0x0/0x1f0
+Jul  9 22:59:54 kria kernel: [    4.619293]  show_stack+0x20/0x2c
+Jul  9 22:59:54 kria kernel: [    4.619298]  dump_stack_lvl+0x68/0x84
+Jul  9 22:59:54 kria kernel: [    4.619306]  dump_stack+0x18/0x34
+Jul  9 22:59:54 kria kernel: [    4.619312]  __schedule_bug+0x5c/0x7c
+Jul  9 22:59:54 kria kernel: [    4.619321]  __schedule+0x114c/0x13f0
+Jul  9 22:59:54 kria kernel: [    4.619328]  schedule_rtlock+0x28/0x54
+Jul  9 22:59:54 kria kernel: [    4.619334]  rtlock_slowlock_locked+0x364/0xb50
+Jul  9 22:59:54 kria kernel: [    4.619342]  rt_spin_lock+0x94/0xbc
+Jul  9 22:59:54 kria kernel: [    4.619348]  crng_make_state+0x11c/0x1d0
+Jul  9 22:59:54 kria kernel: [    4.619356]  _get_random_bytes.part.0+0x5c/0x130
+Jul  9 22:59:54 kria kernel: [    4.619362]  get_random_u32+0x11c/0x130
+Jul  9 22:59:54 kria kernel: [    4.619368]  new_slab+0x184/0x4f0
+Jul  9 22:59:54 kria kernel: [    4.619374]  ___slab_alloc+0x6ec/0x82c
+Jul  9 22:59:54 kria kernel: [    4.619379]  kmem_cache_alloc+0x104/0x2e0
+Jul  9 22:59:54 kria kernel: [    4.619385]  __d_alloc+0x34/0x220
+Jul  9 22:59:54 kria kernel: [    4.619392]  d_alloc+0x24/0xa0
+Jul  9 22:59:54 kria kernel: [    4.619398]  d_alloc_parallel+0x78/0x580
+Jul  9 22:59:54 kria kernel: [    4.619404]  __lookup_slow+0x68/0x160
+Jul  9 22:59:54 kria kernel: [    4.619412]  lookup_one_len+0xb8/0xcc
+Jul  9 22:59:54 kria kernel: [    4.619419]  start_creating.part.0+0x84/0x180
+Jul  9 22:59:54 kria kernel: [    4.619425]  __debugfs_create_file+0x74/0x210
+Jul  9 22:59:54 kria kernel: [    4.619431]  debugfs_create_file+0x34/0x40
+Jul  9 22:59:54 kria kernel: [    4.619436]  debugfs_create_files+0x64/0x84
+Jul  9 22:59:54 kria kernel: [    4.619446]  blk_mq_debugfs_register_sched+0x50/0x64
+Jul  9 22:59:54 kria kernel: [    4.619451]  blk_mq_debugfs_register+0x11c/0x120
+Jul  9 22:59:54 kria kernel: [    4.619456]  blk_register_queue+0xf4/0x220
+Jul  9 22:59:54 kria kernel: [    4.619462]  device_add_disk+0x1c8/0x3c0
+Jul  9 22:59:54 kria kernel: [    4.619469]  add_mtd_blktrans_dev+0x2a8/0x3e0
+Jul  9 22:59:54 kria kernel: [    4.619478]  mtdblock_add_mtd+0x6c/0xb4
+Jul  9 22:59:54 kria kernel: [    4.619485]  blktrans_notify_add+0x58/0x80
+Jul  9 22:59:54 kria kernel: [    4.619491]  add_mtd_device+0x2bc/0x4c0
+Jul  9 22:59:54 kria kernel: [    4.619497]  add_mtd_partitions+0x114/0x1ac
+Jul  9 22:59:54 kria kernel: [    4.619504]  parse_mtd_partitions+0xe4/0x464
+Jul  9 22:59:54 kria kernel: [    4.619510]  mtd_device_parse_register+0x10c/0x324
+Jul  9 22:59:54 kria kernel: [    4.619516]  spi_nor_probe+0x234/0x310
+--
+Jul 10 21:22:49 kria kernel: [    4.569511] at24 1-0051: supply vcc not found, using dummy regulator
+Jul 10 21:22:49 kria kernel: [    4.570105] at24 1-0051: 8192 byte 24c64 EEPROM, writable, 1 bytes/write
+Jul 10 21:22:49 kria kernel: [    4.570563] cdns-i2c ff030000.i2c: 400 kHz mmio ff030000 irq 39
+Jul 10 21:22:49 kria kernel: [    4.600641] spi-nor spi0.0: mt25qu512a (65536 Kbytes)
+Jul 10 21:22:49 kria kernel: [    4.600705] 17 fixed-partitions partitions found on MTD device spi0.0
+Jul 10 21:22:49 kria kernel: [    4.600709] Creating 17 MTD partitions on "spi0.0":
+Jul 10 21:22:49 kria kernel: [    4.600716] 0x000000000000-0x000000080000 : "Image Selector"
+Jul 10 21:22:49 kria kernel: [    4.622257] 0x000000080000-0x000000100000 : "Image Selector Golden"
+Jul 10 21:22:49 kria kernel: [    4.629307] BUG: scheduling while atomic: systemd-udevd/295/0x00000002
+Jul 10 21:22:49 kria kernel: [    4.629318] Modules linked in: spi_zynqmp_gqspi(+) i2c_cadence crct10dif_ce aes_neon_bs aes_neon_blk aes_ce_blk crypto_simd cryptd aes_ce_cipher
+Jul 10 21:22:49 kria kernel: [    4.629345] CPU: 3 PID: 295 Comm: systemd-udevd Not tainted 5.15.199-rt91-rt-kria #1
+Jul 10 21:22:49 kria kernel: [    4.629352] Hardware name: ZynqMP KV260 revB (DT)
+Jul 10 21:22:49 kria kernel: [    4.629356] Call trace:
+Jul 10 21:22:49 kria kernel: [    4.629358]  dump_backtrace+0x0/0x1f0
+Jul 10 21:22:49 kria kernel: [    4.629370]  show_stack+0x20/0x2c
+Jul 10 21:22:49 kria kernel: [    4.629375]  dump_stack_lvl+0x68/0x84
+Jul 10 21:22:49 kria kernel: [    4.629383]  dump_stack+0x18/0x34
+Jul 10 21:22:49 kria kernel: [    4.629389]  __schedule_bug+0x5c/0x7c
+Jul 10 21:22:49 kria kernel: [    4.629397]  __schedule+0x114c/0x13f0
+Jul 10 21:22:49 kria kernel: [    4.629404]  schedule_rtlock+0x28/0x54
+Jul 10 21:22:49 kria kernel: [    4.629410]  rtlock_slowlock_locked+0x364/0xb50
+Jul 10 21:22:49 kria kernel: [    4.629418]  rt_spin_lock+0x94/0xbc
+Jul 10 21:22:49 kria kernel: [    4.629424]  crng_make_state+0x11c/0x1d0
+Jul 10 21:22:49 kria kernel: [    4.629432]  _get_random_bytes.part.0+0x5c/0x130
+Jul 10 21:22:49 kria kernel: [    4.629438]  get_random_u32+0x11c/0x130
+Jul 10 21:22:49 kria kernel: [    4.629444]  new_slab+0x184/0x4f0
+Jul 10 21:22:49 kria kernel: [    4.629450]  ___slab_alloc+0x6ec/0x82c
+Jul 10 21:22:49 kria kernel: [    4.629455]  kmem_cache_alloc+0x104/0x2e0
+Jul 10 21:22:49 kria kernel: [    4.629461]  radix_tree_node_alloc.constprop.0+0xc0/0x100
+Jul 10 21:22:49 kria kernel: [    4.629468]  idr_get_free+0x220/0x2d0
+Jul 10 21:22:49 kria kernel: [    4.629473]  idr_alloc_u32+0x74/0x110
+Jul 10 21:22:49 kria kernel: [    4.629480]  idr_alloc_cyclic+0x6c/0xf0
+Jul 10 21:22:49 kria kernel: [    4.629486]  __kernfs_new_node+0xb4/0x240
+Jul 10 21:22:49 kria kernel: [    4.629494]  kernfs_new_node+0x70/0x9c
+Jul 10 21:22:49 kria kernel: [    4.629500]  __kernfs_create_file+0x38/0x100
+Jul 10 21:22:49 kria kernel: [    4.629507]  sysfs_add_file_mode_ns+0xac/0x1ac
+Jul 10 21:22:49 kria kernel: [    4.629514]  internal_create_group+0x110/0x3d4
+Jul 10 21:22:49 kria kernel: [    4.629521]  sysfs_create_group+0x20/0x2c
+Jul 10 21:22:49 kria kernel: [    4.629528]  dpm_sysfs_add+0x50/0x130
+Jul 10 21:22:49 kria kernel: [    4.629536]  device_add+0x368/0x8e0
+Jul 10 21:22:49 kria kernel: [    4.629542]  device_add_disk+0xbc/0x3c0
+Jul 10 21:22:49 kria kernel: [    4.629550]  add_mtd_blktrans_dev+0x2a8/0x3e0
+Jul 10 21:22:49 kria kernel: [    4.629559]  mtdblock_add_mtd+0x94/0xb4
+Jul 10 21:22:49 kria kernel: [    4.629565]  blktrans_notify_add+0x58/0x80
+Jul 10 21:22:49 kria kernel: [    4.629572]  add_mtd_device+0x2bc/0x4c0
+Jul 10 21:22:49 kria kernel: [    4.629578]  add_mtd_partitions+0x114/0x1ac
+Jul 10 21:22:49 kria kernel: [    4.629584]  parse_mtd_partitions+0xe4/0x464
+Jul 10 21:22:49 kria kernel: [    4.629590]  mtd_device_parse_register+0x10c/0x324
+Jul 10 21:22:49 kria kernel: [    4.629596]  spi_nor_probe+0x234/0x310
+--
+Jul 10 21:22:49 kria kernel: [    4.629796]  __do_sys_finit_module+0xac/0x11c
+Jul 10 21:22:49 kria kernel: [    4.629803]  __arm64_sys_finit_module+0x28/0x34
+Jul 10 21:22:49 kria kernel: [    4.629810]  invoke_syscall+0x78/0x100
+Jul 10 21:22:49 kria kernel: [    4.629817]  el0_svc_common.constprop.0+0x54/0x184
+Jul 10 21:22:49 kria kernel: [    4.629824]  do_el0_svc+0x30/0xac
+Jul 10 21:22:49 kria kernel: [    4.629830]  el0_svc+0x28/0xb0
+Jul 10 21:22:49 kria kernel: [    4.629838]  el0t_64_sync_handler+0xa4/0x12c
+Jul 10 21:22:49 kria kernel: [    4.629843]  el0t_64_sync+0x1a4/0x1a8
+Jul 10 21:22:49 kria kernel: [    4.629857] BUG: scheduling while atomic: kworker/0:2/238/0x00000002
+Jul 10 21:22:49 kria kernel: [    4.629862] Modules linked in: spi_zynqmp_gqspi(+) i2c_cadence crct10dif_ce aes_neon_bs aes_neon_blk aes_ce_blk crypto_simd cryptd aes_ce_cipher
+Jul 10 21:22:49 kria kernel: [    4.629882] CPU: 0 PID: 238 Comm: kworker/0:2 Tainted: G        W         5.15.199-rt91-rt-kria #1
+Jul 10 21:22:49 kria kernel: [    4.629887] Hardware name: ZynqMP KV260 revB (DT)
+Jul 10 21:22:49 kria kernel: [    4.629892] Workqueue: usb_hub_wq hub_event
+Jul 10 21:22:49 kria kernel: [    4.629902] Call trace:
+Jul 10 21:22:49 kria kernel: [    4.629904]  dump_backtrace+0x0/0x1f0
+Jul 10 21:22:49 kria kernel: [    4.629909]  show_stack+0x20/0x2c
+Jul 10 21:22:49 kria kernel: [    4.629914]  dump_stack_lvl+0x68/0x84
+Jul 10 21:22:49 kria kernel: [    4.629920]  dump_stack+0x18/0x34
+Jul 10 21:22:49 kria kernel: [    4.629926]  __schedule_bug+0x5c/0x7c
+Jul 10 21:22:49 kria kernel: [    4.629933]  __schedule+0x114c/0x13f0
+Jul 10 21:22:49 kria kernel: [    4.629939]  schedule_rtlock+0x28/0x54
+Jul 10 21:22:49 kria kernel: [    4.629944]  rtlock_slowlock_locked+0x364/0xb50
+Jul 10 21:22:49 kria kernel: [    4.629951]  rt_spin_lock+0x94/0xbc
+Jul 10 21:22:49 kria kernel: [    4.629958]  __kernfs_new_node+0x98/0x240
+Jul 10 21:22:49 kria kernel: [    4.629964]  kernfs_new_node+0x70/0x9c
+Jul 10 21:22:49 kria kernel: [    4.629969]  kernfs_create_dir_ns+0x3c/0xa0
+Jul 10 21:22:49 kria kernel: [    4.629975]  sysfs_create_dir_ns+0x78/0x11c
+Jul 10 21:22:49 kria kernel: [    4.629982]  kobject_add_internal+0xa0/0x320
+Jul 10 21:22:49 kria kernel: [    4.629990]  kobject_add+0x98/0x110
+Jul 10 21:22:49 kria kernel: [    4.629996]  device_add+0x108/0x8e0
+Jul 10 21:22:49 kria kernel: [    4.630001]  device_register+0x28/0x40
+Jul 10 21:22:49 kria kernel: [    4.630006]  __video_register_device+0x2b0/0x710
+Jul 10 21:22:49 kria kernel: [    4.630014]  uvc_register_video_device+0xf8/0x1e4
+Jul 10 21:22:49 kria kernel: [    4.630022]  uvc_probe+0x2458/0x255c
+Jul 10 21:22:49 kria kernel: [    4.630028]  usb_probe_interface+0xe4/0x2fc
+Jul 10 21:22:49 kria kernel: [    4.630034]  really_probe+0xc4/0x470
+Jul 10 21:22:49 kria kernel: [    4.630040]  __driver_probe_device+0x10c/0x160
+Jul 10 21:22:49 kria kernel: [    4.630046]  driver_probe_device+0x48/0x130
+Jul 10 21:22:49 kria kernel: [    4.630052]  __device_attach_driver+0xc4/0x160
+Jul 10 21:22:49 kria kernel: [    4.630057]  bus_for_each_drv+0x84/0xe0
+Jul 10 21:22:49 kria kernel: [    4.630063]  __device_attach+0xb4/0x1fc
+Jul 10 21:22:49 kria kernel: [    4.630068]  device_initial_probe+0x1c/0x30
+Jul 10 21:22:49 kria kernel: [    4.630074]  bus_probe_device+0xa4/0xb0
+Jul 10 21:22:49 kria kernel: [    4.630079]  device_add+0x3c4/0x8e0
+Jul 10 21:22:49 kria kernel: [    4.630084]  usb_set_configuration+0x49c/0x900
+Jul 10 21:22:49 kria kernel: [    4.630090]  usb_generic_driver_probe+0x6c/0xb0
+Jul 10 21:22:49 kria kernel: [    4.630096]  usb_probe_device+0x48/0x140
+Jul 10 21:22:49 kria kernel: [    4.630101]  really_probe+0xc4/0x470
+Jul 10 21:22:49 kria kernel: [    4.630107]  __driver_probe_device+0x10c/0x160
+--
+Jul 10 21:22:49 kria kernel: [    4.630141]  bus_probe_device+0xa4/0xb0
+Jul 10 21:22:49 kria kernel: [    4.630146]  device_add+0x3c4/0x8e0
+Jul 10 21:22:49 kria kernel: [    4.630151]  usb_new_device+0x23c/0x67c
+Jul 10 21:22:49 kria kernel: [    4.630157]  hub_event+0xb98/0x18c0
+Jul 10 21:22:49 kria kernel: [    4.630163]  process_one_work+0x204/0x504
+Jul 10 21:22:49 kria kernel: [    4.630172]  worker_thread+0x138/0x480
+Jul 10 21:22:49 kria kernel: [    4.630179]  kthread+0x194/0x1ac
+Jul 10 21:22:49 kria kernel: [    4.630185]  ret_from_fork+0x10/0x20
+Jul 10 21:22:49 kria kernel: [    4.631342] BUG: scheduling while atomic: kworker/0:2/238/0x00000000
+Jul 10 21:22:49 kria kernel: [    4.631350] Modules linked in: spi_zynqmp_gqspi(+) i2c_cadence crct10dif_ce aes_neon_bs aes_neon_blk aes_ce_blk crypto_simd cryptd aes_ce_cipher
+Jul 10 21:22:49 kria kernel: [    4.631371] CPU: 0 PID: 238 Comm: kworker/0:2 Tainted: G        W         5.15.199-rt91-rt-kria #1
+Jul 10 21:22:49 kria kernel: [    4.631377] Hardware name: ZynqMP KV260 revB (DT)
+Jul 10 21:22:49 kria kernel: [    4.631379] BUG: scheduling while atomic: systemd-udevd/295/0x00000000
+Jul 10 21:22:49 kria kernel: [    4.631384] Modules linked in:
+Jul 10 21:22:49 kria kernel: [    4.631381] Workqueue: usb_hub_wq hub_event
+Jul 10 21:22:49 kria kernel: [    4.631386]  spi_zynqmp_gqspi(+) i2c_cadence
+Jul 10 21:22:49 kria kernel: [    4.631390] 
+Jul 10 21:22:49 kria kernel: [    4.631390]  crct10dif_ce
+Jul 10 21:22:49 kria kernel: [    4.631392] Call trace:
+Jul 10 21:22:49 kria kernel: [    4.631392]  aes_neon_bs aes_neon_blk
+Jul 10 21:22:49 kria kernel: [    4.631394]  dump_backtrace+0x0/0x1f0
+Jul 10 21:22:49 kria kernel: [    4.631396]  aes_ce_blk crypto_simd cryptd
+Jul 10 21:22:49 kria kernel: [    4.631400]  show_stack+0x20/0x2c
+Jul 10 21:22:49 kria kernel: [    4.631402]  aes_ce_cipher
+Jul 10 21:22:49 kria kernel: [    4.631404]  dump_stack_lvl+0x68/0x84
+Jul 10 21:22:49 kria kernel: [    4.631411]  dump_stack+0x18/0x34
+Jul 10 21:22:49 kria kernel: [    4.631416]  __schedule_bug+0x5c/0x7c
+Jul 10 21:22:49 kria kernel: [    4.631423]  __schedule+0x114c/0x13f0
+Jul 10 21:22:49 kria kernel: [    4.631429]  schedule+0x70/0x144
+Jul 10 21:22:49 kria kernel: [    4.631435]  schedule_timeout+0x1a4/0x1f0
+Jul 10 21:22:49 kria kernel: [    4.631442]  wait_for_completion+0x8c/0x130
+Jul 10 21:22:49 kria kernel: [    4.631448]  devtmpfs_submit_req+0x74/0x94
+Jul 10 21:22:49 kria kernel: [    4.631456]  devtmpfs_create_node+0xa8/0xf0
+Jul 10 21:22:49 kria kernel: [    4.631463]  device_add+0x834/0x8e0
+Jul 10 21:22:49 kria kernel: [    4.631468]  device_register+0x28/0x40
+Jul 10 21:22:49 kria kernel: [    4.631472]  __video_register_device+0x2b0/0x710
+Jul 10 21:22:49 kria kernel: [    4.631480]  uvc_register_video_device+0xf8/0x1e4
+Jul 10 21:22:49 kria kernel: [    4.631487]  uvc_probe+0x2458/0x255c
+Jul 10 21:22:49 kria kernel: [    4.631493]  usb_probe_interface+0xe4/0x2fc
+Jul 10 21:22:49 kria kernel: [    4.631499]  really_probe+0xc4/0x470
+Jul 10 21:22:49 kria kernel: [    4.631505]  __driver_probe_device+0x10c/0x160
+Jul 10 21:22:49 kria kernel: [    4.631511]  driver_probe_device+0x48/0x130
+Jul 10 21:22:49 kria kernel: [    4.631516]  __device_attach_driver+0xc4/0x160
+Jul 10 21:22:49 kria kernel: [    4.631522]  bus_for_each_drv+0x84/0xe0
+Jul 10 21:22:49 kria kernel: [    4.631527]  __device_attach+0xb4/0x1fc
+Jul 10 21:22:49 kria kernel: [    4.631533]  device_initial_probe+0x1c/0x30
+Jul 10 21:22:49 kria kernel: [    4.631539]  bus_probe_device+0xa4/0xb0
+Jul 10 21:22:49 kria kernel: [    4.631544]  device_add+0x3c4/0x8e0
+Jul 10 21:22:49 kria kernel: [    4.631549]  usb_set_configuration+0x49c/0x900
+Jul 10 21:22:49 kria kernel: [    4.631554]  usb_generic_driver_probe+0x6c/0xb0
+Jul 10 21:22:49 kria kernel: [    4.631560]  usb_probe_device+0x48/0x140
+Jul 10 21:22:49 kria kernel: [    4.631565]  really_probe+0xc4/0x470
+Jul 10 21:22:49 kria kernel: [    4.631571]  __driver_probe_device+0x10c/0x160
+--
+Jul 10 21:22:55 kria kernel: [   46.064974] kauditd_printk_skb: 56 callbacks suppressed
+Jul 10 21:22:55 kria kernel: [   46.064987] audit: type=1400 audit(1783686175.872:68): apparmor="DENIED" operation="capable" profile="/usr/sbin/cupsd" pid=1323 comm="cupsd" capability=12  capname="net_admin"
+Jul 10 21:22:56 kria kernel: [   46.533320] audit: type=1400 audit(1783686176.340:69): apparmor="DENIED" operation="capable" profile="/usr/sbin/cups-browsed" pid=1622 comm="cups-browsed" capability=23  capname="sys_nice"
+Jul 10 21:22:57 kria kernel: [   48.169292] overlayfs: idmapped layers are currently not supported
+Jul 10 21:23:04 kria kernel: [   54.236055] audit: type=1400 audit(1783686184.043:70): apparmor="STATUS" operation="profile_load" profile="unconfined" name="docker-default" pid=1675 comm="apparmor_parser"
+Jul 10 21:23:05 kria kernel: [   55.291197] bridge: filtering via arp/ip/ip6tables is no longer available by default. Update your scripts to load br_netfilter if you need this.
+Jul 10 21:24:03 kria kernel: [  113.124116] set_capacity_and_notify: 12 callbacks suppressed
+Jul 10 21:24:03 kria kernel: [  113.124130] loop22: detected capacity change from 0 to 8
+Jul 10 21:24:10 kria kernel: [  118.037558] BUG: scheduling while atomic: 5/2653/0x00000002
+Jul 10 21:24:10 kria kernel: [  118.037576] Modules linked in: xt_conntrack xt_MASQUERADE bridge xt_set ip_set nft_counter nft_chain_nat nf_nat nf_conntrack nf_defrag_ipv6 nf_defrag_ipv4 xt_addrtype nft_compat nf_tables nfnetlink al5e(C) al5d(C) ap1302 allegro(C) zocl i2c_mux_pca954x xlnx_vcu binfmt_misc hid_sensor_gyro_3d hid_sensor_accel_3d hid_sensor_trigger hid_sensor_iio_common ina260_adc tpm_tis_spi uio_pdrv_genirq sch_fq_codel dm_multipath scsi_dh_rdac scsi_dh_emc scsi_dh_alua usb5744 dmaproxy(C) efi_pstore ip_tables x_tables autofs4 raid10 raid456 async_raid6_recov async_memcpy async_pq async_xor async_tx raid1 raid0 multipath linear hid_sensor_custom hid_sensor_hub usbhid da9121_regulator rtc_zynqmp spi_zynqmp_gqspi i2c_cadence crct10dif_ce aes_neon_bs aes_neon_blk aes_ce_blk crypto_simd cryptd aes_ce_cipher
+Jul 10 21:24:10 kria kernel: [  118.037720] CPU: 2 PID: 2653 Comm: 5 Tainted: G        WC        5.15.199-rt91-rt-kria #1
+Jul 10 21:24:10 kria kernel: [  118.037728] Hardware name: ZynqMP KV260 revB (DT)
+Jul 10 21:24:10 kria kernel: [  118.037732] Call trace:
+Jul 10 21:24:10 kria kernel: [  118.037734]  dump_backtrace+0x0/0x1f0
+Jul 10 21:24:10 kria kernel: [  118.037748]  show_stack+0x20/0x2c
+Jul 10 21:24:10 kria kernel: [  118.037753]  dump_stack_lvl+0x68/0x84
+Jul 10 21:24:10 kria kernel: [  118.037762]  dump_stack+0x18/0x34
+Jul 10 21:24:10 kria kernel: [  118.037767]  __schedule_bug+0x5c/0x7c
+Jul 10 21:24:10 kria kernel: [  118.037776]  __schedule+0x114c/0x13f0
+Jul 10 21:24:10 kria kernel: [  118.037784]  schedule_rtlock+0x28/0x54
+Jul 10 21:24:10 kria kernel: [  118.037790]  rtlock_slowlock_locked+0x364/0xb50
+Jul 10 21:24:10 kria kernel: [  118.037798]  rt_spin_lock+0x94/0xbc
+Jul 10 21:24:10 kria kernel: [  118.037804]  alloc_pid+0x2a8/0x3f0
+Jul 10 21:24:10 kria kernel: [  118.037810]  copy_process+0x9e4/0x1d50
+Jul 10 21:24:10 kria kernel: [  118.037816]  kernel_clone+0x98/0x550
+Jul 10 21:24:10 kria kernel: [  118.037821]  __do_sys_clone+0x74/0xb0
+Jul 10 21:24:10 kria kernel: [  118.037827]  __arm64_sys_clone+0x28/0x34
+Jul 10 21:24:10 kria kernel: [  118.037833]  invoke_syscall+0x78/0x100
+Jul 10 21:24:10 kria kernel: [  118.037843]  el0_svc_common.constprop.0+0x54/0x184
+Jul 10 21:24:10 kria kernel: [  118.037850]  do_el0_svc+0x30/0xac
+Jul 10 21:24:10 kria kernel: [  118.037856]  el0_svc+0x28/0xb0
+Jul 10 21:24:10 kria kernel: [  118.037865]  el0t_64_sync_handler+0xa4/0x12c
+Jul 10 21:24:10 kria kernel: [  118.037870]  el0t_64_sync+0x1a4/0x1a8
+Jul 10 21:24:10 kria kernel: [  118.038114] ------------[ cut here ]------------
+Jul 10 21:24:10 kria kernel: [  118.038121] WARNING: CPU: 2 PID: 2653 at arch/arm64/kernel/fpsimd.c:318 task_fpsimd_load+0xb4/0xfc
+Jul 10 21:24:10 kria kernel: [  118.038138] Modules linked in: xt_conntrack xt_MASQUERADE bridge xt_set ip_set nft_counter nft_chain_nat nf_nat nf_conntrack nf_defrag_ipv6 nf_defrag_ipv4 xt_addrtype nft_compat nf_tables nfnetlink al5e(C) al5d(C) ap1302 allegro(C) zocl i2c_mux_pca954x xlnx_vcu binfmt_misc hid_sensor_gyro_3d hid_sensor_accel_3d hid_sensor_trigger hid_sensor_iio_common ina260_adc tpm_tis_spi uio_pdrv_genirq sch_fq_codel dm_multipath scsi_dh_rdac scsi_dh_emc scsi_dh_alua usb5744 dmaproxy(C) efi_pstore ip_tables x_tables autofs4 raid10 raid456 async_raid6_recov async_memcpy async_pq async_xor async_tx raid1 raid0 multipath linear hid_sensor_custom hid_sensor_hub usbhid da9121_regulator rtc_zynqmp spi_zynqmp_gqspi i2c_cadence crct10dif_ce aes_neon_bs aes_neon_blk aes_ce_blk crypto_simd cryptd aes_ce_cipher
+Jul 10 21:24:10 kria kernel: [  118.038270] CPU: 2 PID: 2653 Comm: 5 Tainted: G        WC        5.15.199-rt91-rt-kria #1
+Jul 10 21:24:10 kria kernel: [  118.038276] Hardware name: ZynqMP KV260 revB (DT)
+Jul 10 21:24:10 kria kernel: [  118.038279] pstate: 40400005 (nZcv daif +PAN -UAO -TCO -DIT -SSBS BTYPE=--)
+Jul 10 21:24:10 kria kernel: [  118.038286] pc : task_fpsimd_load+0xb4/0xfc
+Jul 10 21:24:10 kria kernel: [  118.038292] lr : task_fpsimd_load+0x20/0xfc
+Jul 10 21:24:10 kria kernel: [  118.038298] sp : ffff80000e413d00
+Jul 10 21:24:10 kria kernel: [  118.038301] x29: ffff80000e413d00 x28: 000000000000000c x27: 0000000000000000
+Jul 10 21:24:10 kria kernel: [  118.038310] x26: 0000000000000000 x25: 0000000000000000 x24: 0000000000000000
+Jul 10 21:24:10 kria kernel: [  118.038318] x23: ffff0a898a59d140 x22: 0000000045585401 x21: ffff0a898a59d978
+Jul 10 21:24:10 kria kernel: [  118.038326] x20: ffff0a898a59d140 x19: ffff80000e413eb0 x18: 000000005eaf7e47
+Jul 10 21:24:10 kria kernel: [  118.038335] x17: 000000000000001c x16: 0000000008ab643e x15: 00000000e6df77b1
+Jul 10 21:24:10 kria kernel: [  118.038344] x14: ffffc0f4e79da550 x13: 0000000058ade4a8 x12: ffffc0f4e6e7e1b8
+Jul 10 21:24:10 kria kernel: [  118.038353] x11: 00000000000000c0 x10: 0000000000000be0 x9 : ffffc0f4e56174f4
+--
+Jul 10 21:23:53 kria kernel: [    4.635379] 0x000000f80000-0x000001c80000 : "Image B (FSBL, PMU, ATF, U-Boot)"
+Jul 10 21:23:53 kria kernel: [    4.646279] input: Intel(R) RealSense(TM) Depth Ca as /devices/platform/axi/ff9d0000.usb/fe200000.usb/xhci-hcd.0.auto/usb2/2-1/2-1.1/2-1.1:1.0/input/input1
+Jul 10 21:23:53 kria kernel: [    4.659258] uvcvideo 2-1.1:1.4: Unknown video format 36315752-1a66-a242-9065-d01814a8ef8a
+Jul 10 21:23:53 kria kernel: [    4.659285] usb 2-1.1: Found UVC 1.50 device Intel(R) RealSense(TM) Depth Camera 435i (8086:0b3a)
+Jul 10 21:23:53 kria kernel: [    4.670001] 0x000001c80000-0x000001d00000 : "ImgSel Image B Catch"
+Jul 10 21:23:53 kria kernel: [    4.688169] 0x000001d00000-0x000001e00000 : "Open_2"
+Jul 10 21:23:53 kria kernel: [    4.701455] 0x000001e00000-0x000002000000 : "Recovery Image"
+Jul 10 21:23:53 kria kernel: [    4.713364] 0x000002000000-0x000002200000 : "Recovery Image Backup"
+Jul 10 21:23:53 kria kernel: [    4.716217] BUG: scheduling while atomic: systemd-udevd/284/0x00000002
+Jul 10 21:23:53 kria kernel: [    4.716229] Modules linked in: crct10dif_ce rtc_zynqmp spi_zynqmp_gqspi(+) i2c_cadence aes_neon_bs aes_neon_blk aes_ce_blk crypto_simd cryptd aes_ce_cipher
+Jul 10 21:23:53 kria kernel: [    4.716258] CPU: 2 PID: 284 Comm: systemd-udevd Not tainted 5.15.199-rt91-rt-kria #1
+Jul 10 21:23:53 kria kernel: [    4.716265] Hardware name: ZynqMP KV260 revB (DT)
+Jul 10 21:23:53 kria kernel: [    4.716269] Call trace:
+Jul 10 21:23:53 kria kernel: [    4.716271]  dump_backtrace+0x0/0x1f0
+Jul 10 21:23:53 kria kernel: [    4.716283]  show_stack+0x20/0x2c
+Jul 10 21:23:53 kria kernel: [    4.716289]  dump_stack_lvl+0x68/0x84
+Jul 10 21:23:53 kria kernel: [    4.716297]  dump_stack+0x18/0x34
+Jul 10 21:23:53 kria kernel: [    4.716303]  __schedule_bug+0x5c/0x7c
+Jul 10 21:23:53 kria kernel: [    4.716311]  __schedule+0x114c/0x13f0
+Jul 10 21:23:53 kria kernel: [    4.716318]  schedule_rtlock+0x28/0x54
+Jul 10 21:23:53 kria kernel: [    4.716324]  rtlock_slowlock_locked+0x364/0xb50
+Jul 10 21:23:53 kria kernel: [    4.716332]  rt_spin_lock+0x94/0xbc
+Jul 10 21:23:53 kria kernel: [    4.716338]  crng_make_state+0x11c/0x1d0
+Jul 10 21:23:53 kria kernel: [    4.716346]  _get_random_bytes.part.0+0x5c/0x130
+Jul 10 21:23:53 kria kernel: [    4.716352]  get_random_u32+0x11c/0x130
+Jul 10 21:23:53 kria kernel: [    4.716358]  new_slab+0x184/0x4f0
+Jul 10 21:23:53 kria kernel: [    4.716365]  ___slab_alloc+0x6ec/0x82c
+Jul 10 21:23:53 kria kernel: [    4.716370]  kmem_cache_alloc+0x104/0x2e0
+Jul 10 21:23:53 kria kernel: [    4.716375]  radix_tree_node_alloc.constprop.0+0xc0/0x100
+Jul 10 21:23:53 kria kernel: [    4.716383]  idr_get_free+0x220/0x2d0
+Jul 10 21:23:53 kria kernel: [    4.716388]  idr_alloc_u32+0x74/0x110
+Jul 10 21:23:53 kria kernel: [    4.716395]  idr_alloc_cyclic+0x6c/0xf0
+Jul 10 21:23:53 kria kernel: [    4.716401]  __kernfs_new_node+0xb4/0x240
+Jul 10 21:23:53 kria kernel: [    4.716408]  kernfs_new_node+0x70/0x9c
+Jul 10 21:23:53 kria kernel: [    4.716415]  __kernfs_create_file+0x38/0x100
+Jul 10 21:23:53 kria kernel: [    4.716422]  sysfs_add_file_mode_ns+0xac/0x1ac
+Jul 10 21:23:53 kria kernel: [    4.716428]  internal_create_group+0x110/0x3d4
+Jul 10 21:23:53 kria kernel: [    4.716436]  sysfs_create_group+0x20/0x2c
+Jul 10 21:23:53 kria kernel: [    4.716443]  blk_register_queue+0xa4/0x220
+Jul 10 21:23:53 kria kernel: [    4.716450]  device_add_disk+0x1c8/0x3c0
+Jul 10 21:23:53 kria kernel: [    4.716458]  add_mtd_blktrans_dev+0x2a8/0x3e0
+Jul 10 21:23:53 kria kernel: [    4.716466]  mtdblock_add_mtd+0x94/0xb4
+Jul 10 21:23:53 kria kernel: [    4.716473]  blktrans_notify_add+0x58/0x80
+Jul 10 21:23:53 kria kernel: [    4.716480]  add_mtd_device+0x2bc/0x4c0
+Jul 10 21:23:53 kria kernel: [    4.716486]  add_mtd_partitions+0x114/0x1ac
+Jul 10 21:23:53 kria kernel: [    4.716492]  parse_mtd_partitions+0xe4/0x464
+Jul 10 21:23:53 kria kernel: [    4.716499]  mtd_device_parse_register+0x10c/0x324
+Jul 10 21:23:53 kria kernel: [    4.716505]  spi_nor_probe+0x234/0x310
+Jul 10 21:23:53 kria kernel: [    4.716511]  spi_mem_probe+0x74/0xb0
+--
+Jul 10 21:23:53 kria kernel: [    4.716709]  __do_sys_finit_module+0xac/0x11c
+Jul 10 21:23:53 kria kernel: [    4.716715]  __arm64_sys_finit_module+0x28/0x34
+Jul 10 21:23:53 kria kernel: [    4.716723]  invoke_syscall+0x78/0x100
+Jul 10 21:23:53 kria kernel: [    4.716731]  el0_svc_common.constprop.0+0x54/0x184
+Jul 10 21:23:53 kria kernel: [    4.716738]  do_el0_svc+0x30/0xac
+Jul 10 21:23:53 kria kernel: [    4.716744]  el0_svc+0x28/0xb0
+Jul 10 21:23:53 kria kernel: [    4.716752]  el0t_64_sync_handler+0xa4/0x12c
+Jul 10 21:23:53 kria kernel: [    4.716758]  el0t_64_sync+0x1a4/0x1a8
+Jul 10 21:23:53 kria kernel: [    4.717818] BUG: scheduling while atomic: systemd-udevd/284/0x00000000
+Jul 10 21:23:53 kria kernel: [    4.717826] Modules linked in: crct10dif_ce rtc_zynqmp spi_zynqmp_gqspi(+) i2c_cadence aes_neon_bs aes_neon_blk aes_ce_blk crypto_simd cryptd aes_ce_cipher
+Jul 10 21:23:53 kria kernel: [    4.717850] CPU: 2 PID: 284 Comm: systemd-udevd Tainted: G        W         5.15.199-rt91-rt-kria #1
+Jul 10 21:23:53 kria kernel: [    4.717857] Hardware name: ZynqMP KV260 revB (DT)
+Jul 10 21:23:53 kria kernel: [    4.717860] Call trace:
+Jul 10 21:23:53 kria kernel: [    4.717862]  dump_backtrace+0x0/0x1f0
+Jul 10 21:23:53 kria kernel: [    4.717871]  show_stack+0x20/0x2c
+Jul 10 21:23:53 kria kernel: [    4.717876]  dump_stack_lvl+0x68/0x84
+Jul 10 21:23:53 kria kernel: [    4.717883]  dump_stack+0x18/0x34
+Jul 10 21:23:53 kria kernel: [    4.717888]  __schedule_bug+0x5c/0x7c
+Jul 10 21:23:53 kria kernel: [    4.717896]  __schedule+0x114c/0x13f0
+Jul 10 21:23:53 kria kernel: [    4.717903]  schedule_rtlock+0x28/0x54
+Jul 10 21:23:53 kria kernel: [    4.717908]  rtlock_slowlock_locked+0x364/0xb50
+Jul 10 21:23:53 kria kernel: [    4.717916]  rt_spin_lock+0x94/0xbc
+Jul 10 21:23:53 kria kernel: [    4.717923]  crng_make_state+0x11c/0x1d0
+Jul 10 21:23:53 kria kernel: [    4.717930]  _get_random_bytes.part.0+0x5c/0x130
+Jul 10 21:23:53 kria kernel: [    4.717936]  get_random_u32+0x11c/0x130
+Jul 10 21:23:53 kria kernel: [    4.717942]  new_slab+0x184/0x4f0
+Jul 10 21:23:53 kria kernel: [    4.717948]  ___slab_alloc+0x6ec/0x82c
+Jul 10 21:23:53 kria kernel: [    4.717953]  kmem_cache_alloc+0x104/0x2e0
+Jul 10 21:23:53 kria kernel: [    4.717959]  __kernfs_new_node+0x74/0x240
+Jul 10 21:23:53 kria kernel: [    4.717965]  kernfs_new_node+0x70/0x9c
+Jul 10 21:23:53 kria kernel: [    4.717972]  __kernfs_create_file+0x38/0x100
+Jul 10 21:23:53 kria kernel: [    4.717978]  sysfs_add_file_mode_ns+0xac/0x1ac
+Jul 10 21:23:53 kria kernel: [    4.717985]  internal_create_group+0x110/0x3d4
+Jul 10 21:23:53 kria kernel: [    4.717991]  sysfs_create_group+0x20/0x2c
+Jul 10 21:23:53 kria kernel: [    4.717998]  blk_register_queue+0xa4/0x220
+Jul 10 21:23:53 kria kernel: [    4.718005]  device_add_disk+0x1c8/0x3c0
+Jul 10 21:23:53 kria kernel: [    4.718011]  add_mtd_blktrans_dev+0x2a8/0x3e0
+Jul 10 21:23:53 kria kernel: [    4.718019]  mtdblock_add_mtd+0x94/0xb4
+Jul 10 21:23:53 kria kernel: [    4.718026]  blktrans_notify_add+0x58/0x80
+Jul 10 21:23:53 kria kernel: [    4.718033]  add_mtd_device+0x2bc/0x4c0
+Jul 10 21:23:53 kria kernel: [    4.718038]  add_mtd_partitions+0x114/0x1ac
+Jul 10 21:23:53 kria kernel: [    4.718045]  parse_mtd_partitions+0xe4/0x464
+Jul 10 21:23:53 kria kernel: [    4.718051]  mtd_device_parse_register+0x10c/0x324
+Jul 10 21:23:53 kria kernel: [    4.718057]  spi_nor_probe+0x234/0x310
+Jul 10 21:23:53 kria kernel: [    4.718063]  spi_mem_probe+0x74/0xb0
+Jul 10 21:23:53 kria kernel: [    4.718069]  spi_probe+0xa0/0x140
+Jul 10 21:23:53 kria kernel: [    4.718076]  really_probe+0xc4/0x470
+Jul 10 21:23:53 kria kernel: [    4.718082]  __driver_probe_device+0x10c/0x160
+Jul 10 21:23:53 kria kernel: [    4.718088]  driver_probe_device+0x48/0x130
+--
+Jul 10 23:54:17 kria kernel: [    4.635241] 0x000001c80000-0x000001d00000 : "ImgSel Image B Catch"
+Jul 10 23:54:17 kria kernel: [    4.648833] 0x000001d00000-0x000001e00000 : "Open_2"
+Jul 10 23:54:17 kria kernel: [    4.655923] 0x000001e00000-0x000002000000 : "Recovery Image"
+Jul 10 23:54:17 kria kernel: [    4.661536] 0x000002000000-0x000002200000 : "Recovery Image Backup"
+Jul 10 23:54:17 kria kernel: [    4.674529] 0x000002200000-0x000002220000 : "U-Boot storage variables"
+Jul 10 23:54:17 kria kernel: [    4.683691] 0x000002220000-0x000002240000 : "U-Boot storage variables backup"
+Jul 10 23:54:17 kria kernel: [    4.693229] 0x000002240000-0x000002280000 : "SHA256"
+Jul 10 23:54:17 kria kernel: [    4.701337] 0x000002280000-0x0000022a0000 : "Secure OS Storage"
+Jul 10 23:54:17 kria kernel: [    4.702648] BUG: scheduling while atomic: systemd-udevd/272/0x00000002
+Jul 10 23:54:17 kria kernel: [    4.702658] Modules linked in: crct10dif_ce rtc_zynqmp i2c_cadence spi_zynqmp_gqspi(+) aes_neon_bs aes_neon_blk aes_ce_blk crypto_simd cryptd aes_ce_cipher
+Jul 10 23:54:17 kria kernel: [    4.702686] CPU: 2 PID: 272 Comm: systemd-udevd Not tainted 5.15.199-rt91-rt-kria #1
+Jul 10 23:54:17 kria kernel: [    4.702692] Hardware name: ZynqMP KV260 revB (DT)
+Jul 10 23:54:17 kria kernel: [    4.702696] Call trace:
+Jul 10 23:54:17 kria kernel: [    4.702698]  dump_backtrace+0x0/0x1f0
+Jul 10 23:54:17 kria kernel: [    4.702710]  show_stack+0x20/0x2c
+Jul 10 23:54:17 kria kernel: [    4.702715]  dump_stack_lvl+0x68/0x84
+Jul 10 23:54:17 kria kernel: [    4.702723]  dump_stack+0x18/0x34
+Jul 10 23:54:17 kria kernel: [    4.702729]  __schedule_bug+0x5c/0x7c
+Jul 10 23:54:17 kria kernel: [    4.702737]  __schedule+0x114c/0x13f0
+Jul 10 23:54:17 kria kernel: [    4.702744]  schedule_rtlock+0x28/0x54
+Jul 10 23:54:17 kria kernel: [    4.702750]  rtlock_slowlock_locked+0x364/0xb50
+Jul 10 23:54:17 kria kernel: [    4.702757]  rt_spin_lock+0x94/0xbc
+Jul 10 23:54:17 kria kernel: [    4.702763]  crng_make_state+0x11c/0x1d0
+Jul 10 23:54:17 kria kernel: [    4.702771]  _get_random_bytes.part.0+0x5c/0x130
+Jul 10 23:54:17 kria kernel: [    4.702778]  get_random_u32+0x11c/0x130
+Jul 10 23:54:17 kria kernel: [    4.702784]  new_slab+0x184/0x4f0
+Jul 10 23:54:17 kria kernel: [    4.702790]  ___slab_alloc+0x6ec/0x82c
+Jul 10 23:54:17 kria kernel: [    4.702795]  kmem_cache_alloc+0x104/0x2e0
+Jul 10 23:54:17 kria kernel: [    4.702800]  radix_tree_node_alloc.constprop.0+0xc0/0x100
+Jul 10 23:54:17 kria kernel: [    4.702807]  idr_get_free+0x220/0x2d0
+Jul 10 23:54:17 kria kernel: [    4.702812]  idr_alloc_u32+0x74/0x110
+Jul 10 23:54:17 kria kernel: [    4.702820]  idr_alloc_cyclic+0x6c/0xf0
+Jul 10 23:54:17 kria kernel: [    4.702826]  __kernfs_new_node+0xb4/0x240
+Jul 10 23:54:17 kria kernel: [    4.702833]  kernfs_new_node+0x70/0x9c
+Jul 10 23:54:17 kria kernel: [    4.702840]  __kernfs_create_file+0x38/0x100
+Jul 10 23:54:17 kria kernel: [    4.702846]  sysfs_add_file_mode_ns+0xac/0x1ac
+Jul 10 23:54:17 kria kernel: [    4.702853]  internal_create_group+0x110/0x3d4
+Jul 10 23:54:17 kria kernel: [    4.702860]  sysfs_create_group+0x20/0x2c
+Jul 10 23:54:17 kria kernel: [    4.702867]  blk_register_queue+0xa4/0x220
+Jul 10 23:54:17 kria kernel: [    4.702874]  device_add_disk+0x1c8/0x3c0
+Jul 10 23:54:17 kria kernel: [    4.702882]  add_mtd_blktrans_dev+0x2a8/0x3e0
+Jul 10 23:54:17 kria kernel: [    4.702892]  mtdblock_add_mtd+0x6c/0xb4
+Jul 10 23:54:17 kria kernel: [    4.702898]  blktrans_notify_add+0x58/0x80
+Jul 10 23:54:17 kria kernel: [    4.702904]  add_mtd_device+0x2bc/0x4c0
+Jul 10 23:54:17 kria kernel: [    4.702911]  add_mtd_partitions+0x114/0x1ac
+Jul 10 23:54:17 kria kernel: [    4.702917]  parse_mtd_partitions+0xe4/0x464
+Jul 10 23:54:17 kria kernel: [    4.702923]  mtd_device_parse_register+0x10c/0x324
+Jul 10 23:54:17 kria kernel: [    4.702929]  spi_nor_probe+0x234/0x310
+Jul 10 23:54:17 kria kernel: [    4.702936]  spi_mem_probe+0x74/0xb0
+--
+Jul 10 23:54:17 kria kernel: [    4.703137]  __do_sys_finit_module+0xac/0x11c
+Jul 10 23:54:17 kria kernel: [    4.703144]  __arm64_sys_finit_module+0x28/0x34
+Jul 10 23:54:17 kria kernel: [    4.703151]  invoke_syscall+0x78/0x100
+Jul 10 23:54:17 kria kernel: [    4.703158]  el0_svc_common.constprop.0+0x54/0x184
+Jul 10 23:54:17 kria kernel: [    4.703165]  do_el0_svc+0x30/0xac
+Jul 10 23:54:17 kria kernel: [    4.703171]  el0_svc+0x28/0xb0
+Jul 10 23:54:17 kria kernel: [    4.703180]  el0t_64_sync_handler+0xa4/0x12c
+Jul 10 23:54:17 kria kernel: [    4.703185]  el0t_64_sync+0x1a4/0x1a8
+Jul 10 23:54:17 kria kernel: [    4.706233] BUG: scheduling while atomic: systemd-udevd/272/0x00000000
+Jul 10 23:54:17 kria kernel: [    4.706244] Modules linked in: crct10dif_ce rtc_zynqmp i2c_cadence spi_zynqmp_gqspi(+) aes_neon_bs aes_neon_blk aes_ce_blk crypto_simd cryptd aes_ce_cipher
+Jul 10 23:54:17 kria kernel: [    4.706272] CPU: 2 PID: 272 Comm: systemd-udevd Tainted: G        W         5.15.199-rt91-rt-kria #1
+Jul 10 23:54:17 kria kernel: [    4.706279] Hardware name: ZynqMP KV260 revB (DT)
+Jul 10 23:54:17 kria kernel: [    4.706283] Call trace:
+Jul 10 23:54:17 kria kernel: [    4.706284]  dump_backtrace+0x0/0x1f0
+Jul 10 23:54:17 kria kernel: [    4.706294]  show_stack+0x20/0x2c
+Jul 10 23:54:17 kria kernel: [    4.706299]  dump_stack_lvl+0x68/0x84
+Jul 10 23:54:17 kria kernel: [    4.706307]  dump_stack+0x18/0x34
+Jul 10 23:54:17 kria kernel: [    4.706312]  __schedule_bug+0x5c/0x7c
+Jul 10 23:54:17 kria kernel: [    4.706320]  __schedule+0x114c/0x13f0
+Jul 10 23:54:17 kria kernel: [    4.706328]  schedule_rtlock+0x28/0x54
+Jul 10 23:54:17 kria kernel: [    4.706333]  rtlock_slowlock_locked+0x364/0xb50
+Jul 10 23:54:17 kria kernel: [    4.706341]  rt_spin_lock+0x94/0xbc
+Jul 10 23:54:17 kria kernel: [    4.706347]  crng_make_state+0x11c/0x1d0
+Jul 10 23:54:17 kria kernel: [    4.706355]  _get_random_bytes.part.0+0x5c/0x130
+Jul 10 23:54:17 kria kernel: [    4.706361]  get_random_u32+0x11c/0x130
+Jul 10 23:54:17 kria kernel: [    4.706367]  new_slab+0x184/0x4f0
+Jul 10 23:54:17 kria kernel: [    4.706373]  ___slab_alloc+0x6ec/0x82c
+Jul 10 23:54:17 kria kernel: [    4.706378]  kmem_cache_alloc+0x104/0x2e0
+Jul 10 23:54:17 kria kernel: [    4.706383]  __kernfs_new_node+0x74/0x240
+Jul 10 23:54:17 kria kernel: [    4.706390]  kernfs_new_node+0x70/0x9c
+Jul 10 23:54:17 kria kernel: [    4.706397]  __kernfs_create_file+0x38/0x100
+Jul 10 23:54:17 kria kernel: [    4.706404]  sysfs_add_file_mode_ns+0xac/0x1ac
+Jul 10 23:54:17 kria kernel: [    4.706410]  internal_create_group+0x110/0x3d4
+Jul 10 23:54:17 kria kernel: [    4.706418]  sysfs_create_group+0x20/0x2c
+Jul 10 23:54:17 kria kernel: [    4.706424]  blk_register_queue+0xa4/0x220
+Jul 10 23:54:17 kria kernel: [    4.706431]  device_add_disk+0x1c8/0x3c0
+Jul 10 23:54:17 kria kernel: [    4.706438]  add_mtd_blktrans_dev+0x2a8/0x3e0
+Jul 10 23:54:17 kria kernel: [    4.706446]  mtdblock_add_mtd+0x6c/0xb4
+Jul 10 23:54:17 kria kernel: [    4.706453]  blktrans_notify_add+0x58/0x80
+Jul 10 23:54:17 kria kernel: [    4.706459]  add_mtd_device+0x2bc/0x4c0
+Jul 10 23:54:17 kria kernel: [    4.706465]  add_mtd_partitions+0x114/0x1ac
+Jul 10 23:54:17 kria kernel: [    4.706471]  parse_mtd_partitions+0xe4/0x464
+Jul 10 23:54:17 kria kernel: [    4.706478]  mtd_device_parse_register+0x10c/0x324
+Jul 10 23:54:17 kria kernel: [    4.706484]  spi_nor_probe+0x234/0x310
+Jul 10 23:54:17 kria kernel: [    4.706490]  spi_mem_probe+0x74/0xb0
+Jul 10 23:54:17 kria kernel: [    4.706496]  spi_probe+0xa0/0x140
+Jul 10 23:54:17 kria kernel: [    4.706503]  really_probe+0xc4/0x470
+Jul 10 23:54:17 kria kernel: [    4.706509]  __driver_probe_device+0x10c/0x160
+Jul 10 23:54:17 kria kernel: [    4.706515]  driver_probe_device+0x48/0x130

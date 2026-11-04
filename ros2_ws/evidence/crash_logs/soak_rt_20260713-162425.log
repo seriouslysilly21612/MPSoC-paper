@@ -1,0 +1,80 @@
+=== RT 소크 v2 시작: Mon Jul 13 04:24:25 PM KST 2026 / 목표 1200s / 커널 5.15.199-rt91-rt-kv260 ===
+검출기: CONFIG_DEBUG_PREEMPT=y CONFIG_DEBUG_ATOMIC_SLEEP=y 
+시작 위반 baseline: 0 / MemAvail 2354MB
+[load] stress-ng: cpu4 vm2(2x640M≈1.3G) fork4 clone2 pthread2 sysfs1 — 전 코어+메모리 공격적, fork만 억제
+[16:24:36 +11s] 위반델타=0 load=7 MemAvail=1771MB temp=?C
+[16:24:47 +22s] 위반델타=0 load=11 MemAvail=1435MB temp=?C
+[16:24:58 +33s] 위반델타=0 load=40 MemAvail=1415MB temp=?C
+[16:25:09 +43s] 위반델타=0 load=40 MemAvail=1428MB temp=?C
+[16:25:19 +54s] 위반델타=0 load=43 MemAvail=1420MB temp=?C
+[16:25:30 +65s] 위반델타=0 load=42 MemAvail=1587MB temp=?C
+[16:25:41 +76s] 위반델타=0 load=50 MemAvail=1392MB temp=?C
+[16:25:52 +87s] 위반델타=0 load=48 MemAvail=1444MB temp=?C
+[16:26:03 +98s] 위반델타=0 load=49 MemAvail=1386MB temp=?C
+[16:26:13 +108s] 위반델타=0 load=49 MemAvail=1551MB temp=?C
+[16:26:24 +119s] 위반델타=0 load=47 MemAvail=1508MB temp=?C
+[16:26:35 +130s] 위반델타=0 load=45 MemAvail=1490MB temp=?C
+[16:26:47 +141s] 위반델타=0 load=43 MemAvail=1327MB temp=?C
+[16:26:58 +152s] 위반델타=0 load=41 MemAvail=1436MB temp=?C
+[16:27:08 +163s] 위반델타=0 load=39 MemAvail=1350MB temp=?C
+[16:27:19 +174s] 위반델타=0 load=41 MemAvail=1366MB temp=?C
+[16:27:30 +184s] 위반델타=0 load=40 MemAvail=1367MB temp=?C
+[16:27:41 +196s] 위반델타=0 load=41 MemAvail=1349MB temp=?C
+[16:27:51 +206s] 위반델타=0 load=43 MemAvail=1340MB temp=?C
+[16:28:02 +217s] 위반델타=0 load=41 MemAvail=1339MB temp=?C
+[16:28:13 +228s] 위반델타=0 load=41 MemAvail=1347MB temp=?C
+[16:28:24 +239s] 위반델타=0 load=45 MemAvail=1467MB temp=?C
+[16:28:35 +250s] 위반델타=0 load=46 MemAvail=1580MB temp=?C
+[16:28:46 +261s] 위반델타=0 load=50 MemAvail=1429MB temp=?C
+[16:28:56 +271s] 위반델타=0 load=54 MemAvail=1368MB temp=?C
+[16:29:07 +282s] 위반델타=0 load=52 MemAvail=1343MB temp=?C
+[16:29:18 +293s] 위반델타=0 load=49 MemAvail=1316MB temp=?C
+[16:29:29 +304s] 위반델타=0 load=52 MemAvail=1355MB temp=?C
+[16:29:40 +315s] 위반델타=0 load=59 MemAvail=1320MB temp=?C
+[16:29:51 +326s] 위반델타=0 load=61 MemAvail=1314MB temp=?C
+[16:30:02 +337s] 위반델타=0 load=58 MemAvail=1322MB temp=?C
+[16:30:13 +347s] 위반델타=0 load=57 MemAvail=1301MB temp=?C
+[16:30:24 +359s] 위반델타=0 load=53 MemAvail=1284MB temp=?C
+[16:30:34 +369s] 위반델타=0 load=53 MemAvail=1291MB temp=?C
+[16:30:45 +380s] 위반델타=0 load=50 MemAvail=1293MB temp=?C
+[16:30:56 +391s] 위반델타=0 load=49 MemAvail=1286MB temp=?C
+[16:31:07 +402s] 위반델타=0 load=55 MemAvail=1305MB temp=?C
+[16:31:18 +413s] 위반델타=0 load=50 MemAvail=1276MB temp=?C
+[16:31:29 +424s] 위반델타=0 load=46 MemAvail=1293MB temp=?C
+[16:31:40 +435s] 위반델타=0 load=55 MemAvail=1260MB temp=?C
+[16:31:50 +445s] 위반델타=0 load=51 MemAvail=1246MB temp=?C
+[16:32:03 +458s] 위반델타=0 load=49 MemAvail=1264MB temp=?C
+[16:32:14 +469s] 위반델타=0 load=71 MemAvail=1311MB temp=?C
+[16:32:25 +480s] 위반델타=0 load=71 MemAvail=1301MB temp=?C
+[16:32:36 +491s] 위반델타=0 load=64 MemAvail=1311MB temp=?C
+[16:32:47 +502s] 위반델타=0 load=61 MemAvail=1290MB temp=?C
+[16:32:57 +512s] 위반델타=0 load=61 MemAvail=1274MB temp=?C
+[16:33:08 +523s] 위반델타=0 load=60 MemAvail=1291MB temp=?C
+[16:33:19 +534s] 위반델타=0 load=58 MemAvail=1273MB temp=?C
+[16:33:30 +545s] 위반델타=0 load=71 MemAvail=1273MB temp=?C
+[16:33:41 +556s] 위반델타=0 load=76 MemAvail=1271MB temp=?C
+[16:33:51 +566s] 위반델타=0 load=69 MemAvail=1266MB temp=?C
+[16:34:02 +577s] 위반델타=0 load=63 MemAvail=1259MB temp=?C
+[16:34:13 +588s] 위반델타=0 load=58 MemAvail=1271MB temp=?C
+[16:34:24 +599s] 위반델타=0 load=57 MemAvail=1264MB temp=?C
+[16:34:35 +610s] 위반델타=0 load=53 MemAvail=1264MB temp=?C
+[16:34:46 +621s] 위반델타=0 load=51 MemAvail=1245MB temp=?C
+[16:34:56 +631s] 위반델타=0 load=49 MemAvail=1258MB temp=?C
+[16:35:09 +644s] 위반델타=0 load=48 MemAvail=1244MB temp=?C
+[16:35:20 +655s] 위반델타=0 load=47 MemAvail=1226MB temp=?C
+[16:35:31 +666s] 위반델타=0 load=50 MemAvail=1240MB temp=?C
+[16:35:42 +676s] 위반델타=0 load=53 MemAvail=1233MB temp=?C
+[16:35:52 +687s] 위반델타=0 load=54 MemAvail=1228MB temp=?C
+[16:36:03 +698s] 위반델타=0 load=51 MemAvail=1221MB temp=?C
+[16:36:14 +709s] 위반델타=0 load=53 MemAvail=1225MB temp=?C
+[16:36:25 +720s] 위반델타=0 load=54 MemAvail=1218MB temp=?C
+[16:36:36 +731s] 위반델타=0 load=54 MemAvail=1229MB temp=?C
+[16:36:47 +742s] 위반델타=0 load=52 MemAvail=1219MB temp=?C
+[16:36:58 +753s] 위반델타=0 load=50 MemAvail=1221MB temp=?C
+[16:37:08 +763s] 위반델타=0 load=46 MemAvail=1219MB temp=?C
+[16:37:19 +774s] 위반델타=0 load=42 MemAvail=1217MB temp=?C
+[16:37:32 +785s] 위반델타=0 load=39 MemAvail=1217MB temp=?C
+[16:38:25 +840s] 위반델타=0 load=25 MemAvail=2683MB temp=?C
+
+=== 소크 종료: Mon Jul 13 04:38:25 PM KST 2026 / 경과 840s / 최종 위반델타 0 ===
+★ PASS — 부하 소크 전 구간 radix 위반 0건. 픽스 무결성 확인.

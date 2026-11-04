@@ -1,0 +1,46 @@
+pick_logic_node:
+  ros__parameters:
+    input_topic: /detections
+    output_topic: /pick_target
+
+    min_confidence: 0.3
+
+    # 대상 5종. 모델의 person 클래스는 worker threshold 2.0으로 /detections에 오지 않는다.
+    # peach 드롭됨 (D13, 2026-07-09).
+    allowed_classes:
+      - "apple"
+      - "orange"
+      - "banana"
+      - "tennis_ball"
+      - "mustard_bottle"
+
+    # Must match rgb_camera.color_profile in realsense_pick_place.yaml.
+    # The detector returns bbox coordinates in the source (camera) resolution,
+    # so the edge/area filters below depend on these dimensions.
+    image_width: 848
+    image_height: 480
+    edge_margin_px: 30
+
+    min_bbox_area_px: 400.0
+    max_bbox_area_ratio: 0.5
+
+    # ---- v3 (2026-09-04): 오퍼레이터 지정 클래스, 인스턴스 1개 ----
+    # desired_class: LIVE 파라미터, 필수. '' = 선택 없음 → 전부 invalid
+    # (reason no_class_selected). 로봇측 오퍼레이터 메뉴('p')가 런타임에 세팅:
+    #   ros2 param set /pick_logic_node desired_class apple
+    # 로봇 앱 없이 단독 측정할 땐 launch 인자 desired_class:=apple 로 지정.
+    # v2의 점수식 자동 선택(AUTO)은 삭제 — 앱이 접근+추종으로 바뀌어
+    # 오퍼레이터가 클래스를 직접 고른다.
+    desired_class: ""
+    # 채택 = 그 클래스 중 confidence 최대. min_frames 연속 보여야 valid, 그 뒤
+    # 고정(sticky): 더 좋은 후보가 나와도 갈아타지 않고, lost_timeout_frames를
+    # 넘겨(N+1번째 연속 미검출) 사라져야 트랙 해제. 이어받기 = 최근접,
+    # match_px 거리 게이트는 같은 클래스가 2개 이상 보일 때만(하나뿐이면 가림
+    # 중 이동해도 즉시 재획득). 2개 이상을 정의하는 이유는 pick_logic.py
+    # _update_track docstring.
+    stability_min_frames: 3
+    stability_match_px: 60.0
+    lost_timeout_frames: 5
+
+    publish_invalid_targets: true
+    log_period_sec: 1.0

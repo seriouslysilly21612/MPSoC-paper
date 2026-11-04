@@ -1,0 +1,252 @@
+Jul 14 23:36:41 kria kernel: usb 2-1.1: Failed to query (GET_CUR) UVC control 1 on unit 3: -32 (exp. 1024).
+Jul 14 23:36:41 kria kernel: BUG: sleeping function called from invalid context at kernel/locking/spinlock_rt.c:46
+Jul 14 23:36:41 kria kernel: in_atomic(): 0, irqs_disabled(): 128, non_block: 0, pid: 3436, name: pr/netcon0
+Jul 14 23:36:41 kria kernel: preempt_count: 0, expected: 0
+Jul 14 23:36:41 kria kernel: RCU nest depth: 3, expected: 3
+Jul 14 23:36:41 kria kernel: CPU: 1 PID: 3436 Comm: pr/netcon0 Tainted: G        WC        5.15.199-rt91-rt-kv260b #8
+Jul 14 23:36:41 kria kernel: Hardware name: ZynqMP KV260 revB (DT)
+Jul 14 23:36:41 kria kernel: Call trace:
+Jul 14 23:36:41 kria kernel:  dump_backtrace+0x0/0x1f0
+Jul 14 23:36:41 kria kernel:  show_stack+0x18/0x24
+Jul 14 23:36:41 kria kernel:  dump_stack_lvl+0x68/0x84
+Jul 14 23:36:41 kria kernel:  dump_stack+0x18/0x34
+Jul 14 23:36:41 kria kernel:  __might_resched+0x148/0x1ac
+Jul 14 23:36:41 kria kernel:  rt_spin_lock+0x30/0xd0
+Jul 14 23:36:41 kria kernel:  macb_start_xmit+0x178/0xb74
+Jul 14 23:36:41 kria kernel:  netpoll_start_xmit+0x100/0x1c0
+Jul 14 23:36:41 kria kernel:  netpoll_send_skb+0x1cc/0x2a0
+Jul 14 23:36:41 kria kernel:  netpoll_send_udp+0x204/0x430
+Jul 14 23:36:41 kria kernel:  write_msg+0xfc/0x12c [netconsole]
+Jul 14 23:36:41 kria kernel:  printk_kthread_func+0x1f0/0x574
+Jul 14 23:36:41 kria kernel:  kthread+0x16c/0x180
+Jul 14 23:36:41 kria kernel:  ret_from_fork+0x10/0x20
+Jul 14 23:36:46 kria kernel: =============================================================================
+Jul 14 23:36:46 kria kernel: BUG kmalloc-256 (Tainted: G        WC       ): Poison overwritten
+Jul 14 23:36:46 kria kernel: -----------------------------------------------------------------------------
+Jul 14 23:36:46 kria kernel: 0xffff3560e3605980-0xffff3560e3605987 @offset=6528. First byte 0x3 instead of 0x6b
+Jul 14 23:36:46 kria kernel: Allocated in kds_alloc_command+0x2c/0xb0 [zocl] age=73 cpu=3 pid=5782
+Jul 14 23:36:46 kria kernel:         kmem_cache_alloc+0x104/0x250
+Jul 14 23:36:46 kria kernel:         kds_alloc_command+0x2c/0xb0 [zocl]
+Jul 14 23:36:46 kria kernel:         zocl_command_ioctl+0x88/0x4c0 [zocl]
+Jul 14 23:36:46 kria kernel:         zocl_execbuf_ioctl+0x14/0x20 [zocl]
+Jul 14 23:36:46 kria kernel:         drm_ioctl_kernel+0xcc/0x120
+Jul 14 23:36:46 kria kernel:         drm_ioctl+0x2b4/0x4e0
+Jul 14 23:36:46 kria kernel:         __arm64_sys_ioctl+0xa8/0xf0
+Jul 14 23:36:46 kria kernel:         invoke_syscall+0x70/0xf4
+Jul 14 23:36:46 kria kernel: BUG: sleeping function called from invalid context at kernel/locking/spinlock_rt.c:46
+Jul 14 23:36:46 kria kernel: in_atomic(): 0, irqs_disabled(): 128, non_block: 0, pid: 3436, name: pr/netcon0
+Jul 14 23:36:46 kria kernel: preempt_count: 0, expected: 0
+Jul 14 23:36:46 kria kernel: RCU nest depth: 3, expected: 3
+Jul 14 23:36:46 kria kernel: CPU: 0 PID: 3436 Comm: pr/netcon0 Tainted: G        WC        5.15.199-rt91-rt-kv260b #8
+Jul 14 23:36:46 kria kernel: Hardware name: ZynqMP KV260 revB (DT)
+Jul 14 23:36:46 kria kernel: Call trace:
+Jul 14 23:36:46 kria kernel:  dump_backtrace+0x0/0x1f0
+Jul 14 23:36:46 kria kernel:  show_stack+0x18/0x24
+Jul 14 23:36:46 kria kernel:  dump_stack_lvl+0x68/0x84
+Jul 14 23:36:46 kria kernel:  dump_stack+0x18/0x34
+Jul 14 23:36:46 kria kernel:  __might_resched+0x148/0x1ac
+Jul 14 23:36:46 kria kernel:  rt_spin_lock+0x30/0xd0
+Jul 14 23:36:46 kria kernel:  macb_start_xmit+0x178/0xb74
+Jul 14 23:36:46 kria kernel:  netpoll_start_xmit+0x100/0x1c0
+Jul 14 23:36:46 kria kernel:  netpoll_send_skb+0x1cc/0x2a0
+Jul 14 23:36:46 kria kernel:  netpoll_send_udp+0x204/0x430
+Jul 14 23:36:46 kria kernel:  write_msg+0xfc/0x12c [netconsole]
+Jul 14 23:36:46 kria kernel:  printk_kthread_func+0x1f0/0x574
+Jul 14 23:36:46 kria kernel:  kthread+0x16c/0x180
+Jul 14 23:36:46 kria kernel:  ret_from_fork+0x10/0x20
+Jul 14 23:36:46 kria kernel:         el0_svc_common.constprop.0+0x4c/0x17c
+Jul 14 23:36:46 kria kernel:         do_el0_svc+0x28/0xa0
+Jul 14 23:36:46 kria kernel:         el0_svc+0x30/0x130
+Jul 14 23:36:46 kria kernel:         el0t_64_sync_handler+0xa4/0x12c
+Jul 14 23:36:46 kria kernel:         el0t_64_sync+0x1a4/0x1a8
+Jul 14 23:36:46 kria kernel: Freed in kds_free_command+0x48/0x60 [zocl] age=56 cpu=3 pid=4162
+Jul 14 23:36:46 kria kernel:         kfree+0x33c/0x3ac
+Jul 14 23:36:46 kria kernel:         kds_free_command+0x48/0x60 [zocl]
+Jul 14 23:36:46 kria kernel:         xrt_cu_intr_thread+0x358/0x580 [zocl]
+Jul 14 23:36:46 kria kernel:         kthread+0x16c/0x180
+Jul 14 23:36:46 kria kernel:         ret_from_fork+0x10/0x20
+Jul 14 23:36:46 kria kernel: Slab 0xfffffcd5838d8100 objects=16 used=16 fp=0x0000000000000000 flags=0x10200(slab|head|node=0|zone=0)
+Jul 14 23:36:46 kria kernel: Object 0xffff3560e3605900 @offset=6400 fp=0xffff3560e3607500
+Jul 14 23:36:46 kria kernel: Redzone  ffff3560e3605800: bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb  ................
+Jul 14 23:36:46 kria kernel: Redzone  ffff3560e3605810: bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb  ................
+Jul 14 23:36:46 kria kernel: Redzone  ffff3560e3605820: bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb  ................
+Jul 14 23:36:46 kria kernel: Redzone  ffff3560e3605830: bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb  ................
+Jul 14 23:36:46 kria kernel: Redzone  ffff3560e3605840: bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb  ................
+Jul 14 23:36:46 kria kernel: Redzone  ffff3560e3605850: bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb  ................
+Jul 14 23:36:46 kria kernel: Redzone  ffff3560e3605860: bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb  ................
+Jul 14 23:36:46 kria kernel: Redzone  ffff3560e3605870: bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb  ................
+Jul 14 23:36:46 kria kernel: Redzone  ffff3560e3605880: bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb  ................
+Jul 14 23:36:46 kria kernel: Redzone  ffff3560e3605890: bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb  ................
+Jul 14 23:36:46 kria kernel: Redzone  ffff3560e36058a0: bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb  ................
+Jul 14 23:36:46 kria kernel: Redzone  ffff3560e36058b0: bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb  ................
+Jul 14 23:36:46 kria kernel: Redzone  ffff3560e36058c0: bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb  ................
+Jul 14 23:36:46 kria kernel: Redzone  ffff3560e36058d0: bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb  ................
+Jul 14 23:36:46 kria kernel: Redzone  ffff3560e36058e0: bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb  ................
+Jul 14 23:36:46 kria kernel: Redzone  ffff3560e36058f0: bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb  ................
+Jul 14 23:36:46 kria kernel: Object   ffff3560e3605900: 6b 6b 6b 6b 6b 6b 6b 6b 6b 6b 6b 6b 6b 6b 6b 6b  kkkkkkkkkkkkkkkk
+Jul 14 23:36:46 kria kernel: Object   ffff3560e3605910: 6b 6b 6b 6b 6b 6b 6b 6b 6b 6b 6b 6b 6b 6b 6b 6b  kkkkkkkkkkkkkkkk
+Jul 14 23:36:46 kria kernel: Object   ffff3560e3605920: 6b 6b 6b 6b 6b 6b 6b 6b 6b 6b 6b 6b 6b 6b 6b 6b  kkkkkkkkkkkkkkkk
+Jul 14 23:36:46 kria kernel: Object   ffff3560e3605930: 6b 6b 6b 6b 6b 6b 6b 6b 6b 6b 6b 6b 6b 6b 6b 6b  kkkkkkkkkkkkkkkk
+Jul 14 23:36:46 kria kernel: Object   ffff3560e3605940: 6b 6b 6b 6b 6b 6b 6b 6b 6b 6b 6b 6b 6b 6b 6b 6b  kkkkkkkkkkkkkkkk
+Jul 14 23:36:46 kria kernel: Object   ffff3560e3605950: 6b 6b 6b 6b 6b 6b 6b 6b 6b 6b 6b 6b 6b 6b 6b 6b  kkkkkkkkkkkkkkkk
+Jul 14 23:36:46 kria kernel: Object   ffff3560e3605960: 6b 6b 6b 6b 6b 6b 6b 6b 6b 6b 6b 6b 6b 6b 6b 6b  kkkkkkkkkkkkkkkk
+Jul 14 23:36:46 kria kernel: Object   ffff3560e3605970: 6b 6b 6b 6b 6b 6b 6b 6b 6b 6b 6b 6b 6b 6b 6b 6b  kkkkkkkkkkkkkkkk
+Jul 14 23:36:46 kria kernel: Object   ffff3560e3605980: 03 d5 ce bd 25 01 00 00 6b 6b 6b 6b 6b 6b 6b 6b  ....%...kkkkkkkk
+Jul 14 23:36:46 kria kernel: Object   ffff3560e3605990: 6b 6b 6b 6b 6b 6b 6b 6b 6b 6b 6b 6b 6b 6b 6b 6b  kkkkkkkkkkkkkkkk
+Jul 14 23:36:46 kria kernel: Object   ffff3560e36059a0: 6b 6b 6b 6b 6b 6b 6b 6b 6b 6b 6b 6b 6b 6b 6b 6b  kkkkkkkkkkkkkkkk
+Jul 14 23:36:46 kria kernel: Object   ffff3560e36059b0: 6b 6b 6b 6b 6b 6b 6b 6b 6b 6b 6b 6b 6b 6b 6b 6b  kkkkkkkkkkkkkkkk
+Jul 14 23:36:46 kria kernel: Object   ffff3560e36059c0: 6b 6b 6b 6b 6b 6b 6b 6b 6b 6b 6b 6b 6b 6b 6b 6b  kkkkkkkkkkkkkkkk
+Jul 14 23:36:46 kria kernel: Object   ffff3560e36059d0: 6b 6b 6b 6b 6b 6b 6b 6b 6b 6b 6b 6b 6b 6b 6b 6b  kkkkkkkkkkkkkkkk
+Jul 14 23:36:46 kria kernel: Object   ffff3560e36059e0: 6b 6b 6b 6b 6b 6b 6b 6b 6b 6b 6b 6b 6b 6b 6b 6b  kkkkkkkkkkkkkkkk
+Jul 14 23:36:46 kria kernel: Object   ffff3560e36059f0: 6b 6b 6b 6b 6b 6b 6b 6b 6b 6b 6b 6b 6b 6b 6b a5  kkkkkkkkkkkkkkk.
+Jul 14 23:36:46 kria kernel: Redzone  ffff3560e3605a00: bb bb bb bb bb bb bb bb                          ........
+Jul 14 23:36:46 kria kernel: Padding  ffff3560e3605b40: 5a 5a 5a 5a 5a 5a 5a 5a 5a 5a 5a 5a 5a 5a 5a 5a  ZZZZZZZZZZZZZZZZ
+Jul 14 23:36:46 kria kernel: Padding  ffff3560e3605b50: 5a 5a 5a 5a 5a 5a 5a 5a 5a 5a 5a 5a 5a 5a 5a 5a  ZZZZZZZZZZZZZZZZ
+Jul 14 23:36:46 kria kernel: Padding  ffff3560e3605b60: 5a 5a 5a 5a 5a 5a 5a 5a 5a 5a 5a 5a 5a 5a 5a 5a  ZZZZZZZZZZZZZZZZ
+Jul 14 23:36:46 kria kernel: Padding  ffff3560e3605b70: 5a 5a 5a 5a 5a 5a 5a 5a 5a 5a 5a 5a 5a 5a 5a 5a  ZZZZZZZZZZZZZZZZ
+Jul 14 23:36:46 kria kernel: Padding  ffff3560e3605b80: 5a 5a 5a 5a 5a 5a 5a 5a 5a 5a 5a 5a 5a 5a 5a 5a  ZZZZZZZZZZZZZZZZ
+Jul 14 23:36:46 kria kernel: Padding  ffff3560e3605b90: 5a 5a 5a 5a 5a 5a 5a 5a 5a 5a 5a 5a 5a 5a 5a 5a  ZZZZZZZZZZZZZZZZ
+Jul 14 23:36:46 kria kernel: Padding  ffff3560e3605ba0: 5a 5a 5a 5a 5a 5a 5a 5a 5a 5a 5a 5a 5a 5a 5a 5a  ZZZZZZZZZZZZZZZZ
+Jul 14 23:36:46 kria kernel: Padding  ffff3560e3605bb0: 5a 5a 5a 5a 5a 5a 5a 5a 5a 5a 5a 5a 5a 5a 5a 5a  ZZZZZZZZZZZZZZZZ
+Jul 14 23:36:46 kria kernel: Padding  ffff3560e3605bc0: 5a 5a 5a 5a 5a 5a 5a 5a 5a 5a 5a 5a 5a 5a 5a 5a  ZZZZZZZZZZZZZZZZ
+Jul 14 23:36:46 kria kernel: Padding  ffff3560e3605bd0: 5a 5a 5a 5a 5a 5a 5a 5a 5a 5a 5a 5a 5a 5a 5a 5a  ZZZZZZZZZZZZZZZZ
+Jul 14 23:36:46 kria kernel: Padding  ffff3560e3605be0: 5a 5a 5a 5a 5a 5a 5a 5a 5a 5a 5a 5a 5a 5a 5a 5a  ZZZZZZZZZZZZZZZZ
+Jul 14 23:36:46 kria kernel: Padding  ffff3560e3605bf0: 5a 5a 5a 5a 5a 5a 5a 5a 5a 5a 5a 5a 5a 5a 5a 5a  ZZZZZZZZZZZZZZZZ
+Jul 14 23:36:46 kria kernel: CPU: 0 PID: 5782 Comm: python3 Tainted: G        WC        5.15.199-rt91-rt-kv260b #8
+Jul 14 23:36:46 kria kernel: Hardware name: ZynqMP KV260 revB (DT)
+Jul 14 23:36:46 kria kernel: Call trace:
+Jul 14 23:36:46 kria kernel:  dump_backtrace+0x0/0x1f0
+Jul 14 23:36:46 kria kernel:  show_stack+0x18/0x24
+Jul 14 23:36:46 kria kernel:  dump_stack_lvl+0x68/0x84
+Jul 14 23:36:46 kria kernel:  dump_stack+0x18/0x34
+Jul 14 23:36:46 kria kernel:  print_trailer+0x164/0x178
+Jul 14 23:36:46 kria kernel:  check_bytes_and_report+0xf8/0x12c
+Jul 14 23:36:46 kria kernel:  check_object+0x238/0x2a4
+Jul 14 23:36:46 kria kernel:  alloc_debug_processing+0xdc/0x19c
+Jul 14 23:36:46 kria kernel:  ___slab_alloc+0x5b4/0x890
+Jul 14 23:36:46 kria kernel:  kmem_cache_alloc+0x104/0x250
+Jul 14 23:36:46 kria kernel:  kds_alloc_command+0x2c/0xb0 [zocl]
+Jul 14 23:36:46 kria kernel:  zocl_command_ioctl+0x88/0x4c0 [zocl]
+Jul 14 23:36:46 kria kernel:  zocl_execbuf_ioctl+0x14/0x20 [zocl]
+Jul 14 23:36:46 kria kernel:  drm_ioctl_kernel+0xcc/0x120
+Jul 14 23:36:46 kria kernel:  drm_ioctl+0x2b4/0x4e0
+Jul 14 23:36:46 kria kernel:  __arm64_sys_ioctl+0xa8/0xf0
+Jul 14 23:36:46 kria kernel:  invoke_syscall+0x70/0xf4
+Jul 14 23:36:46 kria kernel:  el0_svc_common.constprop.0+0x4c/0x17c
+Jul 14 23:36:46 kria kernel:  do_el0_svc+0x28/0xa0
+Jul 14 23:36:46 kria kernel:  el0_svc+0x30/0x130
+Jul 14 23:36:46 kria kernel:  el0t_64_sync_handler+0xa4/0x12c
+Jul 14 23:36:46 kria kernel:  el0t_64_sync+0x1a4/0x1a8
+Jul 14 23:36:46 kria kernel: Disabling lock debugging due to kernel taint
+Jul 14 23:36:46 kria kernel: FIX kmalloc-256: Restoring Poison 0xffff3560e3605980-0xffff3560e3605987=0x6b
+Jul 14 23:36:46 kria kernel: FIX kmalloc-256: Marking all objects used
+Jul 14 23:36:55 kria kernel: usb 2-1.1: Failed to query (GET_CUR) UVC control 1 on unit 3: -32 (exp. 1024).
+Jul 14 23:36:55 kria kernel: BUG: sleeping function called from invalid context at kernel/locking/spinlock_rt.c:46
+Jul 14 23:36:55 kria kernel: in_atomic(): 0, irqs_disabled(): 128, non_block: 0, pid: 3436, name: pr/netcon0
+Jul 14 23:36:55 kria kernel: preempt_count: 0, expected: 0
+Jul 14 23:36:55 kria kernel: RCU nest depth: 3, expected: 3
+Jul 14 23:36:55 kria kernel: CPU: 1 PID: 3436 Comm: pr/netcon0 Tainted: G    B   WC        5.15.199-rt91-rt-kv260b #8
+Jul 14 23:36:55 kria kernel: Hardware name: ZynqMP KV260 revB (DT)
+Jul 14 23:36:55 kria kernel: Call trace:
+Jul 14 23:36:55 kria kernel:  dump_backtrace+0x0/0x1f0
+Jul 14 23:36:55 kria kernel:  show_stack+0x18/0x24
+Jul 14 23:36:55 kria kernel:  dump_stack_lvl+0x68/0x84
+Jul 14 23:36:55 kria kernel:  dump_stack+0x18/0x34
+Jul 14 23:36:55 kria kernel:  __might_resched+0x148/0x1ac
+Jul 14 23:36:55 kria kernel:  rt_spin_lock+0x30/0xd0
+Jul 14 23:36:55 kria kernel:  macb_start_xmit+0x178/0xb74
+Jul 14 23:36:55 kria kernel:  netpoll_start_xmit+0x100/0x1c0
+Jul 14 23:36:55 kria kernel:  netpoll_send_skb+0x1cc/0x2a0
+Jul 14 23:36:55 kria kernel:  netpoll_send_udp+0x204/0x430
+Jul 14 23:36:55 kria kernel:  write_msg+0xfc/0x12c [netconsole]
+Jul 14 23:36:55 kria kernel:  printk_kthread_func+0x1f0/0x574
+Jul 14 23:36:55 kria kernel:  kthread+0x16c/0x180
+Jul 14 23:36:55 kria kernel:  ret_from_fork+0x10/0x20
+Jul 14 23:37:00 kria kernel: usb 2-1.1: Failed to query (GET_CUR) UVC control 1 on unit 3: -32 (exp. 1024).
+Jul 14 23:37:00 kria kernel: BUG: sleeping function called from invalid context at kernel/locking/spinlock_rt.c:46
+Jul 14 23:37:00 kria kernel: in_atomic(): 0, irqs_disabled(): 128, non_block: 0, pid: 3436, name: pr/netcon0
+Jul 14 23:37:00 kria kernel: preempt_count: 0, expected: 0
+Jul 14 23:37:00 kria kernel: RCU nest depth: 3, expected: 3
+Jul 14 23:37:00 kria kernel: CPU: 1 PID: 3436 Comm: pr/netcon0 Tainted: G    B   WC        5.15.199-rt91-rt-kv260b #8
+Jul 14 23:37:00 kria kernel: Hardware name: ZynqMP KV260 revB (DT)
+Jul 14 23:37:00 kria kernel: Call trace:
+Jul 14 23:37:00 kria kernel:  dump_backtrace+0x0/0x1f0
+Jul 14 23:37:00 kria kernel:  show_stack+0x18/0x24
+Jul 14 23:37:00 kria kernel:  dump_stack_lvl+0x68/0x84
+Jul 14 23:37:00 kria kernel:  dump_stack+0x18/0x34
+Jul 14 23:37:00 kria kernel:  __might_resched+0x148/0x1ac
+Jul 14 23:37:00 kria kernel:  rt_spin_lock+0x30/0xd0
+Jul 14 23:37:00 kria kernel:  macb_start_xmit+0x178/0xb74
+Jul 14 23:37:00 kria kernel:  netpoll_start_xmit+0x100/0x1c0
+Jul 14 23:37:00 kria kernel:  netpoll_send_skb+0x1cc/0x2a0
+Jul 14 23:37:00 kria kernel:  netpoll_send_udp+0x204/0x430
+Jul 14 23:37:00 kria kernel:  write_msg+0xfc/0x12c [netconsole]
+Jul 14 23:37:00 kria kernel:  printk_kthread_func+0x1f0/0x574
+Jul 14 23:37:00 kria kernel:  kthread+0x16c/0x180
+Jul 14 23:37:00 kria kernel:  ret_from_fork+0x10/0x20
+Jul 14 23:37:01 kria kernel: usb 2-1.1: Failed to query (GET_CUR) UVC control 1 on unit 3: -32 (exp. 1024).
+Jul 14 23:37:01 kria kernel: BUG: sleeping function called from invalid context at kernel/locking/spinlock_rt.c:46
+Jul 14 23:37:01 kria kernel: in_atomic(): 0, irqs_disabled(): 128, non_block: 0, pid: 3436, name: pr/netcon0
+Jul 14 23:37:01 kria kernel: preempt_count: 0, expected: 0
+Jul 14 23:37:01 kria kernel: RCU nest depth: 3, expected: 3
+Jul 14 23:37:01 kria kernel: CPU: 0 PID: 3436 Comm: pr/netcon0 Tainted: G    B   WC        5.15.199-rt91-rt-kv260b #8
+Jul 14 23:37:01 kria kernel: Hardware name: ZynqMP KV260 revB (DT)
+Jul 14 23:37:01 kria kernel: Call trace:
+Jul 14 23:37:01 kria kernel:  dump_backtrace+0x0/0x1f0
+Jul 14 23:37:01 kria kernel:  show_stack+0x18/0x24
+Jul 14 23:37:01 kria kernel:  dump_stack_lvl+0x68/0x84
+Jul 14 23:37:01 kria kernel:  dump_stack+0x18/0x34
+Jul 14 23:37:01 kria kernel:  __might_resched+0x148/0x1ac
+Jul 14 23:37:01 kria kernel:  rt_spin_lock+0x30/0xd0
+Jul 14 23:37:01 kria kernel:  macb_start_xmit+0x178/0xb74
+Jul 14 23:37:01 kria kernel:  netpoll_start_xmit+0x100/0x1c0
+Jul 14 23:37:01 kria kernel:  netpoll_send_skb+0x1cc/0x2a0
+Jul 14 23:37:01 kria kernel:  netpoll_send_udp+0x204/0x430
+Jul 14 23:37:01 kria kernel:  write_msg+0xfc/0x12c [netconsole]
+Jul 14 23:37:01 kria kernel:  printk_kthread_func+0x1f0/0x574
+Jul 14 23:37:01 kria kernel:  kthread+0x16c/0x180
+Jul 14 23:37:01 kria kernel:  ret_from_fork+0x10/0x20
+Jul 14 23:37:03 kria kernel: usb 2-1.1: Failed to query (GET_CUR) UVC control 1 on unit 3: -32 (exp. 1024).
+Jul 14 23:37:03 kria kernel: BUG: sleeping function called from invalid context at kernel/locking/spinlock_rt.c:46
+Jul 14 23:37:03 kria kernel: in_atomic(): 0, irqs_disabled(): 128, non_block: 0, pid: 3436, name: pr/netcon0
+Jul 14 23:37:03 kria kernel: preempt_count: 0, expected: 0
+Jul 14 23:37:03 kria kernel: RCU nest depth: 3, expected: 3
+Jul 14 23:37:03 kria kernel: CPU: 0 PID: 3436 Comm: pr/netcon0 Tainted: G    B   WC        5.15.199-rt91-rt-kv260b #8
+Jul 14 23:37:03 kria kernel: Hardware name: ZynqMP KV260 revB (DT)
+Jul 14 23:37:03 kria kernel: Call trace:
+Jul 14 23:37:03 kria kernel:  dump_backtrace+0x0/0x1f0
+Jul 14 23:37:03 kria kernel:  show_stack+0x18/0x24
+Jul 14 23:37:03 kria kernel:  dump_stack_lvl+0x68/0x84
+Jul 14 23:37:03 kria kernel:  dump_stack+0x18/0x34
+Jul 14 23:37:03 kria kernel:  __might_resched+0x148/0x1ac
+Jul 14 23:37:03 kria kernel:  rt_spin_lock+0x30/0xd0
+Jul 14 23:37:03 kria kernel:  macb_start_xmit+0x178/0xb74
+Jul 14 23:37:03 kria kernel:  netpoll_start_xmit+0x100/0x1c0
+Jul 14 23:37:03 kria kernel:  netpoll_send_skb+0x1cc/0x2a0
+Jul 14 23:37:03 kria kernel:  netpoll_send_udp+0x204/0x430
+Jul 14 23:37:03 kria kernel:  write_msg+0xfc/0x12c [netconsole]
+Jul 14 23:37:03 kria kernel:  printk_kthread_func+0x1f0/0x574
+Jul 14 23:37:03 kria kernel:  kthread+0x16c/0x180
+Jul 14 23:37:03 kria kernel:  ret_from_fork+0x10/0x20
+Jul 14 23:37:06 kria kernel: usb 2-1.1: Failed to query (GET_CUR) UVC control 1 on unit 3: -32 (exp. 1024).
+Jul 14 23:37:06 kria kernel: BUG: sleeping function called from invalid context at kernel/locking/spinlock_rt.c:46
+Jul 14 23:37:06 kria kernel: in_atomic(): 0, irqs_disabled(): 128, non_block: 0, pid: 3436, name: pr/netcon0
+Jul 14 23:37:06 kria kernel: preempt_count: 0, expected: 0
+Jul 14 23:37:06 kria kernel: RCU nest depth: 3, expected: 3
+Jul 14 23:37:06 kria kernel: CPU: 0 PID: 3436 Comm: pr/netcon0 Tainted: G    B   WC        5.15.199-rt91-rt-kv260b #8
+Jul 14 23:37:06 kria kernel: Hardware name: ZynqMP KV260 revB (DT)
+Jul 14 23:37:06 kria kernel: Call trace:
+Jul 14 23:37:06 kria kernel:  dump_backtrace+0x0/0x1f0
+Jul 14 23:37:06 kria kernel:  show_stack+0x18/0x24
+Jul 14 23:37:06 kria kernel:  dump_stack_lvl+0x68/0x84
+Jul 14 23:37:06 kria kernel:  dump_stack+0x18/0x34
+Jul 14 23:37:06 kria kernel:  __might_resched+0x148/0x1ac
+Jul 14 23:37:06 kria kernel:  rt_spin_lock+0x30/0xd0
+Jul 14 23:37:06 kria kernel:  macb_start_xmit+0x178/0xb74
+Jul 14 23:37:06 kria kernel:  netpoll_start_xmit+0x100/0x1c0
+Jul 14 23:37:06 kria kernel:  netpoll_send_skb+0x1cc/0x2a0
+Jul 14 23:37:06 kria kernel:  netpoll_send_udp+0x204/0x430
+Jul 14 23:37:06 kria kernel:  write_msg+0xfc/0x12c [netconsole]
+Jul 14 23:37:06 kria kernel:  printk_kthread_func+0x1f0/0x574
+Jul 14 23:37:06 kria kernel:  kthread+0x16c/0x180
+Jul 14 23:37:06 kria kernel:  ret_from_fork+0x10/0x20

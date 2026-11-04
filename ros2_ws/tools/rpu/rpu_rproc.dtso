@@ -1,0 +1,119 @@
+/dts-v1/;
+/plugin/;
+
+/*
+ * RPU(R5F-0) remoteproc DT overlay — Kria KV260, 커널 5.15.199-rt91-rt-kv260c
+ * ⚠️ 08-03 미적용 초안. Gate 1 실제 적용본은 ~/rpu_work/rpu_v2.dtso(부팅 DTB 병합) — docs/rpu/rpu_guide_for_claude.md "정정 (2026-09-04)"
+ * 근거: zynqmp_r5_remoteproc.ko(이 커널)의 property strings + linux-xlnx
+ *       xlnx_rebase_v5.15 드라이버 소스 대조 (2026-08-03, rpu_guide_for_claude.md §6-A)
+ * 적용: sudo bash rpu_overlay_apply.sh   (같은 디렉토리)
+ *
+ * 메모리 배치 (Vitis 2022.1 OpenAMP 데모 표준 — 링커 스크립트와 일치해야 함):
+ *   0x3ed00000 +0x40000  R5 펌웨어 code/data (256KB)
+ *   0x3ed40000 +0x4000   vring0
+ *   0x3ed44000 +0x4000   vring1
+ *   0x3ed48000 +0x100000 rpmsg 버퍼 (shared-dma-pool)
+ * SOEM 단계에서 펌웨어가 커지면 rproc_0_reserved 확장 + 링커 스크립트 동기 수정.
+ */
+
+/ {
+	fragment@0 {
+		target-path = "/";
+		__overlay__ {
+			reserved-memory {
+				#address-cells = <2>;
+				#size-cells = <2>;
+				ranges;
+
+				rproc_0_reserved: rproc@3ed00000 {
+					no-map;
+					reg = <0x0 0x3ed00000 0x0 0x40000>;
+				};
+				/* 주의: 노드 이름은 반드시 rpu0vdev0vring0 형태 —
+				 * 드라이버가 strstr(name,"vdev0vring") + name[14]에서
+				 * vring 번호를 읽는다. 이름 바꾸면 조용히 고장. */
+				rpu0vdev0vring0: rpu0vdev0vring0@3ed40000 {
+					no-map;
+					reg = <0x0 0x3ed40000 0x0 0x4000>;
+				};
+				rpu0vdev0vring1: rpu0vdev0vring1@3ed44000 {
+					no-map;
+					reg = <0x0 0x3ed44000 0x0 0x4000>;
+				};
+				rpu0vdev0buffer: rpu0vdev0buffer@3ed48000 {
+					no-map;
+					compatible = "shared-dma-pool";
+					reg = <0x0 0x3ed48000 0x0 0x100000>;
+				};
+			};
+
+			/* APU측 IPI agent(id 7) ↔ RPU0(id 1). 기존 base DT의
+			 * zynqmp-ipi(id 0, PMU용 child id 4)와 충돌하지 않음. */
+			zynqmp_ipi_rpu: zynqmp-ipi-rpu {
+				compatible = "xlnx,zynqmp-ipi-mailbox";
+				interrupt-parent = <&gic>;
+				interrupts = <0 29 4>;
+				xlnx,ipi-id = <7>;
+				#address-cells = <2>;
+				#size-cells = <2>;
+				ranges;
+
+				ipi_mailbox_rpu0: mailbox@ff990600 {
+					reg = <0x0 0xff990600 0x0 0x20>,
+					      <0x0 0xff990620 0x0 0x20>,
+					      <0x0 0xff9900c0 0x0 0x20>,
+					      <0x0 0xff9900e0 0x0 0x20>;
+					reg-names = "local_request_region",
+						    "local_response_region",
+						    "remote_request_region",
+						    "remote_response_region";
+					#mbox-cells = <1>;
+					xlnx,ipi-id = <1>;
+				};
+			};
+
+			rf5ss: rf5ss {
+				compatible = "xlnx,zynqmp-r5-remoteproc";
+				xlnx,cluster-mode = <1>;	/* 1=PM_RPU_MODE_SPLIT, 0=LOCKSTEP */
+				#address-cells = <2>;
+				#size-cells = <2>;
+				ranges;
+
+				r5f_0 {
+					compatible = "xilinx,r5f";
+					#address-cells = <2>;
+					#size-cells = <2>;
+					ranges;
+					/* TCM은 global 주소로 기술 — R5-view(0x0/0x20000)
+					 * 변환은 드라이버가 수행 */
+					sram = <&tcm_0a>, <&tcm_0b>;
+					memory-region = <&rproc_0_reserved>,
+							<&rpu0vdev0buffer>,
+							<&rpu0vdev0vring0>,
+							<&rpu0vdev0vring1>;
+					/* 벤더 드라이버는 단수형 "power-domain"을 읽음
+					 * (표준 "power-domains" 아님). 7=NODE_RPU_0 */
+					power-domain = <&zynqmp_firmware 7>;
+					mboxes = <&ipi_mailbox_rpu0 0>, <&ipi_mailbox_rpu0 1>;
+					mbox-names = "tx", "rx";
+				};
+			};
+		};
+	};
+
+	fragment@1 {
+		target = <&amba>;
+		__overlay__ {
+			tcm_0a: tcm@ffe00000 {
+				compatible = "mmio-sram";
+				reg = <0x0 0xffe00000 0x0 0x10000>;
+				power-domain = <&zynqmp_firmware 15>;	/* NODE_TCM_0_A */
+			};
+			tcm_0b: tcm@ffe20000 {
+				compatible = "mmio-sram";
+				reg = <0x0 0xffe20000 0x0 0x10000>;
+				power-domain = <&zynqmp_firmware 16>;	/* NODE_TCM_0_B */
+			};
+		};
+	};
+};

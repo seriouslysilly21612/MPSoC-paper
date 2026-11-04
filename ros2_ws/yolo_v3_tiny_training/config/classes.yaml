@@ -1,0 +1,75 @@
+# =============================================================================
+# YOLOv3-tiny canonical class spec — 모든 스크립트가 이 파일을 참조한다.
+# 근거: yolov3_tiny_execution_plan.md D1/D8/D13
+#
+# 2026-07-09 (D13): peach 드롭 → 7-class → 6-class 재번호.
+#   이유: 우리 실물 복숭아(분홍+잎)가 YCB 015(주황 복숭아)와 외형 불일치라
+#   YCB real 데이터로도 못 닫고, apple과 최난도 혼동 pair였음(Gate 5).
+#   기존 7-class 추출물은 09_drop_peach_remap.py 로 1회 remap.
+# =============================================================================
+
+# class id (변경 금지 — 학습·quantize·worker decode 전부 이 순서)
+names:
+  0: apple
+  1: orange
+  2: banana
+  3: tennis_ball
+  4: mustard_bottle
+  5: person
+
+num_classes: 6
+
+# -----------------------------------------------------------------------------
+# YCB object id (CAD mesh 렌더링 + YCB 벤치마크 real 스캔 다운로드용)
+# -----------------------------------------------------------------------------
+ycb_objects:
+  apple: "013_apple"
+  orange: "017_orange"
+  banana: "011_banana"
+  tennis_ball: "056_tennis_ball"
+  mustard_bottle: "006_mustard_bottle"
+
+# -----------------------------------------------------------------------------
+# BOP ycbv dataset의 numeric object id → our class (scene_gt.json obj_id 기준)
+# -----------------------------------------------------------------------------
+bop_ycbv_obj_ids:
+  5: 4     # 006_mustard_bottle → our class 4
+  10: 2    # 011_banana         → our class 2
+
+# -----------------------------------------------------------------------------
+# COCO category name → our class id (person + real 과일 보조)
+# -----------------------------------------------------------------------------
+coco_map:
+  person: 5
+  apple: 0
+  orange: 1
+  banana: 2
+
+# -----------------------------------------------------------------------------
+# Open Images class name → our class id  (peach 제거됨)
+# -----------------------------------------------------------------------------
+openimages_map:
+  Tennis ball: 3
+
+# -----------------------------------------------------------------------------
+# per-class 수집 상한 (balance — 공개 데이터가 synthetic을 압도하지 않게)
+# -----------------------------------------------------------------------------
+caps:
+  coco_person_images: 8000
+  coco_fruit_images_each: 1500
+  openimages_images_each: 1000
+
+# synthetic 렌더링 목표 (class당 인스턴스 수)
+synthetic_target_instances_per_class: 3000
+
+# -----------------------------------------------------------------------------
+# 배포 threshold 정책 (참고용 — 런타임 정본은 vitis_ai_worker_yolo.py의
+# CLASS_THRESHOLDS_BY_NAME. 이 블록을 읽는 스크립트는 없다.)
+# -----------------------------------------------------------------------------
+thresholds:
+  default: 0.5
+  tennis_ball: 0.4   # Gate 5 실측 0.491 → 0.4 제안 (worker 미반영: 현재 0.50)
+
+# 모델 입력 (D7: letterbox 416 — train/quantize calib/worker 3곳 동일)
+input_width: 416
+input_height: 416

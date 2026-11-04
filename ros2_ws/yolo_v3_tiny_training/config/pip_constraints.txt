@@ -1,0 +1,7 @@
+# yolov5 v7.0 호환 버전 고정 (10_setup_training.sh가 -c 로 사용)
+# - yolov5 v7.0은 numpy 2.x 미지원 → numpy 1.x 고정
+# - opencv-python 5.x는 numpy>=2 요구 → numpy 1.x 호환 4.x로 고정
+# - Pillow 10.x는 ImageFont.getsize() 제거 → yolov5 v7.0 plots.py 플롯 crash
+numpy==1.26.4
+opencv-python==4.10.0.84
+Pillow==9.5.0

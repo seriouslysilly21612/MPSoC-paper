@@ -1,0 +1,15 @@
+=== RT 소크 v2 시작: Tue Jul 14 02:03:48 PM KST 2026 / 목표 75s / 커널 5.15.199-rt91-rt-kv260b ===
+검출기: CONFIG_DEBUG_PREEMPT=y CONFIG_DEBUG_ATOMIC_SLEEP=y 
+시작 위반 baseline: 0 / MemAvail 2258MB
+[load] stress-ng: cpu4 vm2(2x640M≈1.3G) fork4 clone2 pthread2 sysfs1 — 전 코어+메모리 공격적, fork만 억제
+[14:04:02 +11s] 위반델타=0 load=6 MemAvail=1654MB temp=?C
+[14:04:13 +22s] 위반델타=0 load=15 MemAvail=1610MB temp=?C
+[14:04:24 +33s] 위반델타=0 load=16 MemAvail=1624MB temp=?C
+[14:04:35 +44s] 위반델타=0 load=22 MemAvail=1593MB temp=?C
+[14:04:45 +54s] 위반델타=0 load=24 MemAvail=1613MB temp=?C
+[14:04:56 +65s] 위반델타=0 load=33 MemAvail=1610MB temp=?C
+[14:05:06 +75s] 위반델타=0 load=36 MemAvail=2193MB temp=?C
+[14:05:11 +80s] 위반델타=0 load=33 MemAvail=2240MB temp=?C
+
+=== 소크 종료: Tue Jul 14 02:05:11 PM KST 2026 / 경과 80s / 최종 위반델타 0 ===
+★ PASS — 부하 소크 전 구간 radix 위반 0건. 픽스 무결성 확인.

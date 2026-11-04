@@ -1,0 +1,220 @@
+Jul 10 20:30:01 kria CRON[32306]: pam_unix(cron:session): session opened for user root(uid=0) by (uid=0)
+Jul 10 20:30:01 kria CRON[32307]: (root) CMD ([ -x /etc/init.d/anacron ] && if [ ! -d /run/systemd/system ]; then /usr/sbin/invoke-rc.d anacron start >/dev/null; fi)
+Jul 10 20:30:01 kria CRON[32306]: pam_unix(cron:session): session closed for user root
+Jul 10 20:31:20 kria systemd[1]: Started Run anacron jobs.
+Jul 10 20:31:20 kria systemd[1]: anacron.service: Deactivated successfully.
+Jul 10 20:31:20 kria anacron[32405]: Anacron 2.3 started on 2026-07-10
+Jul 10 20:31:20 kria anacron[32405]: Normal exit (0 jobs run)
+Jul 10 20:46:48 kria NetworkManager[1030]: <info>  [1783684008.5834] dhcp4 (eth0): state changed new lease, address=192.168.120.132
+Jul 10 20:48:33 kria sudo[33631]: pam_unix(sudo:auth): conversation failed
+Jul 10 20:48:33 kria sudo[33631]: pam_unix(sudo:auth): auth could not identify password for [ubuntu]
+Jul 10 20:48:33 kria sudo[33631]:   ubuntu : a password is required ; PWD=/home/ubuntu ; USER=root ; COMMAND=/usr/bin/true
+Jul 10 21:00:30 kria kernel: usb 2-1.1: Failed to query (GET_CUR) UVC control 1 on unit 3: -32 (exp. 1024).
+Jul 10 21:00:30 kria kernel: usb 2-1.1: Failed to query (GET_CUR) UVC control 1 on unit 3: -32 (exp. 1024).
+Jul 10 21:00:30 kria kernel: usb 2-1.1: Failed to query (GET_CUR) UVC control 1 on unit 3: -32 (exp. 1024).
+Jul 10 21:00:31 kria kernel: uvcvideo 2-1.1:1.1: Non-zero status (-71) in video completion handler.
+Jul 10 21:00:31 kria kernel: usb 2-1.1: Failed to query (GET_CUR) UVC control 1 on unit 3: -32 (exp. 1024).
+Jul 10 21:00:31 kria kernel: usb 2-1.1: Failed to query (GET_CUR) UVC control 1 on unit 3: -32 (exp. 1024).
+Jul 10 21:00:31 kria kernel: uvcvideo 2-1.1:1.4: Non-zero status (-71) in video completion handler.
+Jul 10 21:00:31 kria kernel: usb 2-1.1: Failed to query (GET_CUR) UVC control 1 on unit 3: -32 (exp. 1024).
+Jul 10 21:00:31 kria kernel: usb 2-1.1: Failed to query (GET_CUR) UVC control 1 on unit 3: -32 (exp. 1024).
+Jul 10 21:00:31 kria kernel: usb 2-1.1: Failed to query (GET_CUR) UVC control 1 on unit 3: -32 (exp. 1024).
+Jul 10 21:00:31 kria kernel: usb 2-1.1: Failed to query (GET_CUR) UVC control 1 on unit 3: -32 (exp. 1024).
+Jul 10 21:00:32 kria kernel: usb 2-1.1: Failed to query (GET_CUR) UVC control 1 on unit 3: -32 (exp. 1024).
+Jul 10 21:00:32 kria kernel: usb 2-1.1: Failed to query (GET_CUR) UVC control 1 on unit 3: -32 (exp. 1024).
+Jul 10 21:00:32 kria kernel: usb 2-1.1: Failed to query (GET_CUR) UVC control 1 on unit 3: -32 (exp. 1024).
+Jul 10 21:00:33 kria kernel: usb 2-1.1: Failed to query (GET_CUR) UVC control 1 on unit 3: -32 (exp. 1024).
+Jul 10 21:00:34 kria kernel: usb 2-1.1: Failed to query (GET_CUR) UVC control 1 on unit 3: -32 (exp. 1024).
+Jul 10 21:00:38 kria kernel: usb 2-1.1: Failed to query (GET_CUR) UVC control 1 on unit 3: -32 (exp. 1024).
+Jul 10 21:00:41 kria kernel: usb 2-1.1: Failed to query (GET_CUR) UVC control 1 on unit 3: -32 (exp. 1024).
+Jul 10 21:00:44 kria kernel: zocl-drm axi:zyxclmm_drm: zocl_create_client: created KDS client for pid(34608), ret: 0
+Jul 10 21:00:44 kria kernel: zocl-drm axi:zyxclmm_drm: zocl_destroy_client: client exits pid(34608)
+Jul 10 21:00:44 kria kernel: zocl-drm axi:zyxclmm_drm: zocl_create_client: created KDS client for pid(34608), ret: 0
+Jul 10 21:00:44 kria kernel: zocl-drm axi:zyxclmm_drm: zocl_destroy_client: client exits pid(34608)
+Jul 10 21:00:44 kria kernel: zocl-drm axi:zyxclmm_drm: zocl_create_client: created KDS client for pid(34608), ret: 0
+Jul 10 21:00:44 kria kernel: zocl-drm axi:zyxclmm_drm: zocl_destroy_client: client exits pid(34608)
+Jul 10 21:00:44 kria kernel: zocl-drm axi:zyxclmm_drm: zocl_create_client: created KDS client for pid(34608), ret: 0
+Jul 10 21:00:44 kria kernel: zocl-drm axi:zyxclmm_drm: zocl_destroy_client: client exits pid(34608)
+Jul 10 21:00:44 kria kernel: zocl-drm axi:zyxclmm_drm: zocl_create_client: created KDS client for pid(34608), ret: 0
+Jul 10 21:00:44 kria kernel: zocl-drm axi:zyxclmm_drm: zocl_destroy_client: client exits pid(34608)
+Jul 10 21:00:44 kria kernel: zocl-drm axi:zyxclmm_drm: zocl_create_client: created KDS client for pid(34608), ret: 0
+Jul 10 21:00:44 kria kernel: zocl-drm axi:zyxclmm_drm: zocl_destroy_client: client exits pid(34608)
+Jul 10 21:00:44 kria kernel: zocl-drm axi:zyxclmm_drm: zocl_create_client: created KDS client for pid(34608), ret: 0
+Jul 10 21:00:44 kria kernel: [drm] skip kind 29(AIE_RESOURCES) return code: -22
+Jul 10 21:00:44 kria kernel: [drm] zocl_xclbin_read_axlf The XCLBIN already loaded
+Jul 10 21:00:45 kria kernel: [drm] zocl_xclbin_read_axlf d0af154e-769f-dc2d-8555-420ae4a7919b ret: 0
+Jul 10 21:00:45 kria kernel: [drm] bitstream d0af154e-769f-dc2d-8555-420ae4a7919b locked, ref=1
+Jul 10 21:00:45 kria kernel: zocl-drm axi:zyxclmm_drm:  ffff2086840e9c10 kds_add_context: Client pid(34608) add context Domain(0) CU(0xffffffff) shared(true)
+Jul 10 21:00:45 kria kernel: zocl-drm axi:zyxclmm_drm:  ffff2086840e9c10 kds_del_context: Client pid(34608) del context Domain(0) CU(0xffffffff)
+Jul 10 21:00:45 kria kernel: [drm] bitstream d0af154e-769f-dc2d-8555-420ae4a7919b unlocked, ref=0
+Jul 10 21:00:45 kria kernel: zocl-drm axi:zyxclmm_drm: zocl_create_client: created KDS client for pid(34608), ret: 0
+Jul 10 21:00:45 kria kernel: zocl-drm axi:zyxclmm_drm: zocl_destroy_client: client exits pid(34608)
+Jul 10 21:00:45 kria kernel: zocl-drm axi:zyxclmm_drm: zocl_create_client: created KDS client for pid(34608), ret: 0
+Jul 10 21:00:45 kria kernel: [drm] bitstream d0af154e-769f-dc2d-8555-420ae4a7919b locked, ref=1
+Jul 10 21:00:45 kria kernel: zocl-drm axi:zyxclmm_drm:  ffff2086840e9c10 kds_add_context: Client pid(34608) add context Domain(0) CU(0x1) shared(true)
+Jul 10 21:00:45 kria kernel: zocl-drm axi:zyxclmm_drm: zocl_create_client: created KDS client for pid(34608), ret: 0
+Jul 10 21:00:45 kria kernel: zocl-drm axi:zyxclmm_drm: zocl_destroy_client: client exits pid(34608)
+Jul 10 21:00:45 kria kernel: zocl-drm axi:zyxclmm_drm: zocl_create_client: created KDS client for pid(34608), ret: 0
+Jul 10 21:00:45 kria kernel: [drm] bitstream d0af154e-769f-dc2d-8555-420ae4a7919b locked, ref=2
+Jul 10 21:00:45 kria kernel: zocl-drm axi:zyxclmm_drm:  ffff2086840e9c10 kds_add_context: Client pid(34608) add context Domain(0) CU(0x0) shared(true)
+Jul 10 21:00:45 kria kernel: zocl-drm axi:zyxclmm_drm: zocl_create_client: created KDS client for pid(34608), ret: 0
+Jul 10 21:00:45 kria kernel: zocl-drm axi:zyxclmm_drm: zocl_destroy_client: client exits pid(34608)
+Jul 10 21:00:45 kria kernel: zocl-drm axi:zyxclmm_drm: zocl_create_client: created KDS client for pid(34608), ret: 0
+Jul 10 21:00:45 kria kernel: [drm] bitstream d0af154e-769f-dc2d-8555-420ae4a7919b locked, ref=3
+Jul 10 21:00:45 kria kernel: zocl-drm axi:zyxclmm_drm:  ffff2086840e9c10 kds_add_context: Client pid(34608) add context Domain(0) CU(0x1) shared(true)
+Jul 10 21:00:46 kria kernel: usb 2-1.1: Failed to query (GET_CUR) UVC control 1 on unit 3: -32 (exp. 1024).
+Jul 10 21:00:55 kria kernel: usb 2-1.1: Failed to query (GET_CUR) UVC control 1 on unit 3: -32 (exp. 1024).
+Jul 10 21:00:56 kria kernel: usb 2-1.1: Failed to query (GET_CUR) UVC control 1 on unit 3: -32 (exp. 1024).
+Jul 10 21:00:57 kria kernel: usb 2-1.1: Failed to query (GET_CUR) UVC control 1 on unit 3: -32 (exp. 1024).
+Jul 10 21:00:59 kria kernel: usb 2-1.1: Failed to query (GET_CUR) UVC control 1 on unit 3: -32 (exp. 1024).
+Jul 10 21:01:00 kria kernel: usb 2-1.1: Failed to query (GET_CUR) UVC control 1 on unit 3: -32 (exp. 1024).
+Jul 10 21:01:02 kria kernel: usb 2-1.1: Failed to query (GET_CUR) UVC control 1 on unit 3: -32 (exp. 1024).
+Jul 10 21:01:08 kria kernel: usb 2-1.1: Failed to query (GET_CUR) UVC control 1 on unit 3: -32 (exp. 1024).
+Jul 10 21:01:10 kria kernel: usb 2-1.1: Failed to query (GET_CUR) UVC control 1 on unit 3: -32 (exp. 1024).
+Jul 10 21:01:15 kria kernel: usb 2-1.1: Failed to query (GET_CUR) UVC control 1 on unit 3: -32 (exp. 1024).
+Jul 10 21:01:16 kria kernel: usb 2-1.1: Failed to query (GET_CUR) UVC control 1 on unit 3: -32 (exp. 1024).
+Jul 10 21:01:17 kria kernel: usb 2-1.1: Failed to query (GET_CUR) UVC control 1 on unit 3: -32 (exp. 1024).
+Jul 10 21:01:20 kria kernel: usb 2-1.1: Failed to query (GET_CUR) UVC control 1 on unit 3: -32 (exp. 1024).
+Jul 10 21:01:21 kria kernel: usb 2-1.1: Failed to query (GET_CUR) UVC control 1 on unit 3: -32 (exp. 1024).
+Jul 10 21:01:22 kria kernel: usb 2-1.1: Failed to query (GET_CUR) UVC control 1 on unit 3: -32 (exp. 1024).
+Jul 10 21:01:28 kria kernel: usb 2-1.1: Failed to query (GET_CUR) UVC control 1 on unit 3: -32 (exp. 1024).
+Jul 10 21:01:29 kria kernel: usb 2-1.1: Failed to query (GET_CUR) UVC control 1 on unit 3: -32 (exp. 1024).
+Jul 10 21:01:31 kria kernel: usb 2-1.1: Failed to query (GET_CUR) UVC control 1 on unit 3: -32 (exp. 1024).
+Jul 10 21:01:32 kria kernel: usb 2-1.1: Failed to query (GET_CUR) UVC control 1 on unit 3: -32 (exp. 1024).
+Jul 10 21:01:33 kria kernel: usb 2-1.1: Failed to query (GET_CUR) UVC control 1 on unit 3: -32 (exp. 1024).
+Jul 10 21:01:38 kria kernel: usb 2-1.1: Failed to query (GET_CUR) UVC control 1 on unit 3: -32 (exp. 1024).
+Jul 10 21:01:41 kria kernel: usb 2-1.1: Failed to query (GET_CUR) UVC control 1 on unit 3: -32 (exp. 1024).
+Jul 10 21:01:43 kria kernel: usb 2-1.1: Failed to query (GET_CUR) UVC control 1 on unit 3: -32 (exp. 1024).
+Jul 10 21:01:44 kria kernel: usb 2-1.1: Failed to query (GET_CUR) UVC control 1 on unit 3: -32 (exp. 1024).
+Jul 10 21:01:53 kria kernel: usb 2-1.1: Failed to query (GET_CUR) UVC control 1 on unit 3: -32 (exp. 1024).
+Jul 10 21:01:54 kria kernel: usb 2-1.1: Failed to query (GET_CUR) UVC control 1 on unit 3: -32 (exp. 1024).
+Jul 10 21:01:59 kria kernel: usb 2-1.1: Failed to query (GET_CUR) UVC control 1 on unit 3: -32 (exp. 1024).
+Jul 10 21:02:00 kria kernel: usb 2-1.1: Failed to query (GET_CUR) UVC control 1 on unit 3: -32 (exp. 1024).
+Jul 10 21:02:04 kria kernel: usb 2-1.1: Failed to query (GET_CUR) UVC control 1 on unit 3: -32 (exp. 1024).
+Jul 10 21:02:15 kria kernel: usb 2-1.1: Failed to query (GET_CUR) UVC control 1 on unit 3: -32 (exp. 1024).
+Jul 10 21:02:27 kria kernel: usb 2-1.1: Failed to query (GET_CUR) UVC control 1 on unit 3: -32 (exp. 1024).
+Jul 10 21:02:29 kria kernel: usb 2-1.1: Failed to query (GET_CUR) UVC control 1 on unit 3: -32 (exp. 1024).
+Jul 10 21:02:50 kria kernel: usb 2-1.1: Failed to query (GET_CUR) UVC control 1 on unit 3: -32 (exp. 1024).
+Jul 10 21:03:06 kria kernel: usb 2-1.1: Failed to query (GET_CUR) UVC control 1 on unit 3: -32 (exp. 1024).
+Jul 10 21:03:23 kria kernel: usb 2-1.1: Failed to query (GET_CUR) UVC control 1 on unit 3: -32 (exp. 1024).
+Jul 10 21:03:24 kria kernel: usb 2-1.1: Failed to query (GET_CUR) UVC control 1 on unit 3: -32 (exp. 1024).
+Jul 10 21:03:25 kria kernel: usb 2-1.1: Failed to query (GET_CUR) UVC control 1 on unit 3: -32 (exp. 1024).
+Jul 10 21:03:26 kria kernel: usb 2-1.1: Failed to query (GET_CUR) UVC control 1 on unit 3: -32 (exp. 1024).
+Jul 10 21:03:35 kria kernel: usb 2-1.1: Failed to query (GET_CUR) UVC control 1 on unit 3: -32 (exp. 1024).
+Jul 10 21:03:36 kria kernel: usb 2-1.1: Failed to query (GET_CUR) UVC control 1 on unit 3: -32 (exp. 1024).
+Jul 10 21:03:42 kria kernel: zocl-drm axi:zyxclmm_drm:  ffff2086840e9c10 kds_del_context: Client pid(34608) del context Domain(0) CU(0x1)
+Jul 10 21:03:42 kria kernel: [drm] bitstream d0af154e-769f-dc2d-8555-420ae4a7919b unlocked, ref=2
+Jul 10 21:03:42 kria kernel: zocl-drm axi:zyxclmm_drm: zocl_destroy_client: client exits pid(34608)
+Jul 10 21:03:42 kria kernel: zocl-drm axi:zyxclmm_drm:  ffff2086840e9c10 kds_del_context: Client pid(34608) del context Domain(0) CU(0x1)
+Jul 10 21:03:42 kria kernel: [drm] bitstream d0af154e-769f-dc2d-8555-420ae4a7919b unlocked, ref=1
+Jul 10 21:03:42 kria kernel: zocl-drm axi:zyxclmm_drm: zocl_destroy_client: client exits pid(34608)
+Jul 10 21:03:42 kria kernel: zocl-drm axi:zyxclmm_drm:  ffff2086840e9c10 kds_del_context: Client pid(34608) del context Domain(0) CU(0x0)
+Jul 10 21:03:42 kria kernel: [drm] bitstream d0af154e-769f-dc2d-8555-420ae4a7919b unlocked, ref=0
+Jul 10 21:03:42 kria kernel: zocl-drm axi:zyxclmm_drm: zocl_destroy_client: client exits pid(34608)
+Jul 10 21:03:42 kria kernel: zocl-drm axi:zyxclmm_drm: zocl_destroy_client: client exits pid(34608)
+Jul 10 21:03:45 kria kernel: usb 2-1.1: Failed to query (GET_CUR) UVC control 1 on unit 3: -32 (exp. 1024).
+Jul 10 21:03:47 kria kernel: zocl-drm axi:zyxclmm_drm: zocl_create_client: created KDS client for pid(34884), ret: 0
+Jul 10 21:03:47 kria kernel: zocl-drm axi:zyxclmm_drm: zocl_destroy_client: client exits pid(34884)
+Jul 10 21:03:47 kria kernel: zocl-drm axi:zyxclmm_drm: zocl_create_client: created KDS client for pid(34884), ret: 0
+Jul 10 21:03:47 kria kernel: zocl-drm axi:zyxclmm_drm: zocl_destroy_client: client exits pid(34884)
+Jul 10 21:03:47 kria kernel: zocl-drm axi:zyxclmm_drm: zocl_create_client: created KDS client for pid(34884), ret: 0
+Jul 10 21:03:47 kria kernel: zocl-drm axi:zyxclmm_drm: zocl_destroy_client: client exits pid(34884)
+Jul 10 21:03:47 kria kernel: zocl-drm axi:zyxclmm_drm: zocl_create_client: created KDS client for pid(34884), ret: 0
+Jul 10 21:03:47 kria kernel: zocl-drm axi:zyxclmm_drm: zocl_destroy_client: client exits pid(34884)
+Jul 10 21:03:47 kria kernel: zocl-drm axi:zyxclmm_drm: zocl_create_client: created KDS client for pid(34884), ret: 0
+Jul 10 21:03:47 kria kernel: zocl-drm axi:zyxclmm_drm: zocl_destroy_client: client exits pid(34884)
+Jul 10 21:03:47 kria kernel: zocl-drm axi:zyxclmm_drm: zocl_create_client: created KDS client for pid(34884), ret: 0
+Jul 10 21:03:47 kria kernel: zocl-drm axi:zyxclmm_drm: zocl_destroy_client: client exits pid(34884)
+Jul 10 21:03:47 kria kernel: zocl-drm axi:zyxclmm_drm: zocl_create_client: created KDS client for pid(34884), ret: 0
+Jul 10 21:03:47 kria kernel: [drm] skip kind 29(AIE_RESOURCES) return code: -22
+Jul 10 21:03:47 kria kernel: [drm] zocl_xclbin_read_axlf The XCLBIN already loaded
+Jul 10 21:03:47 kria kernel: [drm] zocl_xclbin_read_axlf d0af154e-769f-dc2d-8555-420ae4a7919b ret: 0
+Jul 10 21:03:47 kria kernel: [drm] bitstream d0af154e-769f-dc2d-8555-420ae4a7919b locked, ref=1
+Jul 10 21:03:47 kria kernel: zocl-drm axi:zyxclmm_drm:  ffff2086840e9c10 kds_add_context: Client pid(34884) add context Domain(0) CU(0xffffffff) shared(true)
+Jul 10 21:03:47 kria kernel: zocl-drm axi:zyxclmm_drm:  ffff2086840e9c10 kds_del_context: Client pid(34884) del context Domain(0) CU(0xffffffff)
+Jul 10 21:03:47 kria kernel: [drm] bitstream d0af154e-769f-dc2d-8555-420ae4a7919b unlocked, ref=0
+Jul 10 21:03:47 kria kernel: zocl-drm axi:zyxclmm_drm: zocl_create_client: created KDS client for pid(34884), ret: 0
+Jul 10 21:03:47 kria kernel: zocl-drm axi:zyxclmm_drm: zocl_destroy_client: client exits pid(34884)
+Jul 10 21:03:47 kria kernel: zocl-drm axi:zyxclmm_drm: zocl_create_client: created KDS client for pid(34884), ret: 0
+Jul 10 21:03:47 kria kernel: [drm] bitstream d0af154e-769f-dc2d-8555-420ae4a7919b locked, ref=1
+Jul 10 21:03:47 kria kernel: zocl-drm axi:zyxclmm_drm:  ffff2086840e9c10 kds_add_context: Client pid(34884) add context Domain(0) CU(0x1) shared(true)
+Jul 10 21:03:47 kria kernel: zocl-drm axi:zyxclmm_drm: zocl_create_client: created KDS client for pid(34884), ret: 0
+Jul 10 21:03:47 kria kernel: zocl-drm axi:zyxclmm_drm: zocl_destroy_client: client exits pid(34884)
+Jul 10 21:03:47 kria kernel: zocl-drm axi:zyxclmm_drm: zocl_create_client: created KDS client for pid(34884), ret: 0
+Jul 10 21:03:47 kria kernel: [drm] bitstream d0af154e-769f-dc2d-8555-420ae4a7919b locked, ref=2
+Jul 10 21:03:47 kria kernel: zocl-drm axi:zyxclmm_drm:  ffff2086840e9c10 kds_add_context: Client pid(34884) add context Domain(0) CU(0x0) shared(true)
+Jul 10 21:03:47 kria kernel: zocl-drm axi:zyxclmm_drm: zocl_create_client: created KDS client for pid(34884), ret: 0
+Jul 10 21:03:47 kria kernel: zocl-drm axi:zyxclmm_drm: zocl_destroy_client: client exits pid(34884)
+Jul 10 21:03:47 kria kernel: zocl-drm axi:zyxclmm_drm: zocl_create_client: created KDS client for pid(34884), ret: 0
+Jul 10 21:03:47 kria kernel: [drm] bitstream d0af154e-769f-dc2d-8555-420ae4a7919b locked, ref=3
+Jul 10 21:03:47 kria kernel: zocl-drm axi:zyxclmm_drm:  ffff2086840e9c10 kds_add_context: Client pid(34884) add context Domain(0) CU(0x1) shared(true)
+Jul 10 21:03:48 kria kernel: zocl-drm axi:zyxclmm_drm:  ffff2086840e9c10 kds_del_context: Client pid(34884) del context Domain(0) CU(0x1)
+Jul 10 21:03:48 kria kernel: [drm] bitstream d0af154e-769f-dc2d-8555-420ae4a7919b unlocked, ref=2
+Jul 10 21:03:48 kria kernel: zocl-drm axi:zyxclmm_drm: zocl_destroy_client: client exits pid(34884)
+Jul 10 21:03:48 kria kernel: zocl-drm axi:zyxclmm_drm:  ffff2086840e9c10 kds_del_context: Client pid(34884) del context Domain(0) CU(0x1)
+Jul 10 21:03:48 kria kernel: [drm] bitstream d0af154e-769f-dc2d-8555-420ae4a7919b unlocked, ref=1
+Jul 10 21:03:48 kria kernel: zocl-drm axi:zyxclmm_drm: zocl_destroy_client: client exits pid(34884)
+Jul 10 21:03:48 kria kernel: zocl-drm axi:zyxclmm_drm:  ffff2086840e9c10 kds_del_context: Client pid(34884) del context Domain(0) CU(0x0)
+Jul 10 21:03:48 kria kernel: [drm] bitstream d0af154e-769f-dc2d-8555-420ae4a7919b unlocked, ref=0
+Jul 10 21:03:48 kria kernel: zocl-drm axi:zyxclmm_drm: zocl_destroy_client: client exits pid(34884)
+Jul 10 21:03:48 kria kernel: zocl-drm axi:zyxclmm_drm: zocl_destroy_client: client exits pid(34884)
+Jul 10 21:04:42 kria kernel: usb 2-1.1: Failed to query (GET_CUR) UVC control 1 on unit 3: -32 (exp. 1024).
+Jul 10 21:04:43 kria kernel: uvcvideo 2-1.1:1.1: Non-zero status (-71) in video completion handler.
+Jul 10 21:04:43 kria kernel: usb 2-1.1: Failed to query (GET_CUR) UVC control 1 on unit 3: -32 (exp. 1024).
+Jul 10 21:04:43 kria kernel: usb 2-1.1: Failed to query (GET_CUR) UVC control 1 on unit 3: -32 (exp. 1024).
+Jul 10 21:04:43 kria kernel: usb 2-1.1: Failed to query (GET_CUR) UVC control 1 on unit 3: -32 (exp. 1024).
+Jul 10 21:04:43 kria kernel: uvcvideo 2-1.1:1.4: Non-zero status (-71) in video completion handler.
+Jul 10 21:04:43 kria kernel: usb 2-1.1: Failed to query (GET_CUR) UVC control 1 on unit 3: -32 (exp. 1024).
+Jul 10 21:04:43 kria kernel: usb 2-1.1: Failed to query (GET_CUR) UVC control 1 on unit 3: -32 (exp. 1024).
+Jul 10 21:04:44 kria kernel: usb 2-1.1: Failed to query (GET_CUR) UVC control 1 on unit 3: -32 (exp. 1024).
+Jul 10 21:04:44 kria kernel: usb 2-1.1: Failed to query (GET_CUR) UVC control 1 on unit 3: -32 (exp. 1024).
+Jul 10 21:04:47 kria kernel: usb 2-1.1: Failed to query (GET_CUR) UVC control 1 on unit 3: -32 (exp. 1024).
+Jul 10 21:04:53 kria kernel: zocl-drm axi:zyxclmm_drm: zocl_create_client: created KDS client for pid(35185), ret: 0
+Jul 10 21:04:53 kria kernel: zocl-drm axi:zyxclmm_drm: zocl_destroy_client: client exits pid(35185)
+Jul 10 21:04:53 kria kernel: zocl-drm axi:zyxclmm_drm: zocl_create_client: created KDS client for pid(35185), ret: 0
+Jul 10 21:04:53 kria kernel: zocl-drm axi:zyxclmm_drm: zocl_destroy_client: client exits pid(35185)
+Jul 10 21:04:53 kria kernel: zocl-drm axi:zyxclmm_drm: zocl_create_client: created KDS client for pid(35185), ret: 0
+Jul 10 21:04:53 kria kernel: zocl-drm axi:zyxclmm_drm: zocl_destroy_client: client exits pid(35185)
+Jul 10 21:04:53 kria kernel: zocl-drm axi:zyxclmm_drm: zocl_create_client: created KDS client for pid(35185), ret: 0
+Jul 10 21:04:53 kria kernel: zocl-drm axi:zyxclmm_drm: zocl_destroy_client: client exits pid(35185)
+Jul 10 21:04:53 kria kernel: zocl-drm axi:zyxclmm_drm: zocl_create_client: created KDS client for pid(35185), ret: 0
+Jul 10 21:04:53 kria kernel: zocl-drm axi:zyxclmm_drm: zocl_destroy_client: client exits pid(35185)
+Jul 10 21:04:53 kria kernel: zocl-drm axi:zyxclmm_drm: zocl_create_client: created KDS client for pid(35185), ret: 0
+Jul 10 21:04:53 kria kernel: zocl-drm axi:zyxclmm_drm: zocl_destroy_client: client exits pid(35185)
+Jul 10 21:04:53 kria kernel: zocl-drm axi:zyxclmm_drm: zocl_create_client: created KDS client for pid(35185), ret: 0
+Jul 10 21:04:53 kria kernel: [drm] skip kind 29(AIE_RESOURCES) return code: -22
+Jul 10 21:04:53 kria kernel: [drm] zocl_xclbin_read_axlf The XCLBIN already loaded
+Jul 10 21:04:53 kria kernel: [drm] zocl_xclbin_read_axlf d0af154e-769f-dc2d-8555-420ae4a7919b ret: 0
+Jul 10 21:04:53 kria kernel: [drm] bitstream d0af154e-769f-dc2d-8555-420ae4a7919b locked, ref=1
+Jul 10 21:04:53 kria kernel: zocl-drm axi:zyxclmm_drm:  ffff2086840e9c10 kds_add_context: Client pid(35185) add context Domain(0) CU(0xffffffff) shared(true)
+Jul 10 21:04:53 kria kernel: zocl-drm axi:zyxclmm_drm:  ffff2086840e9c10 kds_del_context: Client pid(35185) del context Domain(0) CU(0xffffffff)
+Jul 10 21:04:53 kria kernel: [drm] bitstream d0af154e-769f-dc2d-8555-420ae4a7919b unlocked, ref=0
+Jul 10 21:04:53 kria kernel: zocl-drm axi:zyxclmm_drm: zocl_create_client: created KDS client for pid(35185), ret: 0
+Jul 10 21:04:53 kria kernel: zocl-drm axi:zyxclmm_drm: zocl_destroy_client: client exits pid(35185)
+Jul 10 21:04:53 kria kernel: zocl-drm axi:zyxclmm_drm: zocl_create_client: created KDS client for pid(35185), ret: 0
+Jul 10 21:04:53 kria kernel: [drm] bitstream d0af154e-769f-dc2d-8555-420ae4a7919b locked, ref=1
+Jul 10 21:04:53 kria kernel: zocl-drm axi:zyxclmm_drm:  ffff2086840e9c10 kds_add_context: Client pid(35185) add context Domain(0) CU(0x1) shared(true)
+Jul 10 21:04:53 kria kernel: zocl-drm axi:zyxclmm_drm: zocl_create_client: created KDS client for pid(35185), ret: 0
+Jul 10 21:04:53 kria kernel: zocl-drm axi:zyxclmm_drm: zocl_destroy_client: client exits pid(35185)
+Jul 10 21:04:53 kria kernel: zocl-drm axi:zyxclmm_drm: zocl_create_client: created KDS client for pid(35185), ret: 0
+Jul 10 21:04:53 kria kernel: [drm] bitstream d0af154e-769f-dc2d-8555-420ae4a7919b locked, ref=2
+Jul 10 21:04:53 kria kernel: zocl-drm axi:zyxclmm_drm:  ffff2086840e9c10 kds_add_context: Client pid(35185) add context Domain(0) CU(0x0) shared(true)
+Jul 10 21:04:53 kria kernel: zocl-drm axi:zyxclmm_drm: zocl_create_client: created KDS client for pid(35185), ret: 0
+Jul 10 21:04:53 kria kernel: zocl-drm axi:zyxclmm_drm: zocl_destroy_client: client exits pid(35185)
+Jul 10 21:04:53 kria kernel: zocl-drm axi:zyxclmm_drm: zocl_create_client: created KDS client for pid(35185), ret: 0
+Jul 10 21:04:53 kria kernel: [drm] bitstream d0af154e-769f-dc2d-8555-420ae4a7919b locked, ref=3
+Jul 10 21:04:53 kria kernel: zocl-drm axi:zyxclmm_drm:  ffff2086840e9c10 kds_add_context: Client pid(35185) add context Domain(0) CU(0x1) shared(true)
+Jul 10 21:05:00 kria kernel: usb 2-1.1: Failed to query (GET_CUR) UVC control 1 on unit 3: -32 (exp. 1024).
+Jul 10 21:05:04 kria kernel: usb 2-1.1: Failed to query (GET_CUR) UVC control 1 on unit 3: -32 (exp. 1024).
+Jul 10 21:05:05 kria kernel: usb 2-1.1: Failed to query (GET_CUR) UVC control 1 on unit 3: -32 (exp. 1024).
+Jul 10 21:05:19 kria systemd[1]: Starting Daily man-db regeneration...
+Jul 10 21:05:22 kria systemd[1]: man-db.service: Deactivated successfully.
+Jul 10 21:05:22 kria systemd[1]: Finished Daily man-db regeneration.
+Jul 10 21:05:22 kria systemd[1]: man-db.service: Consumed 2.263s CPU time.
+Jul 10 21:05:26 kria kernel: Unable to handle kernel paging request at virtual address 003ac012c80b6228
+Jul 10 21:05:26 kria kernel: Mem abort info:
+Jul 10 21:05:26 kria kernel:   ESR = 0x0000000096000004
+Jul 10 21:05:26 kria kernel:   EC = 0x25: DABT (current EL), IL = 32 bits
+Jul 10 21:05:26 kria kernel:   SET = 0, FnV = 0
+Jul 10 21:05:26 kria kernel:   EA = 0, S1PTW = 0
+Jul 10 21:05:27 kria kernel:   FSC = 0x04: level 0 translation fault

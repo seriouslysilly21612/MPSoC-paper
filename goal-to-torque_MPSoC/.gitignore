@@ -1,0 +1,28 @@
+# build products
+indy7/obj/
+indy7/bin/
+humanoid/obj/
+humanoid/bin/
+calib/save_camera_params
+__pycache__/
+*.pyc
+
+# the ROS 2 workspace (see also ros2/.gitignore)
+ros2/build/
+ros2/install/
+ros2/log/
+
+# the results of the runs
+indy7/jt_*/
+humanoid/summary_*.txt
+humanoid/hl_goals.csv
+humanoid/joint_test.csv
+humanoid/joint_test_meta.txt
+timing_*/
+calib/data/
+*.changes.log
+kernel.errors.txt
+
+# copies of the cfg (README.md); INDY7.cfg is the cfg of the experiments
+indy7/*.cfg
+!indy7/INDY7.cfg

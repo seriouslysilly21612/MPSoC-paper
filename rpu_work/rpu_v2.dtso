@@ -1,0 +1,50 @@
+/dts-v1/;
+/plugin/;
+
+&{/} {
+    #address-cells = <2>;
+    #size-cells = <2>;
+
+    reserved-memory {
+        #address-cells = <2>;
+        #size-cells = <2>;
+        ranges;
+
+        rproc_0_reserved: rproc@36000000 {
+            no-map;
+            reg = <0x0 0x36000000 0x0 0x400000>;
+        };
+    };
+
+    tcm_0a: tcm@ffe00000 {
+        compatible = "mmio-sram";
+        reg = <0x0 0xffe00000 0x0 0x10000>;
+        status = "okay";
+        power-domain = <&zynqmp_firmware 15>;
+    };
+    tcm_0b: tcm@ffe20000 {
+        compatible = "mmio-sram";
+        reg = <0x0 0xffe20000 0x0 0x10000>;
+        status = "okay";
+        power-domain = <&zynqmp_firmware 16>;
+    };
+
+    rf5ss@ff9a0000 {
+        compatible = "xlnx,zynqmp-r5-remoteproc";
+        #address-cells = <2>;
+        #size-cells = <2>;
+        ranges;
+        xlnx,cluster-mode = <1>;
+        reg = <0x0 0xff9a0000 0x0 0x100>;
+
+        r5f_0 {
+            compatible = "xilinx,r5f";
+            #address-cells = <2>;
+            #size-cells = <2>;
+            ranges;
+            sram = <&tcm_0a>, <&tcm_0b>;
+            memory-region = <&rproc_0_reserved>;
+            power-domain = <&zynqmp_firmware 7>;
+        };
+    };
+};

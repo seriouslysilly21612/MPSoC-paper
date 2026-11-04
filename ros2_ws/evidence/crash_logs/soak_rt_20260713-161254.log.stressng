@@ -1,0 +1,2 @@
+stress-ng: info:  [4194] setting to a 1200 second (20 mins, 0.00 secs) run per stressor
+stress-ng: info:  [4194] dispatching hogs: 4 cpu, 2 vm, 4 fork, 2 clone, 2 pthread, 1 sysfs
