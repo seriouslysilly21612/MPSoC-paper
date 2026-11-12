@@ -1,0 +1,6 @@
+/dts-v1/;
+/plugin/;
+/* GEM3 (ethernet@ff0e0000, 보드의 유일한 RJ45)는 R5가 쓴다: 리눅스는 probe하지 말 것 */
+&{/axi/ethernet@ff0e0000} {
+    status = "disabled";
+};

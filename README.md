@@ -7,7 +7,7 @@ vision pipeline and the RPU, with their calibration and analysis tools.
 |---|---|---|
 | `goal-to-torque_MPSoC/` | the real-time controller of the Neuromeka Indy7: three 1 kHz tasks on the isolated CPU 3 (EtherCAT, trajectory, computed torque), the MuJoCo simulation, the ROS 2 bridge to the camera pipeline; `calib/` the hand-eye calibration, `tools/` the checks and the analysis of the logs. Its `README.md`, section "This copy: the Kria KV260", has the build, the host configuration and the runs. | APU (Cortex-A53), PREEMPT_RT |
 | `ros2_ws/` | the camera pipeline (ROS 2 Humble): RealSense D435i, YOLOv3-tiny on the DPU, the choice of the target, its 3-D position in `base_link` (`/pick_target_base`); the detector training, the desktop viewer, the documents and measurements of the development (`docs/`, `evidence/`) | APU + DPU (PL) |
-| `rpu_work/` | the FreeRTOS firmware of the R5F-0 and the device tree it boots with (`user-override.dtb` = `base.dtb` + `rpu_v2.dtbo`) | RPU |
+| `rpu_work/` | the FreeRTOS firmware of the R5F-0 and the device tree it boots with (`user-override.dtb` = `base.dtb` + `rpu_v2.dtbo`, the first test: GEM3 still in Linux); `gem3_off.dtso` the overlay that leaves GEM3 to the R5; `r5_freertos/` the EtherCAT master on GEM3 (SOEM): its source, build settings, binary and the device tree it boots with | RPU |
 
 Start:
 
