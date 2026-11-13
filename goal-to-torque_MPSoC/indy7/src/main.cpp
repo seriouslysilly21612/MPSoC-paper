@@ -2,13 +2,16 @@
 *	Name: main.cpp
 *	Description: The controller of the Indy7 (paper, Fig. 1).
 *
-*	    indy7_ctrl [-f FILE] [-s | -b] [-t DIR]
+*	    indy7_ctrl [-f FILE] [-s | -b [-B FILE]] [-t DIR]
 *
 *	  -f FILE  the configuration; without it ./INDY7.cfg, then INDY7.cfg in
 *	           the directory above the program (bin/..)
 *	  -s       simulation: MuJoCo in place of the bus (paper, Sec. IV, V)
 *	  -b       the bus of the robot in OP with its drives kept off, beside the
 *	           simulated arm (the host-timing test, paper, Sec. III-C)
+*	  -B FILE  with -b: the slaves of the bus from FILE instead of the
+*	           configuration ([ECAT_MASTER] SLAVENUMBER and [AXIS0].., e.g.
+*	           bench/L7N4_bus.cfg); the arm stays that of the configuration
 *	  -t DIR   the timing of every period into DIR (TimingLog.h,
 *	           tools/timing_summary.py)
 *
@@ -41,10 +44,11 @@ void SignalHandler(int)
 
 void Usage(const char* apcProg)
 {
-	fprintf(stderr, "usage: %s [-f FILE] [-s | -b] [-t DIR]\n"
+	fprintf(stderr, "usage: %s [-f FILE] [-s | -b [-B FILE]] [-t DIR]\n"
 	        "  -f FILE  configuration (default: ./INDY7.cfg, then <program dir>/../INDY7.cfg)\n"
 	        "  -s       simulation: MuJoCo in place of the bus\n"
 	        "  -b       the bus of the robot, drives off, beside the simulated arm (host-timing test)\n"
+	        "  -B FILE  with -b: the slaves of the bus from FILE (e.g. bench/L7N4_bus.cfg)\n"
 	        "  -t DIR   timing of every period into DIR\n", apcProg);
 }
 
@@ -56,16 +60,17 @@ int main(int argc, char** argv)
 	struct termios stTermios;
 	const bool bTermios = (0 == tcgetattr(STDIN_FILENO, &stTermios));
 
-	TSTRING strCfg, strTimingDir;
+	TSTRING strCfg, strTimingDir, strBusCfg;
 	BOOL bSim = FALSE, bHybrid = FALSE;
 	int nOpt;
-	while ((nOpt = getopt(argc, argv, "f:sbt:h")) != -1)
+	while ((nOpt = getopt(argc, argv, "f:sbB:t:h")) != -1)
 	{
 		switch (nOpt)
 		{
 			case 'f': strCfg = optarg; break;
 			case 's': bSim = TRUE; break;
 			case 'b': bHybrid = TRUE; bSim = TRUE; break;   // the arm is simulated as with -s
+			case 'B': strBusCfg = optarg; break;
 			case 't': strTimingDir = optarg; break;
 			default:
 				Usage(argv[0]);
@@ -80,9 +85,25 @@ int main(int argc, char** argv)
 		Usage(argv[0]);
 		return 1;
 	}
-	DBG_LOG_INFO("configuration %s: %s", cConfig.Path().c_str(),
-	             bHybrid ? "-b, the bus of the robot (drives off) beside the simulated arm" :
-	             cConfig.System().bSim ? "simulation, MuJoCo in place of the bus" : "the robot");
+	// -B FILE: another bus beside the simulated arm, so only with -b
+	if (!strBusCfg.empty())
+	{
+		if (!bHybrid)
+		{
+			DBG_LOG_ERROR("-B %s: only with -b", strBusCfg.c_str());
+			Usage(argv[0]);
+			return 1;
+		}
+		if (FALSE == cConfig.LoadBus(strBusCfg))
+		{
+			Usage(argv[0]);
+			return 1;
+		}
+	}
+	DBG_LOG_INFO("configuration %s: %s%s%s", cConfig.Path().c_str(),
+	             bHybrid ? "-b, the bus (drives off) beside the simulated arm" :
+	             cConfig.System().bSim ? "simulation, MuJoCo in place of the bus" : "the robot",
+	             cConfig.BusPath().empty() ? "" : ", the bus from ", cConfig.BusPath().c_str());
 
 	// SIGINT and SIGTERM stop the tasks (the real-time tasks block both)
 	struct sigaction stSa;

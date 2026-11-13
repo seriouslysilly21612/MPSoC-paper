@@ -92,7 +92,7 @@ runs in OP with its drives kept off while the simulated arm is controlled (the h
 
 | Directory | Content |
 |---|---|
-| `indy7/` | the controller: `src/` (tasks, control law, high-level controller, EtherCAT layer, simulation), `INDY7.cfg` (all parameters, with the values of the experiments), `models/` (URDF, MuJoCo model), `Makefile`, `run.sh` |
+| `indy7/` | the controller: `src/` (tasks, control law, high-level controller, EtherCAT layer, simulation), `INDY7.cfg` (all parameters, with the values of the experiments), `models/` (URDF, MuJoCo model), `bench/` (the bus of the L7N bench for `-b -B`), `Makefile`, `run.sh` |
 | `tools/` | offline checks, analysis of the logs (the tables and figures of the paper), identification, test runners, the viewer |
 | `tools/host/` | host setup and measurements: cyclictest (Table 4), the operating point of the CPU, the priority of the IgH master thread, the bus inventory |
 | `calib/` | the hand-eye calibration of the camera (eq. (10)) |
@@ -147,6 +147,7 @@ and the affinity of every task at its start and refuses to run otherwise.
     ./run.sh -s                # simulation: MuJoCo in place of the bus
     ./run.sh                   # the robot (the bus must be up: ethercat.service)
     ./run.sh -b -t DIR         # the bus of the robot in OP, drives off, beside the simulated arm; timing into DIR
+    ./run.sh -b -B bench/L7N4_bus.cfg -t DIR   # the same with another bus: the four L7N drives of the bench
 
 The keys of the operator are printed at the start and with `?`:
 

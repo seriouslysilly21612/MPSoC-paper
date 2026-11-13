@@ -14,6 +14,11 @@
 *	(the bus) and [AXIS0]..[AXIS6] (the slaves in the order of the bus: the
 *	six joint drives, then the end tool). Lengths of the high-level
 *	controller are given in mm in the file and kept in m here.
+*
+*	-B FILE (with -b, LoadBus): the slaves of the bus come from another file,
+*	its [ECAT_MASTER] SLAVENUMBER and [AXIS0].. (another bus than the robot,
+*	e.g. a bench of drives); the arm, the rest of [ECAT_MASTER] (cycle, send
+*	deadline, sync mode) and everything else stay those of this file.
 *****************************************************************************/
 #ifndef G2T_CONFIG_H
 #define G2T_CONFIG_H
@@ -140,10 +145,17 @@ public:
 	 * directory of the program (bin/..); the path that was found */
 	static TSTRING	Find			(const TSTRING& astrGiven, const char* apcArgv0);
 	BOOL			Load			(const TSTRING& astrPath, BOOL abForceSim);
+	/* -B FILE: the slaves of the bus from FILE (see the head of this file) */
+	BOOL			LoadBus			(const TSTRING& astrPath);
 
 	const ST_CONFIG_SYSTEM&			System	(	) const { return m_stSystem; }
 	const ST_CONFIG_ECAT_MASTER&	Master	(	) const { return m_stMaster; }
+	/* the joint drives of the arm and the end tool ([AXIS0].. of this file) */
 	const VEC_ECAT_SLAVE_CONF&		Slaves	(	) const { return m_vSlaves; }
+	/* the slaves of the bus: those of -B FILE, otherwise Slaves() */
+	const VEC_ECAT_SLAVE_CONF&		BusSlaves(	) const { return m_strBusPath.empty() ? m_vSlaves : m_vBusSlaves; }
+	/* -B FILE, empty without it */
+	const TSTRING&					BusPath	(	) const { return m_strBusPath; }
 	const VEC_TASK_CONF&			Tasks	(	) const { return m_vTasks; }
 	const TSTRING&					Path	(	) const { return m_strPath; }
 
@@ -160,6 +172,8 @@ private:
 	ST_CONFIG_ECAT_MASTER	m_stMaster;
 	VEC_ECAT_SLAVE_CONF		m_vSlaves;
 	VEC_TASK_CONF			m_vTasks;
+	TSTRING					m_strBusPath;
+	VEC_ECAT_SLAVE_CONF		m_vBusSlaves;
 };
 
 #endif // G2T_CONFIG_H

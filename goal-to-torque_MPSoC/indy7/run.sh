@@ -2,7 +2,7 @@
 # run.sh - start the controller with the limits and the environment it needs
 # (paper, Table 3):
 #
-#     ./run.sh [-f FILE] [-s | -b] [-t DIR]        the options of bin/indy7_ctrl
+#     ./run.sh [-f FILE] [-s | -b [-B FILE]] [-t DIR]   the options of bin/indy7_ctrl
 #
 # - The real-time priority limit must be at least 97 and the memlock limit
 #   unlimited, e.g. in /etc/security/limits.d/99-realtime.conf
