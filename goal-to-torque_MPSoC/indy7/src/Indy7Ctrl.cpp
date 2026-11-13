@@ -53,6 +53,47 @@ CRobotIndy7::~CRobotIndy7()
 	m_pSim = NULL;
 }
 
+/* the slaves of a list ([AXISn] of the configuration, or of -B FILE): a
+ * joint drive (SLAVE_TYPE=0) in cyclic synchronous torque mode with positive
+ * conversions, or an end tool (1); the counts of both */
+static BOOL CheckSlaveList(const VEC_ECAT_SLAVE_CONF& avSl, const char* apcWhere, int& anDrives, int& anTools)
+{
+	BOOL bOk = TRUE;
+	anDrives = 0;
+	anTools = 0;
+	for (size_t n = 0; n < avSl.size(); n++)
+	{
+		const ST_CONFIG_ECAT_SLAVE& s = avSl[n];
+		if (s.nSlaveType == 1)
+		{
+			anTools++;
+			continue;
+		}
+		if (s.nSlaveType != 0)
+		{
+			DBG_LOG_ERROR("(CRobotIndy7) %s[AXIS%u] SLAVE_TYPE=%d: 0 (joint drive) or 1 (end tool)", apcWhere,
+			              (unsigned)n, (int)s.nSlaveType);
+			bOk = FALSE;
+			continue;
+		}
+		anDrives++;
+		if (s.nDriveMode != CIndy7Joint::MODE_CYCLIC_TORQUE)
+		{
+			DBG_LOG_ERROR("(CRobotIndy7) %s[AXIS%u] DRIVE_MODE=%d: the controller runs the drives in cyclic "
+			              "synchronous torque mode (10)", apcWhere, (unsigned)n, (int)s.nDriveMode);
+			bOk = FALSE;
+		}
+		if (!(s.dEncResolution > 0.0 && s.dGearRatio > 0.0 && s.dTransRatio > 0.0 && s.dTorqueConstant > 0.0 &&
+		      s.dCurrentRatio > 0.0 && s.dTorLimitU > 0.0))
+		{
+			DBG_LOG_ERROR("(CRobotIndy7) %s[AXIS%u] ENCODER_RESOLUTION, GEAR_RATIO, TRANSMISSION_RATIO, "
+			              "TORQUE_CONSTANT, CURRENT_RATIO and TORQUE_LIMIT_U must be positive", apcWhere, (unsigned)n);
+			bOk = FALSE;
+		}
+	}
+	return bOk;
+}
+
 /* the values that the controller relies on, before anything starts */
 BOOL
 CRobotIndy7::CheckConfig()
@@ -73,41 +114,33 @@ CRobotIndy7::CheckConfig()
 		bOk = FALSE;
 	}
 	int nDrives = 0, nTools = 0;
-	for (size_t n = 0; n < m_pConfig->Slaves().size(); n++)
-	{
-		const ST_CONFIG_ECAT_SLAVE& s = m_pConfig->Slaves()[n];
-		if (s.nSlaveType == 1)
-		{
-			nTools++;
-			continue;
-		}
-		if (s.nSlaveType != 0)
-		{
-			DBG_LOG_ERROR("(CRobotIndy7) [AXIS%u] SLAVE_TYPE=%d: 0 (joint drive) or 1 (end tool)", (unsigned)n,
-			              (int)s.nSlaveType);
-			bOk = FALSE;
-			continue;
-		}
-		nDrives++;
-		if (s.nDriveMode != CIndy7Joint::MODE_CYCLIC_TORQUE)
-		{
-			DBG_LOG_ERROR("(CRobotIndy7) [AXIS%u] DRIVE_MODE=%d: the controller runs the drives in cyclic "
-			              "synchronous torque mode (10)", (unsigned)n, (int)s.nDriveMode);
-			bOk = FALSE;
-		}
-		if (!(s.dEncResolution > 0.0 && s.dGearRatio > 0.0 && s.dTransRatio > 0.0 && s.dTorqueConstant > 0.0 &&
-		      s.dCurrentRatio > 0.0 && s.dTorLimitU > 0.0))
-		{
-			DBG_LOG_ERROR("(CRobotIndy7) [AXIS%u] ENCODER_RESOLUTION, GEAR_RATIO, TRANSMISSION_RATIO, "
-			              "TORQUE_CONSTANT, CURRENT_RATIO and TORQUE_LIMIT_U must be positive", (unsigned)n);
-			bOk = FALSE;
-		}
-	}
+	if (FALSE == CheckSlaveList(m_pConfig->Slaves(), "", nDrives, nTools))
+		bOk = FALSE;
 	if (nDrives != stSys.nRobotAxis || nTools > 1)
 	{
 		DBG_LOG_ERROR("(CRobotIndy7) [ECAT_MASTER] SLAVENUMBER=%d: %d joint drives and %d end tools, %d and at "
 		              "most 1 expected", (int)stM.nNoOfSlaves, nDrives, nTools, (int)stSys.nRobotAxis);
 		bOk = FALSE;
+	}
+	// -B FILE (with -b): the bus is the list of FILE; the arm, its joints and
+	// their torque limits stay those of [AXIS0].. of the configuration
+	if (!m_pConfig->BusPath().empty())
+	{
+		const char* pcBus = m_pConfig->BusPath().c_str();
+		int nBusDrives = 0, nBusTools = 0;
+		if (!m_bHybridBus)
+		{
+			DBG_LOG_ERROR("(CRobotIndy7) -B %s: only with -b", pcBus);
+			bOk = FALSE;
+		}
+		if (FALSE == CheckSlaveList(m_pConfig->BusSlaves(), "-B: ", nBusDrives, nBusTools))
+			bOk = FALSE;
+		if (nBusDrives < 1 || nBusTools > 1)
+		{
+			DBG_LOG_ERROR("(CRobotIndy7) -B %s: %d joint drives and %d end tools, at least 1 and at most 1 "
+			              "expected", pcBus, nBusDrives, nBusTools);
+			bOk = FALSE;
+		}
 	}
 	if ((int)vT.size() != N_TASKS)
 	{
@@ -622,6 +655,8 @@ CRobotIndy7::StartTimingLog()
 		         m_pcEcatMaster->GetSlaveCnt(), CConfig::SyncModeName(stM.nSyncMode),
 		         stM.nSyncMode == eSyncDc ? (int)stM.nDcSync0Shift : 0);
 		strHead += acLine;
+		// the file the slaves of the bus came from: the cfg, or -B FILE (another bus, e.g. the L7N bench)
+		strHead += "bus_cfg=" + (m_pConfig->BusPath().empty() ? m_pConfig->Path() : m_pConfig->BusPath()) + "\n";
 	}
 	snprintf(acLine, sizeof(acLine), "cfg=%s\nhost=%s\nkernel=%s\ncreated=%s\ncmdline=%s\ncall_timing=%d\n",
 	         m_pConfig->Path().c_str(), acHost, stU.release, acStamp, acCmd, call_timing::g_bOn ? 1 : 0);
@@ -963,12 +998,13 @@ CRobotIndy7::SetControllerMode(CControllerFullDynamicsRT::eControlMode aeMode)
 }
 
 // the bus of the robot: the joint drives and the end tool in the order of the
-// cfg ([AXIS0]..). With -b the joint drives are not joints of the arm.
+// cfg ([AXIS0]..). With -b the joint drives are not joints of the arm; with
+// -B FILE (only with -b) the bus is the list of FILE.
 BOOL
 CRobotIndy7::InitEtherCAT()
 {
 	const ST_CONFIG_ECAT_MASTER& stM = m_pConfig->Master();
-	const VEC_ECAT_SLAVE_CONF& vSl = m_pConfig->Slaves();
+	const VEC_ECAT_SLAVE_CONF& vSl = m_pConfig->BusSlaves();
 	m_pcEcatMaster = new CEcatMaster();
 	for (size_t n = 0; n < vSl.size(); n++)
 	{
@@ -993,8 +1029,9 @@ CRobotIndy7::InitEtherCAT()
 		for (CIndy7Joint* p : m_vDrives)
 			m_vJoints.push_back(p);
 	else
-		DBG_LOG_INFO("(CRobotIndy7) -b: %u joint drives and %s of the robot; the drives stay off: OP, power stage "
-		             "off, brakes engaged", (unsigned)m_vDrives.size(), m_pEndTool ? "the end tool" : "no end tool");
+		DBG_LOG_INFO("(CRobotIndy7) -b: %u joint drives and %s of %s; the drives stay off: OP, power stage "
+		             "off, brakes engaged", (unsigned)m_vDrives.size(), m_pEndTool ? "the end tool" : "no end tool",
+		             m_pConfig->BusPath().empty() ? "the robot" : m_pConfig->BusPath().c_str());
 	return TRUE;
 }
 

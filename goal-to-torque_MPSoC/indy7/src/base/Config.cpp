@@ -302,6 +302,44 @@ TSTRING DirOf(const TSTRING& astrPath)
 	return (uSlash == TSTRING::npos) ? TSTRING(".") : astrPath.substr(0, uSlash == 0 ? 1 : uSlash);
 }
 
+/* the slaves [AXIS0]..[AXIS<anNo - 1>] of a file (the configuration, or the
+ * bus file of -B) into avOut; their sections into avKnown */
+BOOL ReadSlaves(CCfgFile& acF, const TSTRING& astrPath, int anNo, VEC_ECAT_SLAVE_CONF& avOut,
+                std::vector<TSTRING>& avKnown)
+{
+	avOut.clear();
+	for (int n = 0; n < anNo; n++)
+	{
+		char acSec[16];
+		snprintf(acSec, sizeof(acSec), "AXIS%d", n);
+		avKnown.push_back(acSec);
+		if (!acF.HasSection(acSec))
+		{
+			DBG_LOG_ERROR("(CConfig) %s: SLAVENUMBER=%d, but no section [%s]", astrPath.c_str(), anNo, acSec);
+			return FALSE;
+		}
+		ST_CONFIG_ECAT_SLAVE stSl;
+		acF.String(acSec, "NAME", stSl.strName);
+		acF.Hex(acSec, "VENDOR_ID", stSl.uVendorID);
+		acF.Hex(acSec, "PRODUCT_CODE", stSl.uProductCode);
+		acF.Int(acSec, "SLAVE_TYPE", stSl.nSlaveType);
+		if (stSl.nSlaveType == 0)
+		{
+			acF.Bool(acSec, "MOVE_CCW", stSl.bCCW);
+			acF.Int(acSec, "DRIVE_MODE", stSl.nDriveMode);
+			acF.Double(acSec, "ENCODER_RESOLUTION", stSl.dEncResolution);
+			acF.Double(acSec, "GEAR_RATIO", stSl.dGearRatio);
+			acF.Double(acSec, "TRANSMISSION_RATIO", stSl.dTransRatio);
+			acF.Double(acSec, "TORQUE_CONSTANT", stSl.dTorqueConstant);
+			acF.Double(acSec, "CURRENT_RATIO", stSl.dCurrentRatio);
+			acF.Int(acSec, "HOME_POSITION_OFFSET", stSl.nHomePositionOffset);
+			acF.Double(acSec, "TORQUE_LIMIT_U", stSl.dTorLimitU);
+		}
+		avOut.push_back(stSl);
+	}
+	return TRUE;
+}
+
 } // namespace
 
 CConfig::CConfig()
@@ -534,38 +572,41 @@ CConfig::Parse()
 			return FALSE;
 		}
 	}
-	m_vSlaves.clear();
-	for (int n = 0; n < m.nNoOfSlaves; n++)
-	{
-		char acSec[16];
-		snprintf(acSec, sizeof(acSec), "AXIS%d", n);
-		vKnown.push_back(acSec);
-		if (!cF.HasSection(acSec))
-		{
-			DBG_LOG_ERROR("(CConfig) SLAVENUMBER=%d, but no section [%s]", (int)m.nNoOfSlaves, acSec);
-			return FALSE;
-		}
-		ST_CONFIG_ECAT_SLAVE stSl;
-		cF.String(acSec, "NAME", stSl.strName);
-		cF.Hex(acSec, "VENDOR_ID", stSl.uVendorID);
-		cF.Hex(acSec, "PRODUCT_CODE", stSl.uProductCode);
-		cF.Int(acSec, "SLAVE_TYPE", stSl.nSlaveType);
-		if (stSl.nSlaveType == 0)
-		{
-			cF.Bool(acSec, "MOVE_CCW", stSl.bCCW);
-			cF.Int(acSec, "DRIVE_MODE", stSl.nDriveMode);
-			cF.Double(acSec, "ENCODER_RESOLUTION", stSl.dEncResolution);
-			cF.Double(acSec, "GEAR_RATIO", stSl.dGearRatio);
-			cF.Double(acSec, "TRANSMISSION_RATIO", stSl.dTransRatio);
-			cF.Double(acSec, "TORQUE_CONSTANT", stSl.dTorqueConstant);
-			cF.Double(acSec, "CURRENT_RATIO", stSl.dCurrentRatio);
-			cF.Int(acSec, "HOME_POSITION_OFFSET", stSl.nHomePositionOffset);
-			cF.Double(acSec, "TORQUE_LIMIT_U", stSl.dTorLimitU);
-		}
-		m_vSlaves.push_back(stSl);
-	}
+	if (FALSE == ReadSlaves(cF, m_strPath, (int)m.nNoOfSlaves, m_vSlaves, vKnown))
+		return FALSE;
 
 	cF.ReportSections(vKnown);
 	cF.ReportUnused();
+	return TRUE;
+}
+
+/* -B FILE: [ECAT_MASTER] SLAVENUMBER and [AXIS0].. of FILE are the bus; any
+ * other key of FILE is reported as unknown (the cycle, the send deadline and
+ * the sync mode are those of the configuration) */
+BOOL
+CConfig::LoadBus(const TSTRING& astrPath)
+{
+	CCfgFile cF;
+	if (FALSE == cF.Read(astrPath))
+	{
+		DBG_LOG_ERROR("(CConfig) -B: cannot read %s", astrPath.c_str());
+		return FALSE;
+	}
+	INT32 nNo = 0;
+	cF.Int("ECAT_MASTER", "SLAVENUMBER", nNo);
+	if (nNo <= 0)
+	{
+		DBG_LOG_ERROR("(CConfig) -B %s: [ECAT_MASTER] SLAVENUMBER=%d, at least 1 expected", astrPath.c_str(),
+		              (int)nNo);
+		return FALSE;
+	}
+	std::vector<TSTRING> vKnown = {"ECAT_MASTER"};
+	VEC_ECAT_SLAVE_CONF vSl;
+	if (FALSE == ReadSlaves(cF, astrPath, (int)nNo, vSl, vKnown))
+		return FALSE;
+	cF.ReportSections(vKnown);
+	cF.ReportUnused();
+	m_vBusSlaves = vSl;
+	m_strBusPath = astrPath;
 	return TRUE;
 }

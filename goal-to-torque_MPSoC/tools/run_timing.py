@@ -7,7 +7,10 @@ intervals, 1-mm perturbations every 67 periods) for --duration s, the timing of 
 summary of tools/timing_summary.py (the row of Table 6).
 
   python3 tools/run_timing.py --condition idle|stress|perception [--duration 600] [--cfg indy7/INDY7.cfg]
-                              [--out DIR] [--settle 30] [--direct]
+                              [--bus FILE] [--out DIR] [--settle 30] [--direct]
+
+  --bus FILE  another bus than that of the cfg (indy7 -B FILE, e.g. indy7/bench/L7N4_bus.cfg, the L7N
+              bench); the arm and everything else stay those of the cfg; FILE is copied into OUT
 
   idle        nothing else runs on the host
   stress      stress-ng --taskset OTHERS --cpu 3 --vm 1 --vm-bytes 10% (KV260; the paper, Table 6: --cpu 14 --vm 2
@@ -34,6 +37,7 @@ import argparse
 import glob
 import os
 import re
+import shutil
 import subprocess
 import sys
 import time
@@ -124,6 +128,7 @@ def main():
     ap.add_argument('--settle', type=float, default=30.0, help='[s] in OP before the keys')
     ap.add_argument('--others', default=os.environ.get('OTHERS', '0-2'), help='CPUs of the stress-ng load')
     ap.add_argument('--direct', action='store_true', help='start bin/indy7_ctrl instead of run.sh (no limit check)')
+    ap.add_argument('--bus', help='-B FILE of the controller: the slaves of the bus from FILE (the L7N bench)')
     a = ap.parse_args()
 
     src = os.path.abspath(a.cfg)
@@ -147,6 +152,10 @@ def main():
             sys.exit('run_timing: the camera pipeline is not running (no %s): start it first' % ', '.join(missing))
 
     cmd = (['./bin/indy7_ctrl'] if a.direct else ['./run.sh']) + ['-f', cfg, '-b', '-t', out]
+    if a.bus:
+        bus = os.path.join(out, os.path.basename(a.bus))
+        shutil.copyfile(os.path.abspath(a.bus), bus)        # the bus of the run, kept beside its log
+        cmd += ['-B', bus]
     print('run_timing: %s (in %s)' % (' '.join(cmd), APP))
     c = Console(cmd, APP, dict(os.environ, MALLOC_ARENA_MAX='2'), os.path.join(out, 'console.txt'))
     code = 0
