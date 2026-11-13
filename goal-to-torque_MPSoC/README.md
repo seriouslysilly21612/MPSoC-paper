@@ -40,7 +40,8 @@ Build and checks (all passed on the board, 2026-11-02):
 
     cd indy7 && make && make tools        # [indy7] MUJOCO=1 ROS=1 MALLOC_COUNT=0
     ./bin/slot_check; ./bin/goal_filter_check; ./bin/hl_check models/indy7.urdf; ./bin/console_check
-    ./bin/model_check models/indy7.urdf models/indy7_mujoco.xml B=2.0,2.0,1.99649,0.87306,0.86394,0.84747
+    ./bin/model_check models/indy7.urdf models/indy7_mujoco.xml B=6.07917,6.68933,1.99649,0.87306,0.86394,0.84747
+    # B as in INDY7.cfg; until 2026-11-13 the controller bounded B at 2.0 (J1, J2), and this check used 2.0, 2.0
 
 The analysis tools need the `mujoco` Python package; it is in `~/opt/g2t_venv`, apart from the numpy of ROS 2:
 `~/opt/g2t_venv/bin/python tools/jt_run_sim.py ...`. On the board: `MALLOC_COUNT=1` 0 allocations, Fig. 4
@@ -207,7 +208,7 @@ Logs: the joint and high-level tests write a CSV and a JSON per run into `JOINT_
     ./bin/slot_check                                      # PASS: 0 inconsistent snapshots accepted
     ./bin/hl_check models/indy7.urdf                      # the reference contract, PASS
     ./bin/goal_filter_check                               # the goal checks of the bridge, PASS
-    ./bin/model_check models/indy7.urdf models/indy7_mujoco.xml B=2.0,2.0,1.99649,0.87306,0.86394,0.84747
+    ./bin/model_check models/indy7.urdf models/indy7_mujoco.xml B=6.07917,6.68933,1.99649,0.87306,0.86394,0.84747  # B as in INDY7.cfg
     python3 ../tools/phase_margin.py                      # Tables 7 (PM) and 8
     make clean && make MALLOC_COUNT=1 && ./run.sh -s      # 'r', 'g', 'h', 'u' 3: no allocation ([MALLOC] at the end)
 

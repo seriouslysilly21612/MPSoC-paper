@@ -1147,15 +1147,9 @@ CControllerFullDynamicsRT::SetRotorInertia(const std::vector<double>& avB)
 {
     if (avB.size() != m_uDOF)
         return;
-    // a cfg typo must not change the dynamics by orders of magnitude: [0, 2] kg m^2
-    bool bClamped = false;
-    for (unsigned int i = 0; i < m_uDOF; ++i) {
-        double d = avB[i];
-        if (!(d >= 0.0 && d <= 2.0)) { d = (d > 2.0) ? 2.0 : 0.0; bClamped = true; }
-        m_B[i] = d;
-    }
-    if (bClamped)
-        DBG_LOG_WARN("(%s) rotor inertia out of [0, 2] kg m^2 - clamped", "CControllerFullDynamicsRT");
+    // as identified (ROTOR_INERTIA_n, written by tools/identify_rotor.py --apply), without a bound
+    for (unsigned int i = 0; i < m_uDOF; ++i)
+        m_B[i] = avB[i];
     if (m_uDOF == 6)
         DBG_LOG_INFO("(%s) rotor inertias B [kg m^2]: [%.5f, %.5f, %.5f, %.5f, %.5f, %.5f]",
                      "CControllerFullDynamicsRT", m_B[0], m_B[1], m_B[2], m_B[3], m_B[4], m_B[5]);
