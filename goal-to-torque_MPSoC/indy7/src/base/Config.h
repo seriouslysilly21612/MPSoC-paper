@@ -102,6 +102,7 @@ typedef struct stConfigSystem
 	std::vector<double> vJtFastDq, vJtSlowDq;
 	double	dJtFastT, dJtSlowT, dJtDwell;
 	TSTRING	strJtLogDir;
+	BOOL	bHlLog;						// HL_LOG: the logs of the high-level tests (0: none, the long runs)
 	INT32	nTsJoint;  double dTsTau, dTsOn, dTsOff;  INT32 nTsRep;		// 5: torque step
 	INT32	nBaJoint;  double dBaRate, dBaMax, dBaQd; INT32 nBaRep;		// 6: breakaway
 	INT32	nSineJoint; double dSineAmp, dSineFreq; INT32 nSinePeriods;	// 7: sine

@@ -193,7 +193,7 @@ Logs: the joint and high-level tests write a CSV and a JSON per run into `JOINT_
 | Table 4 | | `tools/host/run_cyclictest.sh`, then `tools/host/cyclictest_summary.py` |
 | eq. (2), Table 5 | `indy7/src/ecat/Indy7Joint.cpp`, `INDY7.cfg` `[AXISn]` | `tools/host/bus_inventory.sh` (PDO mapping, sync objects) |
 | eq. (3), Fig. 2 | `indy7/src/TaskEtherCAT.cpp`, `SEND_DEADLINE` | |
-| Table 6, Fig. 3 | `indy7/src/TimingLog.h` (`-t`) | `tools/run_timing.py --condition idle|stress|perception`, `tools/timing_summary.py` |
+| Table 6, Fig. 3 | `indy7/src/TimingLog.h` (`-t`) | `tools/run_timing.py --condition idle|stress|perception|pressure`, `tools/timing_summary.py`; all conditions unattended: `tools/run_batch.py` |
 | eqs. (4), (5), Table 7 | `indy7/src/FullDynControllerRT.cpp` | `indy7/bin/model_check` (RBDL vs MuJoCo), `tools/phase_margin.py` (PM rows) |
 | eq. (6), Table 7 (B) | JOINT TEST 7 | `tools/sine_cfg.py`, `tools/identify_rotor.py` |
 | eq. (7), Table 7 (tau_s, K_f) | JOINT TESTs 6 and 4 | `tools/jt_breakaway.py`, `tools/kf_step.py` |
@@ -256,9 +256,20 @@ With the bus of the robot (drives in OP, power stages off), 10 min per condition
 
     python3 tools/run_timing.py --condition idle
     python3 tools/run_timing.py --condition stress
-    python3 tools/run_timing.py --condition perception       # with the camera pipeline running (ros2/README.md)
+    python3 tools/run_timing.py --condition perception       # the camera pipeline (ros2/README.md) starts and stops with the run
 
-Each run writes the row of Table 6 into `timing_summary.txt` and `timing_table.csv` of its result directory.
+Each run writes the row of Table 6 into `timing_summary.txt` and `timing_table.csv` of its result directory, and
+the PS temperatures and the board power, every second, into `temp_power.csv`.
+
+The MPSoC measurements run every condition unattended: idle, stress, perception, and the memory pressure
+(perception + stress + `stress-ng --memrate` at 0, 25, 50, 75, 100 % of the largest memory rate measured on the
+KV260), 30 min x 3, about 13.5 h (`--quick`: about 1.4 h). On the L7N bench (`indy7/bench/L7N4_bus.cfg`), with the
+IgH master running, inside tmux:
+
+    python3 tools/run_batch.py --out ~/timing_logs/p0_bench_batch_<date>    # --dry-run lists the runs
+
+`batch.csv` has a line per run (its exit code, the memory rate reached, the highest PS temperature) and
+`timing_tables.csv` the row of Table 6 of every run. The runs do not log the high-level test (`HL_LOG=0`).
 
 ### Camera application (Sec. V-C)
 

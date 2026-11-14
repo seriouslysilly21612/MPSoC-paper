@@ -105,7 +105,10 @@ CRobotIndy7::InitHighLevelTests()
 	stM.bFrictionFF = m_bHlFF ? TRUE : FALSE;
 	stM.nGoal = -1;
 	stM.nGoals = 0;
-	m_cHlLog.Start(m_cJtLog.GetDir().c_str(), "hl-log");
+	if (stSys.bHlLog)
+		m_cHlLog.Start(m_cJtLog.GetDir().c_str(), "hl-log");
+	else
+		printf("[HL] the high-level tests are not logged (HL_LOG=0)\n");
 	DrawHighLevelGoals();
 	DrawHighLevelJumps();
 }
