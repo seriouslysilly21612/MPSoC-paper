@@ -9,13 +9,14 @@
 *	priorities within a period; TaskSlots.h has the data flow):
 *	  TASK0  EtherCAT task    TaskEtherCAT.cpp    receive -> State slot; Torque slot -> send;
 *	                                              the drives, the LED, the timing log
-*	  TASK1  Trajectory task  TaskTrajectory.cpp  goal slot -> high-level controller (IK,
-*	                                              Ruckig) -> Reference slot; the high-level
-*	                                              tests, the operator motions
-*	  TASK2  Dynamics task    TaskDynamics.cpp    State + Reference slot -> control law
-*	                                              (gravity compensation, CTC, JOINT TEST)
-*	                                              -> Torque slot; the operator commands
-*	  TASK3  keyboard task    Indy7Ctrl.cpp       the keys and the lines of the tools
+*	  TASK1  control task     TaskTrajectory.cpp  the trajectory part: goal slot -> high-level
+*	                                              controller (IK, Ruckig) -> Reference slot;
+*	                                              the high-level tests, the operator motions;
+*	                          TaskDynamics.cpp    then the dynamics part: State + Reference
+*	                                              slot -> control law (gravity compensation,
+*	                                              CTC, JOINT TEST) -> Torque slot; the
+*	                                              operator commands
+*	  TASK2  keyboard task    Indy7Ctrl.cpp       the keys and the lines of the tools
 *	The torque sent in a period was computed in the period before from the
 *	state received in the period before (send before compute, Fig. 2).
 *
@@ -101,8 +102,8 @@ private:
 	CSimArm*					m_pSim;			// the simulated arm (-s, -b), NULL on the robot
 	CViewStream					m_cView;		// newest joint angles for an external viewer
 
-	/* the tasks, in the order of the cfg ([TASK0]..[TASK3]) */
-	enum { N_TASKS = 4 };
+	/* the tasks, in the order of the cfg ([TASK0]..[TASK2]) */
+	enum { N_TASKS = 3 };	// EtherCAT, control (trajectory and dynamics part), keyboard
 	CRtTask						m_aTask[N_TASKS];
 	BOOL						m_bTasksStarted{FALSE};
 	std::atomic<bool>			m_bStopTask{false};
@@ -118,8 +119,13 @@ private:
 	void	StopMotion					(	);
 
 	friend void	proc_ethercat_control(void*);
-	friend void	proc_trajectory_control(void*);
-	friend void	proc_dynamics_control(void*);
+	friend void	proc_control_task(void*);
+	friend bool	trajectory_begin(CRobotIndy7*, CRtTask*);
+	friend void	trajectory_cycle(CRobotIndy7*, RTTIME, RTTIME);
+	friend void	trajectory_end(CRobotIndy7*);
+	friend bool	dynamics_begin(CRobotIndy7*, CRtTask*);
+	friend void	dynamics_cycle(CRobotIndy7*, RTTIME, RTTIME);
+	friend void	dynamics_end(CRobotIndy7*);
 	friend void	proc_keyboard_control(void*);
 
 	/* the slots between the tasks (TaskSlots.h), one writer each */

@@ -85,11 +85,11 @@ def _vec(v, default):
 
 
 def pipeline_periods(path):
-    """1 if the cfg runs the control law in a Dynamics task of its own (indy7/src/TaskSlots.h: the torque of a
-    period is sent in the next one), else 0"""
+    """1 if the cfg runs the control law in a task after the EtherCAT task, the Dynamics task of the paper or the
+    control task (indy7/src/TaskSlots.h: the torque of a period is sent in the next one), else 0"""
     n = int(_num(cfg_get(path, 'RT_TASKS', 'NO_OF_TASKS'), 0))
     for k in range(n):
-        if 'dynamics' in (cfg_get(path, 'TASK%d' % k, 'NAME') or '').lower():
+        if any(w in (cfg_get(path, 'TASK%d' % k, 'NAME') or '').lower() for w in ('dynamics', 'control')):
             return 1
     return 0
 

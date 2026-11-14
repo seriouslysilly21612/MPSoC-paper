@@ -1,6 +1,6 @@
 /*****************************************************************************
 *	Name: TaskSlots.h
-*	Description: The data that the three periodic tasks of the controller
+*	Description: The data that the two periodic tasks of the controller
 *	exchange (paper, Sec. II and Fig. 1).
 *
 *	The tasks share one release grid (cfg [RT_TASKS]) and, within a period,
@@ -8,14 +8,17 @@
 *
 *	    EtherCAT task    receive the frame            -> State slot
 *	    (TASK0, 97)      Torque slot (last period)    -> send
-*	    Trajectory task  State slot, goal slot        -> high-level controller
-*	    (TASK1, 96)                                   -> Reference slot
-*	    Dynamics task    State slot + Reference slot  -> control law
-*	    (TASK2, 95)                                   -> Torque slot
+*	    Control task     trajectory part: State slot, goal slot
+*	    (TASK1, 96)        -> high-level controller -> Reference slot
+*	                     then the dynamics part: State slot + Reference slot
+*	                       -> control law -> Torque slot
 *
 *	so the torque that the EtherCAT task sends in period k+1 was computed by
-*	the Dynamics task in period k from the state received in period k (send
-*	before compute, Fig. 2). The simulation (-s, -b) is stepped by the
+*	the dynamics part in period k from the state received in period k (send
+*	before compute, Fig. 2). The paper has the two parts as two tasks, the
+*	Trajectory task (96) and the Dynamics task (95) of Table 3, which ran in
+*	the same order on one core; "the Trajectory task" and "the Dynamics task"
+*	in the comments of this code are the two parts. The simulation (-s, -b) is stepped by the
 *	EtherCAT task in place of the exchange and keeps this delay.
 *
 *	Every slot is a CAtomicSlot (AtomicSlot.h, eq. (1)) with one writer and

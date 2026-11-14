@@ -15,8 +15,7 @@
 // the tasks, in the order of the cfg ([RT_TASKS]): TaskEtherCAT.cpp,
 // TaskTrajectory.cpp, TaskDynamics.cpp, and the keyboard below
 void proc_ethercat_control(void* apRobot);
-void proc_trajectory_control(void* apRobot);
-void proc_dynamics_control(void* apRobot);
+void proc_control_task(void* apRobot);
 void proc_keyboard_control(void* apRobot);
 
 namespace {
@@ -145,10 +144,10 @@ CRobotIndy7::CheckConfig()
 	if ((int)vT.size() != N_TASKS)
 	{
 		DBG_LOG_ERROR("(CRobotIndy7) [RT_TASKS] NO_OF_TASKS=%d: the controller has %d tasks (EtherCAT, "
-		              "Trajectory, Dynamics, keyboard)", (int)vT.size(), (int)N_TASKS);
+		              "control, keyboard)", (int)vT.size(), (int)N_TASKS);
 		return FALSE;
 	}
-	for (int n = 0; n < 3; n++)
+	for (int n = 0; n < 2; n++)
 	{
 		if (!vT[n].bEnabled || vT[n].nPeriod <= 0 || vT[n].nPeriod != stM.nCycleTime)
 		{
@@ -158,14 +157,14 @@ CRobotIndy7::CheckConfig()
 		}
 		if (n > 0 && vT[n].nPriority >= vT[n - 1].nPriority)
 		{
-			DBG_LOG_ERROR("(CRobotIndy7) the priorities must decrease from TASK0 to TASK2 (the order of the "
+			DBG_LOG_ERROR("(CRobotIndy7) the priority of TASK1 must be below that of TASK0 (the order of the "
 			              "pipeline within a period)");
 			bOk = FALSE;
 		}
 	}
-	if (!vT[3].bEnabled || vT[3].nPeriod != 0)
+	if (!vT[2].bEnabled || vT[2].nPeriod != 0)
 	{
-		DBG_LOG_ERROR("(CRobotIndy7) [TASK3] (the keyboard) must be enabled, with TASK_PERIOD=0");
+		DBG_LOG_ERROR("(CRobotIndy7) [TASK2] (the keyboard) must be enabled, with TASK_PERIOD=0");
 		bOk = FALSE;
 	}
 	if (stM.nSyncMode == eSyncDc && (stM.nDcSync0Shift <= 0 || stM.nDcSync0Shift >= stM.nCycleTime))
@@ -298,14 +297,13 @@ CRobotIndy7::Init()
 	return TRUE;
 }
 
-// the three periodic tasks on one grid and the keyboard task; the policy,
+// the two periodic tasks (EtherCAT, control) on one grid and the keyboard task; the policy,
 // priority and affinity of every task are read back by the task itself
 BOOL
 CRobotIndy7::InitRTTasks()
 {
 	const VEC_TASK_CONF& vT = m_pConfig->Tasks();
-	const PTASKFCN apFcn[N_TASKS] = { &proc_ethercat_control, &proc_trajectory_control, &proc_dynamics_control,
-	                                  &proc_keyboard_control };
+	const PTASKFCN apFcn[N_TASKS] = { &proc_ethercat_control, &proc_control_task, &proc_keyboard_control };
 	const RTTIME tOrigin = CRtTask::GridOrigin(GRID_LEAD_NS);
 	for (int n = 0; n < N_TASKS; n++)
 	{
@@ -331,9 +329,10 @@ CRobotIndy7::InitRTTasks()
 				m_bEcatEnded.store(true, std::memory_order_release);
 			}
 			if (!m_aTask[1].IsStarted())
+			{
 				m_bTrajDone.store(true, std::memory_order_release);
-			if (!m_aTask[2].IsStarted())
 				m_bDynDone.store(true, std::memory_order_release);
+			}
 			return FALSE;
 		}
 		m_bTasksStarted = TRUE;
@@ -760,14 +759,14 @@ CRobotIndy7::PrintRtSummary() const
 	       st.dSSum / dN * 1e-3, (double)st.tSMax * 1e-3, st.dESum / dN * 1e-3, (double)st.tEMax * 1e-3);
 	printf("[RT] EtherCAT task faults: %ld late releases (more than a period late), %ld overruns, %ld missed send "
 	       "deadlines (t_w + t_s > %.0f us)\n", st.nLate, st.nOverruns, st.nMissed, (double)st.tDeadline * 1e-3);
-	// the two other tasks of the pipeline
+	// the two parts of the control task (t_w of the dynamics part counts from the release)
 	const task_slots::ST_TASK_TIMING* apT[2] = { &m_stTrajTiming, &m_stDynTiming };
-	const char* apcName[2] = { "Trajectory", "Dynamics" };
+	const char* apcName[2] = { "Control task, trajectory part", "Control task, dynamics part" };
 	for (int k = 0; k < 2; k++)
 	{
 		const task_slots::ST_TASK_TIMING& t = *apT[k];
 		const double dM = t.nCycles > 0 ? (double)t.nCycles : 1.0;
-		printf("[RT] %s task: %ld cycles of %.3f ms: t_w mean %.1f us, max %.1f us; t_e mean %.1f us, max %.1f us; "
+		printf("[RT] %s: %ld cycles of %.3f ms: t_w mean %.1f us, max %.1f us; t_e mean %.1f us, max %.1f us; "
 		       "%ld late releases, %ld overruns\n", apcName[k], t.nCycles, (double)t.tPeriod * 1e-6,
 		       t.dWSum / dM * 1e-3, (double)t.tWMax * 1e-3, t.dESum / dM * 1e-3, (double)t.tEMax * 1e-3, t.nLate,
 		       t.nOverruns);

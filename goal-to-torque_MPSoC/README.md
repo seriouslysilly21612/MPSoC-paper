@@ -74,14 +74,16 @@ controller (`Indy7Ctrl.out`) must not run at the same time (`run.sh` refuses).
 
 ## The architecture in brief (paper, Sec. II, Fig. 1)
 
-The controller is one process with three periodic tasks on one isolated core, released on a common 1-ms
+The controller is one process with two periodic tasks on one isolated core, released on a common 1-ms
 grid (`indy7/src/Indy7Ctrl.h`):
 
 | Task | Priority | In every period |
 |---|---|---|
 | EtherCAT (`TaskEtherCAT.cpp`) | 97 | receive the frame, publish the state (State slot), send the torque of the last period (Torque slot) |
-| Trajectory (`TaskTrajectory.cpp`) | 96 | take the newest goal (Goal slot), goal admission, bounded IK, jerk-limited reference (Ruckig), publish it (Reference slot) |
-| Dynamics (`TaskDynamics.cpp`) | 95 | computed-torque law (RBDL) on the reference and the state, publish the torque (Torque slot) |
+| Control (`TaskTrajectory.cpp`, then `TaskDynamics.cpp`) | 96 | the trajectory part: take the newest goal (Goal slot), goal admission, bounded IK, jerk-limited reference (Ruckig), publish it (Reference slot); then the dynamics part: computed-torque law (RBDL) on the reference and the state, publish the torque (Torque slot) |
+
+The paper (Table 3) has the two parts as two tasks, Trajectory (96) and Dynamics (95), which ran in the same order
+on one core; since 2026-11-14 they are one task (the three tasks: commit `4abac4b`).
 
 The tasks exchange data only through single-writer atomic slots (`indy7/src/base/AtomicSlot.h`, eq. (1));
 every payload carries the period in which it was produced. The torque computed in period k is sent in
@@ -139,7 +141,7 @@ The experiments ran on an Intel NUC 13 Pro (Core i7-1360P). Its configuration:
 - the thread of the IgH master at SCHED_FIFO 40: `sudo bash tools/host/install_ecat_op_fifo.sh` once, then
   `indy7/run.sh` lifts it at every start.
 
-`[RT_TASKS]` of `INDY7.cfg` places the three tasks on CPU 6; the controller reads back the policy, the priority
+`[RT_TASKS]` of `INDY7.cfg` places the two periodic tasks on CPU 6; the controller reads back the policy, the priority
 and the affinity of every task at its start and refuses to run otherwise.
 
 ## Running
@@ -212,12 +214,12 @@ Logs: the joint and high-level tests write a CSV and a JSON per run into `JOINT_
     python3 ../tools/phase_margin.py                      # Tables 7 (PM) and 8
     make clean && make MALLOC_COUNT=1 && ./run.sh -s      # 'r', 'g', 'h', 'u' 3: no allocation ([MALLOC] at the end)
 
-The three tasks run on CPU 6 (`CPU` of `[TASK0]`..`[TASK2]`), and `run.sh` needs the limits of the host
+The two periodic tasks run on CPU 6 (`CPU` of `[TASK0]` and `[TASK1]`), and `run.sh` needs the limits of the host
 configuration. On a host whose real-time core is another one, give the tasks that core in a copy of the cfg in
 `indy7/` (its relative paths stay valid; the commands from here on run in the top directory):
 
     cp indy7/INDY7.cfg indy7/sim.cfg
-    python3 tools/cfgset.py indy7/sim.cfg TASK0.CPU=2 TASK1.CPU=2 TASK2.CPU=2
+    python3 tools/cfgset.py indy7/sim.cfg TASK0.CPU=2 TASK1.CPU=2
 
 and pass the copy to the tools with `--cfg indy7/sim.cfg` (by hand, in `indy7/`: `./run.sh -s -f sim.cfg`).
 

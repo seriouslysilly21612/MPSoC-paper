@@ -10,7 +10,7 @@
 *	relative to the directory of the file.
 *
 *	Sections: [SYSTEM] (the controller, the tests, the simulation, the
-*	application), [RT_TASKS] and [TASK0]..[TASK3] (the tasks), [ECAT_MASTER]
+*	application), [RT_TASKS] and [TASK0]..[TASK2] (the tasks), [ECAT_MASTER]
 *	(the bus) and [AXIS0]..[AXIS6] (the slaves in the order of the bus: the
 *	six joint drives, then the end tool). Lengths of the high-level
 *	controller are given in mm in the file and kept in m here.

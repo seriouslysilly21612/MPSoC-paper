@@ -1,6 +1,7 @@
 /*****************************************************************************
 *	Name: TaskTrajectory.cpp
-*	Description: The Trajectory task (TASK1, paper, Sec. IV-C), the
+*	Description: The trajectory part of the control task (TASK1, paper,
+*	Sec. IV-C; the Trajectory task of the paper), the
 *	high-level tests it runs (Sec. V-B and V-C), and the motions of the
 *	operator ('m', 't').
 *
@@ -952,7 +953,9 @@ CRobotIndy7::StartUserMove(const task_slots::ST_MOVE_REQ& astReq, const task_slo
 }
 
 //============================================================================
-// The Trajectory task (TASK1). In every period, after the release:
+// The trajectory part of the control task (TASK1; proc_control_task in
+// TaskDynamics.cpp runs it before the dynamics part). In every period,
+// after the release:
 //   read     the State slot (the measurement of this period) and the Torque
 //            slot (the state of the controller and its last torque);
 //   command  the word of DoInput: a menu entry of 'y' starts HOME (then
@@ -968,176 +971,186 @@ CRobotIndy7::StartUserMove(const task_slots::ST_MOVE_REQ& astReq, const task_slo
 //   then     the log of the test and its state machine.
 // It ends when the EtherCAT task has ended (after the stop).
 //============================================================================
-void
-proc_trajectory_control(void* apRobot)
+namespace
 {
-	rt_console::MarkRealTime();
-	using namespace task_slots;
-	auto* pRobot = static_cast<CRobotIndy7*>(apRobot);
-	CRtTask* const pTask = CRtTask::Self();
-	DBG_LOG_INFO("(proc_trajectory_control) Trajectory task started (high-level controller %s)",
+	// what the trajectory part keeps from one period to the next
+	// shortcut: one controller per process; a second CRobotIndy7 would need its own copy
+	struct ST_TRAJ_KEEP
+	{
+		task_slots::ST_STATE_SLOT  stState;
+		task_slots::ST_TORQUE_SLOT stTorque;
+		task_slots::ST_REF_SLOT    stRef;
+		task_slots::ST_MOVE_REQ    stMove;
+		uint32_t uLastPeriod;
+		double adQ[CTrajectoryRT::MAX_DOF], adQd[CTrajectoryRT::MAX_DOF];
+		double adQr[CTrajectoryRT::MAX_DOF], adQdr[CTrajectoryRT::MAX_DOF], adQddr[CTrajectoryRT::MAX_DOF];
+	} g_stTraj;
+}
+
+bool
+trajectory_begin(CRobotIndy7* pRobot, CRtTask* pTask)
+{
+	DBG_LOG_INFO("(trajectory_begin) trajectory part of the control task (high-level controller %s)",
 	             pRobot->m_cTraj.IsInit() ? "ready" : "unavailable: TRACK and HOME are refused");
 	if (pTask == NULL)
+		return false;
+	pRobot->m_stTrajTiming.tPeriod = pTask->Period();
+	memset(&g_stTraj, 0, sizeof(g_stTraj));		// the slots, and the joint vectors 0.0
+	g_stTraj.uLastPeriod = 0xFFFFFFFF;
+	return true;
+}
+
+void
+trajectory_cycle(CRobotIndy7* pRobot, RTTIME tRelease, RTTIME tStart)
+{
+	using namespace task_slots;
+	ST_TASK_TIMING& st = pRobot->m_stTrajTiming;
+	ST_STATE_SLOT&  stState = g_stTraj.stState;
+	ST_TORQUE_SLOT& stTorque = g_stTraj.stTorque;
+	ST_REF_SLOT&    stRef = g_stTraj.stRef;
+	ST_MOVE_REQ&    stMove = g_stTraj.stMove;
+	uint32_t&       uLastPeriod = g_stTraj.uLastPeriod;
+	double* const adQ = g_stTraj.adQ;
+	double* const adQd = g_stTraj.adQd;
+	double* const adQr = g_stTraj.adQr;
+	double* const adQdr = g_stTraj.adQdr;
+	double* const adQddr = g_stTraj.adQddr;
+	if (tStart - tRelease > st.tPeriod)
+		st.nLate++;
+
+	// malloc-count build: allocations of the last cycle of this task
 	{
-		pRobot->m_bTrajDone.store(true, std::memory_order_release);
-		return;
+		static unsigned long s_uCycleStart = 0;
+		const unsigned long uNow = malloc_count::Count();
+		pRobot->m_uAllocTraj += uNow - s_uCycleStart;
+		s_uCycleStart = uNow;
+		malloc_count::Arm(true);
 	}
 
-	ST_TASK_TIMING& st = pRobot->m_stTrajTiming;
-	st.tPeriod = pTask->Period();
-	ST_STATE_SLOT  stState;
-	ST_TORQUE_SLOT stTorque;
-	ST_REF_SLOT    stRef;
-	ST_MOVE_REQ    stMove;
-	memset(&stState, 0, sizeof(stState));
-	memset(&stTorque, 0, sizeof(stTorque));
-	memset(&stRef, 0, sizeof(stRef));
-	memset(&stMove, 0, sizeof(stMove));
-	uint32_t uLastPeriod = 0xFFFFFFFF;
-	double adQ[CTrajectoryRT::MAX_DOF], adQd[CTrajectoryRT::MAX_DOF];
-	double adQr[CTrajectoryRT::MAX_DOF], adQdr[CTrajectoryRT::MAX_DOF], adQddr[CTrajectoryRT::MAX_DOF];
-	for (int i = 0; i < CTrajectoryRT::MAX_DOF; i++)
-		adQ[i] = adQd[i] = adQr[i] = adQdr[i] = adQddr[i] = 0.0;
-
-	while (TRUE)
+	/* read */
+	const bool bNewState = pRobot->m_stateSlot.Read(stState) && stState.uPeriod != uLastPeriod;
+	pRobot->m_torqueSlot.Read(stTorque);
+	if (bNewState)
 	{
-		/* release */
-		const RTTIME tRelease = pTask->WaitNextRelease();
-		const RTTIME tStart = read_timer();
-		if (tStart - tRelease > st.tPeriod)
-			st.nLate++;
-		// the EtherCAT task has ended (1 s after the stop): so does this one
-		if (pRobot->m_bEcatDone.load(std::memory_order_acquire))
-			break;
-
-		// malloc-count build: allocations of the last cycle of this task
+		uLastPeriod = stState.uPeriod;
+		for (int i = 0; i < CTrajectoryRT::MAX_DOF && i < stState.nDof; i++)
 		{
-			static unsigned long s_uCycleStart = 0;
-			const unsigned long uNow = malloc_count::Count();
-			pRobot->m_uAllocTraj += uNow - s_uCycleStart;
-			s_uCycleStart = uNow;
-			malloc_count::Arm(true);
+			adQ[i]  = stState.adQ[i];
+			adQd[i] = stState.adQd[i];
 		}
+	}
 
-		/* read */
-		const bool bNewState = pRobot->m_stateSlot.Read(stState) && stState.uPeriod != uLastPeriod;
-		pRobot->m_torqueSlot.Read(stTorque);
-		if (bNewState)
+	/* the command of the operator (DoInput, Dynamics task) */
+	const int nCmd = pRobot->m_nHlCmd.exchange(HL_CMD_NONE, std::memory_order_acq_rel);
+	if (nCmd == HL_CMD_STOP || (stState.bStop && pRobot->m_cTraj.IsRunning()))
+		pRobot->StopHighLevel();
+	else if (nCmd >= 1 && nCmd <= (int)CRobotIndy7::HL_MENU && bNewState)
+		pRobot->StartHighLevelMenu(nCmd, stState, stTorque);
+	if (bNewState && !stState.bStop)
+	{
+		/* a motion of the operator (keyboard task) */
+		uint32_t uMoves = 0;
+		if (pRobot->m_moveSlot.Read(stMove, &uMoves) && uMoves != pRobot->m_uMoveSeen)
 		{
-			uLastPeriod = stState.uPeriod;
-			for (int i = 0; i < CTrajectoryRT::MAX_DOF && i < stState.nDof; i++)
-			{
-				adQ[i]  = stState.adQ[i];
-				adQd[i] = stState.adQd[i];
-			}
+			pRobot->m_uMoveSeen = uMoves;
+			if (nCmd == HL_CMD_STOP)
+				printf("[MOVE] dropped: a stop came in the same period\n");
+			else
+				pRobot->StartUserMove(stMove, stState, stTorque);
 		}
-
-		/* the command of the operator (DoInput, Dynamics task) */
-		const int nCmd = pRobot->m_nHlCmd.exchange(HL_CMD_NONE, std::memory_order_acq_rel);
-		if (nCmd == HL_CMD_STOP || (stState.bStop && pRobot->m_cTraj.IsRunning()))
-			pRobot->StopHighLevel();
-		else if (nCmd >= 1 && nCmd <= (int)CRobotIndy7::HL_MENU && bNewState)
-			pRobot->StartHighLevelMenu(nCmd, stState, stTorque);
-		if (bNewState && !stState.bStop)
+		/* the camera application: a selection of the object menu ('p',
+		 * then a digit) makes the arm follow it */
+		if (pRobot->m_pBridge != NULL && pRobot->m_pBridge->TakeFollowRequest())
 		{
-			/* a motion of the operator (keyboard task) */
-			uint32_t uMoves = 0;
-			if (pRobot->m_moveSlot.Read(stMove, &uMoves) && uMoves != pRobot->m_uMoveSeen)
-			{
-				pRobot->m_uMoveSeen = uMoves;
-				if (nCmd == HL_CMD_STOP)
-					printf("[MOVE] dropped: a stop came in the same period\n");
-				else
-					pRobot->StartUserMove(stMove, stState, stTorque);
-			}
-			/* the camera application: a selection of the object menu ('p',
-			 * then a digit) makes the arm follow it */
-			if (pRobot->m_pBridge != NULL && pRobot->m_pBridge->TakeFollowRequest())
-			{
-				if (pRobot->m_eHlTest != CRobotIndy7::eHlTestIdle && pRobot->m_nHlSel == CRobotIndy7::HL_APP)
-					printf("[APP] the arm follows the new selection\n");
-				else if (nCmd != HL_CMD_STOP)
-					pRobot->StartHighLevelMenu(CRobotIndy7::HL_APP, stState, stTorque);
-			}
+			if (pRobot->m_eHlTest != CRobotIndy7::eHlTestIdle && pRobot->m_nHlSel == CRobotIndy7::HL_APP)
+				printf("[APP] the arm follows the new selection\n");
+			else if (nCmd != HL_CMD_STOP)
+				pRobot->StartHighLevelMenu(CRobotIndy7::HL_APP, stState, stTorque);
 		}
+	}
 
-		/* the step: with a new state only (without one, the reference of the
-		 * last state stands) */
-		if (bNewState)
+	/* the step: with a new state only (without one, the reference of the
+	 * last state stands) */
+	if (bNewState)
+	{
+		int32_t nHlNs = -1;
+		int eMode = eRefNone;
+		if (stState.bOp && !stState.bStop)
 		{
-			int32_t nHlNs = -1;
-			int eMode = eRefNone;
-			if (stState.bOp && !stState.bStop)
+			// the goal of this period, from the test program, into the slot
+			pRobot->HighLevelTestBeforeUpdate();
+			if (pRobot->m_cTraj.IsRunning())
 			{
-				// the goal of this period, from the test program, into the slot
-				pRobot->HighLevelTestBeforeUpdate();
-				if (pRobot->m_cTraj.IsRunning())
+				const BOOL bOk = pRobot->m_cTraj.Update(adQ, adQd, adQr, adQdr, adQddr);
+				nHlNs = Sat32((RTTIME)(pRobot->m_cTraj.HighLevel().GetStatus().dUs * 1e3));
+				if (bOk)
+					eMode = (pRobot->m_cTraj.GetMotion() == CTrajectoryRT::eMotionHome) ? eRefHome : eRefTrack;
+				// HOME at rest, or a generator error: the motion ends with
+				// this period, and the Dynamics task holds in gravity
+				// compensation
+				if (pRobot->m_cTraj.Pending() != CTrajectoryRT::eRunning)
 				{
-					const BOOL bOk = pRobot->m_cTraj.Update(adQ, adQd, adQr, adQdr, adQddr);
-					nHlNs = Sat32((RTTIME)(pRobot->m_cTraj.HighLevel().GetStatus().dUs * 1e3));
-					if (bOk)
-						eMode = (pRobot->m_cTraj.GetMotion() == CTrajectoryRT::eMotionHome) ? eRefHome : eRefTrack;
-					// HOME at rest, or a generator error: the motion ends with
-					// this period, and the Dynamics task holds in gravity
-					// compensation
-					if (pRobot->m_cTraj.Pending() != CTrajectoryRT::eRunning)
-					{
-						pRobot->m_cTraj.End(pRobot->m_cTraj.Pending());
-						eMode = eRefNone;
-					}
+					pRobot->m_cTraj.End(pRobot->m_cTraj.Pending());
+					eMode = eRefNone;
 				}
 			}
-			stRef.uPeriod = stState.uPeriod;
-			stRef.eMode = eMode;
-			stRef.bFrictionFF = pRobot->m_cTraj.GetFrictionFF();
-			for (int i = 0; i < MAX_DOF; i++)
-			{
-				const bool bIn = (i < CTrajectoryRT::MAX_DOF);
-				stRef.adQRef[i]   = (eMode != eRefNone && bIn) ? adQr[i] : 0.0;
-				stRef.adQdRef[i]  = (eMode != eRefNone && bIn) ? adQdr[i] : 0.0;
-				stRef.adQddRef[i] = (eMode != eRefNone && bIn) ? adQddr[i] : 0.0;
-			}
-			stRef.nHlNs = nHlNs;
 		}
-
-		/* the end of a motion of the operator */
-		if (pRobot->m_eUserMove != CRobotIndy7::eUserNone && !pRobot->m_cTraj.IsRunning())
+		stRef.uPeriod = stState.uPeriod;
+		stRef.eMode = eMode;
+		stRef.bFrictionFF = pRobot->m_cTraj.GetFrictionFF();
+		for (int i = 0; i < MAX_DOF; i++)
 		{
-			const CTrajectoryRT::eState eSt = pRobot->m_cTraj.GetState();
-			printf("[MOVE] %s - gravity compensation\n",
-			       eSt == CTrajectoryRT::eDoneAtRest ? "at the target" :
-			       eSt == CTrajectoryRT::eError ? "ended: trajectory generator error" : "stopped");
-			pRobot->m_eUserMove = CRobotIndy7::eUserNone;
+			const bool bIn = (i < CTrajectoryRT::MAX_DOF);
+			stRef.adQRef[i]   = (eMode != eRefNone && bIn) ? adQr[i] : 0.0;
+			stRef.adQdRef[i]  = (eMode != eRefNone && bIn) ? adQdr[i] : 0.0;
+			stRef.adQddRef[i] = (eMode != eRefNone && bIn) ? adQddr[i] : 0.0;
 		}
-
-		/* publish: the reference of this period for the Dynamics task, in
-		 * every cycle (the state of the test and the timing are of this cycle) */
-		const RTTIME tEnd0 = read_timer();
-		const bool bHlTest = (pRobot->m_eHlTest != CRobotIndy7::eHlTestIdle);
-		stRef.bTest = (bHlTest || pRobot->m_eUserMove != CRobotIndy7::eUserNone) ? TRUE : FALSE;
-		stRef.nHlTest = bHlTest ? pRobot->m_nHlSel : 0;
-		stRef.nW = Sat32(tStart - tRelease);
-		stRef.nE = Sat32(tEnd0 - tStart);
-		pRobot->m_refSlot.Write(stRef);
-
-		/* then: the log of the test, HOME -> TRACK, the end of the test */
-		if (bNewState)
-			pRobot->HighLevelTestAfterUpdate(stState, stTorque);
-
-		/* the timing of this task */
-		const RTTIME tEnd = read_timer();
-		const RTTIME tW = tStart - tRelease, tE = tEnd - tStart;
-		st.nCycles++;
-		st.dWSum += (double)tW;
-		st.dESum += (double)tE;
-		if (tW > st.tWMax) st.tWMax = tW;
-		if (tE > st.tEMax) st.tEMax = tE;
-		if (tW + tE > st.tPeriod)
-			st.nOverruns++;
+		stRef.nHlNs = nHlNs;
 	}
+
+	/* the end of a motion of the operator */
+	if (pRobot->m_eUserMove != CRobotIndy7::eUserNone && !pRobot->m_cTraj.IsRunning())
+	{
+		const CTrajectoryRT::eState eSt = pRobot->m_cTraj.GetState();
+		printf("[MOVE] %s - gravity compensation\n",
+		       eSt == CTrajectoryRT::eDoneAtRest ? "at the target" :
+		       eSt == CTrajectoryRT::eError ? "ended: trajectory generator error" : "stopped");
+		pRobot->m_eUserMove = CRobotIndy7::eUserNone;
+	}
+
+	/* publish: the reference of this period for the Dynamics task, in
+	 * every cycle (the state of the test and the timing are of this cycle) */
+	const RTTIME tEnd0 = read_timer();
+	const bool bHlTest = (pRobot->m_eHlTest != CRobotIndy7::eHlTestIdle);
+	stRef.bTest = (bHlTest || pRobot->m_eUserMove != CRobotIndy7::eUserNone) ? TRUE : FALSE;
+	stRef.nHlTest = bHlTest ? pRobot->m_nHlSel : 0;
+	stRef.nW = Sat32(tStart - tRelease);
+	stRef.nE = Sat32(tEnd0 - tStart);
+	pRobot->m_refSlot.Write(stRef);
+
+	/* then: the log of the test, HOME -> TRACK, the end of the test */
+	if (bNewState)
+		pRobot->HighLevelTestAfterUpdate(stState, stTorque);
+
+	/* the timing of this task */
+	const RTTIME tEnd = read_timer();
+	const RTTIME tW = tStart - tRelease, tE = tEnd - tStart;
+	st.nCycles++;
+	st.dWSum += (double)tW;
+	st.dESum += (double)tE;
+	if (tW > st.tWMax) st.tWMax = tW;
+	if (tE > st.tEMax) st.tEMax = tE;
+	if (tW + tE > st.tPeriod)
+		st.nOverruns++;
+}
+
+void
+trajectory_end(CRobotIndy7* pRobot)
+{
+	using namespace task_slots;
 	// a test still open at the end: its log closes as stopped
 	if (pRobot->m_eHlTest != CRobotIndy7::eHlTestIdle)
-		pRobot->EndHighLevelTest(eTestAborted, stState.stFaults, stTorque.uAllocUpdate);
-	DBG_LOG_INFO("(proc_trajectory_control) task ended");
+		pRobot->EndHighLevelTest(eTestAborted, g_stTraj.stState.stFaults, g_stTraj.stTorque.uAllocUpdate);
+	DBG_LOG_INFO("(trajectory_end) trajectory part ended");
 	pRobot->m_bTrajDone.store(true, std::memory_order_release);
 }
