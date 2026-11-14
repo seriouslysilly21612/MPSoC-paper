@@ -40,7 +40,8 @@ Build and checks (all passed on the board, 2026-11-02):
 
     cd indy7 && make && make tools        # [indy7] MUJOCO=1 ROS=1 MALLOC_COUNT=0
     ./bin/slot_check; ./bin/goal_filter_check; ./bin/hl_check models/indy7.urdf; ./bin/console_check
-    ./bin/model_check models/indy7.urdf models/indy7_mujoco.xml B=2.0,2.0,1.99649,0.87306,0.86394,0.84747
+    ./bin/model_check models/indy7.urdf models/indy7_mujoco.xml B=6.07917,6.68933,1.99649,0.87306,0.86394,0.84747
+    # B as in INDY7.cfg; until 2026-11-13 the controller bounded B at 2.0 (J1, J2), and this check used 2.0, 2.0
 
 The analysis tools need the `mujoco` Python package; it is in `~/opt/g2t_venv`, apart from the numpy of ROS 2:
 `~/opt/g2t_venv/bin/python tools/jt_run_sim.py ...`. On the board: `MALLOC_COUNT=1` 0 allocations, Fig. 4
@@ -73,14 +74,16 @@ controller (`Indy7Ctrl.out`) must not run at the same time (`run.sh` refuses).
 
 ## The architecture in brief (paper, Sec. II, Fig. 1)
 
-The controller is one process with three periodic tasks on one isolated core, released on a common 1-ms
+The controller is one process with two periodic tasks on one isolated core, released on a common 1-ms
 grid (`indy7/src/Indy7Ctrl.h`):
 
 | Task | Priority | In every period |
 |---|---|---|
 | EtherCAT (`TaskEtherCAT.cpp`) | 97 | receive the frame, publish the state (State slot), send the torque of the last period (Torque slot) |
-| Trajectory (`TaskTrajectory.cpp`) | 96 | take the newest goal (Goal slot), goal admission, bounded IK, jerk-limited reference (Ruckig), publish it (Reference slot) |
-| Dynamics (`TaskDynamics.cpp`) | 95 | computed-torque law (RBDL) on the reference and the state, publish the torque (Torque slot) |
+| Control (`TaskTrajectory.cpp`, then `TaskDynamics.cpp`) | 96 | the trajectory part: take the newest goal (Goal slot), goal admission, bounded IK, jerk-limited reference (Ruckig), publish it (Reference slot); then the dynamics part: computed-torque law (RBDL) on the reference and the state, publish the torque (Torque slot) |
+
+The paper (Table 3) has the two parts as two tasks, Trajectory (96) and Dynamics (95), which ran in the same order
+on one core; since 2026-11-14 they are one task (the three tasks: commit `4abac4b`).
 
 The tasks exchange data only through single-writer atomic slots (`indy7/src/base/AtomicSlot.h`, eq. (1));
 every payload carries the period in which it was produced. The torque computed in period k is sent in
@@ -138,7 +141,7 @@ The experiments ran on an Intel NUC 13 Pro (Core i7-1360P). Its configuration:
 - the thread of the IgH master at SCHED_FIFO 40: `sudo bash tools/host/install_ecat_op_fifo.sh` once, then
   `indy7/run.sh` lifts it at every start.
 
-`[RT_TASKS]` of `INDY7.cfg` places the three tasks on CPU 6; the controller reads back the policy, the priority
+`[RT_TASKS]` of `INDY7.cfg` places the two periodic tasks on CPU 6; the controller reads back the policy, the priority
 and the affinity of every task at its start and refuses to run otherwise.
 
 ## Running
@@ -207,16 +210,16 @@ Logs: the joint and high-level tests write a CSV and a JSON per run into `JOINT_
     ./bin/slot_check                                      # PASS: 0 inconsistent snapshots accepted
     ./bin/hl_check models/indy7.urdf                      # the reference contract, PASS
     ./bin/goal_filter_check                               # the goal checks of the bridge, PASS
-    ./bin/model_check models/indy7.urdf models/indy7_mujoco.xml B=2.0,2.0,1.99649,0.87306,0.86394,0.84747
+    ./bin/model_check models/indy7.urdf models/indy7_mujoco.xml B=6.07917,6.68933,1.99649,0.87306,0.86394,0.84747  # B as in INDY7.cfg
     python3 ../tools/phase_margin.py                      # Tables 7 (PM) and 8
     make clean && make MALLOC_COUNT=1 && ./run.sh -s      # 'r', 'g', 'h', 'u' 3: no allocation ([MALLOC] at the end)
 
-The three tasks run on CPU 6 (`CPU` of `[TASK0]`..`[TASK2]`), and `run.sh` needs the limits of the host
+The two periodic tasks run on CPU 6 (`CPU` of `[TASK0]` and `[TASK1]`), and `run.sh` needs the limits of the host
 configuration. On a host whose real-time core is another one, give the tasks that core in a copy of the cfg in
 `indy7/` (its relative paths stay valid; the commands from here on run in the top directory):
 
     cp indy7/INDY7.cfg indy7/sim.cfg
-    python3 tools/cfgset.py indy7/sim.cfg TASK0.CPU=2 TASK1.CPU=2 TASK2.CPU=2
+    python3 tools/cfgset.py indy7/sim.cfg TASK0.CPU=2 TASK1.CPU=2
 
 and pass the copy to the tools with `--cfg indy7/sim.cfg` (by hand, in `indy7/`: `./run.sh -s -f sim.cfg`).
 

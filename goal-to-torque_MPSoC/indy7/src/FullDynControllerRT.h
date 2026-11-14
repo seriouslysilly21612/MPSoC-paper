@@ -64,7 +64,7 @@ public:
     BOOL   SetFrictionFFAxis(UINT auAxis, double adKf);
     double GetFrictionFFAxis(UINT auAxis) const;
     // rotor inertias B_ii [kg m^2] (paper, eq. (4)), added to the diagonal of
-    // M(q) in CTC; values clamped to [0, 2] kg m^2 (Table 7)
+    // M(q) in CTC; used as given (Table 7), without a bound
     void   SetRotorInertia(const std::vector<double>& avB);
     double GetRotorInertiaAxis(UINT auAxis) const;
     UINT GetDOF() const { return m_uDOF; }
