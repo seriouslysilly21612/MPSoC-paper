@@ -23,10 +23,11 @@ summary of tools/timing_summary.py (the row of Table 6).
               the detector processes every frame it can: its gate, 30 ms, is shorter than its processing,
               about 43 ms), and the controller runs its bridge (a build with ROS 2, APP_BRIDGE=1)
   pressure    perception + memory pressure (D-11): stress-ng --taskset OTHERS --memrate 3, its read
-              and write rates bounded so that its time-averaged rate is --pressure % of the largest measured
-              on the KV260 (MEMRATE_CAP; 0: no memrate, i.e. perception; 100: unbounded); the rates it reached
-              in OUT/memrate.txt. Without the stress load: beside it the workers got about a third of the CPUs
-              and reached about 2 GB/s whatever the bound, so 50, 75 and 100 % were the same (11-15)
+              and write rates bounded so that its time-averaged rate is about --pressure % of its unbounded
+              rate beside the camera pipeline (MEMRATE_CAP; 0: no memrate, i.e. perception; 100: unbounded);
+              the rates it reached in OUT/memrate.txt. Without the stress load: beside it the workers got about
+              a third of the CPUs and reached about 2 GB/s whatever the bound, so 50, 75 and 100 % were the
+              same (11-15)
 
 In order:
   1. checks, warnings only: the host as in Table 3 (PREEMPT_RT, the core isolated, kernel.timer_migration 0,
@@ -66,10 +67,12 @@ VISION = ('source /opt/ros/humble/setup.bash && source "$HOME/ros2_ws/install/se
 # the line of vitis_ai_detector_node once its worker has loaded the model; the loads start only after it: under
 # them the worker missed the node's 30 s startup limit (11-15, run 04 of the quick batch)
 VISION_READY = 'Vitis-AI worker ready'
-# The memory pressure, read and write bounds [MB/s] of each of the three memrate workers. Measured on the KV260
-# (2026-11-15, nothing else running, 60 s): a worker runs the 17 methods of a round over its buffer, 2008 MB/s
-# time-averaged unbounded (6.0 GB/s the three); these bounds give 25, 50, 75 % of it.
-MEMRATE_CAP = {25: 500, 50: 1000, 75: 1620}
+# The memory pressure, read and write bounds [MB/s] of each of the three memrate workers. A worker runs the 17
+# methods of a round over its buffer in turn, so its time-averaged rate is the harmonic mean of their rates.
+# Beside the camera pipeline the three reached 2.87 GB/s unbounded (2026-11-15, the quick batch, runs 04-06); by
+# the rates of the methods there these bounds give about 26, 52, 76 % of it. (Alone, nothing else running, the
+# three reached 6.0 GB/s; the bounds from that, 500, 1000, 1620, gave 52, 83, 93 % beside the pipeline.)
+MEMRATE_CAP = {25: 250, 50: 500, 75: 800}
 MEMRATE_ARGS = ['--memrate', '3', '--timeout', '0', '--metrics']
 AMS, INA = '/sys/bus/iio/devices/iio:device0', '/sys/bus/iio/devices/iio:device1'   # as tools/host/kv260_rt_setup.sh
 B_READY = r'\(CRobotIndy7\) \S+: the bus of the robot \(drives off\) beside the simulated arm \(-b\)'
