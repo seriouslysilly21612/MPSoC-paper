@@ -6,30 +6,40 @@ stream (high-level test 5: newly sampled reachable goals, unreachable goals, rep
 intervals, 1-mm perturbations every 67 periods) for --duration s, the timing of every period (-t), and the
 summary of tools/timing_summary.py (the row of Table 6).
 
-  python3 tools/run_timing.py --condition idle|stress|perception [--duration 600] [--cfg indy7/INDY7.cfg]
-                              [--bus FILE] [--out DIR] [--settle 30] [--direct]
+  python3 tools/run_timing.py --condition idle|stress|perception|pressure [--pressure 0|25|50|75|100]
+                              [--duration 600] [--cfg indy7/INDY7.cfg] [--bus FILE] [--out DIR] [--settle 30]
+                              [--direct] [--no-hl-log]
 
   --bus FILE  another bus than that of the cfg (indy7 -B FILE, e.g. indy7/bench/L7N4_bus.cfg, the L7N
               bench); the arm and everything else stay those of the cfg; FILE is copied into OUT
+  --no-hl-log HL_LOG=0 in the copy of the cfg: the high-level test is not logged (the 30-min runs of
+              tools/run_batch.py; the log takes about 0.7 kB per period)
 
   idle        nothing else runs on the host
   stress      stress-ng --taskset OTHERS --cpu 3 --vm 1 --vm-bytes 10% (KV260; the paper, Table 6: --cpu 14 --vm 2
-              --vm-bytes 35% on its 16 threads), started 120 s before the controller; OTHERS = the CPUs
-              besides the real-time core (default 0-2)
-  perception  the camera pipeline runs (started by the operator beforehand: ros2 launch system_bringup_pkg
-              pick_place_vitis_ai.launch.py; checked here by its processes), and the controller runs its
-              bridge (a build with ROS 2, APP_BRIDGE=1; the environments of ROS 2 sourced)
+              --vm-bytes 35% on its 16 threads); OTHERS = the CPUs besides the real-time core (default 0-2)
+  perception  the camera pipeline runs (ros2 launch system_bringup_pkg pick_place_vitis_ai.launch.py, started
+              here unless it runs already, its output in OUT/vision.txt, stopped at the end if started here;
+              the detector processes every frame it can: its gate, 30 ms, is shorter than its processing,
+              about 43 ms), and the controller runs its bridge (a build with ROS 2, APP_BRIDGE=1)
+  pressure    perception + memory pressure (D-11): stress-ng --taskset OTHERS --memrate 3, its read
+              and write rates bounded so that its time-averaged rate is about --pressure % of its unbounded
+              rate beside the camera pipeline (MEMRATE_CAP; 0: no memrate, i.e. perception; 100: unbounded);
+              the rates it reached in OUT/memrate.txt. Without the stress load: beside it the workers got about
+              a third of the CPUs and reached about 2 GB/s whatever the bound, so 50, 75 and 100 % were the
+              same (11-15)
 
 In order:
   1. checks, warnings only: the host as in Table 3 (PREEMPT_RT, the core isolated, kernel.timer_migration 0,
      NTP not synchronizing the clock), the bus (the IgH master running), the controller built
   2. a copy of the cfg in OUT: HL_TEST_REF_S = the duration, VIEW_PORT = 0, JOINT_TEST_LOG_DIR = OUT/hl_logs,
      its relative paths made absolute
-  3. the load of the condition
-  4. the controller through indy7/run.sh (the limits, EtherCAT-OP at SCHED_FIFO 40) with -b -t OUT; --settle s
+  3. every second until the end, the PS temperatures and the board power: OUT/temp_power.csv
+  4. the load of the condition, then 120 s before the controller
+  5. the controller through indy7/run.sh (the limits, EtherCAT-OP at SCHED_FIFO 40) with -b -t OUT; --settle s
      in OP; then the keys r, g, k (the hold off), h (servo on of the simulated arm; the drives of the bus stay
      off), y 5 (HOME to q_r, then TRACK with the stream); its end; j, q
-  5. the load stopped; tools/timing_summary.py on the timing log: OUT/timing_summary.txt, timing_table.csv
+  6. the load stopped; tools/timing_summary.py on the timing log: OUT/timing_summary.txt, timing_table.csv
 The console of the controller is saved as OUT/console.txt. The high-level log of the run takes about 0.7 kB
 per period (OUT/hl_logs), the timing log 60 bytes per period. Standard library only.
 """
@@ -38,8 +48,10 @@ import glob
 import os
 import re
 import shutil
+import signal
 import subprocess
 import sys
+import threading
 import time
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -50,6 +62,19 @@ from jt_run_sim import APP, Console, FAIL_START, CTRL_ON, GRAV_COMP  # noqa: E40
 PATH_KEYS = ('URDF_PATH', 'SIM_MJCF_PATH', 'JOINT_TEST_LOG_DIR', 'CALIB_DIR', 'HL_TEST_NOISE_FILE')
 STRESS_ARGS = ['--cpu', '3', '--vm', '1', '--vm-bytes', '10%', '--timeout', '0', '--quiet']   # KV260: 3 cores, 3.8 GB
 PERCEPTION = ('realsense2_camera_node', 'vitis_ai_detector_node', 'pick_target_base_node')
+VISION = ('source /opt/ros/humble/setup.bash && source "$HOME/ros2_ws/install/setup.bash" && '
+          'exec ros2 launch system_bringup_pkg pick_place_vitis_ai.launch.py')            # as run.sh sources them
+# the line of vitis_ai_detector_node once its worker has loaded the model; the loads start only after it: under
+# them the worker missed the node's 30 s startup limit (11-15, run 04 of the quick batch)
+VISION_READY = 'Vitis-AI worker ready'
+# The memory pressure, read and write bounds [MB/s] of each of the three memrate workers. A worker runs the 17
+# methods of a round over its buffer in turn, so its time-averaged rate is the harmonic mean of their rates.
+# Beside the camera pipeline the three reached 2.87 GB/s unbounded (2026-11-15, the quick batch, runs 04-06); by
+# the rates of the methods there these bounds give about 26, 52, 76 % of it. (Alone, nothing else running, the
+# three reached 6.0 GB/s; the bounds from that, 500, 1000, 1620, gave 52, 83, 93 % beside the pipeline.)
+MEMRATE_CAP = {25: 250, 50: 500, 75: 800}
+MEMRATE_ARGS = ['--memrate', '3', '--timeout', '0', '--metrics']
+AMS, INA = '/sys/bus/iio/devices/iio:device0', '/sys/bus/iio/devices/iio:device1'   # as tools/host/kv260_rt_setup.sh
 B_READY = r'\(CRobotIndy7\) \S+: the bus of the robot \(drives off\) beside the simulated arm \(-b\)'
 
 
@@ -69,6 +94,19 @@ def cpu_list(text):
     return cpus
 
 
+def ntp_active():
+    try:
+        return subprocess.run(['timedatectl', 'show', '-p', 'NTP', '--value'], capture_output=True, text=True,
+                              timeout=5).stdout.strip() == 'yes'
+    except (OSError, subprocess.SubprocessError):
+        return False
+
+
+def master_running():
+    """the thread of the IgH master: EtherCAT-IDLE with no application, EtherCAT-OP with one"""
+    return subprocess.run(['pgrep', '-x', 'EtherCAT-(IDLE|OP)'], capture_output=True).returncode == 0
+
+
 def checks(a, rt_cpu):
     try:
         rt = open('/sys/kernel/realtime').read().strip() == '1'
@@ -84,23 +122,20 @@ def checks(a, rt_cpu):
             warn('kernel.timer_migration is not 0 (Table 3: sudo sysctl kernel.timer_migration=0)')
     except OSError:
         pass
-    try:
-        out = subprocess.run(['timedatectl', 'show', '-p', 'NTP', '--value'], capture_output=True, text=True,
-                             timeout=5).stdout.strip()
-        if out == 'yes':
-            warn('NTP is active (Table 3: stopped during the measurements; sudo timedatectl set-ntp false)')
-    except (OSError, subprocess.SubprocessError):
-        pass
-    if subprocess.run(['pgrep', '-x', 'EtherCAT-OP'], capture_output=True).returncode != 0:
-        warn('no EtherCAT-OP thread: is the IgH master running (ethercat.service)?')
+    if ntp_active():
+        warn('NTP is active (Table 3: stopped during the measurements; sudo timedatectl set-ntp false)')
+    if not master_running():
+        warn('no EtherCAT-IDLE or EtherCAT-OP thread: is the IgH master running (ethercat.service)?')
     if not os.path.exists(os.path.join(APP, 'bin', 'indy7_ctrl')):
         sys.exit('run_timing: indy7/bin/indy7_ctrl is missing: make')
 
 
-def cfg_copy(src, dst, out, duration):
+def cfg_copy(src, dst, out, duration, hl_log=True):
     """the cfg of the run: the test values set, the relative paths of the source made absolute"""
     base = os.path.dirname(os.path.abspath(src))
     sets = {'HL_TEST_REF_S': '%g' % duration, 'VIEW_PORT': '0', 'JOINT_TEST_LOG_DIR': os.path.join(out, 'hl_logs')}
+    if not hl_log:
+        sets['HL_LOG'] = '0'
     lines, done = [], set()
     for line in open(src).read().split('\n'):
         m = re.match(r'^([A-Za-z0-9_]+)(\s*=\s*)(.*)$', line)
@@ -119,9 +154,111 @@ def cfg_copy(src, dst, out, duration):
         f.write('\n'.join(lines))
 
 
+def vision_missing():
+    """the processes of the camera pipeline that do not run"""
+    return [p for p in PERCEPTION if subprocess.run(['pgrep', '-f', p], capture_output=True).returncode]
+
+
+def start_vision(out):
+    """the camera pipeline in a process group of its own; None if it runs already (it is then left running)"""
+    if not vision_missing():
+        print('run_timing: the camera pipeline runs already; it is left running')
+        return None
+    log = os.path.join(out, 'vision.txt')
+    p = subprocess.Popen(['bash', '-c', VISION], stdout=open(log, 'w'), stderr=subprocess.STDOUT,
+                         start_new_session=True, env=dict(os.environ, PYTHONUNBUFFERED='1'))
+    for _ in range(150):
+        time.sleep(1.0)
+        if not vision_missing() and VISION_READY in open(log, errors='replace').read():
+            print('run_timing: the camera pipeline started, its detector ready (vision.txt)')
+            return p
+        if p.poll() is not None:
+            break
+    missing = vision_missing()
+    stop_vision(p)
+    raise RuntimeError('the camera pipeline did not start (%s; see vision.txt)'
+                       % ('no ' + ', '.join(missing) if missing else 'no "%s"' % VISION_READY))
+
+
+def stop_vision(p):
+    """SIGINT to the launch and its nodes, then SIGTERM, then SIGKILL, until none of them runs"""
+    if p is None:
+        return
+    for sig in (signal.SIGINT, signal.SIGTERM, signal.SIGKILL):
+        try:
+            os.killpg(p.pid, sig)
+        except ProcessLookupError:
+            return
+        for _ in range(20):
+            time.sleep(0.5)
+            if p.poll() is not None and len(vision_missing()) == len(PERCEPTION):
+                return
+
+
+def memrate_rate(path):
+    """the time-averaged rate [MB/s] that the memrate workers reached (stress-ng --metrics; a worker runs every
+    method once over the same buffer per round: the harmonic mean of its method rates), summed over the workers"""
+    per = {}
+    try:
+        for pid, rate in re.findall(r'\[(\d+)\] stress-ng-memrate:\s+\w+:\s+([0-9.]+) MB/sec', open(path).read()):
+            per.setdefault(pid, []).append(float(rate))
+    except OSError:
+        return None
+    rates = [len(r) / sum(1.0 / x for x in r) for r in per.values() if min(r) > 0]
+    return sum(rates) if rates else None
+
+
+def read_value(path):
+    try:
+        return float(open(path).read())
+    except (OSError, ValueError):
+        return float('nan')
+
+
+def read_sensors():
+    """the PS temperatures, LPD and FPD [C], (raw + offset) * scale / 1000 (AMD: Zynq UltraScale+ MPSoC AMS), and the
+    board power [W] (INA260). Not the PL temperature: AMD warns that reading it while the PL is being initialized
+    can lock the system."""
+    v = [(read_value(b + '_raw') + read_value(b + '_offset')) * read_value(b + '_scale') / 1000.0
+         for b in (os.path.join(AMS, 'in_temp0_ps_temp'), os.path.join(AMS, 'in_temp1_remote_temp'))]
+    v.append(read_value(os.path.join(INA, 'in_power2_raw')) * read_value(os.path.join(INA, 'in_power2_scale')) / 1000.0)
+    return v
+
+
+def sample(path, stop):
+    """every second until stop is set: t [s] and read_sensors() into path"""
+    if all(x != x for x in read_sensors()):
+        warn('no temperature log: none of %s, %s reads' % (AMS, INA))
+        return
+    t0 = time.monotonic()
+    with open(path, 'w') as f:
+        f.write('t_s,ps_lpd_C,ps_fpd_C,board_W\n')
+        while True:
+            f.write('%.0f,%.1f,%.1f,%.2f\n' % tuple([time.monotonic() - t0] + read_sensors()))
+            f.flush()
+            if stop.wait(1.0):
+                return
+
+
+def run_extras(out):
+    """the memrate rate reached [MB/s] and the highest PS (LPD) temperature [C] of a run; None if not logged"""
+    tmax = None
+    try:
+        v = [float(line.split(',')[1]) for line in open(os.path.join(out, 'temp_power.csv')).read().split('\n')[1:]
+             if line]
+        v = [x for x in v if x == x]
+        tmax = max(v) if v else None
+    except (OSError, ValueError, IndexError):
+        pass
+    return memrate_rate(os.path.join(out, 'memrate.txt')), tmax
+
+
 def main():
+    sys.stdout.reconfigure(line_buffering=True)     # in order with the output of the programs it runs (run.txt)
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument('--condition', required=True, choices=('idle', 'stress', 'perception'))
+    ap.add_argument('--condition', required=True, choices=('idle', 'stress', 'perception', 'pressure'))
+    ap.add_argument('--pressure', type=int, choices=(0, 25, 50, 75, 100),
+                    help='[%%] of the largest memory rate, with --condition pressure')
     ap.add_argument('--duration', type=float, default=600.0, help='[s] of the goal stream (Table 6: 600)')
     ap.add_argument('--cfg', default=os.path.join(APP, 'INDY7.cfg'))
     ap.add_argument('--out', help='results (default ./timing_<condition>_<date>)')
@@ -129,7 +266,10 @@ def main():
     ap.add_argument('--others', default=os.environ.get('OTHERS', '0-2'), help='CPUs of the stress-ng load')
     ap.add_argument('--direct', action='store_true', help='start bin/indy7_ctrl instead of run.sh (no limit check)')
     ap.add_argument('--bus', help='-B FILE of the controller: the slaves of the bus from FILE (the L7N bench)')
+    ap.add_argument('--no-hl-log', action='store_true', help='HL_LOG=0: the high-level test not logged')
     a = ap.parse_args()
+    if (a.condition == 'pressure') != (a.pressure is not None):
+        ap.error('--pressure goes with --condition pressure, and only with it')
 
     src = os.path.abspath(a.cfg)
     rt_cpu = int(float(jp.cfg_get(src, 'TASK0', 'CPU', '3') or 3))
@@ -137,33 +277,49 @@ def main():
     os.makedirs(os.path.join(out, 'hl_logs'), exist_ok=True)
     checks(a, rt_cpu)
     cfg = os.path.join(out, 'INDY7.cfg')
-    cfg_copy(src, cfg, out, a.duration)
+    cfg_copy(src, cfg, out, a.duration, hl_log=not a.no_hl_log)
 
-    load = None
-    if a.condition == 'stress':
-        load = subprocess.Popen(['stress-ng', '--taskset', a.others] + STRESS_ARGS)
-        print('run_timing: stress-ng --taskset %s %s; 120 s warm-up' % (a.others, ' '.join(STRESS_ARGS)))
-        time.sleep(120)
-        if load.poll() is not None:
-            sys.exit('run_timing: stress-ng did not start')
-    elif a.condition == 'perception':
-        missing = [p for p in PERCEPTION if subprocess.run(['pgrep', '-f', p], capture_output=True).returncode]
-        if missing:
-            sys.exit('run_timing: the camera pipeline is not running (no %s): start it first' % ', '.join(missing))
-
-    cmd = (['./bin/indy7_ctrl'] if a.direct else ['./run.sh']) + ['-f', cfg, '-b', '-t', out]
-    if a.bus:
-        bus = os.path.join(out, os.path.basename(a.bus))
-        shutil.copyfile(os.path.abspath(a.bus), bus)        # the bus of the run, kept beside its log
-        cmd += ['-B', bus]
-    print('run_timing: %s (in %s)' % (' '.join(cmd), APP))
-    c = Console(cmd, APP, dict(os.environ, MALLOC_ARENA_MAX='2'), os.path.join(out, 'console.txt'))
+    stop = threading.Event()
+    sampler = threading.Thread(target=sample, args=(os.path.join(out, 'temp_power.csv'), stop), daemon=True)
+    sampler.start()
+    vision = load = mem = c = None
     code = 0
     try:
-        c.expect(B_READY, 60, fail=FAIL_START)
-        c.expect(r'\[BUS\] OP: \d+ slaves', 60, fail=FAIL_START)
-        if a.condition == 'perception':
-            c.expect(r'\[bridge\] up', 10, fail=r'\[bridge\] cannot start|built without ROS 2')
+        if a.condition in ('perception', 'pressure'):
+            vision = start_vision(out)
+        elif len(vision_missing()) < len(PERCEPTION):
+            warn('the camera pipeline runs: this is not the condition %s' % a.condition)
+        if a.condition == 'stress':
+            load = subprocess.Popen(['stress-ng', '--taskset', a.others] + STRESS_ARGS)
+            print('run_timing: stress-ng --taskset %s %s' % (a.others, ' '.join(STRESS_ARGS)))
+        if a.condition == 'pressure' and a.pressure:
+            cap = MEMRATE_CAP.get(a.pressure)
+            margs = MEMRATE_ARGS + (['--memrate-rd-mbs', str(cap), '--memrate-wr-mbs', str(cap)] if cap else [])
+            mem = subprocess.Popen(['stress-ng', '--taskset', a.others] + margs,
+                                   stdout=open(os.path.join(out, 'memrate.txt'), 'w'), stderr=subprocess.STDOUT)
+            print('run_timing: stress-ng --taskset %s %s' % (a.others, ' '.join(margs)))
+        if a.condition != 'idle':
+            print('run_timing: 120 s warm-up')
+            time.sleep(120)
+            if any(p is not None and p.poll() is not None for p in (load, mem)):
+                raise RuntimeError('stress-ng did not start')
+            if a.condition in ('perception', 'pressure') and vision_missing():
+                raise RuntimeError('the camera pipeline stopped (no %s)' % ', '.join(vision_missing()))
+
+        cmd = (['./bin/indy7_ctrl'] if a.direct else ['./run.sh']) + ['-f', cfg, '-b', '-t', out]
+        if a.bus:
+            bus = os.path.join(out, os.path.basename(a.bus))
+            shutil.copyfile(os.path.abspath(a.bus), bus)        # the bus of the run, kept beside its log
+            cmd += ['-B', bus]
+        print('run_timing: %s (in %s)' % (' '.join(cmd), APP))
+        c = Console(cmd, APP, dict(os.environ, MALLOC_ARENA_MAX='2'), os.path.join(out, 'console.txt'))
+        # in any order: CRobotIndy7::Init() starts the bridge (InitBridge) before it prints B_READY, and the bus
+        # reaches OP later still
+        ready, fail = [B_READY, r'\[BUS\] OP: \d+ slaves'], FAIL_START
+        if a.condition in ('perception', 'pressure'):
+            ready.append(r'\[bridge\] up')
+            fail += r'|\[bridge\] cannot start|built without ROS 2'
+        c.expect_all(ready, 120, fail=fail)
         print('run_timing: the bus in OP; %.0f s settle' % a.settle)
         time.sleep(a.settle)
         c.send('r')
@@ -189,23 +345,42 @@ def main():
         c.expect(r'SERVO OFF', 10)
         time.sleep(0.5)
         c.send('q')
-    except (RuntimeError, KeyboardInterrupt) as ex:
+    except (RuntimeError, KeyboardInterrupt, OSError) as ex:
         print('run_timing: stopped: %s' % ex)
         code = 1
+        if c is not None:
+            try:
+                c.send('j')
+                time.sleep(0.3)
+                c.send('q')
+            except OSError:
+                pass
+    if c is not None:
+        c.close()
+    if mem is not None:
+        mem.send_signal(signal.SIGINT)          # stress-ng then reports the rates reached (memrate.txt)
         try:
-            c.send('j')
-            time.sleep(0.3)
-            c.send('q')
-        except OSError:
-            pass
-    c.close()
+            mem.wait(timeout=30)
+        except subprocess.TimeoutExpired:
+            mem.kill()
     if load is not None:
         load.terminate()
         try:
             load.wait(timeout=10)
         except subprocess.TimeoutExpired:
             load.kill()
+    if load is not None or mem is not None:
         subprocess.run(['pkill', '-f', '^stress-ng'], capture_output=True)
+    stop_vision(vision)
+    stop.set()
+    sampler.join()
+    rate, tmax = run_extras(out)
+    if rate is not None:
+        print('run_timing: memrate reached %.0f MB/s (time-averaged, the 3 workers)' % rate)
+    if tmax is not None:
+        print('run_timing: the PS temperature (LPD) at most %.1f C (temp_power.csv)' % tmax)
+    if c is None:
+        return 1
     with c.lock:
         for line in c.text.splitlines():
             if line.startswith(('[RT]', '[BUS]', '[SIM]')):

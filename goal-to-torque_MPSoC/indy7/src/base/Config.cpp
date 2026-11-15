@@ -36,6 +36,7 @@ stConfigSystem::stConfigSystem()
 	dJtSlowT = 3.0;
 	dJtDwell = 1.0;
 	strJtLogDir = "jt_logs";
+	bHlLog = TRUE;
 	nTsJoint = 4;   dTsTau = 1.0;   dTsOn = 0.2;  dTsOff = 0.3;  nTsRep = 20;
 	nBaJoint = 4;   dBaRate = 2.0;  dBaMax = 15.0; dBaQd = 0.02; nBaRep = 5;
 	nSineJoint = 4; dSineAmp = 0.006; dSineFreq = 4.0; nSinePeriods = 32; nSineFf = 1; dSineV0 = 0.2;
@@ -465,6 +466,7 @@ CConfig::Parse()
 	cF.Double(S, "JOINT_TEST_SLOW_T", s.dJtSlowT);
 	cF.Double(S, "JOINT_TEST_DWELL", s.dJtDwell);
 	cF.String(S, "JOINT_TEST_LOG_DIR", s.strJtLogDir);
+	cF.Bool(S, "HL_LOG", s.bHlLog);
 	cF.Int(S, "TORQUE_STEP_JOINT", s.nTsJoint);
 	cF.Double(S, "TORQUE_STEP_NM", s.dTsTau);
 	cF.Double(S, "TORQUE_STEP_ON_S", s.dTsOn);
