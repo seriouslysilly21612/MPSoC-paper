@@ -10,6 +10,8 @@ condition and repetition, with nobody at the board.
   --quick    idle, stress, perception, pressure 100 for 10 min each, then pressure 100 twice more; about 1.4 h
   --bus FILE the bus of every run (default indy7/bench/L7N4_bus.cfg, the L7N bench)
   --dry-run  the runs and their commands; nothing is run
+  --from N   start at run N in an OUT of an earlier batch; the directory of a run done again is kept as
+             <nn>_<condition>.before-<time>
 
 Before it: the IgH master running (sudo systemctl start ethercat), NTP off (sudo timedatectl set-ntp false),
 none of the controller, stress-ng and the camera pipeline running, and a terminal that outlives the login (tmux). Every run gets OUT/<nn>_<condition>/
@@ -114,18 +116,19 @@ def main():
     ap.add_argument('--quick', action='store_true', help='the short protocol, about 1.4 h')
     ap.add_argument('--bus', default=os.path.join(rt.APP, 'bench', 'L7N4_bus.cfg'), help='the bus of every run')
     ap.add_argument('--dry-run', action='store_true', help='the runs and their commands only')
+    ap.add_argument('--from', dest='first', type=int, default=1, help='start at run N (an earlier batch in OUT)')
     a = ap.parse_args()
     out, bus = os.path.abspath(os.path.expanduser(a.out)), os.path.abspath(a.bus)
     runs = plan(a.quick)
-    total = sum(estimate(r) for r in runs)
-    print('run_batch: %d runs, about %.1f h, into %s' % (len(runs), total / 3600, out))
+    todo = [r for r in runs if r[0] >= a.first]
+    total = sum(estimate(r) for r in todo)
+    print('run_batch: %d runs, about %.1f h, into %s' % (len(todo), total / 3600, out))
     if a.dry_run:
-        for r in runs:
+        for r in todo:
             print('  %-16s %s' % (name(r[0], r[2], r[3]), ' '.join(command(r, out, bus))))
         return 0
     os.makedirs(out, exist_ok=True)
-    preflight(out, bus, runs)
-    # shortcut: no resume; a batch stopped midway starts again from its first run (add --from N if that happens)
+    preflight(out, bus, todo)
     path = os.path.join(out, 'batch.csv')
     new = not os.path.exists(path)
     with open(path, 'a', newline='') as f:
@@ -133,9 +136,11 @@ def main():
         if new:
             w.writerow(['run', 'repetition', 'condition', 'pressure', 'start', 'end', 'exit', 'memrate_MBps',
                         'ps_temp_max_C', 'killed_after'])
-        for r in runs:
+        for r in todo:
             n, rep, cond, pressure, dur = r
             d = os.path.join(out, name(n, cond, pressure))
+            if os.path.exists(d):
+                os.rename(d, d + '.before-' + time.strftime('%H%M%S'))
             os.makedirs(d, exist_ok=True)
             start = time.strftime('%Y-%m-%d %H:%M:%S')
             print('run_batch: %d/%d %s (repetition %d) from %s' % (n, len(runs), name(n, cond, pressure), rep,

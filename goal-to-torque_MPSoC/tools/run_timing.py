@@ -309,13 +309,13 @@ def main():
             cmd += ['-B', bus]
         print('run_timing: %s (in %s)' % (' '.join(cmd), APP))
         c = Console(cmd, APP, dict(os.environ, MALLOC_ARENA_MAX='2'), os.path.join(out, 'console.txt'))
-        c.expect(B_READY, 60, fail=FAIL_START)
-        # the bridge starts with the tasks: its line comes before or after the bus is in OP (both seen on the board)
-        ready, fail = [r'\[BUS\] OP: \d+ slaves'], FAIL_START
+        # in any order: CRobotIndy7::Init() starts the bridge (InitBridge) before it prints B_READY, and the bus
+        # reaches OP later still
+        ready, fail = [B_READY, r'\[BUS\] OP: \d+ slaves'], FAIL_START
         if a.condition in ('perception', 'pressure'):
             ready.append(r'\[bridge\] up')
             fail += r'|\[bridge\] cannot start|built without ROS 2'
-        c.expect_all(ready, 60, fail=fail)
+        c.expect_all(ready, 120, fail=fail)
         print('run_timing: the bus in OP; %.0f s settle' % a.settle)
         time.sleep(a.settle)
         c.send('r')

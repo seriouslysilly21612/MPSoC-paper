@@ -266,7 +266,7 @@ The MPSoC measurements run every condition unattended: idle, stress, perception,
 KV260), 30 min x 3, about 11.8 h (`--quick`: about 1.4 h). On the L7N bench (`indy7/bench/L7N4_bus.cfg`), with the
 IgH master running and NTP off (`sudo timedatectl set-ntp false`; it refuses to start otherwise), inside tmux:
 
-    python3 tools/run_batch.py --out ~/timing_logs/p0_bench_batch_<date>    # --dry-run lists the runs
+    python3 tools/run_batch.py --out ~/timing_logs/p0_bench_batch_<date>    # --dry-run lists the runs; --from N goes on from run N
 
 `batch.csv` has a line per run (its exit code, the memory rate reached, the highest PS temperature) and
 `timing_tables.csv` the row of Table 6 of every run. The runs do not log the high-level test (`HL_LOG=0`).
