@@ -61,6 +61,9 @@ STRESS_ARGS = ['--cpu', '3', '--vm', '1', '--vm-bytes', '10%', '--timeout', '0',
 PERCEPTION = ('realsense2_camera_node', 'vitis_ai_detector_node', 'pick_target_base_node')
 VISION = ('source /opt/ros/humble/setup.bash && source "$HOME/ros2_ws/install/setup.bash" && '
           'exec ros2 launch system_bringup_pkg pick_place_vitis_ai.launch.py')            # as run.sh sources them
+# the line of vitis_ai_detector_node once its worker has loaded the model; the loads start only after it: under
+# them the worker missed the node's 30 s startup limit (11-15, run 04 of the quick batch)
+VISION_READY = 'Vitis-AI worker ready'
 # The memory pressure, read and write bounds [MB/s] of each of the three memrate workers. Measured on the KV260
 # (2026-11-15, nothing else running, 60 s): a worker runs the 17 methods of a round over its buffer, 2008 MB/s
 # time-averaged unbounded (6.0 GB/s the three); these bounds give 25, 50, 75 % of it.
@@ -156,18 +159,20 @@ def start_vision(out):
     if not vision_missing():
         print('run_timing: the camera pipeline runs already; it is left running')
         return None
-    p = subprocess.Popen(['bash', '-c', VISION], stdout=open(os.path.join(out, 'vision.txt'), 'w'),
-                         stderr=subprocess.STDOUT, start_new_session=True)
-    for _ in range(90):
+    log = os.path.join(out, 'vision.txt')
+    p = subprocess.Popen(['bash', '-c', VISION], stdout=open(log, 'w'), stderr=subprocess.STDOUT,
+                         start_new_session=True, env=dict(os.environ, PYTHONUNBUFFERED='1'))
+    for _ in range(150):
         time.sleep(1.0)
-        if not vision_missing():
-            print('run_timing: the camera pipeline started (vision.txt)')
+        if not vision_missing() and VISION_READY in open(log, errors='replace').read():
+            print('run_timing: the camera pipeline started, its detector ready (vision.txt)')
             return p
         if p.poll() is not None:
             break
     missing = vision_missing()
     stop_vision(p)
-    raise RuntimeError('the camera pipeline did not start (no %s; see vision.txt)' % ', '.join(missing))
+    raise RuntimeError('the camera pipeline did not start (%s; see vision.txt)'
+                       % ('no ' + ', '.join(missing) if missing else 'no "%s"' % VISION_READY))
 
 
 def stop_vision(p):
