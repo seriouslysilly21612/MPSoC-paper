@@ -4,9 +4,9 @@ condition and repetition, with nobody at the board.
 
   python3 tools/run_batch.py --out DIR [--quick] [--bus FILE] [--dry-run]
 
-  (full)     the 8 conditions (idle, stress, perception, pressure 0, 25, 50, 75, 100) x 30 min x 3; each
-             repetition is one round of the 8, so that a slow drift (the temperature of the board) falls on every
-             condition alike; about 13.5 h, about 2.6 GB of timing logs
+  (full)     the 7 conditions (idle, stress, perception, pressure 25, 50, 75, 100; perception is pressure 0) x 30 min x 3; each
+             repetition is one round of the 7, so that a slow drift (the temperature of the board) falls on every
+             condition alike; about 11.8 h, about 2.3 GB of timing logs
   --quick    idle, stress, perception, pressure 100 for 10 min each, then pressure 100 twice more; about 1.4 h
   --bus FILE the bus of every run (default indy7/bench/L7N4_bus.cfg, the L7N bench)
   --dry-run  the runs and their commands; nothing is run
@@ -33,7 +33,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 import run_timing as rt  # noqa: E402
 
-CONDS = [('idle', None), ('stress', None), ('perception', None)] + [('pressure', p) for p in (0, 25, 50, 75, 100)]
+CONDS = [('idle', None), ('stress', None), ('perception', None)] + [('pressure', p) for p in (25, 50, 75, 100)]   # 0 % is perception
 QUICK = [('idle', None), ('stress', None), ('perception', None)] + [('pressure', 100)] * 3
 # what a run may leave behind; killed before the next run (every run is -b: the drives of the bus stay off)
 LEFTOVERS = ('indy7_ctrl', '^stress-ng', 'pick_place_vitis_ai.launch.py') + rt.PERCEPTION

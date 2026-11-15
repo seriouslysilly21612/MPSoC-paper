@@ -22,9 +22,11 @@ summary of tools/timing_summary.py (the row of Table 6).
               here unless it runs already, its output in OUT/vision.txt, stopped at the end if started here;
               the detector processes every frame it can: its gate, 30 ms, is shorter than its processing,
               about 43 ms), and the controller runs its bridge (a build with ROS 2, APP_BRIDGE=1)
-  pressure    perception + stress + memory pressure (D-11): stress-ng --taskset OTHERS --memrate 3, its read
+  pressure    perception + memory pressure (D-11): stress-ng --taskset OTHERS --memrate 3, its read
               and write rates bounded so that its time-averaged rate is --pressure % of the largest measured
-              on the KV260 (MEMRATE_CAP; 0: no memrate; 100: unbounded); the rates it reached in OUT/memrate.txt
+              on the KV260 (MEMRATE_CAP; 0: no memrate, i.e. perception; 100: unbounded); the rates it reached
+              in OUT/memrate.txt. Without the stress load: beside it the workers got about a third of the CPUs
+              and reached about 2 GB/s whatever the bound, so 50, 75 and 100 % were the same (11-15)
 
 In order:
   1. checks, warnings only: the host as in Table 3 (PREEMPT_RT, the core isolated, kernel.timer_migration 0,
@@ -283,7 +285,7 @@ def main():
             vision = start_vision(out)
         elif len(vision_missing()) < len(PERCEPTION):
             warn('the camera pipeline runs: this is not the condition %s' % a.condition)
-        if a.condition in ('stress', 'pressure'):
+        if a.condition == 'stress':
             load = subprocess.Popen(['stress-ng', '--taskset', a.others] + STRESS_ARGS)
             print('run_timing: stress-ng --taskset %s %s' % (a.others, ' '.join(STRESS_ARGS)))
         if a.condition == 'pressure' and a.pressure:
