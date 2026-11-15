@@ -17,14 +17,16 @@ Before it: the IgH master running (sudo systemctl start ethercat), NTP off (sudo
 none of the controller, stress-ng and the camera pipeline running, and a terminal that outlives the login (tmux). Every run gets OUT/<nn>_<condition>/
 (the files of run_timing.py, its output in run.txt), the high-level test not logged (--no-hl-log). A run that
 fails or hangs is recorded and the batch goes on.
-  OUT/batch.csv          one line per run: n, repetition, condition, pressure, start, end, exit code, the memrate
-                         rate reached [MB/s], the highest PS temperature [C], what was left running and killed
+  OUT/batch.csv          one line per run: n, repetition, condition, pressure, start, end, exit code (and why:
+                         stopped, or the criteria that failed), the memrate rate reached [MB/s], the highest PS
+                         temperature [C], what was left running and killed
   OUT/timing_tables.csv  the timing_table.csv of every run (its row of Table 6) after the columns of the run
 Standard library only.
 """
 import argparse
 import csv
 import os
+import re
 import shutil
 import signal
 import subprocess
@@ -68,6 +70,23 @@ def estimate(run):
     the start, settle and HOME of the controller (about 60 s)"""
     _, _, cond, _, dur = run
     return dur + 60 + (120 if cond != 'idle' else 0) + (60 if cond in ('perception', 'pressure') else 0) + 10
+
+
+def why(d, code):
+    """the exit code of a run with its reason: where run_timing.py stopped (a fault of the run), or the criteria of
+    timing_summary.py that failed (a result: the run measured to its end)"""
+    if code == 0:
+        return '0'
+    try:
+        m = re.search(r'^run_timing: stopped: (.*)$', open(os.path.join(d, 'run.txt')).read(), re.M)
+        if m:
+            return '%s (stopped: %s)' % (code, m.group(1).strip())
+        fails = re.findall(r'^  (\S.*?)\s+FAIL\s+(.*)$', open(os.path.join(d, 'timing_summary.txt')).read(), re.M)
+        if fails:
+            return '%s (criteria FAIL: %s)' % (code, '; '.join('%s, %s' % (a, b.strip()) for a, b in fails))
+    except OSError:
+        pass
+    return str(code)
 
 
 def running(pattern):
@@ -161,6 +180,7 @@ def main():
             for x in LEFTOVERS:
                 subprocess.run(['pkill', '-KILL', '-f', x], capture_output=True)
             rate, tmax = rt.run_extras(d)
+            code = why(d, code)
             w.writerow([n, rep, cond, '' if pressure is None else pressure, start,
                         time.strftime('%Y-%m-%d %H:%M:%S'), code, '' if rate is None else '%.0f' % rate,
                         '' if tmax is None else '%.1f' % tmax, ' '.join(killed)])

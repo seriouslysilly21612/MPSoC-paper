@@ -22,8 +22,9 @@ bin; the maximum exact) of:
          their cycle; for a Dynamics task with a START_DELAY only the part of C_sim that the work before
          it ran past its release)
 and the faults in the window: late releases (t_w > T_s), overruns (t_w + t_e > T_s), missed send deadlines
-(t_w + t_s > t_b), incomplete working counters, periods without OP; with -b also that no drive of the bus
-was ever enabled. It writes timing_summary.txt, timing_table.csv (the row of Table 6) and timing_tw.hist
+(t_w + t_s > t_b), incomplete working counters, periods without OP, periods in OP without the torque of the
+period before (its Dynamics cycle not complete when the EtherCAT task read the Torque slot: the record has no
+chain for it, so the chain criterion cannot see it); with -b also that no drive of the bus was ever enabled. It writes timing_summary.txt, timing_table.csv (the row of Table 6) and timing_tw.hist
 (t_w of the EtherCAT task in 1 us bins, the format of the cyclictest histograms) into --out (default: the
 directory of the log). Standard library only.
 """
@@ -167,7 +168,7 @@ def main(argv=None):
     d['Delta T_send (signed)'] = Dist(off=MAX_NS // 2)
     CHAIN = names[-1]
     cnt = dict(periods=0, late=0, overrun=0, missed=0, wkc=0, notop=0, busservo=0, chain_n=0,
-               over_chain=0, nosim=0)
+               over_chain=0, nosim=0, notorque=0)
     worst_ws = worst_chain = None
     prev = None        # (period, t_w + t_s) of the last period of the window
     prev_sim = None    # (period, simulator step, EtherCAT t_w + t_e) of the last record
@@ -204,6 +205,8 @@ def main(argv=None):
                     hh[idx] += 1
         if not (fl & FLAGS['OP']):
             cnt['notop'] += 1
+        elif dyw < 0 or dye < 0:    # the EtherCAT task found no torque of the period before (TaskEtherCAT.cpp)
+            cnt['notorque'] += 1
         if fl & FLAGS['BUSSERVO']:
             cnt['busservo'] += 1
         d['EtherCAT t_w'].add(w)
@@ -300,6 +303,10 @@ def main(argv=None):
     L.append('faults in the window: %d late releases, %d overruns, %d missed send deadlines, %d incomplete working '
              'counters, %d periods without OP, %d periods missing from the log'
              % (cnt['late'], cnt['overrun'], cnt['missed'], cnt['wkc'], cnt['notop'], gaps))
+    if cnt['chain_n']:
+        L.append('periods in OP without the torque of the period before: %d (their chain is not in the log)%s'
+                 % (cnt['notorque'], '; with -b the simulator step ran before the control task on the same core'
+                    if hybrid and cnt['notorque'] else ''))
     if worst_ws:
         L.append('largest t_w + t_s: %.1f us (release period %d)' % (worst_ws[0] / 1000.0, worst_ws[1]))
     if worst_chain:
@@ -318,6 +325,7 @@ def main(argv=None):
             ('no incomplete working counter', cnt['wkc'] == 0, str(cnt['wkc']))]
     if cnt['chain_n']:
         crit.append(('chain < T_s in every period', cnt['over_chain'] == 0, '%d at or above' % cnt['over_chain']))
+        crit.append(('a fresh torque in every period', cnt['notorque'] == 0, '%d without' % cnt['notorque']))
     if hybrid:
         crit.append(('-b: no drive of the bus enabled', cnt['busservo'] == 0, '%d periods' % cnt['busservo']))
     L.append('')

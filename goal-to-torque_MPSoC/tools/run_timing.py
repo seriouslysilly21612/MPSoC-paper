@@ -251,6 +251,7 @@ def run_extras(out):
 
 
 def main():
+    sys.stdout.reconfigure(line_buffering=True)     # in order with the output of the programs it runs (run.txt)
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument('--condition', required=True, choices=('idle', 'stress', 'perception', 'pressure'))
     ap.add_argument('--pressure', type=int, choices=(0, 25, 50, 75, 100),
