@@ -1,5 +1,5 @@
 /*
- * ecat_bringup.h  --  EtherCAT bring-up: NIC, bus scan, PDO mapping, DC, SAFE-OP, OPERATIONAL.
+ * ecat_bringup.h  --  EtherCAT bring-up: NIC, bus scan, PDO mapping, SAFE-OP, OPERATIONAL (FREE_RUN, no DC).
  */
 #ifndef ECAT_BRINGUP_H
 #define ECAT_BRINGUP_H

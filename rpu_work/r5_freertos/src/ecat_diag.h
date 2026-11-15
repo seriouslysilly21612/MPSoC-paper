@@ -11,5 +11,6 @@ const char *al_state_name(unsigned state);      /* EC_STATE_* -> "PRE-OP", ... *
 
 void print_soem_errors(int max);                /* empty SOEM's error list, print its oldest `max` entries */
 void print_slave_states(const char *why);       /* read and print every slave's AL state and AL status code */
+void print_sync_parameters(void);               /* read (CoE SDO) and print every slave's 0x1C32 */
 
 #endif /* ECAT_DIAG_H */

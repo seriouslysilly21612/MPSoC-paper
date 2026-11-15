@@ -19,7 +19,6 @@
 #define AXIS_COUNT          4                 /* drives on the bus; exactly this many must answer */
 #define ENCODER_RESOLUTION  524288            /* counts per motor turn */
 #define CYCLE_NS            1000000u          /* 1 ms = 1 kHz            */
-#define DC_SHIFT_NS         125000            /* SYNC0 shift on the DC time grid (IgH: 12500) */
 
 /* What the firmware does once all drives are OPERATIONAL.  Each level adds to the one below. */
 #define RUN_BUS_ONLY        0                 /* drives to OPERATIONAL, nothing is enabled, nothing moves */

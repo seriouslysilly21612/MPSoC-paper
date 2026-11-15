@@ -109,3 +109,27 @@ void print_slave_states(const char *why)
     }
     print_soem_errors(8);
 }
+
+/* The SM2 synchronization parameters (object 0x1C32) as each slave reports them, read in PRE-OP:
+ * sub 1 sync type in use (0 free run, 1 SM2 event, 2 DC SYNC0, 3 DC SYNC1), sub 2 cycle time [ns],
+ * sub 4 sync types supported (bit 0 free run, bit 1 SM2 event, bits 2-3 DC), sub 5 minimum cycle time [ns].
+ * A sub that cannot be read prints as 0xFFFF / 4294967295, never as 0 (= free run); SOEM's error list says why. */
+void print_sync_parameters(void)
+{
+    int i;
+
+    for (i = 1; i <= ec_slavecount; i++) {
+        uint16 sync_type = 0xFFFF, supported = 0xFFFF;
+        uint32 cycle_ns = 0xFFFFFFFFu, min_cycle_ns = 0xFFFFFFFFu;
+        int size, got = 0;
+
+        size = sizeof(sync_type);    got += (ec_SDOread((uint16)i, 0x1C32, 0x01, FALSE, &size, &sync_type, EC_TIMEOUTRXM) > 0);
+        size = sizeof(cycle_ns);     got += (ec_SDOread((uint16)i, 0x1C32, 0x02, FALSE, &size, &cycle_ns, EC_TIMEOUTRXM) > 0);
+        size = sizeof(supported);    got += (ec_SDOread((uint16)i, 0x1C32, 0x04, FALSE, &size, &supported, EC_TIMEOUTRXM) > 0);
+        size = sizeof(min_cycle_ns); got += (ec_SDOread((uint16)i, 0x1C32, 0x05, FALSE, &size, &min_cycle_ns, EC_TIMEOUTRXM) > 0);
+        xil_printf("[ecat]   slave %d 0x1C32: sync type 0x%04x, cycle %u ns, supported 0x%04x, minimum cycle %u ns"
+                   " (%d of 4 read)\r\n", i, (unsigned)sync_type, (unsigned)cycle_ns, (unsigned)supported,
+                   (unsigned)min_cycle_ns, got);
+    }
+    print_soem_errors(8);
+}

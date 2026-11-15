@@ -3,15 +3,16 @@
 The FreeRTOS application of the R5F-0 (split mode) as it ran on the KV260 on 2026-11-11: the EtherCAT
 master (SOEM 1.4.0) on GEM3, which Linux leaves to the R5, driving the L7N bench (4 axes, CSP, DC on,
 1 kHz). Commit `ddc6d14` holds the source of that build unchanged. Since then the application is split
-into modules with new names, without a change in the generated code (below). The changes for the paper
-(DC removed, torque mode, the GEM3 buffers in OCM) come as later commits.
+into modules with new names, without a change in the generated code (below), and the master no longer
+sets up distributed clocks (FREE_RUN, below). Torque mode and the GEM3 buffers in OCM come as later
+commits.
 
 | Path | Content | Origin |
 |---|---|---|
 | `src/main.c` | start-up and two tasks: `ecat` (the master, priority `configMAX_PRIORITIES - 2`) and `led` | own |
 | `src/app_config.h` | the build switches and fixed parameters: axes, cycle time, `RUN_LEVEL`, timeouts, report period | own |
 | `src/ecat_task.c`, `.h` | the task `ecat`: bring-up, then the 1 kHz cycle (receive, working-counter check, axis logic, send) and a status report every 10 s | own, a translation of the IgH example `cia402_basic.c` |
-| `src/ecat_bringup.c`, `.h` | bring-up to OP: bus scan, PDO mapping, DC, SAFE-OP, OP with process data flowing | own, from the same example |
+| `src/ecat_bringup.c`, `.h` | bring-up to OP: bus scan, PDO mapping, the drives' sync parameters printed, SAFE-OP, OP with process data flowing | own, from the same example |
 | `src/cia402_drive.c`, `.h` | the drive's process data (packed structs over the IOmap), PDO mapping by SDO, statusword → CiA 402 state | own, from the same example |
 | `src/axis_control.c`, `.h` | what one cycle does with the axes: CiA 402 state machine (enable, fault reset), hold, sine trajectory | own, from the same example |
 | `src/event_log.c`, `.h` | the loop never prints: it posts events to a queue, the task `ecatlog` prints them at low priority | own |
@@ -74,6 +75,21 @@ release `xilinx_v2022.1`), and the ELF records GCC 11.2.0.
 - The log: `sudo python3 r5log.py -f` on Linux. The ring survives an R5 hang; read it before starting the R5 again.
 - Safety: one EtherCAT master at a time. Never stop the R5 while a motor moves (E-stop or drive power first).
   Do not restart Linux while the R5 runs the bus.
+
+## FREE_RUN (2026-11-15)
+
+The master configures no distributed clocks: `ec_configdc()` and `ec_dcsync0()` are gone with
+`DC_SHIFT_NS`, and `ec_config_init()` clears every slave's SYNC activation register. Each drive runs on its
+own internal cycle and takes the newest outputs. That is decision D-13 of the paper project: FREE_RUN on
+every stage, as in the earlier Indy7 experiments (the L7N has no SM2-synchronous mode). In PRE-OP, after
+the PDO mapping, the firmware reads and prints each drive's 0x1C32 with CoE SDO reads:
+
+    [ecat]   slave <n> 0x1C32: sync type 0x<sub 1>, cycle <sub 2> ns, supported 0x<sub 4>, minimum cycle <sub 5> ns (<k> of 4 read)
+
+Sub 1, the sync type in use, should be 0 (free run); 2 would mean DC SYNC0. Sub 2 is the cycle time,
+sub 4 the supported types (bit 0 free run, bit 1 SM2, bits 2-3 DC), sub 5 the minimum cycle time. A sub
+that cannot be read prints as 0xFFFF or 4294967295, and SOEM's error list follows. Not run on the board
+yet.
 
 ## The split into modules (2026-11-15)
 

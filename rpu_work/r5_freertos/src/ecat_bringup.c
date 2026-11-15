@@ -1,11 +1,11 @@
 /*
- * ecat_bringup.c  --  ec_init -> config -> PDO map -> DC -> SAFE_OP -> OPERATIONAL
- * (translation of the ecrt_* setup block of the IgH main()).
+ * ecat_bringup.c  --  ec_init -> config -> PDO map -> SAFE_OP -> OPERATIONAL
+ * (translation of the ecrt_* setup block of the IgH main(), without its distributed clocks: the drives run
+ * FREE_RUN, each on its own internal cycle).
  *
- * - Order = IgH:  PRE-OP -> PDO mapping -> DC + SYNC0 -> SAFE-OP -> process data FLOWING AT THE CYCLE RATE -> OP.
- *   Asking for OP without sending process data while waiting does not work: drives with DC / SM watchdog never
- *   leave SAFE-OP that way, and SOEM's DC drift compensation (the FRMW datagram inside every process-data frame)
- *   never runs.
+ * - Order:  PRE-OP -> PDO mapping -> SAFE-OP -> process data FLOWING AT THE CYCLE RATE -> OP.
+ *   Asking for OP without sending process data while waiting does not work: drives with an SM watchdog never
+ *   leave SAFE-OP that way.
  * - PDO size check: what the drive reports must equal sizeof(drive_outputs_t)/sizeof(drive_inputs_t), otherwise
  *   the packed structs would be written to the wrong offsets.  Init fails instead; nothing moves.
  *   Exactly AXIS_COUNT slaves must be on the bus.
@@ -70,7 +70,7 @@ int ecat_bring_up(void)
         ec_slave[i].PO2SOconfig = &drive_map_pdos;
     }
 
-    /* IgH order: PDO mapping + DC/SYNC0 are in place BEFORE the drives are asked for SAFE-OP.
+    /* The drives stay in PRE-OP until the SAFE-OP request below, after the PDO mapping and the 0x1C32 read.
      * SOEM would request SAFE-OP inside ec_config_map(); manualstatechange suppresses exactly that
      * (the slaves are already in PRE-OP, so nothing else changes).                                  */
     ecx_context.manualstatechange = 1;
@@ -99,19 +99,10 @@ int ecat_bring_up(void)
         drive_in[i]  = (drive_inputs_t *)s->inputs;
     }
 
-    /* distributed clocks: offsets + propagation delays, then SYNC0 at the cycle time on every DC slave */
-    if (!ec_configdc()) {
-        xil_printf("[ecat] WARN: no DC-capable slave found\r\n");
-    }
-    for (i = 1; i <= AXIS_COUNT; i++) {
-        if (ec_slave[i].hasdc) {
-            ec_dcsync0((uint16)i, TRUE, CYCLE_NS, DC_SHIFT_NS);
-        } else {
-            xil_printf("[ecat] WARN: slave %d has no distributed clock, it runs without SYNC0\r\n", i);
-        }
-    }
+    /* FREE_RUN: no ec_configdc() / ec_dcsync0(), and ec_config_init() has cleared every slave's SYNC activation.
+     * What the drives make of it: 0x1C32:01 should read 0. */
+    print_sync_parameters();
 
-    /* SAFE-OP, now that the drives see their SYNC0 configuration */
     ec_slave[0].state = EC_STATE_SAFE_OP;
     ec_writestate(0);
     (void)ec_statecheck(0, EC_STATE_SAFE_OP, EC_TIMEOUTSTATE * 4);
@@ -122,7 +113,7 @@ int ecat_bring_up(void)
     xil_printf("[ecat] all drives in SAFE-OP\r\n");
 
     /* OPERATIONAL: process data must keep flowing at the cycle rate while the drives change state
-     * (SM watchdog, DC drift compensation via the FRMW datagram, SYNC0 has to start first).        */
+     * (SM watchdog).                                                                                */
     ecat_expected_wkc = (ec_group[0].outputsWKC * 2) + ec_group[0].inputsWKC;
     xil_printf("[ecat] expected working counter %d; requesting OPERATIONAL\r\n", ecat_expected_wkc);
 
