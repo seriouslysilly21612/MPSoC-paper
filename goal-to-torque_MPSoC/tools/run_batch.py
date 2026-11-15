@@ -11,8 +11,8 @@ condition and repetition, with nobody at the board.
   --bus FILE the bus of every run (default indy7/bench/L7N4_bus.cfg, the L7N bench)
   --dry-run  the runs and their commands; nothing is run
 
-Before it: the IgH master running (sudo systemctl start ethercat), none of the controller, stress-ng and the
-camera pipeline running, and a terminal that outlives the login (tmux). Every run gets OUT/<nn>_<condition>/
+Before it: the IgH master running (sudo systemctl start ethercat), NTP off (sudo timedatectl set-ntp false),
+none of the controller, stress-ng and the camera pipeline running, and a terminal that outlives the login (tmux). Every run gets OUT/<nn>_<condition>/
 (the files of run_timing.py, its output in run.txt), the high-level test not logged (--no-hl-log). A run that
 fails or hangs is recorded and the batch goes on.
   OUT/batch.csv          one line per run: n, repetition, condition, pressure, start, end, exit code, the memrate
@@ -74,8 +74,10 @@ def running(pattern):
 
 def preflight(out, bus, runs):
     errs = []
-    if subprocess.run(['systemctl', 'is-active', '--quiet', 'ethercat']).returncode:
+    if not rt.master_running():          # the master itself: it may be started without systemd (ethercatctl)
         errs.append('the IgH master is not running (sudo systemctl start ethercat)')
+    if rt.ntp_active():
+        errs.append('NTP is active (sudo timedatectl set-ntp false; after the batch: sudo timedatectl set-ntp true)')
     errs += ['%s runs already' % p.lstrip('^') for p in LEFTOVERS if running(p)]
     if not os.path.isfile(bus):
         errs.append('no bus file %s' % bus)

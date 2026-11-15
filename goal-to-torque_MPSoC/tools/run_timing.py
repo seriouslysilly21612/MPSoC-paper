@@ -86,6 +86,19 @@ def cpu_list(text):
     return cpus
 
 
+def ntp_active():
+    try:
+        return subprocess.run(['timedatectl', 'show', '-p', 'NTP', '--value'], capture_output=True, text=True,
+                              timeout=5).stdout.strip() == 'yes'
+    except (OSError, subprocess.SubprocessError):
+        return False
+
+
+def master_running():
+    """the thread of the IgH master: EtherCAT-IDLE with no application, EtherCAT-OP with one"""
+    return subprocess.run(['pgrep', '-x', 'EtherCAT-(IDLE|OP)'], capture_output=True).returncode == 0
+
+
 def checks(a, rt_cpu):
     try:
         rt = open('/sys/kernel/realtime').read().strip() == '1'
@@ -101,15 +114,10 @@ def checks(a, rt_cpu):
             warn('kernel.timer_migration is not 0 (Table 3: sudo sysctl kernel.timer_migration=0)')
     except OSError:
         pass
-    try:
-        out = subprocess.run(['timedatectl', 'show', '-p', 'NTP', '--value'], capture_output=True, text=True,
-                             timeout=5).stdout.strip()
-        if out == 'yes':
-            warn('NTP is active (Table 3: stopped during the measurements; sudo timedatectl set-ntp false)')
-    except (OSError, subprocess.SubprocessError):
-        pass
-    if subprocess.run(['pgrep', '-x', 'EtherCAT-OP'], capture_output=True).returncode != 0:
-        warn('no EtherCAT-OP thread: is the IgH master running (ethercat.service)?')
+    if ntp_active():
+        warn('NTP is active (Table 3: stopped during the measurements; sudo timedatectl set-ntp false)')
+    if not master_running():
+        warn('no EtherCAT-IDLE or EtherCAT-OP thread: is the IgH master running (ethercat.service)?')
     if not os.path.exists(os.path.join(APP, 'bin', 'indy7_ctrl')):
         sys.exit('run_timing: indy7/bin/indy7_ctrl is missing: make')
 
@@ -295,9 +303,12 @@ def main():
         print('run_timing: %s (in %s)' % (' '.join(cmd), APP))
         c = Console(cmd, APP, dict(os.environ, MALLOC_ARENA_MAX='2'), os.path.join(out, 'console.txt'))
         c.expect(B_READY, 60, fail=FAIL_START)
-        c.expect(r'\[BUS\] OP: \d+ slaves', 60, fail=FAIL_START)
+        # the bridge starts with the tasks: its line comes before or after the bus is in OP (both seen on the board)
+        ready, fail = [r'\[BUS\] OP: \d+ slaves'], FAIL_START
         if a.condition in ('perception', 'pressure'):
-            c.expect(r'\[bridge\] up', 10, fail=r'\[bridge\] cannot start|built without ROS 2')
+            ready.append(r'\[bridge\] up')
+            fail += r'|\[bridge\] cannot start|built without ROS 2'
+        c.expect_all(ready, 60, fail=fail)
         print('run_timing: the bus in OP; %.0f s settle' % a.settle)
         time.sleep(a.settle)
         c.send('r')
