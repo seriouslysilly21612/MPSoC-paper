@@ -202,6 +202,9 @@ src/vitis_ai_detector_pkg/models/
 **처방**: launch 인자로 모델을 고르게 한다(`ros2 launch ... vision_model:=yolov5n_5class`).
 기본값을 새 모델로 두고, legacy는 인자 하나로 되돌아갈 수 있게 한다.
 
+> 2026-11-16: 우선 `model_path:=<xmodel 경로>` 인자만 넣었다(기본은 그대로 YOLOv3-tiny).
+> 위의 `vision_model:=`과 §5.1의 폴더 분리는 배포할 모델이 정해진 뒤에 한다.
+
 ### 5.3 worker는 head 3개를 이미 받는다 — 수정 불필요
 
 `load_model()`이 `decode_meta`의 `strides` 목록으로 head를 매칭하고, 출력 텐서의

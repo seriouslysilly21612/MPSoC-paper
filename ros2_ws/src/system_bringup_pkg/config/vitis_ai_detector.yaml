@@ -13,8 +13,8 @@ vitis_ai_detector_node:
     # ⚠️ 정정(2026-09-08): "여기에 model_path를 적으면 launch 주입을 덮어쓴다"고 적혀 있었으나
     #    사실과 반대다. launch가 parameters=[<이 yaml>, {'model_path': ...}] 순서로 넘기므로
     #    뒤에 오는 launch 주입이 이 yaml을 이긴다. 여기에 적어도 무시된다.
-    #    다른 모델을 쓰려면 launch 쪽을 고쳐야 한다 — 모델 선택 인자화는
-    #    docs/vision/yolov5_migration_plan.md §5.2의 예정 작업.
+    #    다른 모델은 launch 인자 model_path:=<xmodel 경로>로 고른다(2026-11-16).
+    #    decode_meta.json이 그 xmodel과 같은 폴더에 있어야 한다.
     detector_mode: "worker"
     worker_log_path: ""
     # 프레임을 stdin pipe(복사 3~4회, ipc ~9-12 ms) 대신 /dev/shm mmap(memcpy
