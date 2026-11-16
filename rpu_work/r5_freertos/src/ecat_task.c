@@ -1,12 +1,12 @@
 /*
- * ecat_task.c  --  4-axis CiA402 (CSP) servo control, 1 kHz, FREE_RUN (no DC): the EtherCAT master task.
+ * ecat_task.c  --  4-axis CiA402 (CSP) servo control, 1 kHz, DC SYNC0: the EtherCAT master task.
  *
  * Translation of the IgH/EtherLab "servo_drive_dc/cia402_basic.c" to SOEM + FreeRTOS, for the KV260 RPU
  * (Cortex-R5F).  Entry point: ecat_task().
  *   REUSED (application logic, EtherCAT-master-agnostic): the CiA402 drive state machine and the sine target
  *     position (axis_control.c, cia402_drive.c)
  *   TRANSLATED (IgH ecrt_* -> SOEM ec_*): master / domain / PDO setup, process-data access through packed
- *     structs over the IOmap (ecat_bringup.c, cia402_drive.c).  IgH's DC setup is left out: FREE_RUN.
+ *     structs over the IOmap (ecat_bringup.c, cia402_drive.c).  DC as IgH's: SYNC0 on every drive (ecat_bringup.c).
  *   NEW for the embedded target: PDO mapping by CoE SDO writes, a FreeRTOS task instead of a Linux RT thread,
  *     a 1 kHz loop that never prints (event_log.c), loop period / execution time statistics (loop_timing.c)
  *
@@ -20,8 +20,8 @@
  * - The FPU is declared (portTASK_USES_FLOATING_POINT), sin() is computed locally (no -lm needed), the build
  *   fails with a clear message if the FreeRTOS tick is not 1000 Hz (app_config.h).
  *
- * Timing: the loop is paced with vTaskDelayUntil(1 tick).  The drives run FREE_RUN: each takes the newest
- * outputs on its own internal cycle, nothing on the bus is phase-locked to this loop.  The printed
+ * Timing: the loop is paced with vTaskDelayUntil(1 tick).  The drives take the outputs at their SYNC0; the loop
+ * is not phase-locked to SYNC0 (no master clock alignment), as in the colleague's DC build.  The printed
  * "period"/"exec" statistics show how steady the loop is; a hardware-timer ISR is the next step (see ecat_task()).
  */
 #include "FreeRTOS.h"

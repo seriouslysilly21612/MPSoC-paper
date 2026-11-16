@@ -76,14 +76,15 @@ release `xilinx_v2022.1`), and the ELF records GCC 11.2.0.
 - Safety: one EtherCAT master at a time. Never stop the R5 while a motor moves (E-stop or drive power first).
   Do not restart Linux while the R5 runs the bus.
 
-## FREE_RUN (2026-11-15)
+## DC SYNC0 again (2026-11-16); FREE_RUN (2026-11-15) did not run on this bench
 
-The master activates no distributed clocks: `ec_dcsync0()` is gone with `DC_SHIFT_NS`, and
-`ec_config_init()` clears every slave's SYNC activation register. (`ec_configdc()`, which only writes the DC
-system time offsets and delays, came back on 2026-11-16; see "OP after process data".) Each drive runs on its
-own internal cycle and takes the newest outputs. That is decision D-13 of the paper project: FREE_RUN on
-every stage, as in the earlier Indy7 experiments (the L7N has no SM2-synchronous mode). In PRE-OP, after
-the PDO mapping, the firmware reads and prints each drive's 0x1C32 with CoE SDO reads:
+From 2026-11-15 the master activated no distributed clocks (FREE_RUN, decision D-13 of the paper project:
+FREE_RUN on every stage, as in the earlier Indy7 experiments). On this bench the drive with firmware 0.12
+(see "SM2 watchdog") left OP 100 ms after OP in every FREE_RUN run, so on 2026-11-16 the DC setup of the
+colleague's build came back: `ec_configdc()` and `ec_dcsync0()` on every drive with `CYCLE_NS` and
+`DC_SHIFT_NS` (125000), before the SAFE-OP request. 2-1 checks that the EtherCAT task runs on the R5; the
+sync mode for the measurements is decided again before they are made. In PRE-OP, after the PDO mapping and
+before SYNC0 is set up, the firmware reads and prints each drive's 0x1C32 with CoE SDO reads:
 
     [ecat]   slave <n> 0x1C32: sync type 0x<sub 1>, cycle <sub 2> ns, supported 0x<sub 4>, minimum cycle <sub 5> ns (<k> of 4 read)
 
@@ -91,9 +92,9 @@ Sub 1 is the sync type in use (0 free run, 1 SM2-synchronous, 2 DC SYNC0), sub 2
 supported types (bit 0 free run, bit 1 SM2, bits 2-3 DC), sub 5 the minimum cycle time. A sub that cannot be
 read prints as 0xFFFF or 4294967295, and SOEM's error list follows.
 
-On the board (2026-11-16) all four drives print sync type 0x0001, cycle 0 ns, supported 0x0005, minimum cycle
-200000 ns: they report SM2-synchronous although 0x0005 lists free run and DC SYNC0 only. IgH's FREE_RUN on the
-APU gives the same 0x1C32:01 = 1.
+On the board (2026-11-16, FREE_RUN builds) all four drives print sync type 0x0001, cycle 0 ns, supported
+0x0005, minimum cycle 200000 ns: they report SM2-synchronous although 0x0005 lists free run and DC SYNC0 only.
+IgH's FREE_RUN on the APU gives the same 0x1C32:01 = 1.
 
 ## SM2 watchdog (2026-11-16)
 
@@ -119,18 +120,14 @@ Why (2026-11-16, the bench of four L7NA004):
 With the trigger set (one RUN_LEVEL 0 run, 22:21) all four drives read back `control 0x64`, and the 0.12 drive
 left OP at the same cycle all the same. The trigger stays, as IgH has it; it was not the cause.
 
-## OP after process data (2026-11-16)
+## OP after process data (2026-11-16, tried and taken out)
 
-Two things the two masters under which the 0.12 drive stays in OP (IgH FREE_RUN, the colleague's DC build) do and
-this firmware did not:
-- `ec_configdc()` before SAFE-OP: DC system time offsets and delays (0x0920, 0x0928), no SYNC0. IgH writes them
-  for every DC slave whatever the sync mode.
-- process data at the cycle rate in SAFE-OP before OP is requested: `SAFEOP_FRAMES_MS` (`src/app_config.h`,
-  200). IgH sends it for about 1.4 s before OP, the DC build for 205 ms; this firmware asked for OP after one
-  frame (SOEM's simple_test does the same). The log line says how long OP took after the request.
-
-Both are in one build, to see whether the drive then stays in OP; which one matters is not known yet. Not run on
-the board yet.
+Under FREE_RUN, one build added `ec_configdc()` (DC offsets, no SYNC0) and 200 ms of process data in SAFE-OP
+before the OP request, the two other things IgH FREE_RUN and the colleague's DC build do. The 0.12 drive left OP
+at the same cycle all the same (one RUN_LEVEL 0 run, 23:06). The 200 ms are gone again; `ec_configdc()` stays as
+part of the DC setup. Two differences are left between IgH FREE_RUN and this firmware: the operation mode (the
+APU application writes CST, 10; this firmware CSP, 8) and the PDO content (the application maps 0x6071 and
+0x6077 as well, 13 bytes each way). Neither is tried.
 
 ## Torque limit (2026-11-16)
 
