@@ -3,7 +3,8 @@
  * (translation of the ecrt_* setup block of the IgH main(), without its distributed clocks: the drives run
  * FREE_RUN, each on its own internal cycle).
  *
- * - Order:  PRE-OP -> PDO mapping -> torque limit -> SAFE-OP -> process data FLOWING AT THE CYCLE RATE -> OP.
+ * - Order:  PRE-OP -> SM2 watchdog trigger -> PDO mapping -> torque limit -> SAFE-OP -> process data FLOWING AT
+ *   THE CYCLE RATE -> OP.
  *   Asking for OP without sending process data while waiting does not work: drives with an SM watchdog never
  *   leave SAFE-OP that way.
  * - PDO size check: what the drive reports must equal sizeof(drive_outputs_t)/sizeof(drive_inputs_t), otherwise
@@ -23,6 +24,8 @@
 extern void gem3_debug_dump(void);
 
 static char IOmap[4096] __attribute__((aligned(4)));
+
+#define SM_CONTROL_WATCHDOG_TRIGGER 0x00000040u     /* bit 6 of the SM control byte, the low byte of SMflags */
 
 int ecat_expected_wkc;
 
@@ -70,6 +73,14 @@ int ecat_bring_up(void)
         ec_slave[i].PO2SOconfig = &drive_map_pdos;
     }
 
+    /* SM2 watchdog trigger on, as IgH's EC_WD_ENABLE: the drives' SII has the SM2 control byte 0x24 (trigger off), and
+     * SOEM writes it as it is.  The drive with firmware 0.12 then leaves OP 100 ms after OP (AL status 0x001B, AL-67 on
+     * its display) although every frame reaches it; under IgH, which writes 0x64, the same drive stays in OP
+     * (2026-11-16).  ec_config_map() writes the SM registers. */
+    for (i = 1; i <= AXIS_COUNT; i++) {
+        ec_slave[i].SM[2].SMflags = htoel(etohl(ec_slave[i].SM[2].SMflags) | SM_CONTROL_WATCHDOG_TRIGGER);
+    }
+
     /* The drives stay in PRE-OP until the SAFE-OP request below, after the PDO mapping, the 0x1C32 read and the
      * torque limit.
      * SOEM would request SAFE-OP inside ec_config_map(); manualstatechange suppresses exactly that
@@ -100,8 +111,19 @@ int ecat_bring_up(void)
         drive_in[i]  = (drive_inputs_t *)s->inputs;
     }
 
+    /* what each drive's SM2 now holds (read from the drive, not from ec_slave[]): the control byte should be 0x64 */
+    for (i = 1; i <= AXIS_COUNT; i++) {
+        ec_smt sm2;
+        if (ec_FPRD(ec_slave[i].configadr, ECT_REG_SM2, sizeof(sm2), &sm2, EC_TIMEOUTRET) <= 0) {
+            xil_printf("[ecat]   slave %d SM2: cannot be read\r\n", i);
+        } else {
+            xil_printf("[ecat]   slave %d SM2 @0x%04x, %u bytes, control 0x%02x\r\n", i, (unsigned)etohs(sm2.StartAddr),
+                       (unsigned)etohs(sm2.SMlength), (unsigned)(etohl(sm2.SMflags) & 0xFFu));
+        }
+    }
+
     /* FREE_RUN: no ec_configdc() / ec_dcsync0(), and ec_config_init() has cleared every slave's SYNC activation.
-     * What the drives make of it: 0x1C32:01 should read 0. */
+     * The drives report 0x1C32:01 = 1 (SM2-synchronous) all the same, under IgH as well (2026-11-16). */
     print_sync_parameters();
 
     /* A low torque limit before any servo-on (D-10 condition 1).  Set at every RUN_LEVEL, so that the bus-only run

@@ -86,10 +86,36 @@ the PDO mapping, the firmware reads and prints each drive's 0x1C32 with CoE SDO 
 
     [ecat]   slave <n> 0x1C32: sync type 0x<sub 1>, cycle <sub 2> ns, supported 0x<sub 4>, minimum cycle <sub 5> ns (<k> of 4 read)
 
-Sub 1, the sync type in use, should be 0 (free run); 2 would mean DC SYNC0. Sub 2 is the cycle time,
-sub 4 the supported types (bit 0 free run, bit 1 SM2, bits 2-3 DC), sub 5 the minimum cycle time. A sub
-that cannot be read prints as 0xFFFF or 4294967295, and SOEM's error list follows. Not run on the board
-yet.
+Sub 1 is the sync type in use (0 free run, 1 SM2-synchronous, 2 DC SYNC0), sub 2 the cycle time, sub 4 the
+supported types (bit 0 free run, bit 1 SM2, bits 2-3 DC), sub 5 the minimum cycle time. A sub that cannot be
+read prints as 0xFFFF or 4294967295, and SOEM's error list follows.
+
+On the board (2026-11-16) all four drives print sync type 0x0001, cycle 0 ns, supported 0x0005, minimum cycle
+200000 ns: they report SM2-synchronous although 0x0005 lists free run and DC SYNC0 only. IgH's FREE_RUN on the
+APU gives the same 0x1C32:01 = 1.
+
+## SM2 watchdog (2026-11-16)
+
+Before `ec_config_map()` the firmware sets the watchdog trigger (bit 6) in every drive's SM2 control byte, as
+IgH's `EC_WD_ENABLE` does in the APU application (`goal-to-torque_MPSoC/indy7/src/ecat/Indy7Joint.cpp`). The
+drives' SII has 0x24 there (trigger off), and SOEM writes the SII value as it is. After `ec_config_map()` the
+firmware reads each drive's SM2 registers back:
+
+    [ecat]   slave <n> SM2 @0x1800, 11 bytes, control 0x64
+
+Why (2026-11-16, the bench of four L7NA004):
+- Three drives run firmware 0.22 (0x100A), the third on the bus 0.12. In every RUN_LEVEL 0 run without the
+  trigger (3 of 3, one right after a drive power cycle) the 0.12 drive left OP about 100 ms after OP: SAFE-OP +
+  ERROR, AL status 0x001B (SM watchdog), statusword FAULT, AL-67 on its display (0x603F = 0x0067),
+  `wkc_bad=9898` at t=10 s. The other three stayed in OP.
+- The ESC watchdog is the default 100 ms on all four drives (0x0400 = 2498, 0x0420 = 1000).
+- Under IgH (P0, FREE_RUN) the same drive stays in OP. There SM2 reads `@0x1800, 13 bytes, control 0x64`, with
+  0x1C32:01 = 1 and the AL event mask 0x00FF0400 on the 0.12 and a 0.22 drive alike. Apart from the PDO length
+  (IgH maps the two torque entries as well), the control byte is the difference found.
+- AL-67 is what an L7N reports when its SM watchdog expires: the three 0.22 drives reported it too (0x603F =
+  0x0067, statusword FAULT) after the R5 was stopped while they were in OP. A drive power cycle clears it.
+
+Not run on the board yet with the trigger set.
 
 ## Torque limit (2026-11-16)
 
