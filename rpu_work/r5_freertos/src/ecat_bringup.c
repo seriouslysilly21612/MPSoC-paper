@@ -3,7 +3,7 @@
  * (translation of the ecrt_* setup block of the IgH main(), without its distributed clocks: the drives run
  * FREE_RUN, each on its own internal cycle).
  *
- * - Order:  PRE-OP -> PDO mapping -> SAFE-OP -> process data FLOWING AT THE CYCLE RATE -> OP.
+ * - Order:  PRE-OP -> PDO mapping -> torque limit -> SAFE-OP -> process data FLOWING AT THE CYCLE RATE -> OP.
  *   Asking for OP without sending process data while waiting does not work: drives with an SM watchdog never
  *   leave SAFE-OP that way.
  * - PDO size check: what the drive reports must equal sizeof(drive_outputs_t)/sizeof(drive_inputs_t), otherwise
@@ -38,7 +38,7 @@ static void set_standstill_outputs(void)
 
 int ecat_bring_up(void)
 {
-    int i, n, t, lowest = 0;
+    int i, n, t, lowest = 0, limited;
     TickType_t next;
 
     xil_printf("[ecat] ec_init(GEM3) ...\r\n");
@@ -70,7 +70,8 @@ int ecat_bring_up(void)
         ec_slave[i].PO2SOconfig = &drive_map_pdos;
     }
 
-    /* The drives stay in PRE-OP until the SAFE-OP request below, after the PDO mapping and the 0x1C32 read.
+    /* The drives stay in PRE-OP until the SAFE-OP request below, after the PDO mapping, the 0x1C32 read and the
+     * torque limit.
      * SOEM would request SAFE-OP inside ec_config_map(); manualstatechange suppresses exactly that
      * (the slaves are already in PRE-OP, so nothing else changes).                                  */
     ecx_context.manualstatechange = 1;
@@ -102,6 +103,24 @@ int ecat_bring_up(void)
     /* FREE_RUN: no ec_configdc() / ec_dcsync0(), and ec_config_init() has cleared every slave's SYNC activation.
      * What the drives make of it: 0x1C32:01 should read 0. */
     print_sync_parameters();
+
+    /* A low torque limit before any servo-on (D-10 condition 1).  Set at every RUN_LEVEL, so that the bus-only run
+     * shows the read-back values before a build that enables the drives runs at all; such a build stops here
+     * without them. */
+    for (i = 1, limited = 0; i <= AXIS_COUNT; i++) {
+        limited += drive_set_torque_limit((uint16)i, MAX_TORQUE_PERMILLE);
+    }
+    print_soem_errors(8);
+    if (limited != AXIS_COUNT) {
+#if RUN_LEVEL >= RUN_SERVO_HOLD
+        xil_printf("[ecat] FAIL: the torque limit did not read back on %d drive(s). Nothing will be enabled.\r\n",
+                   AXIS_COUNT - limited);
+        return 0;
+#else
+        xil_printf("[ecat] WARNING: the torque limit did not read back on %d drive(s);"
+                   " a RUN_LEVEL 1 or 2 build stops at this point\r\n", AXIS_COUNT - limited);
+#endif
+    }
 
     ec_slave[0].state = EC_STATE_SAFE_OP;
     ec_writestate(0);

@@ -91,6 +91,21 @@ sub 4 the supported types (bit 0 free run, bit 1 SM2, bits 2-3 DC), sub 5 the mi
 that cannot be read prints as 0xFFFF or 4294967295, and SOEM's error list follows. Not run on the board
 yet.
 
+## Torque limit (2026-11-16)
+
+Still in PRE-OP, after the 0x1C32 read, every drive gets `MAX_TORQUE_PERMILLE` (`src/app_config.h`,
+default 100 = 10 % of rated torque; the L7N's own value is 3000) in 0x6072 (max torque), 0x60E0 (positive
+limit) and 0x60E1 (negative limit). The firmware reads the three back and prints them with 0x2110:
+
+    [ecat]   slave <n> torque limit: 0x6072 <v>, 0x60E0 <v>, 0x60E1 <v> (wrote <value>; unit 0.1 percent of rated), 0x2110 <select>
+
+It is the low limit for the first servo-on (decision D-10, condition 1). All three are written because an
+LS drive limits each direction with 0x60E0 / 0x60E1 when its torque limit function select 0x2110 is 0
+(L7NH and L7P manuals; not checked in an L7N manual): check that 0x2110 reads 0 in the RUN_LEVEL 0 run
+before running a level that enables the drives. A RUN_LEVEL 1 or 2 build does not leave PRE-OP when a
+value does not read back; a RUN_LEVEL 0 build warns and goes on. The firmware does not store the values
+(no write to 0x1010). Not run on the board yet.
+
 ## The split into modules (2026-11-15)
 
 `cia402_soem.c` (953 lines) became the modules in the table above, at the request of the firmware's

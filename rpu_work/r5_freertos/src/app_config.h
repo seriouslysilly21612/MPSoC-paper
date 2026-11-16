@@ -60,6 +60,11 @@ _Static_assert(WKC_DIAG_CYCLES >= 1 && WKC_DIAG_CYCLES < WKC_BUS_FAULT_CYCLES,
 #ifndef LOOP_TIMING
 #define LOOP_TIMING         1                 /* 0 = do not touch the PMU / no timing statistics */
 #endif
+#ifndef MAX_TORQUE_PERMILLE
+#define MAX_TORQUE_PERMILLE 100               /* torque limit set in PRE-OP, 0.1 % of rated (L7N: 1.337 Nm rated, 3000 = its default) */
+#endif
+_Static_assert(MAX_TORQUE_PERMILLE >= 1 && MAX_TORQUE_PERMILLE <= 1000,
+               "MAX_TORQUE_PERMILLE is the limit for the first servo-on: 1..1000 (0.1 % .. 100 % of rated torque)");
 
 #ifndef CPU_HZ
 #if defined(XPAR_CPU_CORE_CLOCK_FREQ_HZ)
