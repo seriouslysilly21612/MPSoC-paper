@@ -40,6 +40,10 @@ history is never overwritten) and evidence/metrics/latest is repointed at it.
 Args: metrics_dir (base), metrics_run (run label, '' = timestamp), metrics_duration
 (s, auto-save then Ctrl-C; 0 = until shutdown), sampler_script.
 See evidence/metrics/README.md
+
+MODEL. `model_path:=/abs/path/model.xmodel` runs another xmodel instead of the
+packaged YOLOv3-tiny one; its decode_meta.json must sit in the same directory
+(the worker reads it from there). Empty (the default) = the packaged model.
 """
 import os
 import re
@@ -128,6 +132,17 @@ def launch_setup(context, *args, **kwargs):
         'models',
         'yolov3_tiny_7class.xmodel',
     ])
+    model_override = LaunchConfiguration('model_path').perform(context).strip()
+    if model_override:
+        # `model_path:=~/...` reaches us unexpanded (the shell expands ~ only
+        # at the start of a word)
+        model_path = os.path.abspath(os.path.expanduser(model_override))
+        # fail before the camera starts: the worker would report a missing
+        # file only after the whole pipeline is up
+        for f in (model_path, os.path.join(os.path.dirname(model_path),
+                                           'decode_meta.json')):
+            if not os.path.isfile(f):
+                raise RuntimeError(f'model_path: no such file {f}')
 
     pick_logic_config = PathJoinSubstitution([
         FindPackageShare('system_bringup_pkg'),
@@ -329,5 +344,10 @@ def generate_launch_description():
             'sampler_script',
             default_value='/home/ubuntu/ros2_ws/tools/metrics/resource_sampler.py',
             description='path to tools/metrics/resource_sampler.py'),
+        DeclareLaunchArgument(
+            'model_path', default_value='',
+            description='xmodel to run instead of the packaged YOLOv3-tiny '
+                        '(empty = packaged); its decode_meta.json must be in '
+                        'the same directory'),
         OpaqueFunction(function=launch_setup),
     ])
