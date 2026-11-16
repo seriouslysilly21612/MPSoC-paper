@@ -61,8 +61,8 @@ const char    *cia402_state_name(unsigned state);
 /* SOEM's PO2SOconfig hook: PDO mapping by CoE SDO writes, called per slave inside ec_config_map (PRE-OP) */
 int drive_map_pdos(uint16 slave);
 
-/* PRE-OP: write the torque limit (0.1 % of rated) to 0x6072, 0x60E0 and 0x60E1, read the three back and print them
- * with 0x2110.  1 = all three read back as written. */
+/* PRE-OP: write the torque limit (0.1 % of rated) to 0x6072, 0x60E0 and 0x60E1, read the three back and print them.
+ * 1 = all three read back as written. */
 int drive_set_torque_limit(uint16 slave, uint16 permille);
 
 #endif /* CIA402_DRIVE_H */
