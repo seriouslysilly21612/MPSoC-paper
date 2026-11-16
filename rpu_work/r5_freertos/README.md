@@ -3,8 +3,8 @@
 The FreeRTOS application of the R5F-0 (split mode) as it ran on the KV260 on 2026-11-11: the EtherCAT
 master (SOEM 1.4.0) on GEM3, which Linux leaves to the R5, driving the L7N bench (4 axes, CSP, DC on,
 1 kHz). Commit `ddc6d14` holds the source of that build unchanged. Since then the application is split
-into modules with new names, without a change in the generated code (below), and the master no longer
-sets up distributed clocks (FREE_RUN, below). Torque mode and the GEM3 buffers in OCM come as later
+into modules with new names, without a change in the generated code (below); the master went FREE_RUN on
+2026-11-15 and back to DC SYNC0 on 2026-11-16 (below). Torque mode and the GEM3 buffers in OCM come as later
 commits.
 
 | Path | Content | Origin |
@@ -95,6 +95,16 @@ read prints as 0xFFFF or 4294967295, and SOEM's error list follows.
 On the board (2026-11-16, FREE_RUN builds) all four drives print sync type 0x0001, cycle 0 ns, supported
 0x0005, minimum cycle 200000 ns: they report SM2-synchronous although 0x0005 lists free run and DC SYNC0 only.
 IgH's FREE_RUN on the APU gives the same 0x1C32:01 = 1.
+
+On the board with DC SYNC0 (2026-11-16, builds of `48fc0af`):
+- RUN_LEVEL 0 ran 27 minutes with all four drives in OP and `wkc_bad=0`. OP came 205 ms after the request, as
+  in the colleague's build, and exec max was 33 to 35 us. `diag.py` read the tick timer TTC3.0 at 999.79 Hz.
+- RUN_LEVEL 1, first run: the 0.12 drive left OP at servo-on (AL status 0x001B, `wkc_bad=9898`).
+- RUN_LEVEL 1, second run, after a drive power cycle: all four axes stayed OPERATION_ENABLED for 10 minutes.
+  The positions stayed within +-2 counts, the loop period was 999/1000/1001 us and exec max 34 to 38 us.
+
+With SYNC0 the 0.12 drive still fails now and then at start-up; the colleague saw two failures before a pass.
+When it fails, switch the drive power off and on and start again.
 
 ## SM2 watchdog (2026-11-16)
 
