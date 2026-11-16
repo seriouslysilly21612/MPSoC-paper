@@ -78,8 +78,9 @@ release `xilinx_v2022.1`), and the ELF records GCC 11.2.0.
 
 ## FREE_RUN (2026-11-15)
 
-The master configures no distributed clocks: `ec_configdc()` and `ec_dcsync0()` are gone with
-`DC_SHIFT_NS`, and `ec_config_init()` clears every slave's SYNC activation register. Each drive runs on its
+The master activates no distributed clocks: `ec_dcsync0()` is gone with `DC_SHIFT_NS`, and
+`ec_config_init()` clears every slave's SYNC activation register. (`ec_configdc()`, which only writes the DC
+system time offsets and delays, came back on 2026-11-16; see "OP after process data".) Each drive runs on its
 own internal cycle and takes the newest outputs. That is decision D-13 of the paper project: FREE_RUN on
 every stage, as in the earlier Indy7 experiments (the L7N has no SM2-synchronous mode). In PRE-OP, after
 the PDO mapping, the firmware reads and prints each drive's 0x1C32 with CoE SDO reads:
@@ -115,7 +116,21 @@ Why (2026-11-16, the bench of four L7NA004):
 - AL-67 is what an L7N reports when its SM watchdog expires: the three 0.22 drives reported it too (0x603F =
   0x0067, statusword FAULT) after the R5 was stopped while they were in OP. A drive power cycle clears it.
 
-Not run on the board yet with the trigger set.
+With the trigger set (one RUN_LEVEL 0 run, 22:21) all four drives read back `control 0x64`, and the 0.12 drive
+left OP at the same cycle all the same. The trigger stays, as IgH has it; it was not the cause.
+
+## OP after process data (2026-11-16)
+
+Two things the two masters under which the 0.12 drive stays in OP (IgH FREE_RUN, the colleague's DC build) do and
+this firmware did not:
+- `ec_configdc()` before SAFE-OP: DC system time offsets and delays (0x0920, 0x0928), no SYNC0. IgH writes them
+  for every DC slave whatever the sync mode.
+- process data at the cycle rate in SAFE-OP before OP is requested: `SAFEOP_FRAMES_MS` (`src/app_config.h`,
+  200). IgH sends it for about 1.4 s before OP, the DC build for 205 ms; this firmware asked for OP after one
+  frame (SOEM's simple_test does the same). The log line says how long OP took after the request.
+
+Both are in one build, to see whether the drive then stays in OP; which one matters is not known yet. Not run on
+the board yet.
 
 ## Torque limit (2026-11-16)
 

@@ -34,6 +34,10 @@
 #ifndef OP_TIMEOUT_MS
 #define OP_TIMEOUT_MS       10000             /* how long the drives get to reach OP (process data flowing) */
 #endif
+#ifndef SAFEOP_FRAMES_MS
+#define SAFEOP_FRAMES_MS    200               /* process data at the cycle rate in SAFE-OP before OP is requested */
+#endif
+_Static_assert(SAFEOP_FRAMES_MS < OP_TIMEOUT_MS, "SAFEOP_FRAMES_MS must be below OP_TIMEOUT_MS");
 #ifndef RX_TIMEOUT_US
 #define RX_TIMEOUT_US       500               /* the reply to last cycle's frame is long there; 500 us = lost */
 #endif

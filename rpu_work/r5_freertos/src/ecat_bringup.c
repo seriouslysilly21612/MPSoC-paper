@@ -3,8 +3,8 @@
  * (translation of the ecrt_* setup block of the IgH main(), without its distributed clocks: the drives run
  * FREE_RUN, each on its own internal cycle).
  *
- * - Order:  PRE-OP -> SM2 watchdog trigger -> PDO mapping -> torque limit -> SAFE-OP -> process data FLOWING AT
- *   THE CYCLE RATE -> OP.
+ * - Order:  PRE-OP -> SM2 watchdog trigger -> PDO mapping -> torque limit -> DC offsets (no SYNC0) -> SAFE-OP ->
+ *   process data FLOWING AT THE CYCLE RATE for SAFEOP_FRAMES_MS -> OP.
  *   Asking for OP without sending process data while waiting does not work: drives with an SM watchdog never
  *   leave SAFE-OP that way.
  * - PDO size check: what the drive reports must equal sizeof(drive_outputs_t)/sizeof(drive_inputs_t), otherwise
@@ -122,7 +122,8 @@ int ecat_bring_up(void)
         }
     }
 
-    /* FREE_RUN: no ec_configdc() / ec_dcsync0(), and ec_config_init() has cleared every slave's SYNC activation.
+    /* FREE_RUN: no ec_dcsync0() (ec_configdc() below sets the DC offsets only), and ec_config_init() has cleared
+     * every slave's SYNC activation.
      * The drives report 0x1C32:01 = 1 (SM2-synchronous) all the same, under IgH as well (2026-11-16). */
     print_sync_parameters();
 
@@ -144,6 +145,14 @@ int ecat_bring_up(void)
 #endif
     }
 
+    /* DC system time offsets and propagation delays (0x0920, 0x0928) without SYNC0: SYNC activation (0x0981) stays 0,
+     * so the drives still run FREE_RUN.  IgH writes them for every DC slave whatever the sync mode, and the
+     * colleague's DC build ran ec_configdc() too: under both the firmware 0.12 drive stays in OP; without this and
+     * with OP after one frame it left OP 100 ms after OP (2026-11-16). */
+    if (!ec_configdc()) {
+        xil_printf("[ecat] WARN: no DC-capable slave found\r\n");
+    }
+
     ec_slave[0].state = EC_STATE_SAFE_OP;
     ec_writestate(0);
     (void)ec_statecheck(0, EC_STATE_SAFE_OP, EC_TIMEOUTSTATE * 4);
@@ -153,20 +162,22 @@ int ecat_bring_up(void)
     }
     xil_printf("[ecat] all drives in SAFE-OP\r\n");
 
-    /* OPERATIONAL: process data must keep flowing at the cycle rate while the drives change state
-     * (SM watchdog).                                                                                */
+    /* OPERATIONAL: process data must keep flowing at the cycle rate while the drives change state (SM watchdog).
+     * SAFEOP_FRAMES_MS of it in SAFE-OP before the request, as under IgH (1.4 s) and the DC build (205 ms), where
+     * the firmware 0.12 drive stays in OP; OP after one frame (SOEM simple_test) is where it did not. */
     ecat_expected_wkc = (ec_group[0].outputsWKC * 2) + ec_group[0].inputsWKC;
-    xil_printf("[ecat] expected working counter %d; requesting OPERATIONAL\r\n", ecat_expected_wkc);
+    xil_printf("[ecat] expected working counter %d; requesting OPERATIONAL after %d ms of process data\r\n",
+               ecat_expected_wkc, SAFEOP_FRAMES_MS);
 
     next = xTaskGetTickCount();
     for (t = 0; t < OP_TIMEOUT_MS; t++) {
         ec_send_processdata();
         (void)ec_receive_processdata(RX_TIMEOUT_US);
         set_standstill_outputs();
-        if (t == 0) {                                     /* one valid frame first (SOEM simple_test), then ask for OP */
+        if (t == SAFEOP_FRAMES_MS) {
             ec_slave[0].state = EC_STATE_OPERATIONAL;
             ec_writestate(0);
-        } else {
+        } else if (t > SAFEOP_FRAMES_MS) {
             lowest = ec_readstate();
             for (i = 1; i <= ec_slavecount; i++) {        /* a drive that refuses OP raises the AL error flag */
                 if (ec_slave[i].state & EC_STATE_ERROR) {
@@ -182,7 +193,7 @@ int ecat_bring_up(void)
         print_slave_states("FAIL: not all drives reached OPERATIONAL in time");
         return 0;
     }
-    xil_printf("[ecat] all drives OPERATIONAL after %d ms\r\n", t);
+    xil_printf("[ecat] all drives OPERATIONAL %d ms after the request\r\n", t - SAFEOP_FRAMES_MS);
 
     ec_send_processdata();                                /* prime: the first cyclic receive finds a frame */
     return 1;
