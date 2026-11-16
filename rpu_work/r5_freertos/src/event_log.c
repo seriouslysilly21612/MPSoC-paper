@@ -10,6 +10,7 @@
 #include "event_log.h"
 #include "cia402_drive.h"
 #include "ecat_diag.h"
+#include "ecat_task.h"
 
 #if defined(__arm__) && !defined(HOST_TEST)
 #define MEMORY_BARRIER()    __asm__ volatile ("dmb" : : : "memory")
@@ -111,6 +112,26 @@ static void print_event(const event_t *e)
         }
         break;
     }
+    case EVENT_STOP:
+        if (e->value[0] == STOP_HOLD) {
+            xil_printf("[ecat] stop asked for by Linux (%d axes enabled): trajectory frozen, position held %d ms, then servo off\r\n",
+                       (int)e->value[1], (int)e->value[2]);
+        } else if (e->value[0] == STOP_PREOP) {
+            if (e->value[1] == 0) {
+                xil_printf("[ecat] stop: all axes off after %d ms; the drives are asked for PRE-OP\r\n", (int)e->value[2]);
+            } else {
+                xil_printf("[ecat] stop: WARN %d axes still on %d ms after the servo-off command; the drives are asked for PRE-OP all the same\r\n",
+                           (int)e->value[1], (int)e->value[2]);
+            }
+        } else {
+            if (e->value[1] == 0) {
+                xil_printf("[ecat] stop: all drives in PRE-OP after %d ms; the frames stop\r\n", (int)e->value[2]);
+            } else {
+                xil_printf("[ecat] stop: WARN %d drives not in PRE-OP after %d ms; the frames stop all the same\r\n",
+                           (int)e->value[1], (int)e->value[2]);
+            }
+        }
+        break;
     default:
         break;
     }

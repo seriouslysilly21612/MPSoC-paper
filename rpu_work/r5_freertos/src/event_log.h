@@ -18,7 +18,8 @@ enum {
     EVENT_FAULT_RESET_LIMIT,      /* [0] axis                                                         */
     EVENT_BUS_FAULT,              /* [0] number of bad cycles                                         */
     EVENT_STATUS_REPORT,          /* see post_status_report() in ecat_task.c                          */
-    EVENT_SLAVE_AL_STATUS         /* [0] slave (1-based), [1] AL state (0x10 = error flag), [2] AL status code, [3] statusword, [4] position */
+    EVENT_SLAVE_AL_STATUS,        /* [0] slave (1-based), [1] AL state (0x10 = error flag), [2] AL status code, [3] statusword, [4] position */
+    EVENT_STOP                    /* [0] the step that begins (STOP_*, ecat_task.h), [1] axes on / drives above PRE-OP, [2] ms */
 };
 
 #define EVENT_VALUES    (10 + 2 * AXIS_COUNT)

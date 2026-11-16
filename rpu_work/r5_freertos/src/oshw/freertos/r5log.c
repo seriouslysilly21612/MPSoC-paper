@@ -140,6 +140,20 @@ void r5log_init(void)
     r5log_irq_restore(cpsr);
 }
 
+/* This run's boot_id.  ecat_task.c copies it into its stop page, so that Linux can tell that page from one an
+ * earlier run left behind (firmware without the page leaves the old one in place). */
+u32 r5log_boot_id(void)
+{
+    u32 cpsr = r5log_irq_save(), boot;
+
+    if (s_ready == 0) {
+        r5log_init_locked();
+    }
+    boot = R5LOG_HDR()->boot_id;
+    r5log_irq_restore(cpsr);
+    return boot;
+}
+
 /* Called by xil_printf(), print(), newlib's _write() ... instead of the BSP's DCC version. */
 void outbyte(char c)
 {

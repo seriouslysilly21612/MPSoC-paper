@@ -11,7 +11,7 @@ commits.
 |---|---|---|
 | `src/main.c` | start-up and two tasks: `ecat` (the master, priority `configMAX_PRIORITIES - 2`) and `led` | own |
 | `src/app_config.h` | the build switches and fixed parameters: axes, cycle time, `RUN_LEVEL`, timeouts, report period | own |
-| `src/ecat_task.c`, `.h` | the task `ecat`: bring-up, then the 1 kHz cycle (receive, working-counter check, axis logic, send) and a status report every 10 s | own, a translation of the IgH example `cia402_basic.c` |
+| `src/ecat_task.c`, `.h` | the task `ecat`: bring-up, then the 1 kHz cycle (receive, working-counter check, axis logic, send), a status report every 10 s, and the stop that Linux asks for | own, a translation of the IgH example `cia402_basic.c` |
 | `src/ecat_bringup.c`, `.h` | bring-up to OP: bus scan, PDO mapping, the drives' sync parameters printed, SAFE-OP, OP with process data flowing | own, from the same example |
 | `src/cia402_drive.c`, `.h` | the drive's process data (packed structs over the IOmap), PDO mapping by SDO, statusword → CiA 402 state | own, from the same example |
 | `src/axis_control.c`, `.h` | what one cycle does with the axes: CiA 402 state machine (enable, fault reset), hold, sine trajectory | own, from the same example |
@@ -24,7 +24,7 @@ commits.
 | `src/oshw/freertos/r5log.c`, `.h` | `outbyte()` into a ring buffer in DDR: the BSP console (JTAG DCC) blocks for ever without a debugger, as under remoteproc. Linux reads it with `r5log.py` | own |
 | `src/oshw/freertos/xemacps*` | Xilinx emacps driver 3.16 (embeddedsw `xilinx_v2022.1`), unchanged | Xilinx, MIT |
 | `src/soem/`, `src/osal/osal.h` | SOEM 1.4.0, unchanged | SOEM, GPL-2.0 with exception, `LICENSE.SOEM` |
-| `src/lscript.ld` | the linker script: code and data in DDR 0x3600_0000–0x363E_FFFF, stack 8 KB, heap 8 KB. The last 64 KB of the 4 MB that `rpu_v2.dtbo` reserves stays out of the link: a non-cacheable window with the GEM3 descriptor rings (from 0x363F_0000) and the log ring (0x363F_C000). The frame buffers are cacheable `.bss` | own, from the Vitis template |
+| `src/lscript.ld` | the linker script: code and data in DDR 0x3600_0000–0x363E_FFFF, stack 8 KB, heap 8 KB. The last 64 KB of the 4 MB that `rpu_v2.dtbo` reserves stays out of the link: a non-cacheable window with the GEM3 descriptor rings (from 0x363F_0000), the stop page (0x363F_B000) and the log ring (0x363F_C000). The frame buffers are cacheable `.bss` | own, from the Vitis template |
 | `bsp_ref/FreeRTOSConfig.h` | the FreeRTOS configuration the BSP generates from `system.mss` (tick 1000 Hz, heap 256 KB, 8 priorities), to read only | generated |
 | `r5_freertos.elf` | the build that ran, 936,504 bytes, sha256 `5d2e82c908e3cfaad145abfcb7496b4699455c1d81fe95db70fbf9d872e188eb`: the same file as `/lib/firmware/r5_freertos.elf` on the board (checked 2026-11-12). Built from the source of `ddc6d14` (`cia402_soem.c` in one file) | build |
 | `platform/design_1_wrapper.xsa` | the hardware hand-off from Vivado 2022.1 (board `kv260_som` 1.3): the PS only, no PL, GEM3 not enabled | Vivado |
@@ -32,7 +32,7 @@ commits.
 | `platform/platform.spr` | the Vitis platform: the FSBL and PMU firmware domains and the R5 domain, with their BSP compiler flags | Vitis |
 | `user-override.dtb` | the device tree the board boots with this firmware, sha256 `b1f13abe9be882fb887bfd6fdc8bc540edcd0a8acdb6facbb2064befa2a34207`: byte for byte `fdtoverlay -i ../base.dtb -o user-override.dtb ../rpu_v2.dtbo ../gem3_off.dtbo` | board |
 | `../gem3_off.dtso`, `.dtbo` | the overlay that disables GEM3 (`ethernet@ff0e0000`) for Linux; the `.dtbo` is `dtc -@` of the `.dtso` | own |
-| `r5log.py` | reads the log ring through `/dev/mem` on Linux (single-byte loads: the carveout is Device memory) | own |
+| `r5log.py` | reads the log ring through `/dev/mem` on Linux (single-byte loads: the carveout is Device memory); with `-f`, Ctrl-C stops the run cleanly ("Clean stop") | own |
 
 The BSP was not modified: its `mpu.c` is the same file as in the FSBL and PMU firmware BSPs, and the three
 copies of `FreeRTOSConfig.h` are identical. The BSP can be generated again from the platform files.
@@ -73,7 +73,9 @@ release `xilinx_v2022.1`), and the ELF records GCC 11.2.0.
   firmware with it.
 - The firmware: `r5_freertos.elf` into `/lib/firmware/`, then remoteproc0 as in the top `README.md`.
 - The log: `sudo python3 r5log.py -f` on Linux. The ring survives an R5 hang; read it before starting the R5 again.
-- Safety: one EtherCAT master at a time. Never stop the R5 while a motor moves (E-stop or drive power first).
+- The stop: Ctrl-C in `r5log.py -f` (below, "Clean stop"). It ends with `[r5log: R5 stopped ...]`.
+- Safety: one EtherCAT master at a time. Do not stop the R5 with `echo stop` alone while a motor is enabled, and do
+  not use `r5log.py -f` with a firmware that has no stop command, without the E-stop or the drive power off first.
   Do not restart Linux while the R5 runs the bus.
 
 ## DC SYNC0 again (2026-11-16); FREE_RUN (2026-11-15) did not run on this bench
@@ -155,6 +157,57 @@ does not read back; a RUN_LEVEL 0 build warns and goes on. The firmware does not
 On the board (2026-11-16, RUN_LEVEL 0) all four drives read back 100, 100, 100. The first build also printed
 0x2110 because the L7NH and L7P manuals call it the torque limit function select; on the L7N it is the notch
 filter frequency (0 to 1000, default 300), and it read 300. That read is gone.
+
+## Clean stop (2026-11-17)
+
+Before, Ctrl-C in `r5log.py -f` only ended the viewer: the R5 is a CPU of its own and the viewer only reads the
+ring. `echo stop` then halted the R5 at once, in OP. 100 ms later every drive's SM watchdog expired and the L7N
+showed AL-67 (I-40). Now Ctrl-C stops the run:
+
+1. `r5log.py` writes the stop command (`'S'`) into the stop page.
+2. The task `ecat` sees it in the next cycle (`ctl_stop_requested()`). It stops calling the axis logic, so the
+   outputs keep the last target and a moving axis comes to rest under position control. It holds 100 ms.
+3. It writes controlword 0x0000 (disable voltage) to every axis and waits until no axis is enabled (500 ms at most).
+4. It asks all drives for PRE-OP, with the error acknowledge: a drive that dropped out (AL error flag set) may
+   ignore a request without it. The frames keep flowing while the drives change state, so no watchdog expires on
+   the way (2 s at most, read every 10 ms).
+5. It sends no more frames and prints each drive's AL state and last statusword, then
+   `[ecat] STOPPED: all axes off, all drives in PRE-OP, no more frames; the R5 can be stopped`. A step that ran
+   out of time prints a WARN line, and the last line says `STOPPED with the WARN above`. Only then does it
+   report STOPPED in the page. DS36 goes off.
+6. `r5log.py` prints those lines and stops the R5 (`/sys/class/remoteproc/remoteproc0/state`).
+
+In PRE-OP no process data is expected, so no SM watchdog runs.
+
+If the R5 does not report STOPPED within 15 s, `r5log.py` leaves it alone and prints the E-stop way. A second
+Ctrl-C stops waiting. After Ctrl-C, `r5log.py` writes to stderr, since Ctrl-C has also ended a `| tee`. To end
+only the viewer, kill it (SIGTERM).
+
+The stop page is at 0x363F_B000, the 4 KB below the log ring, in the window that `lscript.ld` leaves out of the
+link. Linux writes only its first 32-byte line, the R5 only its second, so a cache write-back of one side never
+undoes the other side's byte (the R5 D-cache line is 32 bytes):
+
+| Offset | Writer | Content |
+|---|---|---|
+| 0x00 | Linux | `0x53` ('S') = stop; the R5 clears it when it starts |
+| 0x20 | R5 | `R5ST` |
+| 0x24 | R5 | `ecat_status` as int8: 0 starting, 1 running, -2 bus fault, 2 stopping, 3 stopped, -1 init failed |
+| 0x28 | R5 | this run's `boot_id` from the log ring header (`r5log_boot_id()`) |
+
+`r5log.py` takes the page as this run's only when the magic and the `boot_id` match the ring's. A firmware
+without the stop command leaves an earlier run's page in place, and stopping that R5 because of an old
+"stopped" there would cut the frames of drives that may be enabled.
+
+What was tested (2026-11-17, without the board):
+- A host test of `ecat_task.c` with the real axis logic, drive interface, event log and loop timing against a
+  model of four drives: RUN_LEVEL 0, 1, 2 × seven cases. The cases are normal, a stale stop command, one drive
+  dropped out, one axis that does not switch off, one drive that refuses PRE-OP, PRE-OP slower than the watchdog,
+  and init failed. All pass.
+- Three changed builds (no acknowledge; no frames while the drives go to PRE-OP, two cases) fail the test, as
+  they should.
+- `r5log.py` against a simulated ring, page and remoteproc file, with real SIGINTs: nine cases pass.
+
+Not yet on the board.
 
 ## The split into modules (2026-11-15)
 

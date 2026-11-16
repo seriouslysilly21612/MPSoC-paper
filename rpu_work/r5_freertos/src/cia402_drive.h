@@ -48,6 +48,7 @@ extern drive_inputs_t  *drive_in[AXIS_COUNT];
 #define CIA402_FAULT                    0x0008
 #define CIA402_STATE_UNKNOWN            0xFFFF
 
+#define CW_DISABLE_VOLTAGE      0x0000         /* any state -> SWITCH_ON_DISABLED, the power stage off */
 #define CW_SHUTDOWN             0x0006         /* IgH: READY            */
 #define CW_SWITCH_ON            0x0007
 #define CW_ENABLE_OPERATION     0x000F
