@@ -3,15 +3,15 @@
 The FreeRTOS application of the R5F-0 (split mode) as it ran on the KV260 on 2026-11-11: the EtherCAT
 master (SOEM 1.4.0) on GEM3, which Linux leaves to the R5, driving the L7N bench (4 axes, CSP, DC on,
 1 kHz). Commit `ddc6d14` holds the source of that build unchanged. Since then the application is split
-into modules with new names, without a change in the generated code (below), and the master no longer
-sets up distributed clocks (FREE_RUN, below). Torque mode and the GEM3 buffers in OCM come as later
+into modules with new names, without a change in the generated code (below); the master went FREE_RUN on
+2026-11-15 and back to DC SYNC0 on 2026-11-16 (below). Torque mode and the GEM3 buffers in OCM come as later
 commits.
 
 | Path | Content | Origin |
 |---|---|---|
 | `src/main.c` | start-up and two tasks: `ecat` (the master, priority `configMAX_PRIORITIES - 2`) and `led` | own |
 | `src/app_config.h` | the build switches and fixed parameters: axes, cycle time, `RUN_LEVEL`, timeouts, report period | own |
-| `src/ecat_task.c`, `.h` | the task `ecat`: bring-up, then the 1 kHz cycle (receive, working-counter check, axis logic, send) and a status report every 10 s | own, a translation of the IgH example `cia402_basic.c` |
+| `src/ecat_task.c`, `.h` | the task `ecat`: bring-up, then the 1 kHz cycle (receive, working-counter check, axis logic, send), a status report every 10 s, and the stop that Linux asks for | own, a translation of the IgH example `cia402_basic.c` |
 | `src/ecat_bringup.c`, `.h` | bring-up to OP: bus scan, PDO mapping, the drives' sync parameters printed, SAFE-OP, OP with process data flowing | own, from the same example |
 | `src/cia402_drive.c`, `.h` | the drive's process data (packed structs over the IOmap), PDO mapping by SDO, statusword → CiA 402 state | own, from the same example |
 | `src/axis_control.c`, `.h` | what one cycle does with the axes: CiA 402 state machine (enable, fault reset), hold, sine trajectory | own, from the same example |
@@ -24,7 +24,7 @@ commits.
 | `src/oshw/freertos/r5log.c`, `.h` | `outbyte()` into a ring buffer in DDR: the BSP console (JTAG DCC) blocks for ever without a debugger, as under remoteproc. Linux reads it with `r5log.py` | own |
 | `src/oshw/freertos/xemacps*` | Xilinx emacps driver 3.16 (embeddedsw `xilinx_v2022.1`), unchanged | Xilinx, MIT |
 | `src/soem/`, `src/osal/osal.h` | SOEM 1.4.0, unchanged | SOEM, GPL-2.0 with exception, `LICENSE.SOEM` |
-| `src/lscript.ld` | the linker script: code and data in DDR 0x3600_0000–0x363E_FFFF, stack 8 KB, heap 8 KB. The last 64 KB of the 4 MB that `rpu_v2.dtbo` reserves stays out of the link: a non-cacheable window with the GEM3 descriptor rings (from 0x363F_0000) and the log ring (0x363F_C000). The frame buffers are cacheable `.bss` | own, from the Vitis template |
+| `src/lscript.ld` | the linker script: code and data in DDR 0x3600_0000–0x363E_FFFF, stack 8 KB, heap 8 KB. The last 64 KB of the 4 MB that `rpu_v2.dtbo` reserves stays out of the link: a non-cacheable window with the GEM3 descriptor rings (from 0x363F_0000), the stop page (0x363F_B000) and the log ring (0x363F_C000). The frame buffers are cacheable `.bss` | own, from the Vitis template |
 | `bsp_ref/FreeRTOSConfig.h` | the FreeRTOS configuration the BSP generates from `system.mss` (tick 1000 Hz, heap 256 KB, 8 priorities), to read only | generated |
 | `r5_freertos.elf` | the build that ran, 936,504 bytes, sha256 `5d2e82c908e3cfaad145abfcb7496b4699455c1d81fe95db70fbf9d872e188eb`: the same file as `/lib/firmware/r5_freertos.elf` on the board (checked 2026-11-12). Built from the source of `ddc6d14` (`cia402_soem.c` in one file) | build |
 | `platform/design_1_wrapper.xsa` | the hardware hand-off from Vivado 2022.1 (board `kv260_som` 1.3): the PS only, no PL, GEM3 not enabled | Vivado |
@@ -32,7 +32,7 @@ commits.
 | `platform/platform.spr` | the Vitis platform: the FSBL and PMU firmware domains and the R5 domain, with their BSP compiler flags | Vitis |
 | `user-override.dtb` | the device tree the board boots with this firmware, sha256 `b1f13abe9be882fb887bfd6fdc8bc540edcd0a8acdb6facbb2064befa2a34207`: byte for byte `fdtoverlay -i ../base.dtb -o user-override.dtb ../rpu_v2.dtbo ../gem3_off.dtbo` | board |
 | `../gem3_off.dtso`, `.dtbo` | the overlay that disables GEM3 (`ethernet@ff0e0000`) for Linux; the `.dtbo` is `dtc -@` of the `.dtso` | own |
-| `r5log.py` | reads the log ring through `/dev/mem` on Linux (single-byte loads: the carveout is Device memory) | own |
+| `r5log.py` | reads the log ring through `/dev/mem` on Linux (single-byte loads: the carveout is Device memory); with `-f`, Ctrl-C stops the run cleanly ("Clean stop") | own |
 
 The BSP was not modified: its `mpu.c` is the same file as in the FSBL and PMU firmware BSPs, and the three
 copies of `FreeRTOSConfig.h` are identical. The BSP can be generated again from the platform files.
@@ -73,38 +73,141 @@ release `xilinx_v2022.1`), and the ELF records GCC 11.2.0.
   firmware with it.
 - The firmware: `r5_freertos.elf` into `/lib/firmware/`, then remoteproc0 as in the top `README.md`.
 - The log: `sudo python3 r5log.py -f` on Linux. The ring survives an R5 hang; read it before starting the R5 again.
-- Safety: one EtherCAT master at a time. Never stop the R5 while a motor moves (E-stop or drive power first).
+- The stop: Ctrl-C in `r5log.py -f` (below, "Clean stop"). It ends with `[r5log: R5 stopped ...]`.
+- Safety: one EtherCAT master at a time. Do not stop the R5 with `echo stop` alone while a motor is enabled, and do
+  not use `r5log.py -f` with a firmware that has no stop command, without the E-stop or the drive power off first.
   Do not restart Linux while the R5 runs the bus.
 
-## FREE_RUN (2026-11-15)
+## DC SYNC0 again (2026-11-16); FREE_RUN (2026-11-15) did not run on this bench
 
-The master configures no distributed clocks: `ec_configdc()` and `ec_dcsync0()` are gone with
-`DC_SHIFT_NS`, and `ec_config_init()` clears every slave's SYNC activation register. Each drive runs on its
-own internal cycle and takes the newest outputs. That is decision D-13 of the paper project: FREE_RUN on
-every stage, as in the earlier Indy7 experiments (the L7N has no SM2-synchronous mode). In PRE-OP, after
-the PDO mapping, the firmware reads and prints each drive's 0x1C32 with CoE SDO reads:
+From 2026-11-15 the master activated no distributed clocks (FREE_RUN, decision D-13 of the paper project:
+FREE_RUN on every stage, as in the earlier Indy7 experiments). On this bench the drive with firmware 0.12
+(see "SM2 watchdog") left OP 100 ms after OP in every FREE_RUN run, so on 2026-11-16 the DC setup of the
+colleague's build came back: `ec_configdc()` and `ec_dcsync0()` on every drive with `CYCLE_NS` and
+`DC_SHIFT_NS` (125000), before the SAFE-OP request. 2-1 checks that the EtherCAT task runs on the R5; the
+sync mode for the measurements is decided again before they are made. In PRE-OP, after the PDO mapping and
+before SYNC0 is set up, the firmware reads and prints each drive's 0x1C32 with CoE SDO reads:
 
     [ecat]   slave <n> 0x1C32: sync type 0x<sub 1>, cycle <sub 2> ns, supported 0x<sub 4>, minimum cycle <sub 5> ns (<k> of 4 read)
 
-Sub 1, the sync type in use, should be 0 (free run); 2 would mean DC SYNC0. Sub 2 is the cycle time,
-sub 4 the supported types (bit 0 free run, bit 1 SM2, bits 2-3 DC), sub 5 the minimum cycle time. A sub
-that cannot be read prints as 0xFFFF or 4294967295, and SOEM's error list follows. Not run on the board
-yet.
+Sub 1 is the sync type in use (0 free run, 1 SM2-synchronous, 2 DC SYNC0), sub 2 the cycle time, sub 4 the
+supported types (bit 0 free run, bit 1 SM2, bits 2-3 DC), sub 5 the minimum cycle time. A sub that cannot be
+read prints as 0xFFFF or 4294967295, and SOEM's error list follows.
+
+On the board (2026-11-16, FREE_RUN builds) all four drives print sync type 0x0001, cycle 0 ns, supported
+0x0005, minimum cycle 200000 ns: they report SM2-synchronous although 0x0005 lists free run and DC SYNC0 only.
+IgH's FREE_RUN on the APU gives the same 0x1C32:01 = 1.
+
+On the board with DC SYNC0 (2026-11-16, builds of `48fc0af`):
+- RUN_LEVEL 0 ran 27 minutes with all four drives in OP and `wkc_bad=0`. OP came 205 ms after the request, as
+  in the colleague's build, and exec max was 33 to 35 us. `diag.py` read the tick timer TTC3.0 at 999.79 Hz.
+- RUN_LEVEL 1, first run: the 0.12 drive left OP at servo-on (AL status 0x001B, `wkc_bad=9898`).
+- RUN_LEVEL 1, second run, after a drive power cycle: all four axes stayed OPERATION_ENABLED for 10 minutes.
+  The positions stayed within +-2 counts, the loop period was 999/1000/1001 us and exec max 34 to 38 us.
+
+With SYNC0 the 0.12 drive still fails now and then at start-up; the colleague saw two failures before a pass.
+When it fails, switch the drive power off and on and start again.
+
+## SM2 watchdog (2026-11-16)
+
+Before `ec_config_map()` the firmware sets the watchdog trigger (bit 6) in every drive's SM2 control byte, as
+IgH's `EC_WD_ENABLE` does in the APU application (`goal-to-torque_MPSoC/indy7/src/ecat/Indy7Joint.cpp`). The
+drives' SII has 0x24 there (trigger off), and SOEM writes the SII value as it is. After `ec_config_map()` the
+firmware reads each drive's SM2 registers back:
+
+    [ecat]   slave <n> SM2 @0x1800, 11 bytes, control 0x64
+
+Why (2026-11-16, the bench of four L7NA004):
+- Three drives run firmware 0.22 (0x100A), the third on the bus 0.12. In every RUN_LEVEL 0 run without the
+  trigger (3 of 3, one right after a drive power cycle) the 0.12 drive left OP about 100 ms after OP: SAFE-OP +
+  ERROR, AL status 0x001B (SM watchdog), statusword FAULT, AL-67 on its display (0x603F = 0x0067),
+  `wkc_bad=9898` at t=10 s. The other three stayed in OP.
+- The ESC watchdog is the default 100 ms on all four drives (0x0400 = 2498, 0x0420 = 1000).
+- Under IgH (P0, FREE_RUN) the same drive stays in OP. There SM2 reads `@0x1800, 13 bytes, control 0x64`, with
+  0x1C32:01 = 1 and the AL event mask 0x00FF0400 on the 0.12 and a 0.22 drive alike. Apart from the PDO length
+  (IgH maps the two torque entries as well), the control byte is the difference found.
+- AL-67 is what an L7N reports when its SM watchdog expires: the three 0.22 drives reported it too (0x603F =
+  0x0067, statusword FAULT) after the R5 was stopped while they were in OP. A drive power cycle clears it.
+
+With the trigger set (one RUN_LEVEL 0 run, 22:21) all four drives read back `control 0x64`, and the 0.12 drive
+left OP at the same cycle all the same. The trigger stays, as IgH has it; it was not the cause.
+
+## OP after process data (2026-11-16, tried and taken out)
+
+Under FREE_RUN, one build added `ec_configdc()` (DC offsets, no SYNC0) and 200 ms of process data in SAFE-OP
+before the OP request, the two other things IgH FREE_RUN and the colleague's DC build do. The 0.12 drive left OP
+at the same cycle all the same (one RUN_LEVEL 0 run, 23:06). The 200 ms are gone again; `ec_configdc()` stays as
+part of the DC setup. Two differences are left between IgH FREE_RUN and this firmware: the operation mode (the
+APU application writes CST, 10; this firmware CSP, 8) and the PDO content (the application maps 0x6071 and
+0x6077 as well, 13 bytes each way). Neither is tried.
 
 ## Torque limit (2026-11-16)
 
 Still in PRE-OP, after the 0x1C32 read, every drive gets `MAX_TORQUE_PERMILLE` (`src/app_config.h`,
 default 100 = 10 % of rated torque; the L7N's own value is 3000) in 0x6072 (max torque), 0x60E0 (positive
-limit) and 0x60E1 (negative limit). The firmware reads the three back and prints them with 0x2110:
+limit) and 0x60E1 (negative limit). The firmware reads the three back and prints them:
 
-    [ecat]   slave <n> torque limit: 0x6072 <v>, 0x60E0 <v>, 0x60E1 <v> (wrote <value>; unit 0.1 percent of rated), 0x2110 <select>
+    [ecat]   slave <n> torque limit: 0x6072 <v>, 0x60E0 <v>, 0x60E1 <v> (wrote <value>; unit 0.1 percent of rated)
 
-It is the low limit for the first servo-on (decision D-10, condition 1). All three are written because an
-LS drive limits each direction with 0x60E0 / 0x60E1 when its torque limit function select 0x2110 is 0
-(L7NH and L7P manuals; not checked in an L7N manual): check that 0x2110 reads 0 in the RUN_LEVEL 0 run
-before running a level that enables the drives. A RUN_LEVEL 1 or 2 build does not leave PRE-OP when a
-value does not read back; a RUN_LEVEL 0 build warns and goes on. The firmware does not store the values
-(no write to 0x1010). Not run on the board yet.
+It is the low limit for the first servo-on (decision D-10, condition 1). The L7N limits the torque with the
+smallest of the three (L7N manual, section 6.7). A RUN_LEVEL 1 or 2 build does not leave PRE-OP when a value
+does not read back; a RUN_LEVEL 0 build warns and goes on. The firmware does not store the values (no write to
+0x1010), and the drive does not keep them either: they read 3000 again after a drive power cycle.
+
+On the board (2026-11-16, RUN_LEVEL 0) all four drives read back 100, 100, 100. The first build also printed
+0x2110 because the L7NH and L7P manuals call it the torque limit function select; on the L7N it is the notch
+filter frequency (0 to 1000, default 300), and it read 300. That read is gone.
+
+## Clean stop (2026-11-17)
+
+Before, Ctrl-C in `r5log.py -f` only ended the viewer: the R5 is a CPU of its own and the viewer only reads the
+ring. `echo stop` then halted the R5 at once, in OP. 100 ms later every drive's SM watchdog expired and the L7N
+showed AL-67 (I-40). Now Ctrl-C stops the run:
+
+1. `r5log.py` writes the stop command (`'S'`) into the stop page.
+2. The task `ecat` sees it in the next cycle (`ctl_stop_requested()`). It stops calling the axis logic, so the
+   outputs keep the last target and a moving axis comes to rest under position control. It holds 100 ms.
+3. It writes controlword 0x0000 (disable voltage) to every axis and waits until no axis is enabled (500 ms at most).
+4. It asks all drives for PRE-OP, with the error acknowledge: a drive that dropped out (AL error flag set) may
+   ignore a request without it. The frames keep flowing while the drives change state, so no watchdog expires on
+   the way (2 s at most, read every 10 ms).
+5. It sends no more frames and prints each drive's AL state and last statusword, then
+   `[ecat] STOPPED: all axes off, all drives in PRE-OP, no more frames; the R5 can be stopped`. A step that ran
+   out of time prints a WARN line, and the last line says `STOPPED with the WARN above`. Only then does it
+   report STOPPED in the page. DS36 goes off.
+6. `r5log.py` prints those lines and stops the R5 (`/sys/class/remoteproc/remoteproc0/state`).
+
+In PRE-OP no process data is expected, so no SM watchdog runs.
+
+If the R5 does not report STOPPED within 15 s, `r5log.py` leaves it alone and prints the E-stop way. A second
+Ctrl-C stops waiting. After Ctrl-C, `r5log.py` writes to stderr, since Ctrl-C has also ended a `| tee`. To end
+only the viewer, kill it (SIGTERM).
+
+The stop page is at 0x363F_B000, the 4 KB below the log ring, in the window that `lscript.ld` leaves out of the
+link. Linux writes only its first 32-byte line, the R5 only its second, so a cache write-back of one side never
+undoes the other side's byte (the R5 D-cache line is 32 bytes):
+
+| Offset | Writer | Content |
+|---|---|---|
+| 0x00 | Linux | `0x53` ('S') = stop; the R5 clears it when it starts |
+| 0x20 | R5 | `R5ST` |
+| 0x24 | R5 | `ecat_status` as int8: 0 starting, 1 running, -2 bus fault, 2 stopping, 3 stopped, -1 init failed |
+| 0x28 | R5 | this run's `boot_id` from the log ring header (`r5log_boot_id()`) |
+
+`r5log.py` takes the page as this run's only when the magic and the `boot_id` match the ring's. A firmware
+without the stop command leaves an earlier run's page in place, and stopping that R5 because of an old
+"stopped" there would cut the frames of drives that may be enabled.
+
+What was tested (2026-11-17, without the board):
+- A host test of `ecat_task.c` with the real axis logic, drive interface, event log and loop timing against a
+  model of four drives: RUN_LEVEL 0, 1, 2 × seven cases. The cases are normal, a stale stop command, one drive
+  dropped out, one axis that does not switch off, one drive that refuses PRE-OP, PRE-OP slower than the watchdog,
+  and init failed. All pass.
+- Three changed builds (no acknowledge; no frames while the drives go to PRE-OP, two cases) fail the test, as
+  they should.
+- `r5log.py` against a simulated ring, page and remoteproc file, with real SIGINTs: nine cases pass.
+
+Not yet on the board.
 
 ## The split into modules (2026-11-15)
 

@@ -85,13 +85,13 @@ int drive_map_pdos(uint16 slave)
     return 1;   /* SOEM ignores the value; return 1 by convention */
 }
 
-/* All three objects: 0x6072 caps both directions, but an LS drive limits with 0x60E0 (forward) and 0x60E1 (reverse)
- * when its torque limit function select 0x2110 is 0 -- so the line also prints 0x2110.  A value that cannot be
- * read prints as 65535, like the 0x1C32 line. */
+/* All three objects: the L7N limits with the smallest of 0x6072 (max torque), 0x60E0 (forward) and 0x60E1 (reverse)
+ * (L7N manual, 6.7).  It does not keep them: after a drive power cycle they read 3000 again (2026-11-16).  A value
+ * that cannot be read prints as 65535, like the 0x1C32 line. */
 int drive_set_torque_limit(uint16 slave, uint16 permille)
 {
     static const uint16 index[3] = { 0x6072, 0x60E0, 0x60E1 };
-    uint16 readback[3] = { 0xFFFF, 0xFFFF, 0xFFFF }, limit_select = 0xFFFF, value;
+    uint16 readback[3] = { 0xFFFF, 0xFFFF, 0xFFFF }, value;
     int i, size, ok = 1;
 
     for (i = 0; i < 3; i++) {
@@ -104,11 +104,9 @@ int drive_set_torque_limit(uint16 slave, uint16 permille)
             ok = 0;
         }
     }
-    size = sizeof(limit_select);
-    (void)ec_SDOread(slave, 0x2110, 0x00, FALSE, &size, &limit_select, EC_TIMEOUTRXM);
     /* no "%%": xil_printf prints it only when the BSP defines STDOUT_BASEADDRESS */
-    xil_printf("[ecat]   slave %u torque limit: 0x6072 %u, 0x60E0 %u, 0x60E1 %u (wrote %u; unit 0.1 percent of rated),"
-               " 0x2110 %u\r\n", (unsigned)slave, (unsigned)readback[0], (unsigned)readback[1],
-               (unsigned)readback[2], (unsigned)permille, (unsigned)limit_select);
+    xil_printf("[ecat]   slave %u torque limit: 0x6072 %u, 0x60E0 %u, 0x60E1 %u (wrote %u; unit 0.1 percent of rated)\r\n",
+               (unsigned)slave, (unsigned)readback[0], (unsigned)readback[1], (unsigned)readback[2],
+               (unsigned)permille);
     return ok;
 }

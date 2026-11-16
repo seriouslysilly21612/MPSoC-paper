@@ -12,6 +12,8 @@
  *                      solid ON                         -> all drives OPERATIONAL, 1 kHz loop running
  *                      blinks OPPOSITE to DS35          -> failed: init failed (nobody on the bus, wrong
  *                                                          slave count, drive refused OP ...) or BUS FAULT
+ *                      OFF                              -> stopped on request (r5log.py -f, Ctrl-C): servo
+ *                                                          off, drives in PRE-OP, no more frames
  *
  * Console: every xil_printf() goes to the DDR ring buffer of r5log.c (r5log.c MUST be in the project);
  *          read it on the Linux side with  "sudo python3 r5log.py -f".
@@ -57,8 +59,10 @@ static void led_task(void *arg)
       hb ^= 1;
       XGpioPs_WritePin(&gpio, LED_HB, hb);              /* alive blink */
 
-      if (st == ECAT_STATUS_RUNNING)
+      if (st == ECAT_STATUS_RUNNING || st == ECAT_STATUS_STOPPING)
          XGpioPs_WritePin(&gpio, LED_ST, 1);            /* solid: all drives OPERATIONAL, loop running */
+      else if (st == ECAT_STATUS_STOPPED)
+         XGpioPs_WritePin(&gpio, LED_ST, 0);            /* off: stopped on request, no more frames */
       else if (st == ECAT_STATUS_STARTING)
          XGpioPs_WritePin(&gpio, LED_ST, hb);           /* blink together: starting */
       else

@@ -1,11 +1,12 @@
 /*
- * ecat_bringup.c  --  ec_init -> config -> PDO map -> SAFE_OP -> OPERATIONAL
- * (translation of the ecrt_* setup block of the IgH main(), without its distributed clocks: the drives run
- * FREE_RUN, each on its own internal cycle).
+ * ecat_bringup.c  --  ec_init -> config -> PDO map -> DC -> SAFE_OP -> OPERATIONAL
+ * (translation of the ecrt_* setup block of the IgH main()).
  *
- * - Order:  PRE-OP -> PDO mapping -> torque limit -> SAFE-OP -> process data FLOWING AT THE CYCLE RATE -> OP.
- *   Asking for OP without sending process data while waiting does not work: drives with an SM watchdog never
- *   leave SAFE-OP that way.
+ * - Order = IgH:  PRE-OP -> SM2 watchdog trigger -> PDO mapping -> torque limit -> DC + SYNC0 -> SAFE-OP ->
+ *   process data FLOWING AT THE CYCLE RATE -> OP.
+ *   Asking for OP without sending process data while waiting does not work: drives with DC / SM watchdog never
+ *   leave SAFE-OP that way, and SOEM's DC drift compensation (the FRMW datagram inside every process-data frame)
+ *   never runs.
  * - PDO size check: what the drive reports must equal sizeof(drive_outputs_t)/sizeof(drive_inputs_t), otherwise
  *   the packed structs would be written to the wrong offsets.  Init fails instead; nothing moves.
  *   Exactly AXIS_COUNT slaves must be on the bus.
@@ -23,6 +24,8 @@
 extern void gem3_debug_dump(void);
 
 static char IOmap[4096] __attribute__((aligned(4)));
+
+#define SM_CONTROL_WATCHDOG_TRIGGER 0x00000040u     /* bit 6 of the SM control byte, the low byte of SMflags */
 
 int ecat_expected_wkc;
 
@@ -70,6 +73,14 @@ int ecat_bring_up(void)
         ec_slave[i].PO2SOconfig = &drive_map_pdos;
     }
 
+    /* SM2 watchdog trigger on, as IgH's EC_WD_ENABLE: the drives' SII has the SM2 control byte 0x24 (trigger off), and
+     * SOEM writes it as it is.  The drive with firmware 0.12 then leaves OP 100 ms after OP (AL status 0x001B, AL-67 on
+     * its display) although every frame reaches it; under IgH, which writes 0x64, the same drive stays in OP
+     * (2026-11-16).  ec_config_map() writes the SM registers. */
+    for (i = 1; i <= AXIS_COUNT; i++) {
+        ec_slave[i].SM[2].SMflags = htoel(etohl(ec_slave[i].SM[2].SMflags) | SM_CONTROL_WATCHDOG_TRIGGER);
+    }
+
     /* The drives stay in PRE-OP until the SAFE-OP request below, after the PDO mapping, the 0x1C32 read and the
      * torque limit.
      * SOEM would request SAFE-OP inside ec_config_map(); manualstatechange suppresses exactly that
@@ -100,8 +111,19 @@ int ecat_bring_up(void)
         drive_in[i]  = (drive_inputs_t *)s->inputs;
     }
 
-    /* FREE_RUN: no ec_configdc() / ec_dcsync0(), and ec_config_init() has cleared every slave's SYNC activation.
-     * What the drives make of it: 0x1C32:01 should read 0. */
+    /* what each drive's SM2 now holds (read from the drive, not from ec_slave[]): the control byte should be 0x64 */
+    for (i = 1; i <= AXIS_COUNT; i++) {
+        ec_smt sm2;
+        if (ec_FPRD(ec_slave[i].configadr, ECT_REG_SM2, sizeof(sm2), &sm2, EC_TIMEOUTRET) <= 0) {
+            xil_printf("[ecat]   slave %d SM2: cannot be read\r\n", i);
+        } else {
+            xil_printf("[ecat]   slave %d SM2 @0x%04x, %u bytes, control 0x%02x\r\n", i, (unsigned)etohs(sm2.StartAddr),
+                       (unsigned)etohs(sm2.SMlength), (unsigned)(etohl(sm2.SMflags) & 0xFFu));
+        }
+    }
+
+    /* Read before SYNC0 is set up below: without DC the drives report 0x1C32:01 = 1 (SM2-synchronous), under IgH as
+     * well (2026-11-16). */
     print_sync_parameters();
 
     /* A low torque limit before any servo-on (D-10 condition 1).  Set at every RUN_LEVEL, so that the bus-only run
@@ -122,6 +144,23 @@ int ecat_bring_up(void)
 #endif
     }
 
+    /* Distributed clocks, as in the colleague's build: offsets + propagation delays, then SYNC0 at the cycle time on
+     * every DC slave.  Without SYNC0 (FREE_RUN, D-13) the drive with firmware 0.12 left OP 100 ms after OP in every
+     * run (AL status 0x001B, AL-67), with the SM2 watchdog trigger, the DC offsets and 200 ms of process data before
+     * OP as well; with SYNC0 it reached OP and stayed (colleague, 11-11).  2-1 only checks the EtherCAT task on the
+     * R5, so DC it is (user, 2026-11-16). */
+    if (!ec_configdc()) {
+        xil_printf("[ecat] WARN: no DC-capable slave found\r\n");
+    }
+    for (i = 1; i <= AXIS_COUNT; i++) {
+        if (ec_slave[i].hasdc) {
+            ec_dcsync0((uint16)i, TRUE, CYCLE_NS, DC_SHIFT_NS);
+        } else {
+            xil_printf("[ecat] WARN: slave %d has no distributed clock, it runs without SYNC0\r\n", i);
+        }
+    }
+
+    /* SAFE-OP, now that the drives see their SYNC0 configuration */
     ec_slave[0].state = EC_STATE_SAFE_OP;
     ec_writestate(0);
     (void)ec_statecheck(0, EC_STATE_SAFE_OP, EC_TIMEOUTSTATE * 4);
@@ -132,7 +171,7 @@ int ecat_bring_up(void)
     xil_printf("[ecat] all drives in SAFE-OP\r\n");
 
     /* OPERATIONAL: process data must keep flowing at the cycle rate while the drives change state
-     * (SM watchdog).                                                                                */
+     * (SM watchdog, DC drift compensation via the FRMW datagram, SYNC0 has to start first).        */
     ecat_expected_wkc = (ec_group[0].outputsWKC * 2) + ec_group[0].inputsWKC;
     xil_printf("[ecat] expected working counter %d; requesting OPERATIONAL\r\n", ecat_expected_wkc);
 

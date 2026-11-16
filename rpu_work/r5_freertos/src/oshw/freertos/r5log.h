@@ -7,6 +7,8 @@
 #ifndef R5LOG_H
 #define R5LOG_H
 
+#include <stdint.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -17,6 +19,9 @@ void r5log_init(void);
 
 /* Write a NUL-terminated string into the ring (no newline added). */
 void r5log_puts(const char *s);
+
+/* This run's boot_id (the ring header's). */
+uint32_t r5log_boot_id(void);
 
 #ifdef __cplusplus
 }
