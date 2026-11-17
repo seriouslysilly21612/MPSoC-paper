@@ -119,13 +119,36 @@ the bridge to the control task: the 64-byte descriptor of eq. (5) and the 4-stat
   the head. The reader looks at each slot once and never waits.
 - Each side restarts by putting back its own half-done states. A result of the writer's earlier epoch is refused.
 
+`indy7/src/obs/obs_receiver.h` (C) is the control task's side (eq. (3), Alg. 1): in every period it takes what the
+mailbox holds and gives the one result that the period may use.
+- It keeps the joint angles of the last 256 periods. A result brings its capture time, and the angles at that time
+  come from the two states around it. Without two such states the result is refused.
+- It holds up to eight results, the newest capture first. A period uses the newest one that was published before
+  its release, is before its deadline and has its error bound (eq. (7)) within the tolerance of the period. What is
+  older goes, so the results used come in the order of their captures.
+- Every result taken leaves with one of seven verdicts: accepted, superseded, expired, state_unrecoverable,
+  seq_fail, error_exceeded, evicted.
+- What the writer says is checked again: its deadline counts up to a cap only, and a result that cannot be
+  (captured after its publication or after the release, a sigma that is no error) is refused.
+- The policy `OBS_MAX_AGE` is the comparison without the contract: the deadline alone decides, and the angles are
+  those of the period in which the result arrives.
+
 `bin/obs_mailbox_check`: the result byte by byte, the faults (garbage in the region, nine results before the
 reader looks, a result past its deadline, a writer dead in WRITING, a reader dead in READING, old epochs, broken
 check words, another magic or layout), then one writer with 10,000,000 results against one reader (3 s on
 x86-64). `--unsafe` frees a slot before copying it and fails. It ran on x86-64, and as aarch64 and 32-bit ARM
 builds under QEMU; fourteen of seventeen broken versions of `obs_mailbox.h` fail it. Of the three that pass, two
 leave out the WRITING or the READING mark, which changes nothing when no slot is taken back, and one leaves out
-the barriers.
+the barriers. On the board's Cortex-A53 the test passes (2.6 s; 98.7 % of the results written, each read once),
+and without the hardware barrier it failed in each of four runs (1 or 2 mixed copies).
+
+`bin/obs_receiver_check`: the angles at a capture time against their definition (times that jitter, periods
+without a state, the wrap of the period number); the verdicts case by case under both policies; then 200,000
+periods of random results under each policy, in which the receiver must agree in every period with a second one
+written from Alg. 1 and with eq. (3) itself, and every result must leave with exactly one verdict; then one writer
+thread with 1,000,000 results against the receiver (1 s on x86-64 in all). It ran on x86-64, and as aarch64 and
+32-bit ARM builds under QEMU, with the same counts on all three; 67 of 68 broken versions of `obs_receiver.h`
+fail it. The one that passes leaves out a check that a later check repeats.
 
 ## Repository layout
 
@@ -157,7 +180,7 @@ the barriers.
     cd indy7
     make                       # bin/indy7_ctrl; prints [indy7] MUJOCO=.. ROS=.. MALLOC_COUNT=..
     make tools                 # bin/hl_check, bin/goal_filter_check, bin/slot_check, bin/ipc_slot_check,
-                               # bin/obs_mailbox_check, bin/model_check (MuJoCo)
+                               # bin/obs_mailbox_check, bin/obs_receiver_check, bin/model_check (MuJoCo)
 
 `make MUJOCO=0` builds without the simulation, `make ROS=0` without the bridge (the default is ROS=1 when ROS 2
 and the messages of `ros2/` are found: build `ros2/` first and source both environments, `ros2/README.md`).
@@ -247,6 +270,7 @@ Logs: the joint and high-level tests write a CSV and a JSON per run into `JOINT_
     ./bin/slot_check                                      # PASS: 0 inconsistent snapshots accepted
     ./bin/ipc_slot_check                                  # the slots to the R5, PASS
     ./bin/obs_mailbox_check                               # the mailbox of the camera results, PASS
+    ./bin/obs_receiver_check                              # the control task's side of them, PASS
     ./bin/hl_check models/indy7.urdf                      # the reference contract, PASS
     ./bin/goal_filter_check                               # the goal checks of the bridge, PASS
     ./bin/model_check models/indy7.urdf models/indy7_mujoco.xml B=6.07917,6.68933,1.99649,0.87306,0.86394,0.84747  # B as in INDY7.cfg

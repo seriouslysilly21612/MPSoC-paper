@@ -11,7 +11,8 @@
 #	                      the real-time tasks (make clean first)
 #	make tools            the offline checks: bin/model_check (MUJOCO=1),
 #	                      bin/hl_check, bin/goal_filter_check, bin/slot_check,
-#	                      bin/ipc_slot_check, bin/obs_mailbox_check
+#	                      bin/ipc_slot_check, bin/obs_mailbox_check,
+#	                      bin/obs_receiver_check
 #	make clean
 #
 #	The dependencies (paper, Table 1): the IgH EtherCAT master 1.6
@@ -140,7 +141,7 @@ TOOL_OBJS := $(OBJ_DIR)/FullDynControllerRT.o $(OBJ_DIR)/Controller.o $(OBJ_DIR)
              $(OBJ_DIR)/base/MallocCount.o $(OBJ_DIR)/rt-posix/posix_rt.o $(OBJ_DIR)/rt-posix/commons.o
 
 tools: $(BIN_DIR)/hl_check $(BIN_DIR)/goal_filter_check $(BIN_DIR)/slot_check $(BIN_DIR)/ipc_slot_check \
-       $(BIN_DIR)/obs_mailbox_check \
+       $(BIN_DIR)/obs_mailbox_check $(BIN_DIR)/obs_receiver_check \
        $(BIN_DIR)/console_check \
        $(if $(filter 1,$(MUJOCO)),$(BIN_DIR)/model_check)
 
@@ -172,6 +173,12 @@ $(BIN_DIR)/ipc_slot_check: $(TOOLS_DIR)/ipc_slot_check.cpp $(SRC_DIR)/ipc/ipc_la
 # the mailbox of the camera results (src/obs): the result, the faults, one writer and one reader
 $(BIN_DIR)/obs_mailbox_check: $(TOOLS_DIR)/obs_mailbox_check.cpp $(SRC_DIR)/obs/obs_mailbox.h $(SRC_DIR)/ipc/ipc_slot.h \
                               $(SRC_DIR)/ipc/ipc_layout.h
+	@mkdir -p $(BIN_DIR)
+	$(CXX) -O2 -std=gnu++17 -Wall -I$(SRC_DIR) -o $@ $< -lpthread
+
+# the control task's side of the camera results (src/obs): the states, the verdicts, random results, one writer
+$(BIN_DIR)/obs_receiver_check: $(TOOLS_DIR)/obs_receiver_check.cpp $(SRC_DIR)/obs/obs_receiver.h $(SRC_DIR)/obs/obs_mailbox.h \
+                               $(SRC_DIR)/ipc/ipc_slot.h $(SRC_DIR)/ipc/ipc_layout.h
 	@mkdir -p $(BIN_DIR)
 	$(CXX) -O2 -std=gnu++17 -Wall -I$(SRC_DIR) -o $@ $< -lpthread
 
