@@ -1,5 +1,5 @@
 /*
- * ecat_bringup.h  --  EtherCAT bring-up: NIC, bus scan, PDO mapping, DC SYNC0, SAFE-OP, OPERATIONAL.
+ * ecat_bringup.h  --  EtherCAT bring-up: NIC, bus scan, PDO mapping, DC SYNC0 (L7N bench only), SAFE-OP, OPERATIONAL.
  */
 #ifndef ECAT_BRINGUP_H
 #define ECAT_BRINGUP_H

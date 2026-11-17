@@ -6,7 +6,7 @@
 #include "cia402_drive.h"
 #include "ecat_diag.h"
 
-#define PDO_MAPPING_SDO_WRITES  19    /* number of ec_SDOwrite() calls in drive_map_pdos() */
+#define PDO_MAPPING_SDO_WRITES  21    /* number of ec_SDOwrite() calls in drive_map_pdos() */
 
 drive_outputs_t *drive_out[AXIS_COUNT];   /* -> ec_slave[i+1].outputs */
 drive_inputs_t  *drive_in[AXIS_COUNT];    /* -> ec_slave[i+1].inputs  */
@@ -52,30 +52,32 @@ int drive_map_pdos(uint16 slave)
     uint16 u16;
     uint32 u32;
 
-    /* RxPDO 0x1600: controlword, target_pos, target_vel, mode */
+    /* RxPDO 0x1600: controlword, target_pos, target_vel, target_torque, mode */
     u8 = 0; wkc += ec_SDOwrite(slave, 0x1C12, 0x00, FALSE, sizeof(u8),  &u8,  EC_TIMEOUTRXM);
     u8 = 0; wkc += ec_SDOwrite(slave, 0x1600, 0x00, FALSE, sizeof(u8),  &u8,  EC_TIMEOUTRXM);
     u32 = 0x60400010; wkc += ec_SDOwrite(slave, 0x1600, 0x01, FALSE, sizeof(u32), &u32, EC_TIMEOUTRXM);
     u32 = 0x607A0020; wkc += ec_SDOwrite(slave, 0x1600, 0x02, FALSE, sizeof(u32), &u32, EC_TIMEOUTRXM);
     u32 = 0x60FF0020; wkc += ec_SDOwrite(slave, 0x1600, 0x03, FALSE, sizeof(u32), &u32, EC_TIMEOUTRXM);
-    u32 = 0x60600008; wkc += ec_SDOwrite(slave, 0x1600, 0x04, FALSE, sizeof(u32), &u32, EC_TIMEOUTRXM);
-    u8 = 4;  wkc += ec_SDOwrite(slave, 0x1600, 0x00, FALSE, sizeof(u8),  &u8,  EC_TIMEOUTRXM);
+    u32 = 0x60710010; wkc += ec_SDOwrite(slave, 0x1600, 0x04, FALSE, sizeof(u32), &u32, EC_TIMEOUTRXM);
+    u32 = 0x60600008; wkc += ec_SDOwrite(slave, 0x1600, 0x05, FALSE, sizeof(u32), &u32, EC_TIMEOUTRXM);
+    u8 = 5;  wkc += ec_SDOwrite(slave, 0x1600, 0x00, FALSE, sizeof(u8),  &u8,  EC_TIMEOUTRXM);
     u16 = 0x1600; wkc += ec_SDOwrite(slave, 0x1C12, 0x01, FALSE, sizeof(u16), &u16, EC_TIMEOUTRXM);
     u8 = 1;  wkc += ec_SDOwrite(slave, 0x1C12, 0x00, FALSE, sizeof(u8),  &u8,  EC_TIMEOUTRXM);
 
-    /* TxPDO 0x1A00: statusword, pos_actual, vel_actual, mode_display */
+    /* TxPDO 0x1A00: statusword, pos_actual, vel_actual, torque_actual, mode_display */
     u8 = 0; wkc += ec_SDOwrite(slave, 0x1C13, 0x00, FALSE, sizeof(u8),  &u8,  EC_TIMEOUTRXM);
     u8 = 0; wkc += ec_SDOwrite(slave, 0x1A00, 0x00, FALSE, sizeof(u8),  &u8,  EC_TIMEOUTRXM);
     u32 = 0x60410010; wkc += ec_SDOwrite(slave, 0x1A00, 0x01, FALSE, sizeof(u32), &u32, EC_TIMEOUTRXM);
     u32 = 0x60640020; wkc += ec_SDOwrite(slave, 0x1A00, 0x02, FALSE, sizeof(u32), &u32, EC_TIMEOUTRXM);
     u32 = 0x606C0020; wkc += ec_SDOwrite(slave, 0x1A00, 0x03, FALSE, sizeof(u32), &u32, EC_TIMEOUTRXM);
-    u32 = 0x60610008; wkc += ec_SDOwrite(slave, 0x1A00, 0x04, FALSE, sizeof(u32), &u32, EC_TIMEOUTRXM);
-    u8 = 4;  wkc += ec_SDOwrite(slave, 0x1A00, 0x00, FALSE, sizeof(u8),  &u8,  EC_TIMEOUTRXM);
+    u32 = 0x60770010; wkc += ec_SDOwrite(slave, 0x1A00, 0x04, FALSE, sizeof(u32), &u32, EC_TIMEOUTRXM);
+    u32 = 0x60610008; wkc += ec_SDOwrite(slave, 0x1A00, 0x05, FALSE, sizeof(u32), &u32, EC_TIMEOUTRXM);
+    u8 = 5;  wkc += ec_SDOwrite(slave, 0x1A00, 0x00, FALSE, sizeof(u8),  &u8,  EC_TIMEOUTRXM);
     u16 = 0x1A00; wkc += ec_SDOwrite(slave, 0x1C13, 0x01, FALSE, sizeof(u16), &u16, EC_TIMEOUTRXM);
     u8 = 1;  wkc += ec_SDOwrite(slave, 0x1C13, 0x00, FALSE, sizeof(u8),  &u8,  EC_TIMEOUTRXM);
 
-    /* default mode = CSP so the drive is in position mode from the start */
-    u8 = MODE_CSP; wkc += ec_SDOwrite(slave, 0x6060, 0x00, FALSE, sizeof(u8), &u8, EC_TIMEOUTRXM);
+    /* default mode = CST so the drive is in torque mode from the start */
+    u8 = MODE_CST; wkc += ec_SDOwrite(slave, 0x6060, 0x00, FALSE, sizeof(u8), &u8, EC_TIMEOUTRXM);
 
     if (wkc != PDO_MAPPING_SDO_WRITES) {
         xil_printf("[ecat] slave %u: only %d of %d PDO-mapping SDO writes were accepted"

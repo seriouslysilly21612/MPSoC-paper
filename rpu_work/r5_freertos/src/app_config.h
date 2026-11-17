@@ -8,29 +8,45 @@
 #include "FreeRTOS.h"
 #include "xparameters.h"
 
-/* These switches had a CIA402_ prefix until the split into modules (table in README.md).  A leftover -D of an old
- * name would be ignored without a word, and RUN_LEVEL would fall back to RUN_SINE: the motors would move.         */
+/* These switches were renamed or removed.  A leftover -D of an old name would be ignored without a word, so it is
+ * an error: the table of old names is in README.md.                                                                */
 #if defined(CIA402_MODE) || defined(CIA402_OP_WAIT_MS) || defined(CIA402_RX_TIMEOUT_US) || defined(CIA402_TRAJ_DELAY_MS) || \
     defined(CIA402_MAX_FAULT_RESETS) || defined(CIA402_BUSFAULT_CYCLES) || defined(CIA402_DIAG_CYCLES) ||                \
     defined(CIA402_REPORT_S) || defined(CIA402_EV_PER_WINDOW) || defined(CIA402_TIMING) || defined(CIA402_CPU_HZ)
-#error "an old CIA402_* switch is set: the switches are renamed (CIA402_MODE is RUN_LEVEL now), see README.md"
+#error "an old CIA402_* switch is set: the switches are renamed, see README.md"
+#endif
+#if defined(RUN_LEVEL)
+#error "RUN_LEVEL is gone: the firmware no longer moves anything by itself. Remove -DRUN_LEVEL; servo on / off come from the APU (Command slot)"
 #endif
 
-#define AXIS_COUNT          4                 /* drives on the bus; exactly this many must answer */
-#define ENCODER_RESOLUTION  524288            /* counts per motor turn */
+/* ----------------------------------------------------------------------- */
+/* Which hardware this build drives.  0 = the L7N bench, 1 = the Indy7.     */
+/* Change the number here (or give -DROBOT_TARGET=1).  Everything that      */
+/* differs between the two lives under this switch: the number of axes, the */
+/* vendor id the drives must report, the unit constants (robot_target.c).   */
+/* ----------------------------------------------------------------------- */
+#define TARGET_L7N_BENCH    0                 /* four LS Mecapion L7N single-axis drives, motors lying flat */
+#define TARGET_INDY7        1                 /* the Indy7: six joint drives + the end-tool module */
+#ifndef ROBOT_TARGET
+#define ROBOT_TARGET        TARGET_L7N_BENCH
+#endif
+
+#if ROBOT_TARGET == TARGET_L7N_BENCH
+#define AXIS_COUNT          4                 /* drives that are driven */
+#define BUS_SLAVE_COUNT     4                 /* slaves on the bus; exactly this many must answer */
+#define DRIVE_VENDOR_ID     0x00007595u
+#define ECAT_USE_DC         1                 /* DC SYNC0 on the drives: the L7N firmware 0.12 only stays in OP with it (I-40) */
+#elif ROBOT_TARGET == TARGET_INDY7
+#define AXIS_COUNT          6
+#define BUS_SLAVE_COUNT     7                 /* + the end-tool module as slave 7 (shortcut: left as the bus scan finds it, no PDO hook, no DC) */
+#define DRIVE_VENDOR_ID     0x0000089au
+#define ECAT_USE_DC         0                 /* free run, as the old Indy7 build ran (INDY7.cfg has no DC_SUPPORT key, 2026-11-17) */
+#else
+#error "ROBOT_TARGET must be TARGET_L7N_BENCH (0) or TARGET_INDY7 (1)"
+#endif
+
 #define CYCLE_NS            1000000u          /* 1 ms = 1 kHz            */
 #define DC_SHIFT_NS         125000            /* SYNC0 shift on the DC time grid (IgH: 12500) */
-
-/* What the firmware does once all drives are OPERATIONAL.  Each level adds to the one below. */
-#define RUN_BUS_ONLY        0                 /* drives to OPERATIONAL, nothing is enabled, nothing moves */
-#define RUN_SERVO_HOLD      1                 /* + servo ON, hold the position the axis had when it enabled */
-#define RUN_SINE            2                 /* + sine trajectory (= the IgH program) */
-#ifndef RUN_LEVEL
-#define RUN_LEVEL           RUN_SINE
-#endif
-#if (RUN_LEVEL < RUN_BUS_ONLY) || (RUN_LEVEL > RUN_SINE)
-#error "RUN_LEVEL must be 0, 1 or 2"
-#endif
 
 #ifndef OP_TIMEOUT_MS
 #define OP_TIMEOUT_MS       10000             /* how long the drives get to reach OP (process data flowing) */
@@ -38,12 +54,13 @@
 #ifndef RX_TIMEOUT_US
 #define RX_TIMEOUT_US       500               /* the reply to last cycle's frame is long there; 500 us = lost */
 #endif
-#ifndef SINE_START_DELAY_MS
-#define SINE_START_DELAY_MS 500               /* all axes enabled this long before the sine starts */
-#endif
 #ifndef MAX_FAULT_RESETS
-#define MAX_FAULT_RESETS    3                 /* automatic CiA402 fault resets per axis and run */
+#define MAX_FAULT_RESETS    3                 /* automatic CiA402 fault resets per axis and servo-on */
 #endif
+#ifndef TORQUE_STALE_LIMIT
+#define TORQUE_STALE_LIMIT  10                /* cycles in a row with the drives on and no new Torque slot: torque 0 and servo off (D-03, D-10) */
+#endif
+_Static_assert(TORQUE_STALE_LIMIT >= 1, "TORQUE_STALE_LIMIT is a number of 1 ms cycles, at least 1");
 #ifndef WKC_BUS_FAULT_CYCLES
 #define WKC_BUS_FAULT_CYCLES 100              /* incomplete working counter this many cycles in a row = BUS FAULT */
 #endif
@@ -80,9 +97,5 @@ _Static_assert(MAX_TORQUE_PERMILLE >= 1 && MAX_TORQUE_PERMILLE <= 1000,
 /* The loop is paced with vTaskDelayUntil(1 tick) and counts 1 ms per call. */
 _Static_assert(configTICK_RATE_HZ == 1000,
                "FreeRTOS tick must be 1000 Hz: set tick_rate=1000 in the freertos10_xilinx BSP settings and rebuild the platform");
-
-#define SINE_PERIOD_CYCLES  10000u            /* 0.1 Hz at 1 kHz */
-#define SINE_AMPLITUDE      (ENCODER_RESOLUTION / 2)
-_Static_assert((SINE_PERIOD_CYCLES % 4u) == 0u, "SINE_PERIOD_CYCLES must be a multiple of 4");
 
 #endif /* APP_CONFIG_H */

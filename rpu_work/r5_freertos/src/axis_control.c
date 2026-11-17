@@ -1,120 +1,127 @@
 /*
- * axis_control.c  --  one 1 kHz cycle's axis logic: CiA402 state machine + trajectory
- * (translation of the IgH cyclic_task() body; the CiA402 and sine logic are REUSED).
+ * axis_control.c  --  one 1 kHz cycle's axis logic: the CiA402 state machine and the torque of the axes (CST).
  *
- * - target_position follows position_actual until an axis is OPERATION_ENABLED (no step when it enables);
- *   the sine starts only after ALL axes were enabled for SINE_START_DELAY_MS (brake release).
- * - If an axis leaves OPERATION_ENABLED after the sine started (fault, quick stop, ...) the sine stops for
- *   good: restarting it after the fault reset, from a stale phase, would be a step of up to half a turn.
- *   Automatic fault resets are limited to MAX_FAULT_RESETS per axis (IgH reset forever).
+ * The controlword is worked out again in every cycle from (servo requested, state of the drive), so a request
+ * that changes at any time is followed at once.
+ * - Servo off (the state after the bring-up): CW_DISABLE_VOLTAGE, the power stages stay off.
+ * - Servo on: SHUTDOWN -> SWITCH_ON -> ENABLE_OPERATION, each step when the drive reports the state before it.
+ * - A drive in FAULT gets a fault reset, at most MAX_FAULT_RESETS times per servo-on (IgH reset forever).  When the
+ *   reset worked and the servo is still requested, the drive is enabled again, as before.
+ * - Torque: an axis gets the torque of the Torque slot only while it is OPERATION_ENABLED, the servo is requested and
+ *   the APU marked the slot valid and enabled; otherwise 0.  A cycle without a new slot repeats the last torque (D-03);
+ *   TORQUE_STALE_LIMIT such cycles in a row, counted while every axis is enabled, switch the servo off: torque 0 and
+ *   CW_DISABLE_VOLTAGE.  The servo stays off until the APU asks for servo on again (D-10).
+ * - target_position follows position_actual: CST ignores it, and a drive switched to CSP would not jump.
  */
 #include <stdint.h>
 #include "app_config.h"
 #include "axis_control.h"
 #include "cia402_drive.h"
+#include "robot_target.h"
 #include "event_log.h"
 
-static int axis_state[AXIS_COUNT]      = {0};   /* CiA402 state (CIA402_*) of each axis in this cycle */
-static int axis_state_prev[AXIS_COUNT] = {0};
-/* (some of these are only used with RUN_LEVEL >= 1 / 2: "unused" keeps -Wall quiet at every level) */
-static int hold_position[AXIS_COUNT]     __attribute__((unused));   /* position the axis had when it was enabled */
-static int fault_reset_count[AXIS_COUNT] __attribute__((unused));
-static uint32_t all_enabled_cycles       __attribute__((unused));   /* consecutive cycles with ALL axes enabled */
-static uint32_t sine_step                __attribute__((unused));   /* sine phase, 0 .. SINE_PERIOD_CYCLES-1 */
-int sine_started;
-int sine_stopped;
+static int servo_requested;
+static int axis_state_prev[AXIS_COUNT];     /* CiA402 state (CIA402_*) of each axis in the last cycle */
+static int fault_resets[AXIS_COUNT];        /* resets used since the last servo-on */
+static int fault_reset_allowed[AXIS_COUNT]; /* the fault the axis is in now may be reset */
 
-/* ----------------------------------------------------------------------- */
-/* sin() without libm.  k = 0 .. SINE_PERIOD_CYCLES-1 is one full period.   */
-/* Octant reduction by symmetry, then a Taylor series on 0..pi/2 (error < 1e-9). */
-/* ----------------------------------------------------------------------- */
-static double sine_of_step(uint32_t k) __attribute__((unused));   /* only called with RUN_LEVEL >= 2 */
-static double sine_of_step(uint32_t k)
+static int    torque_fresh, torque_usable;  /* the Torque slot of this cycle */
+static double torque_nm[AXIS_COUNT];
+static uint32_t stale_run, stale_total;     /* stale cycles in a row / so far */
+
+void axis_control_servo(int on)
 {
-    const uint32_t half    = SINE_PERIOD_CYCLES / 2u;
-    const uint32_t quarter = SINE_PERIOD_CYCLES / 4u;
-    double sign = 1.0, x, x2;
+    int i;
 
-    if (k >= half)    { k -= half; sign = -1.0; }     /* sin(t + pi) = -sin(t) */
-    if (k > quarter)  { k = half - k; }               /* sin(pi - t) =  sin(t) */
-    x  = 3.14159265358979323846 * (double)k / (double)half;
-    x2 = x * x;
-    return sign * x * (1.0 + x2 * (-1.0 / 6.0 + x2 * (1.0 / 120.0 + x2 * (-1.0 / 5040.0
-                 + x2 * (1.0 / 362880.0 + x2 * (-1.0 / 39916800.0 + x2 * (1.0 / 6227020800.0)))))));
+    if (on && !servo_requested) {
+        for (i = 0; i < AXIS_COUNT; i++) fault_resets[i] = 0;
+        stale_run = 0;
+    }
+    servo_requested = on;
+}
+
+int axis_control_servo_requested(void)
+{
+    return servo_requested;
+}
+
+void axis_control_torque_input(int fresh, int usable, const double tau_nm[AXIS_COUNT])
+{
+    int i;
+
+    torque_fresh  = fresh;
+    torque_usable = usable;
+    for (i = 0; i < AXIS_COUNT; i++) torque_nm[i] = tau_nm[i];
+}
+
+void axis_control_torque_zero(void)
+{
+    int i;
+
+    for (i = 0; i < AXIS_COUNT; i++) drive_out[i]->target_torque = 0;
+}
+
+uint32_t axis_control_torque_stale_total(void)
+{
+    return stale_total;
+}
+
+static unsigned short next_controlword(int axis, int state, unsigned short current)
+{
+    if (!servo_requested) return CW_DISABLE_VOLTAGE;
+    switch (state) {
+    case CIA402_SWITCH_ON_DISABLED:  return CW_SHUTDOWN;
+    case CIA402_READY_TO_SWITCH_ON:  return CW_SWITCH_ON;
+    case CIA402_SWITCHED_ON:
+    case CIA402_OPERATION_ENABLED:   return CW_ENABLE_OPERATION;
+    case CIA402_FAULT:               return fault_reset_allowed[axis] ? CW_FAULT_RESET : CW_DISABLE_VOLTAGE;
+    default:                         return current;   /* not ready, quick stop, fault reaction: the drive moves on by itself */
+    }
+}
+
+/* the stale-torque rule: called once per cycle, after the states of this cycle are known */
+static void check_torque_stale(int all_enabled)
+{
+    if (torque_fresh || !all_enabled) {
+        stale_run = 0;
+        return;
+    }
+    stale_total++;
+    stale_run++;
+    if (stale_run == TORQUE_STALE_LIMIT && servo_requested) {
+        servo_requested = 0;
+        event_post(EVENT_TORQUE_STALE_STOP, 0, (int)stale_run, 0, 0);
+    }
 }
 
 void axis_control_update(void)
 {
-    int i, axes_enabled = 0;
+    int state[AXIS_COUNT];
+    int i, enabled = 0;
 
     for (i = 0; i < AXIS_COUNT; i++) {
-        axis_state[i] = cia402_state_from_statusword(drive_in[i]->statusword);
-        if (axis_state[i] == CIA402_OPERATION_ENABLED) axes_enabled++;
+        state[i] = cia402_state_from_statusword(drive_in[i]->statusword);
+        if (state[i] == CIA402_OPERATION_ENABLED) enabled++;
 
-        /* until the axis is enabled its target follows its actual position: no step when it enables */
-        if (axis_state[i] != CIA402_OPERATION_ENABLED) {
-            drive_out[i]->target_position = drive_in[i]->position_actual;
-        }
-        if (axis_state_prev[i] == axis_state[i]) continue;
-
-        event_post(EVENT_AXIS_STATE_CHANGED, 1, i, drive_in[i]->statusword, axis_state[i]);
-#if RUN_LEVEL >= RUN_SERVO_HOLD
-        switch (axis_state[i]) {
-        case CIA402_SWITCH_ON_DISABLED:
-            drive_out[i]->controlword = CW_SHUTDOWN;           break;
-        case CIA402_READY_TO_SWITCH_ON:
-            drive_out[i]->controlword = CW_SWITCH_ON;          break;
-        case CIA402_SWITCHED_ON:
-            drive_out[i]->controlword = CW_ENABLE_OPERATION;   break;
-        case CIA402_OPERATION_ENABLED:
-            hold_position[i] = drive_in[i]->position_actual;   /* hold the position the axis has right now */
-            drive_out[i]->target_position = hold_position[i];
-            break;
-        case CIA402_FAULT:
-            if (fault_reset_count[i] < MAX_FAULT_RESETS) {
-                fault_reset_count[i]++;
-                drive_out[i]->controlword = CW_FAULT_RESET;
-            } else {
-                event_post(EVENT_FAULT_RESET_LIMIT, 0, i, 0, 0);
+        if (state[i] != axis_state_prev[i]) {
+            event_post(EVENT_AXIS_STATE_CHANGED, 1, i, drive_in[i]->statusword, state[i]);
+            if (state[i] == CIA402_FAULT) {
+                fault_reset_allowed[i] = fault_resets[i] < MAX_FAULT_RESETS;
+                if (fault_reset_allowed[i]) fault_resets[i]++;
+                else event_post(EVENT_FAULT_RESET_LIMIT, 0, i, 0, 0);
             }
-            break;
-        default:
-            break;
+            axis_state_prev[i] = state[i];
         }
-#endif
-        axis_state_prev[i] = axis_state[i];
     }
 
-#if RUN_LEVEL >= RUN_SINE
-    if (axes_enabled == AXIS_COUNT) {
-        if (all_enabled_cycles < 0xFFFFFFFFu) all_enabled_cycles++;
-    } else {
-        all_enabled_cycles = 0U;
-    }
+    check_torque_stale(enabled == AXIS_COUNT);
 
-    /* an axis dropped out after the sine began (fault, quick stop, ...): stop for good */
-    if (sine_started && !sine_stopped && axes_enabled < AXIS_COUNT) {
-        int dropped = 0;
-        sine_stopped = 1;
-        while (dropped < AXIS_COUNT - 1 && axis_state[dropped] == CIA402_OPERATION_ENABLED) dropped++;
-        event_post(EVENT_SINE_STOPPED, 0, dropped, drive_in[dropped]->statusword, 0);
+    for (i = 0; i < AXIS_COUNT; i++) {
+        int give_torque = servo_requested && torque_usable && state[i] == CIA402_OPERATION_ENABLED;
+
+        drive_out[i]->modes_of_operation = MODE_CST;
+        drive_out[i]->target_position    = drive_in[i]->position_actual;
+        drive_out[i]->target_torque      = give_torque ? axis_raw_torque(i, torque_nm[i]) : 0;
+        drive_out[i]->controlword        = next_controlword(i, state[i], drive_out[i]->controlword);
     }
-    /* all axes enabled for a while (brakes released): cyclic synchronous position = sine trajectory */
-    if (!sine_started && !sine_stopped && all_enabled_cycles >= SINE_START_DELAY_MS) {
-        sine_started = 1;
-        sine_step = 0U;
-        event_post(EVENT_SINE_STARTED, 0, 0, 0, 0);
-    }
-    if (sine_started && !sine_stopped) {
-        int j;
-        double sine = sine_of_step(sine_step);
-        for (j = 0; j < AXIS_COUNT; j++) {
-            drive_out[j]->modes_of_operation = MODE_CSP;
-            drive_out[j]->target_position    = hold_position[j] + (int)(SINE_AMPLITUDE * sine);
-        }
-        sine_step = (sine_step + 1U) % SINE_PERIOD_CYCLES;      /* 1 ms step */
-    }
-#else
-    (void)axes_enabled;
-#endif
 }

@@ -13,13 +13,14 @@ enum {
     EVENT_AXIS_STATE_CHANGED = 1, /* value[0] axis, [1] statusword, [2] CiA402 state                  */
     EVENT_WKC_INCOMPLETE,         /* [0] wkc, [1] expected wkc                                        */
     EVENT_WKC_RECOVERED,          /* [0] number of bad cycles                                         */
-    EVENT_SINE_STARTED,
-    EVENT_SINE_STOPPED,           /* [0] axis, [1] statusword                                         */
     EVENT_FAULT_RESET_LIMIT,      /* [0] axis                                                         */
     EVENT_BUS_FAULT,              /* [0] number of bad cycles                                         */
     EVENT_STATUS_REPORT,          /* see post_status_report() in ecat_task.c                          */
     EVENT_SLAVE_AL_STATUS,        /* [0] slave (1-based), [1] AL state (0x10 = error flag), [2] AL status code, [3] statusword, [4] position */
-    EVENT_STOP                    /* [0] the step that begins (STOP_*, ecat_task.h), [1] axes on / drives above PRE-OP, [2] ms */
+    EVENT_STOP,                   /* [0] the step that begins (STOP_*, ecat_task.h), [1] axes on / drives above PRE-OP, [2] ms */
+    EVENT_COMMAND,                /* [0] IPC_CMD_* of a new command from the APU                       */
+    EVENT_TORQUE_STALE_STOP,      /* [0] stale cycles in a row (TORQUE_STALE_LIMIT): servo switched off */
+    EVENT_OBS_REPORT              /* see obs_link_report() in obs_link.c                              */
 };
 
 #define EVENT_VALUES    (10 + 2 * AXIS_COUNT)
