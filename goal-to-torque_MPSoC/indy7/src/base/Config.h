@@ -130,6 +130,12 @@ typedef struct stConfigSystem
 	INT32	nAppBridge;
 	std::vector<double> vAppGoalBox;
 	double	dAppGoalRMax, dAppGoalFloor, dAppHover, dAppKappa, dAppGapS, dAppLossS, dAppDurationS;
+	/* the camera of the simulation (sim/SimCamera.h) */
+	INT32	nSimCam;					// SIM_CAM: 1 in place of the bridge (-s only)
+	std::vector<double> vSimCamObject;	// the object [m, base frame]
+	double	dSimCamHz, dSimCamLatencyS, dSimCamNoiseM;
+	INT32	nSimCamFormat;				// SIM_CAM_FORMAT: 0 tag, 1 base, -1 neither
+	std::vector<double> vSimCamBias;	// SIM_CAM_BIAS_MM [m]
 
 	stConfigSystem();
 } ST_CONFIG_SYSTEM;

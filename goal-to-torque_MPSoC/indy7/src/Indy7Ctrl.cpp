@@ -275,7 +275,7 @@ CRobotIndy7::Init()
 
 	// the bridge of the camera application, the logs of the tests, the live
 	// view: before the tasks use them
-	if (FALSE == InitObs())
+	if (FALSE == InitObs() || FALSE == InitSimCamera())
 		return FALSE;
 	InitBridge();
 	InitJointTest();
@@ -489,6 +489,53 @@ CRobotIndy7::InitObs()
 	return TRUE;
 }
 
+// The camera of the simulation (cfg SIM_CAM=1; sim/SimCamera.h) in place of
+// the bridge, before the tasks. SAFETY: its goals are made up, so only the
+// simulation (-s) may have it. FALSE: refused, or a setting cannot be used.
+BOOL
+CRobotIndy7::InitSimCamera()
+{
+	const ST_CONFIG_SYSTEM& stSys = m_pConfig->System();
+	if (stSys.nSimCam == 0)
+		return TRUE;
+	if (!stSys.bSim || m_bHybridBus)
+	{
+		DBG_LOG_ERROR("(CRobotIndy7) SIM_CAM=1 is refused outside the simulation (-s)");
+		return FALSE;
+	}
+	if (!m_cTraj.IsInit() || stSys.nSimCamFormat < 0)
+	{
+		DBG_LOG_ERROR("(CRobotIndy7) SIM_CAM=1 needs the high-level controller, and SIM_CAM_FORMAT tag or base");
+		return FALSE;
+	}
+	const bool bMailbox = obs_method::UsesMailbox(m_nMethod);
+	CSimCamera::Config stC;
+	stC.dHz = stSys.dSimCamHz;
+	stC.dLatencyS = stSys.dSimCamLatencyS;
+	stC.dNoiseM = stSys.dSimCamNoiseM;
+	stC.bTagFormat = (stSys.nSimCamFormat == 0);
+	for (int k = 0; k < 3; k++)
+	{
+		stC.adObject[k] = stSys.vSimCamObject[k];
+		stC.adBias[k] = stSys.vSimCamBias[k];
+		stC.adTagOffset[k] = m_pConfig->Contract().vTagOffset[k];
+	}
+	stC.nStateAge = (int)stSys.nSimStateDelay;
+	stC.tPeriod = (RTTIME)m_pConfig->Tasks()[0].nPeriod;
+	stC.stFilter = AppFilter();
+	m_pSimCam = new CSimCamera();
+	if (FALSE == m_pSimCam->Start(stC, stSys.strURDFPath.c_str(), m_cTraj.HighLevel().GetParams(), &m_stateSlot,
+	                              bMailbox ? &m_obsWriter : NULL, &m_appGoalSlot))
+	{
+		delete m_pSimCam;
+		m_pSimCam = NULL;
+		return FALSE;
+	}
+	if (stSys.nAppBridge != 0)
+		printf("[APP] the camera of the simulation is the source of the application: the bridge is not started\n");
+	return TRUE;
+}
+
 // the bridge of the camera application (paper, Sec. V-C; ROS2PickBridge.h):
 // with APP_BRIDGE=1 in the cfg and a build with ROS 2, before the tasks
 // start. Also in simulation (-s): the goals from the camera then move the
@@ -499,7 +546,7 @@ CRobotIndy7::InitBridge()
 	const ST_CONFIG_SYSTEM& stSys = m_pConfig->System();
 	m_dAppHover = stSys.dAppHover;
 	m_dAppT = stSys.dAppDurationS;
-	if (stSys.nAppBridge == 0)
+	if (stSys.nAppBridge == 0 || m_pSimCam != NULL)		// the camera of the simulation is the only source then
 		return;
 	CROS2PickBridge::Config stCfg;
 	stCfg.stFilter = AppFilter();
@@ -674,6 +721,12 @@ CRobotIndy7::StopServices()
 		m_pBridge->DeInit();
 		delete m_pBridge;
 		m_pBridge = NULL;
+	}
+	if (m_pSimCam != NULL)
+	{
+		m_pSimCam->Stop();
+		delete m_pSimCam;
+		m_pSimCam = NULL;
 	}
 	m_cView.Stop();
 	m_cJtLog.Stop();
@@ -1451,6 +1504,8 @@ CRobotIndy7::DoInput()
 		case 'P':
 			if (m_pBridge != NULL)
 				m_pBridge->RequestMenu();
+			else if (m_pSimCam != NULL)
+				printf("[APP] the camera of the simulation has one object: 'y', 8 starts the application\n");
 			else
 				printf("[APP] no bridge (APP_BRIDGE=1 in the cfg, a build with ROS 2)\n");
 			break;
@@ -1478,7 +1533,8 @@ CRobotIndy7::DoInput()
 			       "     8 camera application: goals from the camera through the bridge (%s), hover %.2f m\n"
 			       "     goal [%.3f %.3f %.3f] m from the tool at q_r; jump [%.3f %.3f %.3f] m at %.2f m; "
 			       "noise %.1f mm at %.0f Hz for %.0f s; delta %.1f mm; friction FF %s\n",
-			       (int)HL_MENU, m_pBridge != NULL ? "up" : "not running", m_dAppHover,
+			       (int)HL_MENU, m_pSimCam != NULL ? "here: the camera of the simulation" :
+			       m_pBridge != NULL ? "up" : "not running", m_dAppHover,
 			       m_adHlGoalOff[0], m_adHlGoalOff[1], m_adHlGoalOff[2],
 			       m_adHlJump[0], m_adHlJump[1], m_adHlJump[2], m_dHlTrigger,
 			       m_dHlNoise * 1e3, m_dHlNoiseHz, m_dHlNoiseT, m_dHlDelta * 1e3, m_bHlFF ? "on" : "off");

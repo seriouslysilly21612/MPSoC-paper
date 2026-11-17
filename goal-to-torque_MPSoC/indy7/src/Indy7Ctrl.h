@@ -40,6 +40,7 @@
 #include "ecat/Indy7EndTool.h"
 #include "sim/SimArm.h"
 #include "sim/SimJoint.h"
+#include "sim/SimCamera.h"
 #include "FullDynControllerRT.h"
 #include "TrajectoryRT.h"
 #include "TaskSlots.h"
@@ -240,6 +241,10 @@ private:
 	// position that it reads. Started before the tasks, stopped after them.
 	CROS2PickBridge* m_pBridge{NULL};
 	CGoalSlot     m_appGoalSlot;
+	// -s with SIM_CAM=1: a camera of the simulation in place of the bridge
+	// (sim/SimCamera.h); 'y', 8 starts the application on its one object
+	CSimCamera*   m_pSimCam{NULL};
+	BOOL          InitSimCamera           (	);
 	// the methods other than M1 (--method, obs/ObsMethod.h): the camera side
 	// writes every result into the mailbox instead, and the control task
 	// takes them from there in every period, accepts them by the policy of

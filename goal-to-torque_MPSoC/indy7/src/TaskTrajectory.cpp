@@ -384,13 +384,13 @@ CRobotIndy7::StartHighLevelMenu(int anSel, const task_slots::ST_STATE_SLOT& astS
 		printf("[HL] 't' still checks the reach of a position from the q_r of the cfg\n");
 		return TRUE;
 	}
-	if (anSel == HL_APP && m_pBridge == NULL)
+	if (anSel == HL_APP && m_pBridge == NULL && m_pSimCam == NULL)
 	{
 		printf("[HL] refused - no bridge (APP_BRIDGE=1 in the cfg, a build with ROS 2, "
 		       "/opt/ros/humble and ~/ros2_ws/install sourced: run.sh)\n");
 		return FALSE;
 	}
-	if (anSel == HL_APP && FALSE == m_pBridge->HasClass())
+	if (anSel == HL_APP && m_pBridge != NULL && FALSE == m_pBridge->HasClass())
 	{
 		printf("[HL] refused - no object chosen in this session: 'p' and a digit first\n");
 		return FALSE;
