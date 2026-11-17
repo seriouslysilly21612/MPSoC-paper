@@ -4,12 +4,12 @@
 #ifndef ECAT_TASK_H
 #define ECAT_TASK_H
 
-enum {                                   /* ecat_status; the LED task in main.c shows it */
+enum {                                   /* ecat_status; also written to the control page for r5log.py */
     ECAT_STATUS_STARTING    =  0,        /* NIC, bus scan, bring-up to OP */
     ECAT_STATUS_RUNNING     =  1,        /* all drives OPERATIONAL, 1 kHz loop running */
     ECAT_STATUS_INIT_FAILED = -1,        /* bring-up failed, the task is parked, nothing moves */
     ECAT_STATUS_BUS_FAULT   = -2,        /* working counter incomplete WKC_BUS_FAULT_CYCLES cycles in a row */
-    ECAT_STATUS_STOPPING    =  2,        /* Linux asked for a stop: hold, servo off, drives to PRE-OP */
+    ECAT_STATUS_STOPPING    =  2,        /* Linux asked for a stop: torque 0, servo off, drives to PRE-OP */
     ECAT_STATUS_STOPPED     =  3         /* no more frames, the task is parked: the R5 can be stopped */
 };
 extern volatile int ecat_status;

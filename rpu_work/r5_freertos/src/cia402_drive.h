@@ -9,15 +9,16 @@
 #include "app_config.h"
 
 /* ----------------------------------------------------------------------- */
-/* Process-data layout (must match the PDO mapping of drive_map_pdos()).    */
+/* Process-data layout (must match the PDO mapping of drive_map_pdos(), Table 5 of the paper). */
 /* EtherCAT payload is little-endian, R5 is little-endian -> direct access.*/
 /* The fields sit at odd offsets: plain unaligned loads/stores, fine on the R5F in normal memory  */
 /* (SCTLR.A = 0 as set by the Xilinx BSP).  A data abort on one of these -> build -mno-unaligned-access. */
 /* ----------------------------------------------------------------------- */
 typedef struct __attribute__((__packed__)) {   /* RxPDO 0x1600 (master->slave) */
     uint16 controlword;          /* 0x6040 */
-    int32  target_position;      /* 0x607A */
-    int32  target_velocity;      /* 0x60FF */
+    int32  target_position;      /* 0x607A  (ignored in CST, kept equal to the actual position) */
+    int32  target_velocity;      /* 0x60FF  (ignored in CST, 0) */
+    int16  target_torque;        /* 0x6071  drive units: L7N 0.1 % of rated, Indy7 per KAPPA of INDY7.cfg */
     int8   modes_of_operation;   /* 0x6060 */
 } drive_outputs_t;
 
@@ -25,10 +26,11 @@ typedef struct __attribute__((__packed__)) {   /* TxPDO 0x1A00 (slave->master) *
     uint16 statusword;           /* 0x6041 */
     int32  position_actual;      /* 0x6064 */
     int32  velocity_actual;      /* 0x606C */
+    int16  torque_actual;        /* 0x6077  same unit as target_torque */
     int8   modes_display;        /* 0x6061 */
 } drive_inputs_t;
 
-_Static_assert(sizeof(drive_outputs_t) == 11 && sizeof(drive_inputs_t) == 11, "PDO structs must be 11 bytes each");
+_Static_assert(sizeof(drive_outputs_t) == 13 && sizeof(drive_inputs_t) == 13, "PDO structs must be 13 bytes each");
 
 /* axis i's process data in the IOmap (ec_slave[i + 1].outputs / .inputs), bound by ecat_bring_up() */
 extern drive_outputs_t *drive_out[AXIS_COUNT];
@@ -54,7 +56,7 @@ extern drive_inputs_t  *drive_in[AXIS_COUNT];
 #define CW_ENABLE_OPERATION     0x000F
 #define CW_FAULT_RESET          0x0080
 
-#define MODE_CSP                0x08           /* Cyclic Synchronous Position */
+#define MODE_CST                0x0A           /* Cyclic Synchronous Torque (DRIVE_MODE=10 of INDY7.cfg) */
 
 unsigned short cia402_state_from_statusword(unsigned short statusword);   /* -> CIA402_* */
 const char    *cia402_state_name(unsigned state);

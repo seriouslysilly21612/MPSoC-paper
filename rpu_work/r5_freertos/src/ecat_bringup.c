@@ -2,14 +2,14 @@
  * ecat_bringup.c  --  ec_init -> config -> PDO map -> DC -> SAFE_OP -> OPERATIONAL
  * (translation of the ecrt_* setup block of the IgH main()).
  *
- * - Order = IgH:  PRE-OP -> SM2 watchdog trigger -> PDO mapping -> torque limit -> DC + SYNC0 -> SAFE-OP ->
+ * - Order = IgH:  PRE-OP -> SM2 watchdog trigger -> PDO mapping -> torque limit -> [DC + SYNC0, ECAT_USE_DC] -> SAFE-OP ->
  *   process data FLOWING AT THE CYCLE RATE -> OP.
  *   Asking for OP without sending process data while waiting does not work: drives with DC / SM watchdog never
  *   leave SAFE-OP that way, and SOEM's DC drift compensation (the FRMW datagram inside every process-data frame)
  *   never runs.
  * - PDO size check: what the drive reports must equal sizeof(drive_outputs_t)/sizeof(drive_inputs_t), otherwise
  *   the packed structs would be written to the wrong offsets.  Init fails instead; nothing moves.
- *   Exactly AXIS_COUNT slaves must be on the bus.
+ *   Exactly BUS_SLAVE_COUNT slaves must be on the bus, and the first AXIS_COUNT must be the drives of ROBOT_TARGET.
  */
 #include "FreeRTOS.h"
 #include "task.h"
@@ -29,19 +29,20 @@ static char IOmap[4096] __attribute__((aligned(4)));
 
 int ecat_expected_wkc;
 
-/* Outputs while the drives are brought to OP: servo OFF (controlword 0), CSP selected, target = actual position. */
+/* Outputs while the drives are brought to OP: servo OFF (controlword 0), CST selected, torque 0, target = actual position. */
 static void set_standstill_outputs(void)
 {
     int i;
     for (i = 0; i < AXIS_COUNT; i++) {
-        drive_out[i]->modes_of_operation = MODE_CSP;
+        drive_out[i]->modes_of_operation = MODE_CST;
         drive_out[i]->target_position    = drive_in[i]->position_actual;
+        drive_out[i]->target_torque      = 0;
     }
 }
 
 int ecat_bring_up(void)
 {
-    int i, n, t, lowest = 0, limited;
+    int i, n, t, lowest = 0;
     TickType_t next;
 
     xil_printf("[ecat] ec_init(GEM3) ...\r\n");
@@ -62,10 +63,17 @@ int ecat_bring_up(void)
         xil_printf("[ecat]   slave %d: \"%s\"  vendor 0x%08x  product 0x%08x  DC %s\r\n", i, ec_slave[i].name,
                    (unsigned)ec_slave[i].eep_man, (unsigned)ec_slave[i].eep_id, ec_slave[i].hasdc ? "yes" : "NO");
     }
-    if (ec_slavecount != AXIS_COUNT) {
-        xil_printf("[ecat] FAIL: found %d slave(s) but this program drives exactly %d (AXIS_COUNT)."
-                   " Nothing will be moved.\r\n", ec_slavecount, AXIS_COUNT);
+    if (ec_slavecount != BUS_SLAVE_COUNT) {
+        xil_printf("[ecat] FAIL: found %d slave(s) but this build (ROBOT_TARGET %d) expects exactly %d."
+                   " Nothing will be moved.\r\n", ec_slavecount, ROBOT_TARGET, BUS_SLAVE_COUNT);
         return 0;
+    }
+    for (i = 1; i <= AXIS_COUNT; i++) {      /* the wrong target on the wrong hardware: the unit constants would be wrong */
+        if (ec_slave[i].eep_man != DRIVE_VENDOR_ID) {
+            xil_printf("[ecat] FAIL: slave %d has vendor 0x%08x, ROBOT_TARGET %d expects 0x%08x. Nothing will be moved.\r\n",
+                       i, (unsigned)ec_slave[i].eep_man, ROBOT_TARGET, (unsigned)DRIVE_VENDOR_ID);
+            return 0;
+        }
     }
 
     /* register the PDO-mapping hook on each motor (called inside config_map) */
@@ -123,32 +131,36 @@ int ecat_bring_up(void)
     }
 
     /* Read before SYNC0 is set up below: without DC the drives report 0x1C32:01 = 1 (SM2-synchronous), under IgH as
-     * well (2026-11-16). */
+     * well (2026-11-16).  With ECAT_USE_DC 0 this is also what the drives run with. */
     print_sync_parameters();
 
-    /* A low torque limit before any servo-on (D-10 condition 1).  Set at every RUN_LEVEL, so that the bus-only run
-     * shows the read-back values before a build that enables the drives runs at all; such a build stops here
-     * without them. */
-    for (i = 1, limited = 0; i <= AXIS_COUNT; i++) {
-        limited += drive_set_torque_limit((uint16)i, MAX_TORQUE_PERMILLE);
+    /* A low torque limit before any servo-on (D-10 condition 1).  The objects 0x6072 / 0x60E0 / 0x60E1 are those of
+     * the L7N manual; shortcut: for the Indy7 drives they are not checked, so nothing is written there (the torque
+     * limit of the Indy7 is TORQUE_LIMIT_U in robot_target.c, applied by the APU) - look at it before the first
+     * servo-on on the robot. */
+#if ROBOT_TARGET == TARGET_L7N_BENCH
+    {
+        int limited = 0;
+        for (i = 1; i <= AXIS_COUNT; i++) {
+            limited += drive_set_torque_limit((uint16)i, MAX_TORQUE_PERMILLE);
+        }
+        print_soem_errors(8);
+        if (limited != AXIS_COUNT) {
+            xil_printf("[ecat] FAIL: the torque limit did not read back on %d drive(s). Nothing will be enabled.\r\n",
+                       AXIS_COUNT - limited);
+            return 0;
+        }
     }
-    print_soem_errors(8);
-    if (limited != AXIS_COUNT) {
-#if RUN_LEVEL >= RUN_SERVO_HOLD
-        xil_printf("[ecat] FAIL: the torque limit did not read back on %d drive(s). Nothing will be enabled.\r\n",
-                   AXIS_COUNT - limited);
-        return 0;
 #else
-        xil_printf("[ecat] WARNING: the torque limit did not read back on %d drive(s);"
-                   " a RUN_LEVEL 1 or 2 build stops at this point\r\n", AXIS_COUNT - limited);
+    xil_printf("[ecat] torque limit objects not written for this target (see ecat_bringup.c)\r\n");
 #endif
-    }
 
     /* Distributed clocks, as in the colleague's build: offsets + propagation delays, then SYNC0 at the cycle time on
      * every DC slave.  Without SYNC0 (FREE_RUN, D-13) the drive with firmware 0.12 left OP 100 ms after OP in every
      * run (AL status 0x001B, AL-67), with the SM2 watchdog trigger, the DC offsets and 200 ms of process data before
      * OP as well; with SYNC0 it reached OP and stayed (colleague, 11-11).  2-1 only checks the EtherCAT task on the
      * R5, so DC it is (user, 2026-11-16). */
+#if ECAT_USE_DC
     if (!ec_configdc()) {
         xil_printf("[ecat] WARN: no DC-capable slave found\r\n");
     }
@@ -159,6 +171,12 @@ int ecat_bring_up(void)
             xil_printf("[ecat] WARN: slave %d has no distributed clock, it runs without SYNC0\r\n", i);
         }
     }
+#else
+    /* Indy7 (user, 2026-11-17): no DC.  The old Indy7 build ran its joints without it: INDY7.cfg has no DC_SUPPORT key,
+     * so EcatSlaveBase::EnableDC wrote activate word 0.  shortcut: that the Indy7 drives reach OP this way under
+     * SOEM is not checked. */
+    xil_printf("[ecat] distributed clocks not set up for this target (ECAT_USE_DC 0): the drives run free\r\n");
+#endif
 
     /* SAFE-OP, now that the drives see their SYNC0 configuration */
     ec_slave[0].state = EC_STATE_SAFE_OP;

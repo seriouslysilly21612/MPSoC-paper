@@ -1,26 +1,30 @@
 /*
- * ecat_task.c  --  4-axis CiA402 (CSP) servo control, 1 kHz, DC SYNC0: the EtherCAT master task.
+ * ecat_task.c  --  CiA402 torque (CST) servo control, 1 kHz: the EtherCAT master task.
  *
  * Translation of the IgH/EtherLab "servo_drive_dc/cia402_basic.c" to SOEM + FreeRTOS, for the KV260 RPU
  * (Cortex-R5F).  Entry point: ecat_task().
- *   REUSED (application logic, EtherCAT-master-agnostic): the CiA402 drive state machine and the sine target
- *     position (axis_control.c, cia402_drive.c)
+ *   REUSED (application logic, EtherCAT-master-agnostic): the CiA402 drive state machine
+ *     (axis_control.c, cia402_drive.c)
  *   TRANSLATED (IgH ecrt_* -> SOEM ec_*): master / domain / PDO setup, process-data access through packed
- *     structs over the IOmap (ecat_bringup.c, cia402_drive.c).  DC as IgH's: SYNC0 on every drive (ecat_bringup.c).
+ *     structs over the IOmap (ecat_bringup.c, cia402_drive.c).  DC SYNC0 on every drive for the L7N bench, none for
+ *     the Indy7 (ECAT_USE_DC in app_config.h, ecat_bringup.c).
  *   NEW for the embedded target: PDO mapping by CoE SDO writes, a FreeRTOS task instead of a Linux RT thread,
  *     a 1 kHz loop that never prints (event_log.c), loop period / execution time statistics (loop_timing.c)
  *
- * - WKC gate (IgH: domain wc_state == complete): the CiA402 state machine and the trajectory only run on a
- *   cycle whose working counter is complete.  A lost frame pauses the trajectory, it never makes it jump.
+ * - WKC gate (IgH: domain wc_state == complete): the CiA402 state machine and the torque only run on a
+ *   cycle whose working counter is complete.  On a lost frame the torque is set to 0.
  *   WKC_BUS_FAULT_CYCLES incomplete cycles in a row = "BUS FAULT" (ecat_status = ECAT_STATUS_BUS_FAULT).
  * - Diagnostics: an incomplete working counter that lasts WKC_DIAG_CYCLES cycles makes the task read every
  *   slave's AL state + AL status code ONCE (ec_readstate) and print it next to the CiA402 statusword.
  *   wkc = 12 - 2 means ONE drive stopped taking outputs (it fell out of OPERATIONAL); that line says which
  *   drive and why (0x001B SM watchdog, 0x001A sync error, ...).  Nothing else changes.
  * - Stop (2026-11-17): Linux (r5log.py -f, Ctrl-C) writes a stop command into a page next to the log ring.  The
- *   loop then freezes the trajectory, holds STOP_HOLD_MS, switches every drive off, asks the drives for PRE-OP
+ *   loop then sets the torque to 0, waits STOP_HOLD_MS, switches every drive off, asks the drives for PRE-OP
  *   while the frames still flow, and stops sending once they are there.  Stopping the R5 in OP instead cuts the
  *   frames there: every drive's SM watchdog expires 100 ms later (AL-67 on the L7N).
+ * - Nothing moves by itself.  After the bring-up the drives stay off; the APU asks for servo on / off with the Command
+ *   slot (ocm_link.c), and the State slot (drive values) is written every cycle.  ROBOT_TARGET (app_config.h) selects
+ *   the L7N bench or the Indy7.
  * - The FPU is declared (portTASK_USES_FLOATING_POINT), sin() is computed locally (no -lm needed), the build
  *   fails with a clear message if the FreeRTOS tick is not 1000 Hz (app_config.h).
  *
@@ -41,11 +45,14 @@
 #include "event_log.h"
 #include "loop_timing.h"
 #include "r5log.h"
+#include "ocm_link.h"
+#include "obs_link.h"
 
 volatile int ecat_status = ECAT_STATUS_STARTING;
 
 static int      wkc_bad_cycles;        /* consecutive cycles with an incomplete working counter */
 static unsigned wkc_bad_total;
+static uint32_t cycle_index;           /* release index of the cycle, 1, 2, ... (State slot: period) */
 
 /* ----------------------------------------------------------------------- */
 /* The stop command from Linux: the page below the r5log ring, inside the  */
@@ -94,7 +101,7 @@ static void set_status(int status)
 /* ----------------------------------------------------------------------- */
 /* The stop, one step per cycle (stop_cycle).                              */
 /* ----------------------------------------------------------------------- */
-#define STOP_HOLD_MS        100U   /* the frozen target brings a moving axis to rest under position control */
+#define STOP_HOLD_MS        100U   /* torque 0 for this long before the servo-off (the axes coast: CST has no position hold) */
 #define STOP_SERVO_OFF_MS   500U   /* the drives' time to leave OPERATION_ENABLED after CW_DISABLE_VOLTAGE */
 #define STOP_PREOP_MS       2000U  /* the drives' time to reach PRE-OP (SOEM's EC_TIMEOUTSTATE is 2 s) */
 
@@ -137,7 +144,8 @@ static void stop_cycle(void)
 
     stop_ms++;
     switch (stop_step) {
-    case STOP_HOLD:                     /* axis_control_update() no longer runs: the outputs keep the last target */
+    case STOP_HOLD:                     /* axis_control_update() no longer runs: torque 0 until the servo-off below */
+        axis_control_torque_zero();
         if (stop_ms >= STOP_HOLD_MS) {
             for (i = 0; i < AXIS_COUNT; i++) drive_out[i]->controlword = CW_DISABLE_VOLTAGE;
             stop_step = STOP_SERVO_OFF;
@@ -195,12 +203,37 @@ static void post_slave_al_states(void)
 }
 
 /* ----------------------------------------------------------------------- */
+/* The APU's slots: Command (servo on / off) and Torque; the camera results. */
+/* ----------------------------------------------------------------------- */
+static void take_apu_slots(uint64_t now)
+{
+    uint32_t command = ocm_link_take_command();
+
+    if (command != IPC_CMD_NONE) {
+        event_post(EVENT_COMMAND, 1, (int)command, 0, 0);
+        /* shortcut: IPC_CMD_STOP is a servo off here; the clean stop to PRE-OP is still r5log.py -f */
+        if (command == IPC_CMD_SERVO_ON) axis_control_servo(1);
+        else                             axis_control_servo(0);
+    }
+    link_torque_t torque;
+    int fresh = ocm_link_take_torque(&torque);
+
+    axis_control_torque_input(fresh, torque.usable, torque.tau);
+    obs_link_poll(now);                 /* the camera results: taken and counted; the control task will use them (plan 4-3) */
+}
+
+/* ----------------------------------------------------------------------- */
 /* One 1 kHz cycle: receive -> logic -> send                               */
 /* ----------------------------------------------------------------------- */
 static void ecat_cycle(void)
 {
     uint32_t start = cycle_counter_read(), end;
+    uint64_t t_release = ocm_link_counter();
+    uint32_t link_flags = IPC_STATE_OP;
     int wkc = ec_receive_processdata(RX_TIMEOUT_US);
+
+    cycle_index++;
+    if (stop_step == STOP_NONE) take_apu_slots(t_release);     /* a command during a stop would only fight the stop */
 
     if (stop_step != STOP_NONE) {
         stop_cycle();                   /* the working counter falls as the drives leave OP: no bus fault then */
@@ -212,6 +245,7 @@ static void ecat_cycle(void)
         }
         axis_control_update();
     } else {
+        axis_control_torque_zero();         /* update() does not run: a torque from before the loss must not stay */
         wkc_bad_cycles++;
         wkc_bad_total++;
         if (wkc_bad_cycles == 1) {
@@ -232,6 +266,13 @@ static void ecat_cycle(void)
         set_status(ECAT_STATUS_STOPPING);
         event_post(EVENT_STOP, 0, STOP_HOLD, axes_still_on(), (int)STOP_HOLD_MS);
     }
+    if (stop_step != STOP_NONE) link_flags |= IPC_STATE_STOP;
+    else if (wkc < ecat_expected_wkc) link_flags |= IPC_STATE_WKC_ERR;
+#if LOOP_TIMING
+    ocm_link_publish_state(t_release, cycle_index, link_flags, loop_timing.overruns, wkc_bad_total);
+#else
+    ocm_link_publish_state(t_release, cycle_index, link_flags, 0u, wkc_bad_total);
+#endif
     if (stop_step != STOP_DONE) {
         ec_send_processdata();          /* outputs are re-sent unchanged on a bad cycle */
     }
@@ -248,7 +289,7 @@ static void post_status_report(uint32_t cycles)
     if (e != NULL) {
         e->value[0] = (int32_t)(cycles / 1000u);
         e->value[1] = (int32_t)wkc_bad_total;
-        e->value[2] = sine_stopped ? 2 : (sine_started ? 1 : 0);
+        e->value[2] = axis_control_servo_requested();
 #if LOOP_TIMING
         e->value[3] = (int32_t)(loop_timing.periods ? loop_timing.period_min / CPU_CYCLES_PER_US : 0U);
         e->value[4] = (int32_t)(loop_timing.periods ? (uint32_t)(loop_timing.period_sum / ((uint64_t)loop_timing.periods * CPU_CYCLES_PER_US)) : 0U);
@@ -264,6 +305,7 @@ static void post_status_report(uint32_t cycles)
         }
         event_publish();
     }
+    obs_link_report(ocm_link_counter());
     loop_timing_reset_window();
     event_budget = EVENTS_PER_REPORT;
 }
@@ -283,18 +325,19 @@ void ecat_task(void *arg)
     uint32_t cycles = 0;
     (void)arg;
 
-    portTASK_USES_FLOATING_POINT();     /* the sine in axis_control.c uses the VFP registers: this task needs an FPU context */
+    portTASK_USES_FLOATING_POINT();     /* the unit conversions (robot_target.h) are double: this task needs an FPU context */
     ctl_init();
+    if (!ocm_link_start()) {
+        set_status(ECAT_STATUS_INIT_FAILED);
+        for (;;) vTaskDelay(pdMS_TO_TICKS(1000));
+    }
+    obs_link_start();
     cycle_counter_start();
     loop_timing_reset_window();
 
-    xil_printf("[ecat] ecat_task: %d axes, RUN_LEVEL %d (0 bus only / 1 servo on + hold / 2 + sine),"
-               " cycle %u us, tick %u Hz\r\n", AXIS_COUNT, RUN_LEVEL,
+    xil_printf("[ecat] ecat_task: target %s, %d axes, cycle %u us, tick %u Hz; servo on / off come from the APU\r\n",
+               ROBOT_TARGET == TARGET_INDY7 ? "Indy7" : "L7N bench", AXIS_COUNT,
                (unsigned)(CYCLE_NS / 1000u), (unsigned)configTICK_RATE_HZ);
-#if RUN_LEVEL >= RUN_SINE
-    xil_printf("[ecat] the motors WILL move: sine +-%d counts, %u s period, after all %d axes are enabled\r\n",
-               SINE_AMPLITUDE, (unsigned)(SINE_PERIOD_CYCLES / 1000u), AXIS_COUNT);
-#endif
 
     if (!ecat_bring_up()) {
         set_status(ECAT_STATUS_INIT_FAILED);
@@ -302,11 +345,9 @@ void ecat_task(void *arg)
         for (;;) vTaskDelay(pdMS_TO_TICKS(1000));
     }
 
-    if (xTaskCreate(event_log_task, "ecatlog", 1024, NULL, tskIDLE_PRIORITY + 1, NULL) != pdPASS) {
-        xil_printf("[ecat] WARN: could not start the log task (FreeRTOS heap full?) - event lines will not be printed\r\n");
-    }
+
     set_status(ECAT_STATUS_RUNNING);
-    xil_printf("[ecat] running: %u us loop started\r\n", (unsigned)(CYCLE_NS / 1000u));
+    xil_printf("[ecat] running: %u us loop started, drives off until the APU asks for servo on\r\n", (unsigned)(CYCLE_NS / 1000u));
 
     next = xTaskGetTickCount();
     while (stop_step != STOP_DONE) {

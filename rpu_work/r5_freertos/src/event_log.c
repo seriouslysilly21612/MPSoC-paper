@@ -68,18 +68,28 @@ static void print_event(const event_t *e)
         xil_printf("[ecat] axis %d: statusword 0x%04x = %s\r\n", (int)e->value[0], (unsigned)e->value[1], cia402_state_name((unsigned)e->value[2]));
         break;
     case EVENT_WKC_INCOMPLETE:
-        xil_printf("[ecat] WARN working counter %d < %d (frame lost / a drive dropped out): state machine and trajectory paused\r\n",
+        xil_printf("[ecat] WARN working counter %d < %d (frame lost / a drive dropped out): state machine paused\r\n",
                    (int)e->value[0], (int)e->value[1]);
         break;
     case EVENT_WKC_RECOVERED:
         xil_printf("[ecat] working counter OK again after %d bad cycle(s)\r\n", (int)e->value[0]);
         break;
-    case EVENT_SINE_STARTED:
-        xil_printf("[ecat] all %d axes OPERATION_ENABLED for %d ms: sine trajectory starts\r\n", AXIS_COUNT, (int)SINE_START_DELAY_MS);
+    case EVENT_COMMAND:
+        xil_printf("[link] command from the APU: %s\r\n", e->value[0] == 1 ? "servo on" : (e->value[0] == 2 ? "servo off" : "stop (= servo off)"));
         break;
-    case EVENT_SINE_STOPPED:
-        xil_printf("[ecat] axis %d left OPERATION_ENABLED (statusword 0x%04x): trajectory STOPPED for good (restart the R5 to run it again)\r\n",
-                   (int)e->value[0], (unsigned)e->value[1]);
+    case EVENT_TORQUE_STALE_STOP:
+        xil_printf("[link] WARN no new torque from the APU for %d cycles: torque 0, servo off (the APU must ask for servo on again)\r\n",
+                   (int)e->value[0]);
+        break;
+    case EVENT_OBS_REPORT:
+        if (e->value[0] == 0) {
+            xil_printf("[obs] the writer of the mailbox is not up\r\n");
+        } else {
+            xil_printf("[obs] results taken %d (stale %d, expired %d) | writer dropped: full %d, expired %d\r\n",
+                       (int)e->value[1], (int)e->value[2], (int)e->value[3], (int)e->value[6], (int)e->value[7]);
+            if (e->value[4] < 0) xil_printf("[obs]   no result in time now\r\n");
+            else xil_printf("[obs]   newest result n=%d, %d ticks old (system counter)\r\n", (int)e->value[4], (int)e->value[5]);
+        }
         break;
     case EVENT_FAULT_RESET_LIMIT:
         xil_printf("[ecat] axis %d: fault reset limit (%d) reached - the axis stays in FAULT\r\n", (int)e->value[0], (int)MAX_FAULT_RESETS);
@@ -89,8 +99,8 @@ static void print_event(const event_t *e)
                    " which drive left OPERATIONAL, and why (cable? drive power? drive alarm? SM watchdog?). Restart the R5.\r\n", (int)e->value[0]);
         break;
     case EVENT_STATUS_REPORT:
-        xil_printf("[ecat] t=%us wkc_bad=%d traj=%s events_lost=%d |", (unsigned)e->value[0], (int)e->value[1],
-                   e->value[2] == 2 ? "STOPPED" : (e->value[2] == 1 ? "running" : "-"), (int)e->value[9]);
+        xil_printf("[ecat] t=%us wkc_bad=%d servo=%s events_lost=%d |", (unsigned)e->value[0], (int)e->value[1],
+                   e->value[2] ? "on" : "off", (int)e->value[9]);
         for (i = 0; i < AXIS_COUNT; i++) {
             xil_printf(" ax%d sw=%04x pos=%d", i, (unsigned)e->value[10 + i], (int)e->value[10 + AXIS_COUNT + i]);
         }
@@ -114,7 +124,7 @@ static void print_event(const event_t *e)
     }
     case EVENT_STOP:
         if (e->value[0] == STOP_HOLD) {
-            xil_printf("[ecat] stop asked for by Linux (%d axes enabled): trajectory frozen, position held %d ms, then servo off\r\n",
+            xil_printf("[ecat] stop asked for by Linux (%d axes enabled): torque 0 for %d ms, then servo off\r\n",
                        (int)e->value[1], (int)e->value[2]);
         } else if (e->value[0] == STOP_PREOP) {
             if (e->value[1] == 0) {
