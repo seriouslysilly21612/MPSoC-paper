@@ -421,14 +421,16 @@ The methods (`--method`) in the simulation, on the camera of the simulation inst
 
 `tools/app_methods.py` puts the runs side by side: the results used, the goals that the high-level controller
 accepted, the time at rest and, against the place of the object, the error of the objects, of the goal and of the
-tool at the end. On a PC (x86-64, no real-time kernel; one run each, the object 0.55 m in front of the base, a
-result 120 ms after its capture, no noise): with M1 and with A2 the arm takes one goal, rests after 1.6 s and
-ends 0.01 mm from the hover point. With M2 the object is up to 61 mm off while the arm moves (1.05 times the way
-of the tool since the capture), the high-level controller takes 25 goals, the arm rests after 2.8 s and ends
-5.5 mm from the hover point: the last wrong goal stays, because the right one is within delta (6 mm) of it. With
-an error of the calibration of 5 mm, M1 and A2 on results in the base frame end 5.7 mm off, A2 on results
-relative to the tag 1.0 mm (noise 1 mm). On that PC some periods do not run, and A2 then refuses the result whose
-capture falls there (state_unrecoverable, 1 of 181).
+tool at the end. On a PC (x86-64, no real-time kernel; the object 0.55 m in front of the base, a result 120 ms
+after its capture, no noise; two runs of each method): with M1 and with A2 the arm takes one goal, rests after
+1.6 s and ends 0.01 mm from the hover point. With M2 the object is up to 61 mm off while the arm moves (1.05
+times the way of the tool since the capture), the high-level controller takes 25 to 28 goals, and the arm rests
+after 2.8 to 3.3 s, 0.4 to 5.5 mm from the hover point: a wrong goal taken during the motion stays when the right
+one is within delta (6 mm) of it. With an error of the calibration of 5 mm and noise of 1 mm (one run each), M1
+and A2 on results in the base frame end 5.7 mm off, A2 on results relative to the tag 1.0 mm. That PC is not a
+real-time system: the control task misses the state of some periods, and A2 then refuses the result whose
+capture falls there (state_unrecoverable, 1 of 181 in each run with the tag). `bin/obs_goal_check` also ran as
+aarch64 and 32-bit ARM builds under QEMU.
 
 ### Humanoid (Sec. VI)
 
