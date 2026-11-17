@@ -156,11 +156,13 @@ public:
 
 		m_stStatus.t_release = atRelease;
 		m_stStatus.tolerance = (float)m_stCfg.dTolM;
+		m_stStatus.control_period = (float)((double)m_stCfg.stSet.period_ticks / m_stCfg.stSet.ticks_per_s);
 		if (pUse != NULL)		// else the fields of the result used last stay: the camera side reads its deadline
 		{
 			m_stStatus.result_t_e = pUse->d.t_e;
 			m_stStatus.result_t_valid_until = pUse->d.t_valid_until;
 			m_stStatus.result_n = pUse->d.n;
+			m_stStatus.result_mode = pUse->d.mode;
 			m_stStatus.target_seq = pUse->d.target_seq;
 			m_stStatus.result_error_bound = pUse->ebar;
 		}

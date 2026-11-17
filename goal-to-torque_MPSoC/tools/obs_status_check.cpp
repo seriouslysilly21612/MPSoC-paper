@@ -59,8 +59,10 @@ obs_status_t StatusOf(uint32_t auCount)
 	st.tolerance = 0.010f;
 	st.response_max = 1e-6f * (float)(auCount % 500u);
 	st.contract_crc = ~auCount;
+	st.control_period = 0.001f;
 	st.method = (uint8_t)(auCount % 5u);
 	st.flags = (uint8_t)(auCount % 4u);
+	st.result_mode = (uint8_t)(auCount % 2u);
 	return st;
 }
 

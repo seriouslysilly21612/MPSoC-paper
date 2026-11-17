@@ -469,7 +469,8 @@ void Status()
 	Expect(cT.Start(Config(OBS_CONTRACT, 2), 2), "the settings are accepted");
 	cT.Period();
 	const obs_status_t& stS = cT.cGoal.Status();
-	Expect(stS.t_release == Task::Release(cT.uK) && stS.tolerance == 0.010f, "the release and the tolerance of the period");
+	Expect(stS.t_release == Task::Release(cT.uK) && stS.tolerance == 0.010f && stS.control_period == 0.001f,
+	       "the release and the tolerance of the period, and the period of the task");
 	Expect(stS.flags == 0 && stS.result_n == 0 && stS.result_t_e == 0, "no result so far: none in use, not lost");
 
 	const uint64_t tCapture = Task::Release(cT.uK) - 50 * T;
@@ -478,7 +479,8 @@ void Status()
 	Expect(stS.flags == OBS_STATUS_RESULT_IN_USE && stS.result_n == uN && stS.target_seq == 7,
 	       "the period that used the result: in use, its number and its target");
 	Expect(stS.result_t_e == tCapture && stS.result_t_valid_until == tCapture + 250 * T, "its capture and its deadline");
-	Expect(std::fabs(stS.result_error_bound - 0.005f) < 1e-7f, "its error bound: e0 + g (sigma + eps_cal) = 5 mm");
+	Expect(std::fabs(stS.result_error_bound - 0.005f) < 1e-7f && stS.result_mode == 0,
+	       "its error bound, e0 + g (sigma + eps_cal) = 5 mm, and its mode");
 
 	cT.Periods(199);			// the release of the last of them is the deadline: still in use
 	Expect(stS.flags == OBS_STATUS_RESULT_IN_USE && stS.t_release == stS.result_t_valid_until, "at its deadline: in use");

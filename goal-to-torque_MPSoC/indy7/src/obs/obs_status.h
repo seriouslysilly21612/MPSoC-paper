@@ -39,11 +39,12 @@ typedef struct
 	float		response_max;			/* [s] the longest response of the control task, release to torque, of the
 										 * last one to two seconds */
 	uint32_t	contract_crc;			/* check value of the contract constants of this side (ObsContract.h) */
+	float		control_period;			/* [s] the period of the control task: the deadline of its response */
 	uint8_t		method;					/* obs_method::eMethod of this side */
 	uint8_t		flags;					/* OBS_STATUS_RESULT_IN_USE: this period had a result to use;
 										 * OBS_STATUS_TARGET_LOST: none for too long */
-	uint16_t	reserved16;
-	uint32_t	reserved32;
+	uint8_t		result_mode;			/* mode of the result (obs_desc_t) */
+	uint8_t		reserved8;
 } obs_status_t;
 
 enum { OBS_STATUS_WORDS = 14 };
@@ -55,7 +56,8 @@ typedef struct
 } obs_status_region_t;
 
 IPC_ASSERT(sizeof(obs_status_t) == 4 * OBS_STATUS_WORDS && offsetof(obs_status_t, result_n) == 24 &&
-           offsetof(obs_status_t, result_error_bound) == 32 && offsetof(obs_status_t, method) == 48, "obs_status_t");
+           offsetof(obs_status_t, result_error_bound) == 32 && offsetof(obs_status_t, control_period) == 48 &&
+           offsetof(obs_status_t, method) == 52, "obs_status_t");
 IPC_ASSERT((unsigned)OBS_STATUS_WORDS <= (unsigned)IPC_WORDS_MAX && sizeof(obs_status_region_t) == 96,
            "obs_status_region_t");
 

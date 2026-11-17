@@ -95,14 +95,15 @@ def _read_section(path, section):
 
 
 def _numbers(entries, key, count, scale, path):
-    """Return `count` numbers of a key, each times `scale`; they must be finite and not negative."""
+    """Return `count` numbers of a key, each times `scale`: finite and not negative."""
     if key not in entries or not entries[key]:
         raise ContractError(f'{path}: [{SECTION}] {key} is not given')
     words = entries[key].split()
     try:
         values = [float(word) * scale for word in words[:count]]
     except ValueError:
-        raise ContractError(f'{path}: [{SECTION}] {key}={entries[key]} is not a number') from None
+        raise ContractError(
+            f'{path}: [{SECTION}] {key}={entries[key]} is not a number') from None
     if len(values) < count:
         raise ContractError(f'{path}: [{SECTION}] {key} needs {count} number(s)')
     for value in values:

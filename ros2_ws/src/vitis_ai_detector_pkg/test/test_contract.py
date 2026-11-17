@@ -25,7 +25,7 @@ DELTA_MM=99            ; another section: not ours
 DELTA_MM=10            ; tolerance
 AGE_CAP_MS=250         # a comment after a hash
 e0_mm = 1
-G=1
+G=1# a comment right after the number
 EPS_V_MPS=0
 A_MAX_MPS2=0
 EPS_CAL_MM=2
@@ -63,6 +63,12 @@ def test_reads_the_section_as_the_control_application_does(contract):
         mode_error_m=(2 * 1e-3, 3 * 1e-3))
 
 
+def test_reads_other_constants_and_a_section_name_in_any_case(tmp_path):
+    text = ('[Contract]\nDELTA_MM=12.5\nAGE_CAP_MS=180\nE0_MM=0.7\nG=1.5\nEPS_V_MPS=0.05\n'
+            'A_MAX_MPS2=0.3\nEPS_CAL_MM=1.2\nEPS_M_MM=2.5 4\n')
+    assert read_contract(_write(tmp_path, text)) == OTHER
+
+
 def test_check_value_is_that_of_the_control_application(contract):
     assert contract.crc() == 0x2E7B0347
     assert OTHER.crc() == 0x21A36B83
@@ -93,7 +99,9 @@ def test_error_bound_is_that_of_the_control_task(contract, use_other, mode, age_
 
 
 @pytest.mark.parametrize('broken, what', [
-    (CFG.replace('G=1\n', ''), 'G is not given'),
+    (CFG.replace('G=1# a comment right after the number\n', ''), 'G is not given'),
+    # only the first section of the name counts, as in the control application
+    (CFG.replace('G=1# a comment right after the number\n', '') + 'G=1\n', 'G is not given'),
     (CFG.replace('EPS_M_MM=2 3', 'EPS_M_MM=2'), 'needs 2 number'),
     (CFG.replace('E0_MM=1', 'E0_MM=-1').replace('e0_mm = 1', 'E0_MM=-1'), 'not negative'),
     (CFG.replace('EPS_CAL_MM=2', 'EPS_CAL_MM=nan'), 'finite'),
