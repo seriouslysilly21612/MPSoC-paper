@@ -417,6 +417,13 @@ void Lost()
 	Put(cT, Task::Release(cT.uK) - 50 * T, adObj, OBS_Z_BASE);
 	cT.Period();
 	Expect(!cT.cGoal.Lost(), "the next result: the target again");
+	Expect(cT.cGoal.OutsideWorkspace() == 0, "no result outside the workspace so far");
+	const double adFar[3] = { 2.00, 0.20, 0.10 };			// beyond the box of the test
+	Put(cT, Task::Release(cT.uK) - 50 * T, adFar, OBS_Z_BASE);
+	cT.Period();
+	cT.Periods(801);
+	Expect(cT.cGoal.Lost() && cT.cGoal.OutsideWorkspace() == 1,
+	       "a result outside the workspace does not keep the target, and is counted");
 }
 
 /* 6 */

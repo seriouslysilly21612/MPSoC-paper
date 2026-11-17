@@ -880,9 +880,19 @@ CRobotIndy7::ObsStep(const task_slots::ST_STATE_SLOT& astState)
 	if (m_obsGoal.Lost() != m_bObsLost)
 	{
 		m_bObsLost = m_obsGoal.Lost();
+		// results came but lay outside the workspace since the target was last there: say so
+		const long nOutside = m_obsGoal.OutsideWorkspace();
+		const char* const pcWhy = nOutside > m_nObsOutsideSeen ?
+			"its results are outside the workspace (box, floor or radius)" :
+			"no camera result that the control task could use";
+		m_nObsOutsideSeen = nOutside;
 		if (m_eHlTest == eHlTestTracking && m_nHlSel == HL_APP)
-			printf("[APP] %s\n", m_bObsLost ? "target lost: no camera result that the control task could use - the arm "
-			                                   "keeps its last goal" : "target again");
+		{
+			if (m_bObsLost)
+				printf("[APP] target lost: %s - the arm keeps its last goal\n", pcWhy);
+			else
+				printf("[APP] target again\n");
+		}
 	}
 }
 

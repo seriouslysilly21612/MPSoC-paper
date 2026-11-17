@@ -325,13 +325,49 @@ class PickTarget3DNode(Node):
 
     def depth_callback(self, msg: Image):
         # Store only — conversion/validation happens at pick time (~16 Hz),
-        # not at depth stream rate.
+        # not at depth stream rate. The one exception is the one-shot check
+        # of the depth view, on the first frame.
+        if not self._depth_view_checked:
+            self.check_depth_view_once(msg)
         stamp_ns = stamp_to_ns(msg.header.stamp)
         self.depth_buf.append((stamp_ns, msg))
         if stamp_ns > 0:
             cutoff = stamp_ns - self.depth_hist_ns
             while len(self.depth_buf) > 1 and self.depth_buf[0][0] < cutoff:
                 self.depth_buf.popleft()
+
+    def check_depth_view_once(self, depth_msg):
+        """depth_msg_to_view의 변환을 cv_bridge의 변환과 한 번 비교한다.
+
+        첫 depth frame에서 한다(2026-11-18). 전에는 첫 유효 target에서 했는데,
+        cv_bridge(OpenCV)를 그때 처음 import하느라 이 node가 몇 초 멈췄고, 그동안
+        물체 위치가 나가지 않았다(보드에서 2.7초와 6.9초). 지금은 그 시간이 node가
+        뜰 때 든다.
+        """
+        depth_img, _ = self.depth_msg_to_view(depth_msg)
+        if depth_img is None:
+            return  # 지원하지 않는 encoding: pick 때 bad_depth_encoding으로 보고한다
+        self._depth_view_checked = True
+        try:
+            from cv_bridge import CvBridge
+            ref = CvBridge().imgmsg_to_cv2(
+                depth_msg, desired_encoding='passthrough')
+            self._depth_view_ok = bool(np.array_equal(ref, depth_img))
+            self.get_logger().info(
+                'depth frombuffer view == cv_bridge: '
+                f'{self._depth_view_ok} '
+                f'(bigendian={depth_msg.is_bigendian})'
+            )
+            if not self._depth_view_ok:
+                self.get_logger().error(
+                    'depth view MISMATCH vs cv_bridge — the hand-rolled '
+                    'frombuffer view is misreading the buffer '
+                    f'(bigendian={depth_msg.is_bigendian}, '
+                    f'step={depth_msg.step}, width={depth_msg.width}). '
+                    'Every depth would be wrong; depth output disabled.'
+                )
+        except Exception as e:
+            self.get_logger().warn(f'depth view check skipped: {e}')
 
     def depth_msg_to_view(self, msg):
         """Zero-copy numpy view of a depth Image msg + meters-per-unit scale.
@@ -467,31 +503,8 @@ class PickTarget3DNode(Node):
             self._emit(out, capture_stamp, compute_start_ns, in_age, depth_msg)
             return
 
-        # depth_msg_to_view함수로 변환한 이미지와 cv_bridge를 사용한 이미지 변환을 비교
+        # depth view 검사(check_depth_view_once)는 첫 depth frame에서 이미 끝났다.
         # True면 진행, False면 invalid 발행
-        if not self._depth_view_checked:
-            self._depth_view_checked = True
-            try:
-                from cv_bridge import CvBridge
-                ref = CvBridge().imgmsg_to_cv2(
-                    depth_msg, desired_encoding='passthrough')
-                self._depth_view_ok = bool(np.array_equal(ref, depth_img))
-                self.get_logger().info(
-                    'depth frombuffer view == cv_bridge: '
-                    f'{self._depth_view_ok} '
-                    f'(bigendian={depth_msg.is_bigendian})'
-                )
-                if not self._depth_view_ok:
-                    self.get_logger().error(
-                        'depth view MISMATCH vs cv_bridge — the hand-rolled '
-                        'frombuffer view is misreading the buffer '
-                        f'(bigendian={depth_msg.is_bigendian}, '
-                        f'step={depth_msg.step}, width={depth_msg.width}). '
-                        'Every depth would be wrong; depth output disabled.'
-                    )
-            except Exception as e:
-                self.get_logger().warn(f'depth view check skipped: {e}')
-
         if not self._depth_view_ok:
             self.log_warn_throttled(
                 'depth_view_mismatch', 'Depth view mismatch — depth disabled'

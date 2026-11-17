@@ -260,6 +260,7 @@ private:
 	CObsLog::Meta m_stObsMeta{};          // the fields that do not change at run time
 	double        m_adTagOffset[3]{};     // the tool tag in the frame of the tool [m]
 	bool          m_bObsLost{false};      // Trajectory task: the target is lost (printed)
+	long          m_nObsOutsideSeen{0};   // Trajectory task: CObsGoal::OutsideWorkspace() when m_bObsLost last changed
 	CObsGoal::Counts m_stObsAt0{};        // the counts at the start of the run, for its log
 	long          m_anObsWriter0[CObsWriter::eResults]{};
 	BOOL          InitObs                 (	);

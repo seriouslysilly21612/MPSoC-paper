@@ -174,6 +174,15 @@ public:
 	unsigned		Entries() const { return m_nEntries; }
 	const Entry&	GetEntry(unsigned auI) const { return m_aEntry[auI]; }
 	bool			Lost() const { return m_bLost; }
+	/* results so far that the receiver accepted and the workspace checks refused */
+	long OutsideWorkspace() const
+	{
+		long nOutside = 0;
+		for (int v = 0; v < (int)CGoalFilter::eVerdicts; v++)
+			if (v != (int)CGoalFilter::eAccepted)
+				nOutside += m_anWorkspace[v];
+		return nOutside;
+	}
 	/* what this class knows of the status: the caller adds response_max, contract_crc and method */
 	const obs_status_t&	Status() const { return m_stStatus; }
 
