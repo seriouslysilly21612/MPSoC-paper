@@ -12,6 +12,12 @@
 #include <strings.h>
 #include <sys/stat.h>
 
+stConfigContract::stConfigContract()
+	: dDeltaM(0.010), dAgeCapS(0.250), dE0M(0.001), dG(1.0), dEpsV(0.0), dAMax(0.0), dEpsCalM(0.002),
+	  vEpsM{0.002, 0.003}, vTagOffset{-0.085, 0.0, 0.0}
+{
+}
+
 stConfigSystem::stConfigSystem()
 {
 	strName = "ROBOT";
@@ -576,6 +582,24 @@ CConfig::Parse()
 	}
 	if (FALSE == ReadSlaves(cF, m_strPath, (int)m.nNoOfSlaves, m_vSlaves, vKnown))
 		return FALSE;
+
+	/* [CONTRACT] */
+	vKnown.push_back("CONTRACT");
+	ST_CONFIG_CONTRACT& c = m_stContract;
+	cF.Double("CONTRACT", "DELTA_MM", c.dDeltaM, 1e-3);
+	cF.Double("CONTRACT", "AGE_CAP_MS", c.dAgeCapS, 1e-3);
+	cF.Double("CONTRACT", "E0_MM", c.dE0M, 1e-3);
+	cF.Double("CONTRACT", "G", c.dG);
+	cF.Double("CONTRACT", "EPS_V_MPS", c.dEpsV);
+	cF.Double("CONTRACT", "A_MAX_MPS2", c.dAMax);
+	cF.Double("CONTRACT", "EPS_CAL_MM", c.dEpsCalM, 1e-3);
+	{
+		std::vector<double> vMm = {c.vEpsM[0] * 1e3, c.vEpsM[1] * 1e3};
+		cF.List("CONTRACT", "EPS_M_MM", vMm);
+		c.vEpsM[0] = vMm[0] * 1e-3;
+		c.vEpsM[1] = vMm[1] * 1e-3;
+	}
+	cF.List("CONTRACT", "TAG_OFFSET_M", c.vTagOffset);
 
 	cF.ReportSections(vKnown);
 	cF.ReportUnused();

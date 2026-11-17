@@ -2,7 +2,7 @@
 *	Name: main.cpp
 *	Description: The controller of the Indy7 (paper, Fig. 1).
 *
-*	    indy7_ctrl [-f FILE] [-s | -b [-B FILE]] [-t DIR]
+*	    indy7_ctrl [-f FILE] [-s | -b [-B FILE]] [-t DIR] [--method NAME]
 *
 *	  -f FILE  the configuration; without it ./INDY7.cfg, then INDY7.cfg in
 *	           the directory above the program (bin/..)
@@ -14,6 +14,9 @@
 *	           bench/L7N4_bus.cfg); the arm stays that of the configuration
 *	  -t DIR   the timing of every period into DIR (TimingLog.h,
 *	           tools/timing_summary.py)
+*	  --method NAME (-m)  M1, M2, A2, A3 or FULL: what the camera application
+*	           does with the results of the camera (obs/ObsMethod.h; paper,
+*	           Table III). Default M1: the goal slot, as before
 *
 *	The keys of the operator are listed at the start and with '?'
 *	(Indy7Ctrl.cpp, PrintHelp). 'q', SIGINT or SIGTERM end the controller:
@@ -24,10 +27,12 @@
 #include <csignal>
 #include <cstdio>
 #include <cstring>
+#include <getopt.h>
 #include <sys/mman.h>
 
 #include "Indy7Ctrl.h"
 #include "base/RtConsole.h"
+#include "obs/ObsMethod.h"
 
 namespace {
 
@@ -44,12 +49,14 @@ void SignalHandler(int)
 
 void Usage(const char* apcProg)
 {
-	fprintf(stderr, "usage: %s [-f FILE] [-s | -b [-B FILE]] [-t DIR]\n"
+	fprintf(stderr, "usage: %s [-f FILE] [-s | -b [-B FILE]] [-t DIR] [--method M1|M2|A2|A3|FULL]\n"
 	        "  -f FILE  configuration (default: ./INDY7.cfg, then <program dir>/../INDY7.cfg)\n"
 	        "  -s       simulation: MuJoCo in place of the bus\n"
 	        "  -b       the bus of the robot, drives off, beside the simulated arm (host-timing test)\n"
 	        "  -B FILE  with -b: the slaves of the bus from FILE (e.g. bench/L7N4_bus.cfg)\n"
-	        "  -t DIR   timing of every period into DIR\n", apcProg);
+	        "  -t DIR   timing of every period into DIR\n"
+	        "  --method NAME (-m)  what the camera application does with the results of the camera (obs/ObsMethod.h);\n"
+	        "           default M1, the goal slot as before\n", apcProg);
 }
 
 } // namespace
@@ -62,8 +69,10 @@ int main(int argc, char** argv)
 
 	TSTRING strCfg, strTimingDir, strBusCfg;
 	BOOL bSim = FALSE, bHybrid = FALSE;
+	int nMethod = obs_method::eM1;
+	static const struct option s_astLong[] = { {"method", required_argument, NULL, 'm'}, {NULL, 0, NULL, 0} };
 	int nOpt;
-	while ((nOpt = getopt(argc, argv, "f:sbB:t:h")) != -1)
+	while ((nOpt = getopt_long(argc, argv, "f:sbB:t:m:h", s_astLong, NULL)) != -1)
 	{
 		switch (nOpt)
 		{
@@ -72,6 +81,15 @@ int main(int argc, char** argv)
 			case 'b': bHybrid = TRUE; bSim = TRUE; break;   // the arm is simulated as with -s
 			case 'B': strBusCfg = optarg; break;
 			case 't': strTimingDir = optarg; break;
+			case 'm':
+				nMethod = obs_method::Parse(optarg);
+				if (nMethod < 0)
+				{
+					fprintf(stderr, "--method %s: no such method\n", optarg);
+					Usage(argv[0]);
+					return 1;
+				}
+				break;
 			default:
 				Usage(argv[0]);
 				return 1;
@@ -100,10 +118,11 @@ int main(int argc, char** argv)
 			return 1;
 		}
 	}
-	DBG_LOG_INFO("configuration %s: %s%s%s", cConfig.Path().c_str(),
+	DBG_LOG_INFO("configuration %s: %s%s%s; method %s", cConfig.Path().c_str(),
 	             bHybrid ? "-b, the bus (drives off) beside the simulated arm" :
 	             cConfig.System().bSim ? "simulation, MuJoCo in place of the bus" : "the robot",
-	             cConfig.BusPath().empty() ? "" : ", the bus from ", cConfig.BusPath().c_str());
+	             cConfig.BusPath().empty() ? "" : ", the bus from ", cConfig.BusPath().c_str(),
+	             obs_method::Name(nMethod));
 
 	// SIGINT and SIGTERM stop the tasks (the real-time tasks block both)
 	struct sigaction stSa;
@@ -125,6 +144,7 @@ int main(int argc, char** argv)
 
 	CRobotIndy7* pRobot = new CRobotIndy7(&cConfig);
 	pRobot->SetHybridBus(bHybrid);
+	pRobot->SetMethod(nMethod);
 	if (!strTimingDir.empty())
 		pRobot->SetTimingLogDir(strTimingDir);
 	g_pRobot = pRobot;

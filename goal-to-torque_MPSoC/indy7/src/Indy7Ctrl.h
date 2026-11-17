@@ -58,6 +58,8 @@ public:
 
 	/* before Init: -b, the bus beside the simulated arm; -t DIR */
 	void			SetHybridBus			(BOOL abOn) { m_bHybridBus = abOn; }
+	// --method: obs_method::eMethod, before Init()
+	void			SetMethod				(int anMethod) { m_nMethod = anMethod; }
 	void			SetTimingLogDir			(const TSTRING& astrDir) { m_strTimingDir = astrDir; }
 
 	/* the controller, the bus or the simulation, the tasks; FALSE: the
@@ -154,6 +156,7 @@ private:
 	// not joints of the arm: they stay in OP with the power stage off and the
 	// brakes engaged (Shutdown in every period)
 	BOOL			m_bHybridBus{FALSE};
+	int				m_nMethod{0};			// obs_method::eM1
 	BOOL			IsAnyBusServoOn			(	) const;
 	// the drives, on the command of the Dynamics task (EtherCAT task)
 	void			ApplyServoCommand		(int anCmd);
