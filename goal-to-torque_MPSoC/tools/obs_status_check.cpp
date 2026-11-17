@@ -141,11 +141,12 @@ void RecentMax()
 	obs_recent_max_t st;
 	obs_recent_max_start(&st, 4);
 	Expect(obs_recent_max(&st) == 0.0f, "no value yet: 0");
+	obs_recent_max_add(&st, 1.0f);
+	Expect(obs_recent_max(&st) == 1.0f, "the first value");
 	obs_recent_max_add(&st, 3.0f);
-	Expect(obs_recent_max(&st) == 3.0f, "the first value");
-	const float afLow[3] = { 1.0f, 2.0f, 1.0f };
-	for (float f : afLow)
-		obs_recent_max_add(&st, f);						// the first window is full: 3 1 2 1
+	Expect(obs_recent_max(&st) == 3.0f, "a larger one after it");
+	obs_recent_max_add(&st, 2.0f);
+	obs_recent_max_add(&st, 1.0f);						// the first window is full: 1 3 2 1
 	Expect(obs_recent_max(&st) == 3.0f, "a full window: its largest");
 	obs_recent_max_add(&st, 9.0f);						// a peak in the second window
 	Expect(obs_recent_max(&st) == 9.0f, "a larger value in the window being filled shows at once");

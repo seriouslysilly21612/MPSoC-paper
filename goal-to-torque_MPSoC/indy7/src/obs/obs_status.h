@@ -95,7 +95,7 @@ typedef struct
 
 static inline void obs_recent_max_start(obs_recent_max_t* recent, uint32_t window)
 {
-	recent->window = window > 0u ? window : 1u;
+	recent->window = window;		/* 0 counts as 1: every value fills a window */
 	recent->n_filling = 0u;
 	recent->max_filling = 0.0f;
 	recent->max_filled = 0.0f;
@@ -114,8 +114,8 @@ static inline void obs_recent_max_add(obs_recent_max_t* recent, float value)
 
 static inline float obs_recent_max(const obs_recent_max_t* recent)
 {
-	return (recent->n_filling != 0u && recent->max_filling > recent->max_filled) ? recent->max_filling
-	                                                                               : recent->max_filled;
+	/* with no value in the window being filled, max_filling is still that of the last full window */
+	return recent->max_filling > recent->max_filled ? recent->max_filling : recent->max_filled;
 }
 
 #ifdef __cplusplus

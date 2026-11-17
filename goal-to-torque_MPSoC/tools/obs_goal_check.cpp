@@ -496,6 +496,8 @@ void Status()
 	       "a period later: none in use, and the fields of the last result stay");
 	cT.Periods(601);
 	Expect(stS.flags == OBS_STATUS_TARGET_LOST, "0.8 s after the period that used it first: lost");
+	Expect(cT.Start(Config(OBS_CONTRACT, 2), 2) && stS.flags == 0 && stS.result_n == 0 && stS.result_t_valid_until == 0,
+	       "a control task that starts again starts with an empty status");
 }
 
 /* 8 */
