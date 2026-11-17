@@ -111,6 +111,16 @@ stores anyway. On the board's Cortex-A53 the test passes, and without the hardwa
 copies accepted in 10,000,000 snapshots): it does see a missing barrier between A53 cores. Between the A53 and the
 R5 it has not run yet.
 
+`indy7/src/ipc/FwCfg.h` is the check value of the constants that the firmware is built with: the CRC-32 of
+`[ECAT_MASTER]` and of the slaves of the bus, in a fixed order and fixed widths. `bin/fw_cfg_header [-f FILE]
+[-B FILE] -o fw_cfg.h` writes these constants and the check value as a C header for the firmware. It reads the
+configuration with the parser of the controller, so the two cannot read a value differently. The firmware is to
+write the value into the State slot, and the controller is to send "servo on" only when it equals its own;
+neither is wired yet. `bin/fw_cfg_header --check`: the CRC-32 against its check value and against a record packed
+and summed by another program; every value, the number of slaves and their order change the check value, a name
+does not. All 23 broken versions of `FwCfg.h` fail it. For `INDY7.cfg` and for the bench (`-B bench/L7N4_bus.cfg`)
+a second reader of the files gives the same check values, and the headers compile for the R5 without a warning.
+
 **The camera results (2026-11-17; nothing uses it yet).** `indy7/src/obs/obs_mailbox.h` (C) carries a result from
 the bridge to the control task: the 64-byte descriptor of eq. (5) and the 4-state mailbox of Alg. 1, eight slots.
 - A slot goes FREE, WRITING, READY (the writer), then READING, FREE (the reader). Every state has one side that may
@@ -195,7 +205,7 @@ restarts; the first result of another target is the estimate (it does not slide 
     make                       # bin/indy7_ctrl; prints [indy7] MUJOCO=.. ROS=.. MALLOC_COUNT=..
     make tools                 # bin/hl_check, bin/goal_filter_check, bin/slot_check, bin/ipc_slot_check,
                                # bin/obs_mailbox_check, bin/obs_receiver_check, bin/obs_estimate_check,
-                               # bin/model_check (MuJoCo)
+                               # bin/fw_cfg_header, bin/model_check (MuJoCo)
 
 `make MUJOCO=0` builds without the simulation, `make ROS=0` without the bridge (the default is ROS=1 when ROS 2
 and the messages of `ros2/` are found: build `ros2/` first and source both environments, `ros2/README.md`).
@@ -284,6 +294,7 @@ Logs: the joint and high-level tests write a CSV and a JSON per run into `JOINT_
     cd indy7 && make && make tools
     ./bin/slot_check                                      # PASS: 0 inconsistent snapshots accepted
     ./bin/ipc_slot_check                                  # the slots to the R5, PASS
+    ./bin/fw_cfg_header --check                           # the check value of the firmware's constants, PASS
     ./bin/obs_mailbox_check                               # the mailbox of the camera results, PASS
     ./bin/obs_receiver_check                              # the control task's side of them, PASS
     ./bin/obs_estimate_check                              # the object estimate from them, PASS

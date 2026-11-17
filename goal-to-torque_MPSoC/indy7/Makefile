@@ -12,7 +12,9 @@
 #	make tools            the offline checks: bin/model_check (MUJOCO=1),
 #	                      bin/hl_check, bin/goal_filter_check, bin/slot_check,
 #	                      bin/ipc_slot_check, bin/obs_mailbox_check,
-#	                      bin/obs_receiver_check, bin/obs_estimate_check
+#	                      bin/obs_receiver_check, bin/obs_estimate_check;
+#	                      and bin/fw_cfg_header, the constants of the R5
+#	                      firmware from the configuration
 #	make clean
 #
 #	The dependencies (paper, Table 1): the IgH EtherCAT master 1.6
@@ -142,6 +144,7 @@ TOOL_OBJS := $(OBJ_DIR)/FullDynControllerRT.o $(OBJ_DIR)/Controller.o $(OBJ_DIR)
 
 tools: $(BIN_DIR)/hl_check $(BIN_DIR)/goal_filter_check $(BIN_DIR)/slot_check $(BIN_DIR)/ipc_slot_check \
        $(BIN_DIR)/obs_mailbox_check $(BIN_DIR)/obs_receiver_check $(BIN_DIR)/obs_estimate_check \
+       $(BIN_DIR)/fw_cfg_header \
        $(BIN_DIR)/console_check \
        $(if $(filter 1,$(MUJOCO)),$(BIN_DIR)/model_check)
 
@@ -186,6 +189,11 @@ $(BIN_DIR)/obs_receiver_check: $(TOOLS_DIR)/obs_receiver_check.cpp $(SRC_DIR)/ob
 $(BIN_DIR)/obs_estimate_check: $(TOOLS_DIR)/obs_estimate_check.cpp $(SRC_DIR)/obs/ObsEstimate.h $(SRC_DIR)/GoalFilter.h
 	@mkdir -p $(BIN_DIR)
 	$(CXX) -O2 -std=gnu++17 -Wall -I$(SRC_DIR) -o $@ $<
+
+# the constants of the R5 firmware and their check value (ipc/FwCfg.h) from the configuration; --check tests it
+$(BIN_DIR)/fw_cfg_header: $(TOOLS_DIR)/fw_cfg_header.cpp $(SRC_DIR)/ipc/FwCfg.h $(OBJ_DIR)/base/Config.o
+	@mkdir -p $(BIN_DIR)
+	$(CXX) $(CXXFLAGS) -I$(SRC_DIR) -I$(RTPOSIX_DIR)/include -o $@ $< $(OBJ_DIR)/base/Config.o
 
 # the console of the real-time tasks (base/RtConsole.h), with the stdio wrappers of indy7_ctrl
 $(BIN_DIR)/console_check: $(TOOLS_DIR)/console_check.cpp $(OBJ_DIR)/base/RtConsole.o
