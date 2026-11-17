@@ -45,6 +45,7 @@
 #include "TaskSlots.h"
 #include "CalibCapture.h"
 #include "ROS2PickBridge.h"
+#include "obs/ObsMethod.h"
 #include "JointTestLog.h"
 #include "HighLevelLog.h"
 #include "GoalSlot.h"
@@ -237,6 +238,10 @@ private:
 	// position that it reads. Started before the tasks, stopped after them.
 	CROS2PickBridge* m_pBridge{NULL};
 	CGoalSlot     m_appGoalSlot;
+	// the methods other than M1 (--method, obs/ObsMethod.h): the camera side
+	// writes every result into the mailbox instead
+	obs_mailbox_t m_obsBox{};
+	CObsWriter    m_obsWriter;
 	double        m_dAppHover{0.05};
 	double        m_dAppT{0.0};           // length of a run of the application [s], 0: until 'x'
 	void          InitBridge              (	);

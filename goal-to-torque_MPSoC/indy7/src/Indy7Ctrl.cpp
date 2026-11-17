@@ -407,6 +407,14 @@ CRobotIndy7::InitBridge()
 	stCfg.stFilter.dKappa = stSys.dAppKappa;
 	stCfg.stFilter.dGapS  = stSys.dAppGapS;
 	stCfg.dLossS = stSys.dAppLossS;
+	stCfg.pObs = NULL;
+	if (obs_method::UsesMailbox(m_nMethod))
+	{
+		const ST_CONFIG_CONTRACT& stC = m_pConfig->Contract();
+		const CObsWriter::Config stW = {stC.dAgeCapS, {(float)stC.vEpsM[0], (float)stC.vEpsM[1]}};
+		m_obsWriter.Init(&m_obsBox, stW);
+		stCfg.pObs = &m_obsWriter;
+	}
 	m_pBridge = new CROS2PickBridge();
 	if (FALSE == m_pBridge->Init(stCfg, &m_appGoalSlot))
 	{

@@ -36,6 +36,7 @@
 #include "base/AtomicSlot.h"
 #include "GoalSlot.h"
 #include "GoalFilter.h"
+#include "obs/ObsWriter.h"
 
 #include <atomic>
 #include <chrono>
@@ -62,6 +63,8 @@ public:
 	{
 		CGoalFilter::Params stFilter;   // goal checks and smoothing
 		double dLossS;                  // report a lost target after this time without an accepted sample [s]
+		CObsWriter* pObs;               // the methods with the mailbox (obs/ObsMethod.h): every result goes there
+		                                // instead of the average and the slot; NULL: M1
 	};
 	enum { JS_MAX = 8 };
 
