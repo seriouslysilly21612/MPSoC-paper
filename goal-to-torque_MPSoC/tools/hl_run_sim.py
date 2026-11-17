@@ -14,12 +14,14 @@ test program of the controller writes into the goal slot:
   hl-noise0 (4)    the same with delta = 0
   hl-refcheck (5)  reference check: goal changes, goals out of reach, repeats, gaps (HL_TEST_REF_S); the
                    goal stream of the host-timing test (Sec. III-C)
+  hl-app (8)       the camera application on the camera of the simulation (cfg SIM_CAM=1, with APP_DURATION_S
+                   above 0), by the method of --method; not among the default tests
 The script drives nothing but the simulation.
 
 Usage (in the repository):
   python3 tools/hl_run_sim.py [-n N] [--tests hl-fixed,hl-jump,...] [--analyze]
   --cfg FILE, --direct: as for jt_run_sim.py
-  --method M: passed to the controller (the tests here do not use the camera: the result must not depend on it)
+  --method M: passed to the controller (only hl-app uses the camera: the other results must not depend on it)
 """
 import argparse
 import os
@@ -32,7 +34,7 @@ sys.path.insert(0, HERE)
 import jt_predict as jp  # noqa: E402
 from jt_run_sim import APP, Console, FAIL_START, SIM_START, SIM_READY, CTRL_ON, GRAV_COMP  # noqa: E402
 
-MENU = {'hl-fixed': '1', 'hl-jump': '2', 'hl-noise': '3', 'hl-noise0': '4', 'hl-refcheck': '5'}
+MENU = {'hl-fixed': '1', 'hl-jump': '2', 'hl-noise': '3', 'hl-noise0': '4', 'hl-refcheck': '5', 'hl-app': '8'}
 DEFAULT_TESTS = ['hl-fixed', 'hl-jump', 'hl-noise', 'hl-noise0', 'hl-refcheck']
 
 
@@ -56,7 +58,9 @@ def main():
         if t not in MENU:
             sys.exit('hl_run_sim: unknown test %s (%s)' % (t, ', '.join(MENU)))
     num = lambda k, d: float((jp.cfg_get(cfg, 'SYSTEM', k) or str(d)).split()[0])
-    longest = max(num('HL_TEST_REF_S', 60), num('HL_TEST_NOISE_S', 10), 20.0) + 15.0
+    longest = max(num('HL_TEST_REF_S', 60), num('HL_TEST_NOISE_S', 10), num('APP_DURATION_S', 0), 20.0) + 15.0
+    if 'hl-app' in tests and not (num('SIM_CAM', 0) == 1 and num('APP_DURATION_S', 0) > 0):
+        sys.exit('hl_run_sim: hl-app needs SIM_CAM=1 and APP_DURATION_S above 0 in %s' % cfg)
     log_dir = jp.cfg_get(cfg, 'SYSTEM', 'JOINT_TEST_LOG_DIR', 'jt_logs') or 'jt_logs'
     if not os.path.isabs(log_dir):
         log_dir = os.path.join(os.path.dirname(cfg), log_dir)

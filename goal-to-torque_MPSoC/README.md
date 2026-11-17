@@ -200,6 +200,12 @@ camera result becomes the goal of the arm; the section `[CONTRACT]` of the cfg h
 - A run of the application writes `obs_<method>_..._rNN` beside `hl_app_..._rNN`: a row for every result that left
   the receiver, with its verdict, its times, its error bound and, if it was used, its object and the workspace
   check; the counts of both sides are in the `.json`. Every high-level log has the method in its `.json`.
+- The camera of the simulation (`indy7/src/sim/SimCamera.h`; cfg `SIM_CAM=1`, refused outside `-s`) stands in for
+  the bridge, so that every method runs without the camera pipeline: a thread that sees an object at rest and the
+  tool tag `SIM_CAM_HZ` times a second, at the joint angles of the newest state and with their time as the capture
+  time, and has its result `SIM_CAM_LATENCY_MS` later, with noise. M1 gets the object in the base frame, with an
+  error of the calibration (`SIM_CAM_BIAS_MM`), through the checks and the average of the bridge; the others get
+  it relative to the tag or in the base frame (`SIM_CAM_FORMAT`). `y`, `8` starts the application on it.
 
 `bin/obs_goal_check`: with results in the base frame the goal slot holds, bit for bit, what the bridge of M1
 writes for the same 600 samples (rejections and restarts included); with results relative to a tag that moves at
@@ -405,6 +411,24 @@ Calibration (in `calib/`, the controller running with `r`, `g`, `h` and the capt
 again), `calib_to_tf.py --live --write` (the transform of the launch file). Then start the pipeline
 (`ros2/README.md`), the controller with its bridge, and choose the object with `p`. `tools/app_analyze.py`
 evaluates the runs (`hl_app_*` logs).
+
+The methods (`--method`) in the simulation, on the camera of the simulation instead of the pipeline:
+
+    cp indy7/INDY7.cfg indy7/sim_app.cfg
+    python3 tools/cfgset.py indy7/sim_app.cfg SIM_CAM=1 APP_DURATION_S=6
+    for m in M1 M2 A2; do python3 tools/hl_run_sim.py --tests hl-app --cfg indy7/sim_app.cfg --method $m; done
+    python3 tools/app_methods.py --cfg indy7/sim_app.cfg --check 0.5     # one line per run; PASS for the contract
+
+`tools/app_methods.py` puts the runs side by side: the results used, the goals that the high-level controller
+accepted, the time at rest and, against the place of the object, the error of the objects, of the goal and of the
+tool at the end. On a PC (x86-64, no real-time kernel; one run each, the object 0.55 m in front of the base, a
+result 120 ms after its capture, no noise): with M1 and with A2 the arm takes one goal, rests after 1.6 s and
+ends 0.01 mm from the hover point. With M2 the object is up to 61 mm off while the arm moves (1.05 times the way
+of the tool since the capture), the high-level controller takes 25 goals, the arm rests after 2.8 s and ends
+5.5 mm from the hover point: the last wrong goal stays, because the right one is within delta (6 mm) of it. With
+an error of the calibration of 5 mm, M1 and A2 on results in the base frame end 5.7 mm off, A2 on results
+relative to the tag 1.0 mm (noise 1 mm). On that PC some periods do not run, and A2 then refuses the result whose
+capture falls there (state_unrecoverable, 1 of 181).
 
 ### Humanoid (Sec. VI)
 
