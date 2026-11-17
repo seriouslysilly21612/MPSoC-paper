@@ -16,8 +16,9 @@
 *	   on arrival and while held, and the cap on the writer's deadline; no
 *	   state at the capture, no tag; results that cannot be; an error bound
 *	   above the tolerance, and the tolerance of a later period; a ninth held
-*	   result, and sixteen verdicts in one period; no writer; settings that
-*	   cannot be used.
+*	   result, and sixteen verdicts in one period; the two formats, with a
+*	   tag that moved since the capture; no writer; settings that cannot be
+*	   used.
 *	3. N periods (default 200,000) of random results under each policy, with
 *	   bursts, a writer that restarts, results planted twice, periods without
 *	   a state and a control task that stalls. In every period the receiver
@@ -198,7 +199,7 @@ int ModelStep(int anPolicy, uint64_t atK, double adTol, bool* abFresh, std::vect
 		stH.tIn = atK;
 		const obs_desc_t& d = stH.d;
 		bool bBad = d.n == 0 || d.n_check != d.n || d.epoch != ipc_load32(&Mb()->epoch) || d.t_e > d.f || d.t_e > atK ||
-		            !(d.sigma >= 0.0f);
+		            !(d.sigma >= 0.0f) || ((d.flags & OBS_Z_TAG) != 0) == ((d.flags & OBS_Z_BASE) != 0);
 		for (const ModelHeld& h : g_vModel)
 			bBad = bBad || Key(h.d) == Key(d);
 		if (bBad)
@@ -218,7 +219,9 @@ int ModelStep(int anPolicy, uint64_t atK, double adTol, bool* abFresh, std::vect
 			continue;
 		}
 		bool bState = false;
-		if (d.flags & OBS_TAG_LOST)
+		if (d.flags & OBS_Z_BASE)
+			bState = true;
+		else if (d.flags & OBS_TAG_LOST)
 			;
 		else if (anPolicy == OBS_CONTRACT)
 			bState = Truth(d.t_e, &stH.d.s, stH.adQ);
@@ -354,12 +357,14 @@ void Begin(int anPolicy, uint32_t auFirst = 1, uint32_t auLast = 299, uint32_t a
 }
 
 /* a result captured at auTe, published at auF, with the deadline auUntil. Returns its n; 0: not written. */
-uint32_t Put(uint64_t auTe, uint64_t auF, uint64_t auUntil, float afSigma = SIG_IN, uint8_t auFlags = OBS_Z_TAG)
+uint32_t Put(uint64_t auTe, uint64_t auF, uint64_t auUntil, float afSigma = SIG_IN, uint8_t auFlags = OBS_Z_TAG,
+             float afZ0 = 0.0f)
 {
 	obs_desc_t stD;
 	memset(&stD, 0, sizeof(stD));
 	stD.t_e = auTe;
 	stD.t_valid_until = auUntil;
+	stD.z[0] = afZ0;
 	stD.sigma = afSigma;
 	stD.flags = auFlags;
 	g_uNow = auF;
@@ -839,6 +844,65 @@ void NineHeld()
 	       "eight newer captures above the tolerance push the one in use out: no second verdict for it");
 }
 
+/* a tag at (q[0], 0, 0); *apCalls counts the calls */
+void TagAtQ0(void* apCalls, const float* afQ, double* adP)
+{
+	(*(int*)apCalls)++;
+	adP[0] = afQ[0];
+	adP[1] = adP[2] = 0.0;
+}
+
+void Formats()
+{
+	int nFresh = 0, nCalls = 0;
+	double adP[3] = { 0.0, 0.0, 0.0 };
+	const float afNone[OBS_DOF] = { 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f };
+
+	Begin(OBS_CONTRACT, 250, 299);			// no state at the capture
+	uint32_t n = Put(Ms(200.5), Ms(299.5), Ms(400), SIG_IN, OBS_Z_BASE, 0.612f);
+	const obs_held_t* p = Step(300, &nFresh);
+	if (p != NULL)
+		obs_object(p, TagAtQ0, &nCalls, adP);
+	Expect(p != NULL && p->d.n == n && nFresh == 1 && p->d.s == 0 && !memcmp(p->q, afNone, sizeof(afNone)) && nCalls == 0 &&
+	       adP[0] == (double)0.612f && adP[1] == 0.0 && adP[2] == 0.0,
+	       "the object in the base frame: used without a state, and the object is z itself");
+	n = Put(Ms(290.5), Ms(300.5), Ms(490), SIG_IN, OBS_Z_BASE | OBS_TAG_LOST);
+	p = Step(301, &nFresh);
+	Expect(p != NULL && p->d.n == n && nFresh == 1, "in the base frame no tag is needed");
+	const uint32_t n1 = Put(Ms(291.5), Ms(301.1), Ms(490), SIG_IN, 0);
+	const uint32_t n2 = Put(Ms(292.5), Ms(301.2), Ms(490), SIG_IN, OBS_Z_TAG | OBS_Z_BASE);
+	p = Step(302, &nFresh);
+	Expect(n1 != 0 && n2 != 0 && p != NULL && p->d.n == n && RecIs(n1, OBS_V_SEQ_FAIL, Ms(302), Ms(302)) &&
+	       RecIs(n2, OBS_V_SEQ_FAIL, Ms(302), Ms(302)) && Balanced(), "neither format, both formats: seq_fail");
+
+	Begin(OBS_MAX_AGE, 1, 0);
+	n = Put(Ms(280.5), Ms(299.5), Ms(480), SIG_IN, OBS_Z_BASE);
+	p = obs_step(&g_stR, Mb(), Ms(300), TOL, &nFresh);
+	Expect(p != NULL && p->d.n == n, "OBS_MAX_AGE before the first state: a result in the base frame is used");
+
+	// the tag moves at 0.2 m/s and is at 0.500 m at the capture; the object is 0.100 m beyond it; the result
+	// arrives 120 ms later, with the tag at 0.524 m
+	for (int nPolicy = OBS_CONTRACT; nPolicy <= OBS_MAX_AGE; nPolicy++)
+	{
+		Begin(nPolicy, 1, 0);
+		for (uint32_t k = 1; k <= 300; k++)
+		{
+			float afQ[OBS_DOF] = { 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f };
+			afQ[0] = (float)(0.5 + 0.2 * ((double)(T * k) - (double)Ms(180)) / 1e6);
+			obs_state_push(&g_stR, k, T * k, afQ);
+		}
+		n = Put(Ms(180), Ms(299.5), Ms(400), SIG_IN, OBS_Z_TAG, 0.1f);
+		p = obs_step(&g_stR, Mb(), Ms(300), 0.020, &nFresh);
+		nCalls = 0;
+		if (p != NULL)
+			obs_object(p, TagAtQ0, &nCalls, adP);
+		Expect(p != NULL && p->d.n == n && nCalls == 1 && fabs(adP[0] - (nPolicy == OBS_CONTRACT ? 0.600 : 0.624)) < 1e-6 &&
+		       adP[1] == 0.0 && adP[2] == 0.0,
+		       nPolicy == OBS_CONTRACT ? "the object seen from a tag that moved: OBS_CONTRACT has it where it is, 0.600 m"
+		                               : "OBS_MAX_AGE has it 24 mm off, at 0.624 m");
+	}
+}
+
 void NoWriterAndSettings()
 {
 	int nFresh = 0;
@@ -907,7 +971,9 @@ void Random(int anPolicy, long anPeriods)
 				stD.t_e = tK - T * (2 + c.Below(bBurst ? 40 : 280)) - c.Below((uint32_t)T);
 				stD.t_valid_until = stD.t_e + T * (50 + c.Below(251));
 				stD.sigma = (bBurstOver || c.Chance(0.2)) ? SIG_OVER : SIG_IN;
-				stD.flags = (uint8_t)(OBS_Z_TAG | (c.Chance(0.02) ? OBS_TAG_LOST : 0));
+				stD.flags = (uint8_t)((c.Chance(0.1) ? OBS_Z_BASE : OBS_Z_TAG) | (c.Chance(0.02) ? OBS_TAG_LOST : 0));
+				if (c.Chance(0.005))
+					stD.flags = c.Chance(0.5) ? 0 : (OBS_Z_TAG | OBS_Z_BASE);
 				g_uNow = c.Chance(0.1) ? tK + 1 + c.Below((uint32_t)T / 2) : tK - c.Below((uint32_t)T);
 				if (obs_put(Mb(), &stD, Now) == OBS_OK)
 				{
@@ -1134,6 +1200,7 @@ int main(int argc, char** argv)
 	CannotBe();
 	Tolerance();
 	NineHeld();
+	Formats();
 	NoWriterAndSettings();
 	printf("states and verdicts: %d checks failed\n", g_nFailed);
 	Random(OBS_CONTRACT, nPeriods);

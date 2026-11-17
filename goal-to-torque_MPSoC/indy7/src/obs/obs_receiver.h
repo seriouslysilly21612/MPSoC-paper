@@ -22,6 +22,10 @@
 *	           used come in the order of their captures.
 *	  policy   OBS_CONTRACT: all of this. OBS_MAX_AGE: no error bound, and
 *	           the angles of the period of arrival in place of those at t_e.
+*	  format   a result is the object seen from the tag (OBS_Z_TAG), which
+*	           needs the state, or the object in the base frame (OBS_Z_BASE),
+*	           which needs none; obs_object gives the object in the base
+*	           frame for both.
 *	  verdict  every result taken leaves with exactly one (OBS_V_*); those of
 *	           a period are in rec[] after obs_step.
 *
@@ -60,7 +64,8 @@ typedef struct
 typedef struct
 {
 	obs_desc_t	d;				/* the copy. d.s: the period of the state in q; d.t_valid_until: at most t_e + age_cap_ticks */
-	float		q[OBS_DOF];		/* the joint angles at t_e (OBS_CONTRACT), of the period of arrival (OBS_MAX_AGE) */
+	float		q[OBS_DOF];		/* the joint angles at t_e (OBS_CONTRACT), of the period of arrival (OBS_MAX_AGE);
+								 * OBS_Z_BASE: none */
 	float		ebar;			/* [m] eq. (7) in the last period that checked it */
 	uint64_t	t_in;			/* the release of the period that took it */
 	uint8_t		accepted;		/* used at least once: its verdict is out */
@@ -74,7 +79,8 @@ enum
 	OBS_V_EXPIRED,				/* past its deadline, on arrival or while held */
 	OBS_V_STATE_UNRECOVERABLE,	/* no state at t_e, or the tag was not seen */
 	OBS_V_SEQ_FAIL,				/* not a result of this epoch (OBS_STALE), held already, or one that cannot be:
-								 * captured after its publication or after this release, a sigma that is no error */
+								 * captured after its publication or after this release, a sigma that is no error,
+								 * neither format or both */
 	OBS_V_ERROR_EXCEEDED,		/* eq. (7) above the tolerance until its deadline */
 	OBS_V_EVICTED,				/* the oldest of nine */
 	OBS_VERDICTS
@@ -205,7 +211,8 @@ static inline const obs_held_t* obs_step(obs_receiver_t* r, volatile obs_mailbox
 		for (i = 0; i < r->n_held; i++)
 			if (r->held[i].d.n == h.d.n && r->held[i].d.epoch == h.d.epoch)
 				st = OBS_STALE;
-		if (st != OBS_OK || h.d.t_e > h.d.f || h.d.t_e > t_k || !(h.d.sigma >= 0.0f))
+		if (st != OBS_OK || h.d.t_e > h.d.f || h.d.t_e > t_k || !(h.d.sigma >= 0.0f) ||
+		    !(h.d.flags & OBS_Z_TAG) == !(h.d.flags & OBS_Z_BASE))
 		{
 			obs_verdict(r, &h, OBS_V_SEQ_FAIL, t_k);
 			continue;
@@ -222,7 +229,9 @@ static inline const obs_held_t* obs_step(obs_receiver_t* r, volatile obs_mailbox
 			obs_verdict(r, &h, OBS_V_SUPERSEDED, t_k);
 			continue;
 		}
-		if (h.d.flags & OBS_TAG_LOST)
+		if (h.d.flags & OBS_Z_BASE)
+			ok = 1;
+		else if (h.d.flags & OBS_TAG_LOST)
 			ok = 0;
 		else if (r->set.policy == OBS_CONTRACT)
 			ok = obs_state_at(r, h.d.t_e, h.q, &h.d.s);
@@ -298,6 +307,20 @@ static inline const obs_held_t* obs_step(obs_receiver_t* r, volatile obs_mailbox
 		obs_verdict(r, p, OBS_V_ACCEPTED, t_k);
 	}
 	return p;
+}
+
+/* the object in the base frame [m] from a result of obs_step: z itself, or z from the tag at the angles of the
+ * result. tag_at(arg, q, p): the position p[3] of the tag in the base frame at the joint angles q[OBS_DOF]. */
+static inline void obs_object(const obs_held_t* h, void (*tag_at)(void* arg, const float* q, double* p), void* arg,
+                              double* p)
+{
+	double tag[3] = { 0.0, 0.0, 0.0 };
+	unsigned i;
+
+	if (h->d.flags & OBS_Z_TAG)
+		tag_at(arg, h->q, tag);
+	for (i = 0; i < 3u; i++)
+		p[i] = tag[i] + (double)h->d.z[i];
 }
 
 #ifdef __cplusplus

@@ -132,6 +132,8 @@ mailbox holds and gives the one result that the period may use.
   (captured after its publication or after the release, a sigma that is no error) is refused.
 - The policy `OBS_MAX_AGE` is the comparison without the contract: the deadline alone decides, and the angles are
   those of the period in which the result arrives.
+- A result is the object seen from the tag on the tool, or the object in the base frame, which needs no state.
+  `obs_object` gives the object in the base frame for both: z itself, or the tag at the angles of the result plus z.
 
 `bin/obs_mailbox_check`: the result byte by byte, the faults (garbage in the region, nine results before the
 reader looks, a result past its deadline, a writer dead in WRITING, a reader dead in READING, old epochs, broken
@@ -143,12 +145,13 @@ the barriers. On the board's Cortex-A53 the test passes (2.6 s; 98.7 % of the re
 and without the hardware barrier it failed in each of four runs (1 or 2 mixed copies).
 
 `bin/obs_receiver_check`: the angles at a capture time against their definition (times that jitter, periods
-without a state, the wrap of the period number); the verdicts case by case under both policies; then 200,000
-periods of random results under each policy, in which the receiver must agree in every period with a second one
-written from Alg. 1 and with eq. (3) itself, and every result must leave with exactly one verdict; then one writer
-thread with 1,000,000 results against the receiver (1 s on x86-64 in all). It ran on x86-64, and as aarch64 and
-32-bit ARM builds under QEMU, with the same counts on all three; 67 of 68 broken versions of `obs_receiver.h`
-fail it. The one that passes leaves out a check that a later check repeats.
+without a state, the wrap of the period number); the verdicts case by case under both policies, with a tag that
+moves 24 mm while a result is on its way (the object is right with the angles at the capture, 24 mm off with
+those of the arrival); then 200,000 periods of random results under each policy, in which the receiver must agree
+in every period with a second one written from Alg. 1 and with eq. (3) itself, and every result must leave with
+exactly one verdict; then one writer thread with 1,000,000 results against the receiver (1 s on x86-64 in all).
+It ran on x86-64, and as aarch64 and 32-bit ARM builds under QEMU, with the same counts on all three; 73 of 74
+broken versions of `obs_receiver.h` fail it. The one that passes leaves out a check that a later check repeats.
 
 ## Repository layout
 
