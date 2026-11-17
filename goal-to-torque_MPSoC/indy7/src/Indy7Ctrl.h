@@ -253,6 +253,9 @@ private:
 	obs_mailbox_t m_obsBox{};
 	CObsWriter    m_obsWriter;
 	CObsGoal      m_obsGoal;              // Trajectory task
+	obs_status_region_t m_obsStatus{};    // control task -> bridge: what every period tells the camera side
+	obs_recent_max_t    m_stObsResponse{}; // control task: its response, release to torque, of the last 1 to 2 s [s]
+	uint32_t      m_uContractCrc{0};      // ObsContractCrc of [CONTRACT]
 	CObsLog       m_cObsLog;
 	CObsLog::Meta m_stObsMeta{};          // the fields that do not change at run time
 	double        m_adTagOffset[3]{};     // the tool tag in the frame of the tool [m]

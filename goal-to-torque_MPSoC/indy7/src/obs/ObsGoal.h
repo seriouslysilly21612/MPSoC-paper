@@ -20,6 +20,8 @@
 *	  estimate  ObsEstimate.h. A new object position goes into the goal slot.
 *	  entries   what this period did with every result that left the
 *	            receiver, for the log (ObsLog.h).
+*	  status    what this period tells the camera side (obs_status.h): its
+*	            tolerance and the result it used last.
 *
 *	One caller: the control task. No lock, no allocation, no system call.
 *****************************************************************************/
@@ -33,6 +35,7 @@
 #include "GoalSlot.h"
 #include "obs/ObsEstimate.h"
 #include "obs/obs_receiver.h"
+#include "obs/obs_status.h"
 
 class CObsGoal
 {
@@ -107,6 +110,7 @@ public:
 		m_nEntries = 0;
 		m_nGoals = 0;
 		m_bLost = false;
+		m_stStatus = obs_status_t();
 		obs_reader_start(apBox);
 		return true;
 	}
@@ -149,12 +153,27 @@ public:
 			m_nGoals++;
 		}
 		m_bLost = m_cEst.Lost(atRelease);
+
+		m_stStatus.t_release = atRelease;
+		m_stStatus.tolerance = (float)m_stCfg.dTolM;
+		if (pUse != NULL)		// else the fields of the result used last stay: the camera side reads its deadline
+		{
+			m_stStatus.result_t_e = pUse->d.t_e;
+			m_stStatus.result_t_valid_until = pUse->d.t_valid_until;
+			m_stStatus.result_n = pUse->d.n;
+			m_stStatus.target_seq = pUse->d.target_seq;
+			m_stStatus.result_error_bound = pUse->ebar;
+		}
+		m_stStatus.flags = (uint8_t)((pUse != NULL ? OBS_STATUS_RESULT_IN_USE : 0u) |
+		                             (m_bLost ? OBS_STATUS_TARGET_LOST : 0u));
 	}
 
 	/* the last Step() */
 	unsigned		Entries() const { return m_nEntries; }
 	const Entry&	GetEntry(unsigned auI) const { return m_aEntry[auI]; }
 	bool			Lost() const { return m_bLost; }
+	/* what this class knows of the status: the caller adds response_max, contract_crc and method */
+	const obs_status_t&	Status() const { return m_stStatus; }
 
 	void GetCounts(Counts& astC) const
 	{
@@ -187,6 +206,7 @@ private:
 	long					m_anWorkspace[CGoalFilter::eVerdicts]{};
 	long					m_nGoals{0};
 	bool					m_bLost{false};
+	obs_status_t			m_stStatus{};
 };
 
 #endif // G2T_OBS_GOAL_H
