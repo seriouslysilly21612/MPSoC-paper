@@ -86,6 +86,11 @@ public:
 		const int64_t tMono = (int64_t)NowNs();
 		return tMono - (((int64_t)stReal.tv_sec * 1000000000LL + (int64_t)stReal.tv_nsec) - atReal);
 	}
+	/* the other way: a time of CLOCK_MONOTONIC [ns] as a stamp of the system clock */
+	static int64_t RealOfMono(int64_t atMono)
+	{
+		return atMono - MonoOfReal(0);
+	}
 
 private:
 	eResult PutOne(bool abValid, const double* adZ, unsigned auFormat, int64_t atCapture, int anMode, int anClass)

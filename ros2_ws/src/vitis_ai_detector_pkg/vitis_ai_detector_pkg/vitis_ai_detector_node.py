@@ -21,9 +21,19 @@ from rclpy.qos import QoSProfile
 from rclpy.qos import ReliabilityPolicy
 from sensor_msgs.msg import Image
 
-from my_interfaces.msg import Detection, DetectionArray
+from my_interfaces.msg import ContractStatus, Detection, DetectionArray
 
+from vitis_ai_detector_pkg import admission
+from vitis_ai_detector_pkg.frame_gate import FrameGate, GateError, METHODS
 from vitis_ai_detector_pkg.shm_frame import ShmFrameWriter
+
+
+STATUS_TOPIC = "/contract_status"   # 제어 앱의 bridge(ROS2PickBridge.cpp)가 내는 topic
+
+
+def stamp_to_seconds(stamp):
+    """ROS 시각(builtin_interfaces/Time)을 초로."""
+    return float(stamp.sec) + 1e-9 * float(stamp.nanosec)
 
 
 def _default_model_path():
@@ -129,6 +139,15 @@ class VitisAiDetectorNode(Node):
         # 하드 타임아웃/재시작이 나기 전에 미리 잡히는 선행 지표다.
         self.declare_parameter("yield_csv_path", "")
         self.declare_parameter("slow_worker_ms", 150.0)
+        # 비교 방법(논문 Table III). 제어 앱의 --method와 같은 값으로 띄운다.
+        #   M1        지금 그대로: 아래 process_period_sec의 고정 gate
+        #   M2, A2    worker가 받을 수 있는 frame을 모두 추론(gate 없음), mode는 점수로
+        #   A3, FULL  투입 규칙(admission.py): 제어 task의 status를 보고 frame마다 정한다
+        self.declare_parameter("method", "M1")
+        self.declare_parameter("contract_cfg_path", "")     # 제어 앱의 INDY7.cfg ([CONTRACT])
+        self.declare_parameter("mode_profile_path", "")     # mode_profile.yaml
+        self.declare_parameter("response_table_path", "")   # 검사 3의 표. 비우면 검사 3을 끈다
+        self.declare_parameter("decision_log_path", "")     # A3, FULL의 결정 기록. 비우면 쓰지 않는다
 
         self.model_path = self.get_parameter("model_path").value
         self.worker_script_path = self.get_parameter("worker_script_path").value
@@ -168,6 +187,24 @@ class VitisAiDetectorNode(Node):
         self.slow_worker_ms = float(self.get_parameter("slow_worker_ms").value)
         self.metrics_start_ns = None
         self.metrics_window_closed = False
+
+        self.method = str(self.get_parameter("method").value)
+        self.decision_log_path = str(self.get_parameter("decision_log_path").value)
+        if self.method not in METHODS:
+            raise RuntimeError(f"method: {self.method!r} is none of {METHODS}")
+        # M1은 gate 객체가 없다: should_process_frame()이 그대로 돈다.
+        self.frame_gate = None
+        if self.method != "M1":
+            try:
+                self.frame_gate = FrameGate(
+                    self.method,
+                    str(self.get_parameter("contract_cfg_path").value),
+                    str(self.get_parameter("mode_profile_path").value),
+                    self.model_path,
+                    str(self.get_parameter("response_table_path").value),
+                )
+            except GateError as error:
+                raise RuntimeError(f"method {self.method}: {error}") from None
 
         self.last_process_time_ns = None
         self.last_log_time_ns = None
@@ -222,6 +259,15 @@ class VitisAiDetectorNode(Node):
             self.image_callback,
             image_qos,
         )
+        # 투입 규칙만 제어 task의 status를 쓴다(제어 앱의 bridge가 20 ms마다 낸다).
+        self.status_subscription = None
+        if self.frame_gate is not None and self.frame_gate.uses_status:
+            self.status_subscription = self.create_subscription(
+                ContractStatus,
+                STATUS_TOPIC,
+                self.status_callback,
+                1,
+            )
 
         # worker 모드만 지원한다. 다른 모드(in-process, one-shot)는 각각
         # execute_async에서 segfault, test용으로 쓰던 것이라 지금은 사용하지 않음.
@@ -250,6 +296,17 @@ class VitisAiDetectorNode(Node):
             f"send_resized_input={self.send_resized_input}, "
             f"worker_shm={self.shm_writer is not None}"
         )
+        if self.frame_gate is not None:
+            gate = self.frame_gate
+            self.get_logger().info(
+                f"method {self.method}: "
+                + ("admission rule from the status of the control task"
+                   if gate.uses_status else "every frame, the mode by its score")
+                + f"; modes that can run {gate.modes}, age cap "
+                f"{1e3 * gate.contract.age_cap_s:.0f} ms, contract check value "
+                f"0x{gate.contract.crc():08X}, response check "
+                f"{'on' if gate.response_table is not None else 'off'}"
+            )
 
     # 최신 프레임만 "self.latest_msg"에 저장
     def image_callback(self, msg):
@@ -262,6 +319,31 @@ class VitisAiDetectorNode(Node):
                 self.frames_overwritten += 1
             self.latest_msg = msg
             self.frame_event.set()  # worker_loop를 깨워 새 프레임을 처리하게 한다
+
+    def status_callback(self, msg):
+        # 제어 task가 한 주기에 적은 것을 규칙이 쓰는 꼴(admission.Status)로 바꿔 gate에 넘긴다.
+        # 시각은 bridge가 이미지 stamp와 같은 시계로 바꿔 보낸다.
+        self.frame_gate.on_status(admission.Status(
+            stamp_s=stamp_to_seconds(msg.stamp),
+            tolerance_m=float(msg.tolerance),
+            control_period_s=float(msg.control_period),
+            contract_crc=int(msg.contract_crc),
+            method=str(msg.method),
+            result_in_use=bool(msg.result_in_use),
+            result_capture_s=stamp_to_seconds(msg.result_capture),
+            result_valid_until_s=stamp_to_seconds(msg.result_valid_until),
+            result_mode=int(msg.result_mode),
+        ))
+
+    def frame_passes_gate(self, msg):
+        # 이 frame을 추론할지. M1은 고정 gate, 나머지는 방법의 gate(frame_gate.py)가 정한다.
+        if self.frame_gate is None:
+            return self.should_process_frame()
+        decision = self.frame_gate.decide(
+            stamp_to_seconds(msg.header.stamp),
+            1e-9 * self.get_clock().now().nanoseconds,
+        )
+        return decision.action == admission.RUN
 
     def worker_loop(self):
         # 전용 스레드: 프레임을 쉬지 않고 처리해 DPU worker가 다음 구독 콜백을
@@ -280,7 +362,7 @@ class VitisAiDetectorNode(Node):
             # (vitis_ai_detector.yaml에서 process_period_sec: 0.030 = 30ms.
             #  33ms가 아니다 — color 프레임 도착 주기 33.3ms '안쪽'에 여유를 두고
             #  들어가야 jitter로 2프레임 주기(15Hz)로 되돌아가지 않는다. YAML 주석 참고)
-            if not self.should_process_frame():
+            if not self.frame_passes_gate(msg):
                 self.frames_gate_skipped += 1
                 continue
             self.frames_processed += 1
@@ -741,6 +823,26 @@ class VitisAiDetectorNode(Node):
             self.worker_thread.join(timeout=3.0)
             self.worker_thread = None
 
+    def save_decision_log(self):
+        # A3, FULL: frame마다의 결정을 종료 시 한 번 쓴다(frame마다 I/O 없음).
+        if self.frame_gate is None or not self.frame_gate.uses_status:
+            return
+        counts = self.frame_gate.counts
+        self.get_logger().info(
+            f"method {self.method}: {counts[admission.RUN]} frames run, "
+            f"{counts[admission.SKIP]} skipped, {counts[admission.REJECT]} rejected"
+        )
+        if not self.decision_log_path:
+            return
+        try:
+            directory = os.path.dirname(self.decision_log_path)
+            if directory:
+                os.makedirs(directory, exist_ok=True)
+            rows = self.frame_gate.save_log(self.decision_log_path)
+            self.get_logger().info(f"Saved {rows} decisions to {self.decision_log_path}")
+        except OSError as error:
+            self.get_logger().error(f"Decision log not saved: {error}")
+
     def write_yield_summary(self):
         # 프레임 예산 흐름 + worker 신뢰성 집계를 한 행으로, 종료 시 한 번만 쓴다.
         # yield_csv_path가 설정돼 있지 않으면 쓰지 않는다. 카운터 자체는 항상
@@ -840,6 +942,7 @@ def main(args=None):
         if node is not None:
             node.stop_pipeline()  # worker 스레드 종료
             node.save_metrics_csv()  # 성능 CSV 기록
+            node.save_decision_log()  # 투입 규칙의 결정 기록
             node.write_yield_summary()  # yield CSV 기록
             node.stop_worker()  # worker 프로세스 종료
             if node.shm_writer is not None:  # 공유메모리 파일 삭제

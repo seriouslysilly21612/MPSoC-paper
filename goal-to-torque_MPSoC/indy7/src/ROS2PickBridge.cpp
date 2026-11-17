@@ -4,6 +4,7 @@
 *	ROS2PickBridge.h for the threads and what the real-time tasks may call.
 *****************************************************************************/
 #include "ROS2PickBridge.h"
+#include "obs/ObsMethod.h"
 
 #include <algorithm>
 #include <cmath>
@@ -16,6 +17,7 @@ using namespace std::chrono_literals;
 static const char* TOPIC_TARGET     = "/pick_target_base";
 static const char* TOPIC_DETECTIONS = "/detections";
 static const char* TOPIC_JOINTS     = "/joint_states";
+static const char* TOPIC_STATUS     = "/contract_status";
 static const char* PICK_LOGIC_NODE  = "/pick_logic_node";
 static const char* PARAM_DESIRED    = "desired_class";
 
@@ -61,6 +63,12 @@ CROS2PickBridge::Init(const Config& astCfg, CGoalSlot* apSlot)
 			TOPIC_DETECTIONS, rclcpp::QoS(10),
 			[this](const my_interfaces::msg::DetectionArray::SharedPtr apMsg) { OnDetections(apMsg); });
 		m_pPubJoints = m_pNode->create_publisher<sensor_msgs::msg::JointState>(TOPIC_JOINTS, rclcpp::QoS(10));
+		if (astCfg.pStatus != NULL)
+		{
+			// on the executor: the worker waits for services (seconds), and the detector does not trust an old status
+			m_pPubStatus = m_pNode->create_publisher<my_interfaces::msg::ContractStatus>(TOPIC_STATUS, rclcpp::QoS(1));
+			m_pStatusTimer = m_pNode->create_wall_timer(20ms, [this]() { PublishStatus(); });
+		}
 		m_pParamClient = std::make_shared<rclcpp::AsyncParametersClient>(m_pNode, PICK_LOGIC_NODE);
 		m_pExec = std::make_shared<rclcpp::executors::SingleThreadedExecutor>();
 		m_pExec->add_node(m_pNode);
@@ -81,6 +89,8 @@ CROS2PickBridge::Init(const Config& astCfg, CGoalSlot* apSlot)
 			m_thWorker.join();
 		m_pExec.reset();
 		m_pParamClient.reset();
+		m_pStatusTimer.reset();
+		m_pPubStatus.reset();
 		m_pPubJoints.reset();
 		m_pSubDetections.reset();
 		m_pSubTarget.reset();
@@ -92,10 +102,15 @@ CROS2PickBridge::Init(const Config& astCfg, CGoalSlot* apSlot)
 	}
 	m_bInit = TRUE;
 	const CGoalFilter::Params& p = astCfg.stFilter;
-	printf("[bridge] up: %s -> goal slot (box x [%.2f, %.2f] y [%.2f, %.2f] z [%.2f, %.2f] m, r <= %.2f m, "
-	       "floor %.2f m, hover %.2f m; kappa %.2f, restart after %.1f s), %s at 20 Hz\n",
-	       TOPIC_TARGET, p.adBox[0], p.adBox[1], p.adBox[2], p.adBox[3], p.adBox[4], p.adBox[5], p.dRMax, p.dFloor,
-	       p.dHover, p.dKappa, p.dGapS, TOPIC_JOINTS);
+	if (astCfg.pObs != NULL)
+		printf("[bridge] up: %s -> mailbox (the control task checks and averages), %s at 20 Hz%s%s\n", TOPIC_TARGET,
+		       TOPIC_JOINTS, astCfg.pStatus != NULL ? ", the status of the control task on " : "",
+		       astCfg.pStatus != NULL ? TOPIC_STATUS : "");
+	else
+		printf("[bridge] up: %s -> goal slot (box x [%.2f, %.2f] y [%.2f, %.2f] z [%.2f, %.2f] m, r <= %.2f m, "
+		       "floor %.2f m, hover %.2f m; kappa %.2f, restart after %.1f s), %s at 20 Hz\n",
+		       TOPIC_TARGET, p.adBox[0], p.adBox[1], p.adBox[2], p.adBox[3], p.adBox[4], p.adBox[5], p.dRMax, p.dFloor,
+		       p.dHover, p.dKappa, p.dGapS, TOPIC_JOINTS);
 	printf("[bridge] 'p' the object menu: a digit sets desired_class of %s and the arm follows the object; "
 	       "'y', 8 follows the class chosen with 'p'\n", PICK_LOGIC_NODE);
 	return TRUE;
@@ -125,13 +140,25 @@ CROS2PickBridge::DeInit()
 		m_thSpin.join();
 	if (m_thWorker.joinable())
 		m_thWorker.join();
-	printf("[bridge] %ld samples: %ld written into the goal slot (%ld restarts of the average); rejected: "
-	       "%ld invalid, %ld not finite, %ld below the floor, %ld outside the box\n",
-	       m_nSamples.load(), m_nWritten.load(), m_nRestarts.load(),
-	       m_anRejected[CGoalFilter::eInvalid].load(), m_anRejected[CGoalFilter::eNotFinite].load(),
-	       m_anRejected[CGoalFilter::eBelowFloor].load(), m_anRejected[CGoalFilter::eOutsideBox].load());
+	if (m_stCfg.pObs != NULL)
+	{
+		const CObsWriter& cObs = *m_stCfg.pObs;
+		printf("[bridge] %ld samples: %ld written into the mailbox; not written: %ld invalid, %ld not finite, "
+		       "%ld older than the cap or from the future, %ld with no free slot, %ld past their deadline\n",
+		       m_nSamples.load(), cObs.Count(CObsWriter::eWritten), cObs.Count(CObsWriter::eInvalid),
+		       cObs.Count(CObsWriter::eNotFinite), cObs.Count(CObsWriter::eAge), cObs.Count(CObsWriter::eFull),
+		       cObs.Count(CObsWriter::eExpired));
+	}
+	else
+		printf("[bridge] %ld samples: %ld written into the goal slot (%ld restarts of the average); rejected: "
+		       "%ld invalid, %ld not finite, %ld below the floor, %ld outside the box\n",
+		       m_nSamples.load(), m_nWritten.load(), m_nRestarts.load(),
+		       m_anRejected[CGoalFilter::eInvalid].load(), m_anRejected[CGoalFilter::eNotFinite].load(),
+		       m_anRejected[CGoalFilter::eBelowFloor].load(), m_anRejected[CGoalFilter::eOutsideBox].load());
 	m_pExec.reset();
 	m_pParamClient.reset();
+	m_pStatusTimer.reset();
+	m_pPubStatus.reset();
 	m_pPubJoints.reset();
 	m_pSubDetections.reset();
 	m_pSubTarget.reset();
@@ -269,6 +296,46 @@ CROS2PickBridge::OnTarget(const my_interfaces::msg::PickTarget3D::SharedPtr apMs
 		m_strLastClass = apMsg->class_name;
 	}
 	m_dLastAcceptS.store(dNow, std::memory_order_release);
+}
+
+/* a time of the clock of the tasks [ns] as a stamp of the system clock, the clock of the image stamps */
+static builtin_interfaces::msg::Time
+StampOfTaskTime(uint64_t atTaskTime)
+{
+	const int64_t tSystem = CObsWriter::RealOfMono((int64_t)atTaskTime);
+	builtin_interfaces::msg::Time stStamp;
+	stStamp.sec = (int32_t)(tSystem / 1000000000LL);
+	stStamp.nanosec = (uint32_t)(tSystem % 1000000000LL);
+	return stStamp;
+}
+
+/* every 20 ms: the newest status of the control task (obs_status.h) for the detector */
+void
+CROS2PickBridge::PublishStatus()
+{
+	obs_status_t stStatus;
+	uint32_t auStamp[2];
+	if (obs_status_read(m_stCfg.pStatus, &stStatus, auStamp) != IPC_OK)
+		return;                     // being written, or the control task has not written yet: the next tick
+	my_interfaces::msg::ContractStatus stMsg;
+	stMsg.stamp = StampOfTaskTime(stStatus.t_release);
+	stMsg.tolerance = stStatus.tolerance;
+	stMsg.control_period = stStatus.control_period;
+	stMsg.response_max = stStatus.response_max;
+	stMsg.contract_crc = stStatus.contract_crc;
+	stMsg.method = obs_method::Name(stStatus.method);
+	stMsg.result_in_use = (stStatus.flags & OBS_STATUS_RESULT_IN_USE) != 0;
+	stMsg.target_lost = (stStatus.flags & OBS_STATUS_TARGET_LOST) != 0;
+	stMsg.result_n = stStatus.result_n;
+	if (stStatus.result_n != 0)     // else no result so far: its times stay 0
+	{
+		stMsg.result_capture = StampOfTaskTime(stStatus.result_t_e);
+		stMsg.result_valid_until = StampOfTaskTime(stStatus.result_t_valid_until);
+	}
+	stMsg.result_error_bound = stStatus.result_error_bound;
+	stMsg.result_mode = stStatus.result_mode;
+	stMsg.target_seq = stStatus.target_seq;
+	m_pPubStatus->publish(stMsg);
 }
 
 void

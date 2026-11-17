@@ -548,6 +548,9 @@ void CameraSide()
 	}
 	printf("   a stamp of the system clock, 50 ms old, on the clock of the tasks: off by %lld ns\n", (long long)tBest);
 	Expect(tBest < 200000, "the stamp is within 0.2 ms of its time on the clock of the tasks");
+	const int64_t tStamp = 1700000000123456789LL;
+	const int64_t tBack = CObsWriter::RealOfMono(CObsWriter::MonoOfReal(tStamp)) - tStamp;
+	Expect((tBack < 0 ? -tBack : tBack) < 200000, "and back on the system clock: within 0.2 ms of the stamp");
 }
 
 /* 9 */

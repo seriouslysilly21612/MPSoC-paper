@@ -37,6 +37,7 @@
 #include "GoalSlot.h"
 #include "GoalFilter.h"
 #include "obs/ObsWriter.h"
+#include "obs/obs_status.h"
 
 #include <atomic>
 #include <chrono>
@@ -53,6 +54,7 @@
 #include "rclcpp/parameter_client.hpp"
 #include "my_interfaces/msg/pick_target3_d.hpp"
 #include "my_interfaces/msg/detection_array.hpp"
+#include "my_interfaces/msg/contract_status.hpp"
 #include "sensor_msgs/msg/joint_state.hpp"
 #endif
 
@@ -65,6 +67,8 @@ public:
 		double dLossS;                  // report a lost target after this time without an accepted sample [s]
 		CObsWriter* pObs;               // the methods with the mailbox (obs/ObsMethod.h): every result goes there
 		                                // instead of the average and the slot; NULL: M1
+		const volatile obs_status_region_t* pStatus;   // the status of the control task, published for the
+		                                // detector of the camera pipeline; NULL: M1
 	};
 	enum { JS_MAX = 8 };
 
@@ -107,12 +111,15 @@ private:
 #ifndef G2T_NO_ROS
 	void OnTarget(const my_interfaces::msg::PickTarget3D::SharedPtr apMsg);
 	void OnDetections(const my_interfaces::msg::DetectionArray::SharedPtr apMsg);
+	void PublishStatus();
 
 	std::shared_ptr<rclcpp::Node> m_pNode;
 	std::shared_ptr<rclcpp::executors::SingleThreadedExecutor> m_pExec;
 	rclcpp::Subscription<my_interfaces::msg::PickTarget3D>::SharedPtr   m_pSubTarget;
 	rclcpp::Subscription<my_interfaces::msg::DetectionArray>::SharedPtr m_pSubDetections;
 	rclcpp::Publisher<sensor_msgs::msg::JointState>::SharedPtr         m_pPubJoints;
+	rclcpp::Publisher<my_interfaces::msg::ContractStatus>::SharedPtr   m_pPubStatus;
+	rclcpp::TimerBase::SharedPtr                                       m_pStatusTimer;
 	std::shared_ptr<rclcpp::AsyncParametersClient> m_pParamClient;
 #endif
 

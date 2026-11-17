@@ -556,6 +556,7 @@ CRobotIndy7::InitBridge()
 	stCfg.stFilter = AppFilter();
 	stCfg.dLossS = stSys.dAppLossS;
 	stCfg.pObs = obs_method::UsesMailbox(m_nMethod) ? &m_obsWriter : NULL;      // InitObs()
+	stCfg.pStatus = obs_method::UsesMailbox(m_nMethod) ? &m_obsStatus : NULL;
 	m_pBridge = new CROS2PickBridge();
 	if (FALSE == m_pBridge->Init(stCfg, &m_appGoalSlot))
 	{
