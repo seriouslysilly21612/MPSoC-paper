@@ -352,10 +352,18 @@ template <int N>
 void
 CHighLevelRTN<N>::ToolPosition(const double* adQ, double* adP)
 {
+	const double adLocal[3] = { m_vTcpPoint[0], m_vTcpPoint[1], m_vTcpPoint[2] };
+	ToolPoint(adQ, adLocal, adP);
+}
+
+template <int N>
+void
+CHighLevelRTN<N>::ToolPoint(const double* adQ, const double* adLocal, double* adP)
+{
 	for (int i = 0; i < DOF; i++)
 		m_vQ[i] = adQ[i];
 	UpdateKinematics(m_model, m_vQ, m_vZero, m_vZero);
-	const Vector3d vP = CalcBodyToBaseCoordinates(m_model, m_vQ, m_uTcp, m_vTcpPoint, false);
+	const Vector3d vP = CalcBodyToBaseCoordinates(m_model, m_vQ, m_uTcp, Vector3d(adLocal[0], adLocal[1], adLocal[2]), false);
 	for (int k = 0; k < 3; k++)
 		adP[k] = vP[k];
 }

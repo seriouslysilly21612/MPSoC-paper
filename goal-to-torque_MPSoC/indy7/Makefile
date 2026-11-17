@@ -12,7 +12,8 @@
 #	make tools            the offline checks: bin/model_check (MUJOCO=1),
 #	                      bin/hl_check, bin/goal_filter_check, bin/slot_check,
 #	                      bin/ipc_slot_check, bin/obs_mailbox_check,
-#	                      bin/obs_receiver_check, bin/obs_estimate_check;
+#	                      bin/obs_receiver_check, bin/obs_estimate_check,
+#	                      bin/obs_goal_check;
 #	                      and bin/fw_cfg_header, the constants of the R5
 #	                      firmware from the configuration
 #	make clean
@@ -105,7 +106,7 @@ SOURCES := base/Config.cpp base/RtTask.cpp base/ViewStream.cpp base/MallocCount.
            ecat/EcatMaster.cpp ecat/Indy7Joint.cpp ecat/Indy7EndTool.cpp \
            sim/SimArm.cpp sim/SimJoint.cpp \
            Controller.cpp FullDynControllerRT.cpp HighLevelRT.cpp TrajectoryRT.cpp \
-           JointTestLog.cpp HighLevelLog.cpp TimingLog.cpp CalibCapture.cpp $(BRIDGE_SOURCE) \
+           JointTestLog.cpp HighLevelLog.cpp obs/ObsLog.cpp TimingLog.cpp CalibCapture.cpp $(BRIDGE_SOURCE) \
            Indy7Ctrl.cpp TaskEtherCAT.cpp TaskTrajectory.cpp TaskDynamics.cpp main.cpp
 RTPOSIX_SOURCES := posix_rt.c commons.c
 
@@ -144,6 +145,7 @@ TOOL_OBJS := $(OBJ_DIR)/FullDynControllerRT.o $(OBJ_DIR)/Controller.o $(OBJ_DIR)
 
 tools: $(BIN_DIR)/hl_check $(BIN_DIR)/goal_filter_check $(BIN_DIR)/slot_check $(BIN_DIR)/ipc_slot_check \
        $(BIN_DIR)/obs_mailbox_check $(BIN_DIR)/obs_receiver_check $(BIN_DIR)/obs_estimate_check \
+       $(BIN_DIR)/obs_goal_check \
        $(BIN_DIR)/fw_cfg_header \
        $(BIN_DIR)/console_check \
        $(if $(filter 1,$(MUJOCO)),$(BIN_DIR)/model_check)
@@ -189,6 +191,13 @@ $(BIN_DIR)/obs_receiver_check: $(TOOLS_DIR)/obs_receiver_check.cpp $(SRC_DIR)/ob
 $(BIN_DIR)/obs_estimate_check: $(TOOLS_DIR)/obs_estimate_check.cpp $(SRC_DIR)/obs/ObsEstimate.h $(SRC_DIR)/GoalFilter.h
 	@mkdir -p $(BIN_DIR)
 	$(CXX) -O2 -std=gnu++17 -Wall -I$(SRC_DIR) -o $@ $<
+
+# the two ends of the mailbox in the control application (obs/ObsWriter.h, obs/ObsGoal.h), against the bridge of M1
+$(BIN_DIR)/obs_goal_check: $(TOOLS_DIR)/obs_goal_check.cpp $(SRC_DIR)/obs/ObsGoal.h $(SRC_DIR)/obs/ObsWriter.h \
+                           $(SRC_DIR)/obs/ObsEstimate.h $(SRC_DIR)/obs/obs_receiver.h $(SRC_DIR)/obs/obs_mailbox.h \
+                           $(SRC_DIR)/GoalFilter.h $(SRC_DIR)/GoalSlot.h $(SRC_DIR)/base/AtomicSlot.h
+	@mkdir -p $(BIN_DIR)
+	$(CXX) -O2 -std=gnu++17 -Wall -I$(SRC_DIR) -o $@ $< -lpthread
 
 # the constants of the R5 firmware and their check value (ipc/FwCfg.h) from the configuration; --check tests it
 $(BIN_DIR)/fw_cfg_header: $(TOOLS_DIR)/fw_cfg_header.cpp $(SRC_DIR)/ipc/FwCfg.h $(OBJ_DIR)/base/Config.o

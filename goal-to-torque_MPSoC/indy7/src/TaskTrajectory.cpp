@@ -105,6 +105,9 @@ CRobotIndy7::InitHighLevelTests()
 	stM.bFrictionFF = m_bHlFF ? TRUE : FALSE;
 	stM.nGoal = -1;
 	stM.nGoals = 0;
+	snprintf(stM.acMethod, sizeof(stM.acMethod), "%s", obs_method::Name(m_nMethod));
+	if (stSys.bHlLog && obs_method::UsesMailbox(m_nMethod))
+		m_cObsLog.Start(m_cJtLog.GetDir().c_str(), "obs-log");
 	if (stSys.bHlLog)
 		m_cHlLog.Start(m_cJtLog.GetDir().c_str(), "hl-log");
 	else
@@ -399,7 +402,7 @@ CRobotIndy7::StartHighLevelMenu(int anSel, const task_slots::ST_STATE_SLOT& astS
 		printf("[HL] refused - a sequence of test %d is between two runs ('x' first)\n", m_nHlSel);
 		return FALSE;
 	}
-	if (!m_cHlLog.IsIdle())
+	if (!m_cHlLog.IsIdle() || !m_cObsLog.IsIdle())
 	{
 		printf("[HL] refused - the log of the last test is still being written\n");
 		return FALSE;
@@ -521,6 +524,17 @@ CRobotIndy7::StartHighLevelTrack(const task_slots::ST_STATE_SLOT& astState,
 	m_nHlDropouts0 = m_nDriveDropouts.load(std::memory_order_acquire);
 	m_uHlAllocs0 = astTorque.uAllocUpdate;
 	m_cHlLog.Open(stM);
+	if (bApp && obs_method::UsesMailbox(m_nMethod))
+	{
+		/* the log of the camera results of this run: t = 0 is the first period of TRACK, the next one */
+		CObsLog::Meta stO = m_stObsMeta;
+		stO.nRun = stM.nRun;
+		stO.tStart = (uint64_t)astState.tRelease + stO.stSet.period_ticks;
+		m_obsGoal.GetCounts(m_stObsAt0);
+		for (int w = 0; w < (int)CObsWriter::eResults; w++)
+			m_anObsWriter0[w] = m_obsWriter.Count((CObsWriter::eResult)w);
+		m_cObsLog.Open(stO);
+	}
 	m_eHlTest = eHlTestTracking;
 	printf("[HL] TRACK: %s, run %d, delta %.1f mm%s\n", s_apcHlName[m_nHlSel], stM.nRun, stM.stP.dDelta * 1e3,
 	       m_cHlLog.IsStarted() ? "" : " (not logged)");
@@ -846,6 +860,27 @@ CRobotIndy7::HighLevelTestAfterUpdate(const task_slots::ST_STATE_SLOT& astState,
 	}
 }
 
+// The methods with the mailbox (obs/ObsMethod.h), once per period with a new
+// state (Trajectory task): the results of the camera that the mailbox holds,
+// the one this period may use, and the object in the goal slot of the
+// application (obs/ObsGoal.h), before the high-level controller reads it.
+// Also while no run of the application is on, as the bridge fills that slot
+// for M1; a run logs a row per result that left the receiver.
+void
+CRobotIndy7::ObsStep(const task_slots::ST_STATE_SLOT& astState)
+{
+	m_obsGoal.Step(astState.uPeriod, (uint64_t)astState.tRelease, astState.bOp ? astState.adQ : NULL);
+	for (unsigned i = 0; m_cObsLog.IsOpen() && i < m_obsGoal.Entries(); i++)
+		m_cObsLog.Push(m_obsGoal.GetEntry(i));
+	if (m_obsGoal.Lost() != m_bObsLost)
+	{
+		m_bObsLost = m_obsGoal.Lost();
+		if (m_eHlTest == eHlTestTracking && m_nHlSel == HL_APP)
+			printf("[APP] %s\n", m_bObsLost ? "target lost: no camera result that the control task could use - the arm "
+			                                   "keeps its last goal" : "target again");
+	}
+}
+
 void
 CRobotIndy7::EndHighLevelTest(int anState, const task_slots::ST_FAULTS& astFaults, unsigned long auAllocs)
 {
@@ -859,6 +894,15 @@ CRobotIndy7::EndHighLevelTest(int anState, const task_slots::ST_FAULTS& astFault
 	stR.nLeadResets = st.nLeadResets;
 	stR.dRestTime = (m_nHlRestSince >= 0) ? m_nHlRestSince * m_stHlMeta.dPeriod : -1.0;
 	m_cHlLog.Close(anState, stR);
+	if (m_cObsLog.IsOpen())
+	{
+		CObsLog::Result stO;
+		m_obsGoal.GetCounts(stO.stCounts);
+		stO.stCounts.Minus(m_stObsAt0);
+		for (int w = 0; w < (int)CObsWriter::eResults; w++)
+			stO.anWriter[w] = m_obsWriter.Count((CObsWriter::eResult)w) - m_anObsWriter0[w];
+		m_cObsLog.Close(anState, stO);
+	}
 	m_eHlTest = eHlTestIdle;
 	m_bHlTrackPending = false;
 	// the motion ends with the test: the Reference slot of this period carries
@@ -1042,6 +1086,10 @@ trajectory_cycle(CRobotIndy7* pRobot, RTTIME tRelease, RTTIME tStart)
 			adQd[i] = stState.adQd[i];
 		}
 	}
+
+	/* the camera results of this period (the methods with the mailbox) */
+	if (bNewState && obs_method::UsesMailbox(pRobot->m_nMethod))
+		pRobot->ObsStep(stState);
 
 	/* the command of the operator (DoInput, Dynamics task) */
 	const int nCmd = pRobot->m_nHlCmd.exchange(HL_CMD_NONE, std::memory_order_acq_rel);

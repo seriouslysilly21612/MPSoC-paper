@@ -121,7 +121,7 @@ and summed by another program; every value, the number of slaves and their order
 does not. All 23 broken versions of `FwCfg.h` fail it. For `INDY7.cfg` and for the bench (`-B bench/L7N4_bus.cfg`)
 a second reader of the files gives the same check values, and the headers compile for the R5 without a warning.
 
-**The camera results (2026-11-17; nothing uses it yet).** `indy7/src/obs/obs_mailbox.h` (C) carries a result from
+**The camera results (2026-11-17; the methods below use them).** `indy7/src/obs/obs_mailbox.h` (C) carries a result from
 the bridge to the control task: the 64-byte descriptor of eq. (5) and the 4-state mailbox of Alg. 1, eight slots.
 - A slot goes FREE, WRITING, READY (the writer), then READING, FREE (the reader). Every state has one side that may
   change it, so there is no CAS, and the writer never takes a READY slot back.
@@ -174,6 +174,40 @@ restarts; the first result of another target is the estimate (it does not slide 
 0.1 m/s is followed to 0.1 mm with `beta` > 0 and is more than 12 mm behind without it. All 22 broken versions of
 `ObsEstimate.h` fail it.
 
+**The methods of the camera application (2026-11-18).** `--method M1|M2|A2|A3|FULL` (default M1) selects how a
+camera result becomes the goal of the arm; the section `[CONTRACT]` of the cfg holds the constants of the others.
+
+| Method | Path of a result | The control task uses it |
+|---|---|---|
+| M1 | the bridge checks and averages the object and writes the goal slot (as before) | as it comes |
+| M2 | every result goes into the mailbox as it is | until `AGE_CAP_MS` after its capture, with the joint angles of its arrival |
+| A2 | the same | by the contract: the joint angles of its capture, and its error bound (eq. (7)) within `DELTA_MM` |
+| A3 | as M2 | as M2 (the admission on the camera side is not written yet) |
+| FULL | as A2 | as A2 (the same) |
+
+- The camera side is `indy7/src/obs/ObsWriter.h`: the capture stamp of the camera, moved from the system clock to
+  the clock of the tasks, the deadline (capture plus `AGE_CAP_MS`) and the error of the mode (`EPS_M_MM`). A result
+  older than the cap, or from the future, is not written. The bridge sends the object in the base frame until the
+  camera pipeline sends it relative to the tool tag.
+- The control task's side is `indy7/src/obs/ObsGoal.h`, once per period before the high-level controller: the
+  joint angles of the period into the record, the result that the period may use (`obs_receiver.h`), its object in
+  the base frame (with a result relative to the tag: the tag at the joint angles of the result, by the model of the
+  high-level controller and `TAG_OFFSET_M`), the workspace checks that the bridge does for M1, the estimate
+  (`ObsEstimate.h`), and the goal slot that the high-level controller reads as before.
+- The joint angles that a period receives are `SIM_STATE_DELAY_STEPS` periods old at its release, and go into the
+  record with that time. In the simulation this is exact; on the robot it is the same model of the drives, whose
+  acquisition age has not been measured on its own.
+- A run of the application writes `obs_<method>_..._rNN` beside `hl_app_..._rNN`: a row for every result that left
+  the receiver, with its verdict, its times, its error bound and, if it was used, its object and the workspace
+  check; the counts of both sides are in the `.json`. Every high-level log has the method in its `.json`.
+
+`bin/obs_goal_check`: with results in the base frame the goal slot holds, bit for bit, what the bridge of M1
+writes for the same 600 samples (rejections and restarts included); with results relative to a tag that moves at
+0.2 m/s and angles that are two periods old, the object is right by the contract, 23.7 mm off with the angles of
+the arrival, and 0.4 mm off when the age of the angles is ignored; another target, the entries of a period, the
+lost target, settings that are refused, and the camera side on the clock of the machine. All 91 broken versions
+of `ObsGoal.h` and `ObsWriter.h` fail it.
+
 ## Repository layout
 
 | Directory | Content |
@@ -205,7 +239,7 @@ restarts; the first result of another target is the estimate (it does not slide 
     make                       # bin/indy7_ctrl; prints [indy7] MUJOCO=.. ROS=.. MALLOC_COUNT=..
     make tools                 # bin/hl_check, bin/goal_filter_check, bin/slot_check, bin/ipc_slot_check,
                                # bin/obs_mailbox_check, bin/obs_receiver_check, bin/obs_estimate_check,
-                               # bin/fw_cfg_header, bin/model_check (MuJoCo)
+                               # bin/obs_goal_check, bin/fw_cfg_header, bin/model_check (MuJoCo)
 
 `make MUJOCO=0` builds without the simulation, `make ROS=0` without the bridge (the default is ROS=1 when ROS 2
 and the messages of `ros2/` are found: build `ros2/` first and source both environments, `ros2/README.md`).
@@ -236,6 +270,7 @@ and the affinity of every task at its start and refuses to run otherwise.
     ./run.sh                   # the robot (the bus must be up: ethercat.service)
     ./run.sh -b -t DIR         # the bus of the robot in OP, drives off, beside the simulated arm; timing into DIR
     ./run.sh -b -B bench/L7N4_bus.cfg -t DIR   # the same with another bus: the four L7N drives of the bench
+    ./run.sh --method A2       # the camera application by another method (M1, M2, A2, A3, FULL; see above)
 
 The keys of the operator are printed at the start and with `?`:
 
@@ -298,6 +333,7 @@ Logs: the joint and high-level tests write a CSV and a JSON per run into `JOINT_
     ./bin/obs_mailbox_check                               # the mailbox of the camera results, PASS
     ./bin/obs_receiver_check                              # the control task's side of them, PASS
     ./bin/obs_estimate_check                              # the object estimate from them, PASS
+    ./bin/obs_goal_check                                  # the two ends of the mailbox in the application, PASS
     ./bin/hl_check models/indy7.urdf                      # the reference contract, PASS
     ./bin/goal_filter_check                               # the goal checks of the bridge, PASS
     ./bin/model_check models/indy7.urdf models/indy7_mujoco.xml B=6.07917,6.68933,1.99649,0.87306,0.86394,0.84747  # B as in INDY7.cfg

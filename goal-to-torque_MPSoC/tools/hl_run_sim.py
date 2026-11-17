@@ -19,6 +19,7 @@ The script drives nothing but the simulation.
 Usage (in the repository):
   python3 tools/hl_run_sim.py [-n N] [--tests hl-fixed,hl-jump,...] [--analyze]
   --cfg FILE, --direct: as for jt_run_sim.py
+  --method M: passed to the controller (the tests here do not use the camera: the result must not depend on it)
 """
 import argparse
 import os
@@ -46,6 +47,7 @@ def main():
     ap.add_argument('--direct', action='store_true', help='start bin/indy7_ctrl instead of run.sh')
     ap.add_argument('--settle', type=float, default=0.3, help='[s] between servo on and the test')
     ap.add_argument('--analyze', action='store_true', help='run tools/hl_analyze.py on the new logs')
+    ap.add_argument('--method', help='--method of the controller (M1, M2, A2, A3, FULL; default: its own, M1)')
     a = ap.parse_args()
 
     cfg = os.path.abspath(a.cfg)
@@ -70,6 +72,8 @@ def main():
                 plan.append((run, t))
     env = dict(os.environ, MALLOC_ARENA_MAX='2')
     cmd = ['./bin/indy7_ctrl', '-f', cfg, '-s'] if a.direct else ['./run.sh', '-s', '-f', cfg]
+    if a.method:
+        cmd += ['--method', a.method]
     print('hl_run_sim: %s (in %s); %d test runs' % (' '.join(cmd), APP, len(plan)))
     print('hl_run_sim: console -> %s' % console_log)
     c = Console(cmd, APP, env, console_log)

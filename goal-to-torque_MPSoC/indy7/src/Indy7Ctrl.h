@@ -46,6 +46,8 @@
 #include "CalibCapture.h"
 #include "ROS2PickBridge.h"
 #include "obs/ObsMethod.h"
+#include "obs/ObsGoal.h"
+#include "obs/ObsLog.h"
 #include "JointTestLog.h"
 #include "HighLevelLog.h"
 #include "GoalSlot.h"
@@ -239,9 +241,22 @@ private:
 	CROS2PickBridge* m_pBridge{NULL};
 	CGoalSlot     m_appGoalSlot;
 	// the methods other than M1 (--method, obs/ObsMethod.h): the camera side
-	// writes every result into the mailbox instead
+	// writes every result into the mailbox instead, and the control task
+	// takes them from there in every period, accepts them by the policy of
+	// the method and writes the object into m_appGoalSlot (obs/ObsGoal.h);
+	// the log of a run has a row for every result (obs/ObsLog.h)
 	obs_mailbox_t m_obsBox{};
 	CObsWriter    m_obsWriter;
+	CObsGoal      m_obsGoal;              // Trajectory task
+	CObsLog       m_cObsLog;
+	CObsLog::Meta m_stObsMeta{};          // the fields that do not change at run time
+	double        m_adTagOffset[3]{};     // the tool tag in the frame of the tool [m]
+	bool          m_bObsLost{false};      // Trajectory task: the target is lost (printed)
+	CObsGoal::Counts m_stObsAt0{};        // the counts at the start of the run, for its log
+	long          m_anObsWriter0[CObsWriter::eResults]{};
+	BOOL          InitObs                 (	);
+	CGoalFilter::Params AppFilter         (	) const;
+	void          ObsStep                 (const task_slots::ST_STATE_SLOT& astState);   // Trajectory task
 	double        m_dAppHover{0.05};
 	double        m_dAppT{0.0};           // length of a run of the application [s], 0: until 'x'
 	void          InitBridge              (	);
