@@ -35,6 +35,9 @@ extern "C" {
 
 #define OBS_MAGIC	0x3153424Fu		/* "OBS1" */
 #define OBS_LAYOUT	1u				/* + 1 with every change of this file */
+/* where the mailbox lies in the region that the APU and the R5 share (ipc_layout.h), once its reader is on the R5:
+ * behind the slots. One number for both sides. */
+#define OBS_OFF_MAILBOX	0x400u
 enum { OBS_SLOTS = 8, OBS_DESC_WORDS = 16 };
 
 /* one camera result (eq. (5)): 16 words */
@@ -78,6 +81,7 @@ IPC_ASSERT(sizeof(obs_desc_t) == 4 * OBS_DESC_WORDS && offsetof(obs_desc_t, f) =
            offsetof(obs_desc_t, n_check) == 60, "obs_desc_t");
 IPC_ASSERT(offsetof(obs_mailbox_t, state) == 64 && offsetof(obs_mailbox_t, slot) == 128 &&
            sizeof(obs_mailbox_t) == 640, "obs_mailbox_t");
+IPC_ASSERT(OBS_OFF_MAILBOX % 64u == 0u && OBS_OFF_MAILBOX >= IPC_OFF_END, "the mailbox overlaps the slots");
 
 enum
 {

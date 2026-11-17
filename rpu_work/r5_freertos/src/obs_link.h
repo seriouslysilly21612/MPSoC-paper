@@ -5,8 +5,8 @@
  * moves to the R5 with the control task (plan 4-3).  Until then this module keeps the newest result that is still
  * valid, counts, and reports once per status window.
  *
- * The mailbox sits in the OCM window of ocm_link.h, behind the slots of ipc_layout.h.  OBS_OFF_MAILBOX is defined
- * here, not in the APU's files: the APU's writer must map the same offset.
+ * The mailbox sits in the OCM window of ocm_link.h, behind the slots of ipc_layout.h, at OBS_OFF_MAILBOX of
+ * obs/obs_mailbox.h: the file that both sides are built from, so the APU's writer maps the same offset.
  */
 #ifndef OBS_LINK_H
 #define OBS_LINK_H
@@ -15,9 +15,6 @@
 #include "ocm_link.h"
 #include "obs/obs_mailbox.h"
 
-#define OBS_OFF_MAILBOX     0x400u            /* 64-byte aligned, clear of IPC_OFF_END (0x280) */
-
-IPC_ASSERT(OBS_OFF_MAILBOX % 64u == 0u && OBS_OFF_MAILBOX >= IPC_OFF_END, "the mailbox overlaps the slots");
 IPC_ASSERT(OBS_OFF_MAILBOX + sizeof(obs_mailbox_t) <= OCM_LINK_SIZE, "the mailbox is outside the OCM window");
 
 /* After ocm_link_start() (the MPU window): the reader's start, a line with the state of the writer. */
