@@ -12,7 +12,7 @@
 #	make tools            the offline checks: bin/model_check (MUJOCO=1),
 #	                      bin/hl_check, bin/goal_filter_check, bin/slot_check,
 #	                      bin/ipc_slot_check, bin/obs_mailbox_check,
-#	                      bin/obs_receiver_check
+#	                      bin/obs_receiver_check, bin/obs_estimate_check
 #	make clean
 #
 #	The dependencies (paper, Table 1): the IgH EtherCAT master 1.6
@@ -141,7 +141,7 @@ TOOL_OBJS := $(OBJ_DIR)/FullDynControllerRT.o $(OBJ_DIR)/Controller.o $(OBJ_DIR)
              $(OBJ_DIR)/base/MallocCount.o $(OBJ_DIR)/rt-posix/posix_rt.o $(OBJ_DIR)/rt-posix/commons.o
 
 tools: $(BIN_DIR)/hl_check $(BIN_DIR)/goal_filter_check $(BIN_DIR)/slot_check $(BIN_DIR)/ipc_slot_check \
-       $(BIN_DIR)/obs_mailbox_check $(BIN_DIR)/obs_receiver_check \
+       $(BIN_DIR)/obs_mailbox_check $(BIN_DIR)/obs_receiver_check $(BIN_DIR)/obs_estimate_check \
        $(BIN_DIR)/console_check \
        $(if $(filter 1,$(MUJOCO)),$(BIN_DIR)/model_check)
 
@@ -181,6 +181,11 @@ $(BIN_DIR)/obs_receiver_check: $(TOOLS_DIR)/obs_receiver_check.cpp $(SRC_DIR)/ob
                                $(SRC_DIR)/ipc/ipc_slot.h $(SRC_DIR)/ipc/ipc_layout.h
 	@mkdir -p $(BIN_DIR)
 	$(CXX) -O2 -std=gnu++17 -Wall -I$(SRC_DIR) -o $@ $< -lpthread
+
+# the object estimate of the camera application (obs/ObsEstimate.h), against the smoothing of the bridge
+$(BIN_DIR)/obs_estimate_check: $(TOOLS_DIR)/obs_estimate_check.cpp $(SRC_DIR)/obs/ObsEstimate.h $(SRC_DIR)/GoalFilter.h
+	@mkdir -p $(BIN_DIR)
+	$(CXX) -O2 -std=gnu++17 -Wall -I$(SRC_DIR) -o $@ $<
 
 # the console of the real-time tasks (base/RtConsole.h), with the stdio wrappers of indy7_ctrl
 $(BIN_DIR)/console_check: $(TOOLS_DIR)/console_check.cpp $(OBJ_DIR)/base/RtConsole.o

@@ -135,6 +135,12 @@ mailbox holds and gives the one result that the period may use.
 - A result is the object seen from the tag on the tool, or the object in the base frame, which needs no state.
   `obs_object` gives the object in the base frame for both: z itself, or the tag at the angles of the result plus z.
 
+`indy7/src/obs/ObsEstimate.h` is the object that the control task makes of the results it used: the moving
+average of the bridge (`GoalFilter.h`), now on the receiving side and by capture time, with a velocity for an
+object that moves (`beta`, 0 for one that stands still). It restarts when the operator chooses another object,
+and after a gap of a second between two captures. A period without a result in use keeps the object it has; the
+target is lost after a second without a result.
+
 `bin/obs_mailbox_check`: the result byte by byte, the faults (garbage in the region, nine results before the
 reader looks, a result past its deadline, a writer dead in WRITING, a reader dead in READING, old epochs, broken
 check words, another magic or layout), then one writer with 10,000,000 results against one reader (3 s on
@@ -152,6 +158,11 @@ in every period with a second one written from Alg. 1 and with eq. (3) itself, a
 exactly one verdict; then one writer thread with 1,000,000 results against the receiver (1 s on x86-64 in all).
 It ran on x86-64, and as aarch64 and 32-bit ARM builds under QEMU, with the same counts on all three; 73 of 74
 broken versions of `obs_receiver.h` fail it. The one that passes leaves out a check that a later check repeats.
+
+`bin/obs_estimate_check`: with `beta` = 0 the estimate is the moving average of the bridge bit for bit, with its
+restarts; the first result of another target is the estimate (it does not slide over); an object that moves at
+0.1 m/s is followed to 0.1 mm with `beta` > 0 and is more than 12 mm behind without it. All 22 broken versions of
+`ObsEstimate.h` fail it.
 
 ## Repository layout
 
@@ -183,7 +194,8 @@ broken versions of `obs_receiver.h` fail it. The one that passes leaves out a ch
     cd indy7
     make                       # bin/indy7_ctrl; prints [indy7] MUJOCO=.. ROS=.. MALLOC_COUNT=..
     make tools                 # bin/hl_check, bin/goal_filter_check, bin/slot_check, bin/ipc_slot_check,
-                               # bin/obs_mailbox_check, bin/obs_receiver_check, bin/model_check (MuJoCo)
+                               # bin/obs_mailbox_check, bin/obs_receiver_check, bin/obs_estimate_check,
+                               # bin/model_check (MuJoCo)
 
 `make MUJOCO=0` builds without the simulation, `make ROS=0` without the bridge (the default is ROS=1 when ROS 2
 and the messages of `ros2/` are found: build `ros2/` first and source both environments, `ros2/README.md`).
@@ -274,6 +286,7 @@ Logs: the joint and high-level tests write a CSV and a JSON per run into `JOINT_
     ./bin/ipc_slot_check                                  # the slots to the R5, PASS
     ./bin/obs_mailbox_check                               # the mailbox of the camera results, PASS
     ./bin/obs_receiver_check                              # the control task's side of them, PASS
+    ./bin/obs_estimate_check                              # the object estimate from them, PASS
     ./bin/hl_check models/indy7.urdf                      # the reference contract, PASS
     ./bin/goal_filter_check                               # the goal checks of the bridge, PASS
     ./bin/model_check models/indy7.urdf models/indy7_mujoco.xml B=6.07917,6.68933,1.99649,0.87306,0.86394,0.84747  # B as in INDY7.cfg
