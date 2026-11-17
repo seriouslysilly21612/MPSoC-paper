@@ -10,7 +10,8 @@
 #	make MALLOC_COUNT=1   the test build that counts the heap allocations of
 #	                      the real-time tasks (make clean first)
 #	make tools            the offline checks: bin/model_check (MUJOCO=1),
-#	                      bin/hl_check, bin/goal_filter_check, bin/slot_check
+#	                      bin/hl_check, bin/goal_filter_check, bin/slot_check,
+#	                      bin/ipc_slot_check
 #	make clean
 #
 #	The dependencies (paper, Table 1): the IgH EtherCAT master 1.6
@@ -138,7 +139,8 @@ $(OBJ_DIR)/rt-posix/%.o: $(RTPOSIX_DIR)/src/%.c $(STAMP)
 TOOL_OBJS := $(OBJ_DIR)/FullDynControllerRT.o $(OBJ_DIR)/Controller.o $(OBJ_DIR)/HighLevelRT.o \
              $(OBJ_DIR)/base/MallocCount.o $(OBJ_DIR)/rt-posix/posix_rt.o $(OBJ_DIR)/rt-posix/commons.o
 
-tools: $(BIN_DIR)/hl_check $(BIN_DIR)/goal_filter_check $(BIN_DIR)/slot_check $(BIN_DIR)/console_check \
+tools: $(BIN_DIR)/hl_check $(BIN_DIR)/goal_filter_check $(BIN_DIR)/slot_check $(BIN_DIR)/ipc_slot_check \
+       $(BIN_DIR)/console_check \
        $(if $(filter 1,$(MUJOCO)),$(BIN_DIR)/model_check)
 
 # the RBDL model of the controller against the MuJoCo model (models/indy7_mujoco.xml)
@@ -158,6 +160,11 @@ $(BIN_DIR)/goal_filter_check: $(TOOLS_DIR)/goal_filter_check.cpp $(SRC_DIR)/Goal
 
 # the concurrent-reader test of the atomic slot (paper, Sec. II-A)
 $(BIN_DIR)/slot_check: $(TOOLS_DIR)/slot_check.cpp $(SRC_DIR)/base/AtomicSlot.h
+	@mkdir -p $(BIN_DIR)
+	$(CXX) -O2 -std=gnu++17 -Wall -I$(SRC_DIR) -o $@ $< -lpthread
+
+# the slots between the APU and the R5 (src/ipc): the payloads, the faults, concurrent readers
+$(BIN_DIR)/ipc_slot_check: $(TOOLS_DIR)/ipc_slot_check.cpp $(SRC_DIR)/ipc/ipc_layout.h $(SRC_DIR)/ipc/ipc_slot.h
 	@mkdir -p $(BIN_DIR)
 	$(CXX) -O2 -std=gnu++17 -Wall -I$(SRC_DIR) -o $@ $< -lpthread
 
