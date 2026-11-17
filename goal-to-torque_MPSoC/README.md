@@ -106,8 +106,26 @@ words, one attempt per read, barriers, and an epoch per side.
 restarts of one and of both sides, an old epoch, the wrap of the sequence number, another magic or layout), then
 one writer with 10,000,000 snapshots and two readers. `--unsafe` shows that it sees mixed copies. It ran on
 x86-64, and as aarch64 and 32-bit ARM builds under QEMU; twelve of thirteen deliberately broken versions of
-`ipc_slot.h` fail it. The thirteenth, without the barriers, passes: x86 and QEMU keep the order of the stores
-anyway, so only a test with the two processors on the board can check the barriers.
+`ipc_slot.h` fail it. The thirteenth, without the barriers, passes there: x86 and QEMU keep the order of the
+stores anyway. On the board's Cortex-A53 the test passes, and without the hardware barrier it fails (11 mixed
+copies accepted in 10,000,000 snapshots): it does see a missing barrier between A53 cores. Between the A53 and the
+R5 it has not run yet.
+
+**The camera results (2026-11-17; nothing uses it yet).** `indy7/src/obs/obs_mailbox.h` (C) carries a result from
+the bridge to the control task: the 64-byte descriptor of eq. (5) and the 4-state mailbox of Alg. 1, eight slots.
+- A slot goes FREE, WRITING, READY (the writer), then READING, FREE (the reader). Every state has one side that may
+  change it, so there is no CAS, and the writer never takes a READY slot back.
+- The writer drops a result when no slot is FREE and does not write one past its deadline; both are counted in
+  the head. The reader looks at each slot once and never waits.
+- Each side restarts by putting back its own half-done states. A result of the writer's earlier epoch is refused.
+
+`bin/obs_mailbox_check`: the result byte by byte, the faults (garbage in the region, nine results before the
+reader looks, a result past its deadline, a writer dead in WRITING, a reader dead in READING, old epochs, broken
+check words, another magic or layout), then one writer with 10,000,000 results against one reader (3 s on
+x86-64). `--unsafe` frees a slot before copying it and fails. It ran on x86-64, and as aarch64 and 32-bit ARM
+builds under QEMU; fourteen of seventeen broken versions of `obs_mailbox.h` fail it. Of the three that pass, two
+leave out the WRITING or the READING mark, which changes nothing when no slot is taken back, and one leaves out
+the barriers.
 
 ## Repository layout
 
@@ -139,7 +157,7 @@ anyway, so only a test with the two processors on the board can check the barrie
     cd indy7
     make                       # bin/indy7_ctrl; prints [indy7] MUJOCO=.. ROS=.. MALLOC_COUNT=..
     make tools                 # bin/hl_check, bin/goal_filter_check, bin/slot_check, bin/ipc_slot_check,
-                               # bin/model_check (MuJoCo)
+                               # bin/obs_mailbox_check, bin/model_check (MuJoCo)
 
 `make MUJOCO=0` builds without the simulation, `make ROS=0` without the bridge (the default is ROS=1 when ROS 2
 and the messages of `ros2/` are found: build `ros2/` first and source both environments, `ros2/README.md`).
@@ -228,6 +246,7 @@ Logs: the joint and high-level tests write a CSV and a JSON per run into `JOINT_
     cd indy7 && make && make tools
     ./bin/slot_check                                      # PASS: 0 inconsistent snapshots accepted
     ./bin/ipc_slot_check                                  # the slots to the R5, PASS
+    ./bin/obs_mailbox_check                               # the mailbox of the camera results, PASS
     ./bin/hl_check models/indy7.urdf                      # the reference contract, PASS
     ./bin/goal_filter_check                               # the goal checks of the bridge, PASS
     ./bin/model_check models/indy7.urdf models/indy7_mujoco.xml B=6.07917,6.68933,1.99649,0.87306,0.86394,0.84747  # B as in INDY7.cfg
