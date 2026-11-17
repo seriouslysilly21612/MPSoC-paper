@@ -1,9 +1,11 @@
 /* host test of axis_control.c (no board, no FreeRTOS).  From r5_freertos/:
- *   gcc -std=gnu11 -Itest/stub -Isrc test/test_axis_control.c src/axis_control.c src/robot_target.c -o /tmp/t && /tmp/t
+ *   gcc -std=gnu11 -Itest/stub -Isrc test/test_axis_control.c src/axis_control.c -lm -o /tmp/t && /tmp/t
  * (add -DROBOT_TARGET=1 for the Indy7 table: the torque test then only checks what holds for both)
  * It checks: servo off keeps the drives off, servo on walks the CiA402 states, the fault reset limit, the torque
  * (only when enabled, usable, servo on; the unit conversion and its limits), and the stale-torque stop, also with
- * a drive that is not enabled. */
+ * a drive that is not enabled; the constants of the cfg (cfg/fw_cfg_*.h): the axes are its joint drives, and the
+ * angle, the speed and the torque of a drive come out as Indy7Joint.cpp of the APU controller computes them. */
+#include <math.h>
 #include <stdio.h>
 #include <string.h>
 #include "app_config.h"
@@ -138,6 +140,30 @@ int main(void)
             for (k = 0; k < 3 * TORQUE_STALE_LIMIT; k++) { axis_control_torque_input(0, 1, tau); axis_control_update(); }
             CHECK(stale_stop_events == 5);
         }
+    }
+
+    /* ---- the constants of the cfg ---- */
+    for (i = 0; i < FW_CFG_SLAVES; i++)                           /* the axes are the joint drives, first on the bus */
+        CHECK((FW_CFG_AXIS[i].slave_type == 0) == (i < AXIS_COUNT));
+    CHECK(FW_CFG_CRC != 0u);
+    {
+        const double two_pi = 6.283185307179586;
+#if ROBOT_TARGET == TARGET_L7N_BENCH
+        CHECK(FW_CFG_CRC == 0x07AE943Du);                         /* bin/fw_cfg_header -B bench/L7N4_bus.cfg */
+        CHECK(fabs(axis_q_rad(0, 524288) + two_pi) < 1e-12);      /* one turn of the encoder, MOVE_CCW 0 */
+        CHECK(fabs(axis_qd_rads(3, -524288) - two_pi) < 1e-12);
+        CHECK(fabs(axis_tau_nm(0, 1000) + 1.337) < 1e-12);        /* 100 % of the rated torque */
+#else
+        CHECK(FW_CFG_CRC == 0x3896D4ECu);                         /* bin/fw_cfg_header (INDY7.cfg) */
+        CHECK(fabs(axis_q_rad(0, 23567184 + 65536 * 121) + two_pi) < 1e-12);   /* one turn of the joint from its home, MOVE_CCW 0 */
+        CHECK(fabs(axis_q_rad(2, 15841818 + 65536 * 121) - two_pi) < 1e-12);   /* MOVE_CCW 1 */
+        CHECK(fabs(axis_q_rad(5, 45545)) < 1e-12);
+        CHECK(fabs(axis_qd_rads(3, 65536 * 101) + two_pi) < 1e-12);
+        CHECK(fabs(axis_tau_nm(0, 48) + 121.0 * 0.0884) < 1e-12); /* 1 A: gear x torque constant */
+        CHECK(fabs(axis_tau_nm(2, 96) - 121.0 * 0.087) < 1e-12);
+        CHECK(axis_raw_torque(2, 121.0 * 0.087 * 1.005) == 96);   /* 1.005 A: the fraction is dropped */
+        CHECK(axis_raw_torque(0, 121.0 * 0.0884 * 1.005) == -48);
+#endif
     }
 
     printf(fails ? "%d FAILED\n" : "all passed\n", fails);

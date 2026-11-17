@@ -209,6 +209,45 @@ What was tested (2026-11-17, without the board):
 
 Not yet on the board.
 
+## The constants of the cfg, the stale-torque stop, the copies (2026-11-18)
+
+Three points of the review of the torque firmware (`51a7ad8`), changed without the board and without a Vitis
+build; the rest of this file still describes the build of 2026-11-11 to 2026-11-17.
+
+- **The constants come from the cfg of the APU controller.** `src/robot_target.c` (a table typed by hand) is gone.
+  `src/cfg/fw_cfg_l7n.h` and `src/cfg/fw_cfg_indy7.h` are written by the controller's tool, and
+  `src/robot_target.h` takes the unit constants and the identity of every slave from the one of `ROBOT_TARGET`:
+
+      cd goal-to-torque_MPSoC/indy7 && make tools
+      ./bin/fw_cfg_header -o ../../rpu_work/r5_freertos/src/cfg/fw_cfg_indy7.h
+      ./bin/fw_cfg_header -B bench/L7N4_bus.cfg -o ../../rpu_work/r5_freertos/src/cfg/fw_cfg_l7n.h
+
+  The bring-up now compares the vendor id and the product code of every slave with the cfg (it compared the
+  vendor id of the drives). The State slot carries `FW_CFG_CRC`, the check value of those constants, instead of 0;
+  the APU is to ask for servo on only when it equals the check value of its own cfg (not wired yet). The sync mode
+  is still `ECAT_USE_DC` of `app_config.h`. An application project that still has `src/robot_target.c` does not
+  compile: delete the file there.
+- **The stale-torque stop looks at the request, not at the drives.** `TORQUE_STALE_LIMIT` cycles without a new
+  Torque slot while the servo is requested switch it off, also when an axis is in FAULT or does not come up (the
+  count used to run only while every axis was enabled, and then never started). The APU therefore writes the
+  Torque slot in every cycle from the servo-on command on; `r5cmd.py run` does.
+- **The copies.** `OBS_OFF_MAILBOX` is in `obs/obs_mailbox.h`, the file both sides are built from.
+  `sh test/check_copies.sh` tells when one of the three files copied from the application, or one of the two
+  headers of the cfg, is not what the application has now.
+
+Host tests (no board), from this directory; each prints `all passed`:
+
+    gcc -std=gnu11 -Itest/stub -Isrc test/test_axis_control.c src/axis_control.c -lm -o /tmp/t && /tmp/t
+    gcc -std=gnu11 -DROBOT_TARGET=1 -Itest/stub -Isrc test/test_axis_control.c src/axis_control.c -lm -o /tmp/t && /tmp/t
+    gcc -std=gnu11 -DHOST_TEST -Itest/stub -Isrc test/test_obs_link.c src/obs_link.c -o /tmp/t_obs && /tmp/t_obs
+    python3 test/test_r5cmd.py
+    sh test/check_copies.sh
+
+Checked on a PC: the tests above; the unit conversions give the same bits as the table typed by hand for 80,000
+(L7N) and 120,000 (Indy7) random inputs; the changed files compile for the R5 (arm-none-eabi-gcc 13, stand-ins for
+the BSP headers). Not checked: a Vitis build, the bench, the Indy7; the comparison of the product codes has run
+nowhere.
+
 ## The split into modules (2026-11-15)
 
 `cia402_soem.c` (953 lines) became the modules in the table above, at the request of the firmware's

@@ -22,8 +22,8 @@
 /* ----------------------------------------------------------------------- */
 /* Which hardware this build drives.  0 = the L7N bench, 1 = the Indy7.     */
 /* Change the number here (or give -DROBOT_TARGET=1).  Everything that      */
-/* differs between the two lives under this switch: the number of axes, the */
-/* vendor id the drives must report, the unit constants (robot_target.c).   */
+/* differs between the two lives under this switch: the number of axes and  */
+/* which constants of the cfg are used (robot_target.h: identity, units).    */
 /* ----------------------------------------------------------------------- */
 #define TARGET_L7N_BENCH    0                 /* four LS Mecapion L7N single-axis drives, motors lying flat */
 #define TARGET_INDY7        1                 /* the Indy7: six joint drives + the end-tool module */
@@ -34,12 +34,10 @@
 #if ROBOT_TARGET == TARGET_L7N_BENCH
 #define AXIS_COUNT          4                 /* drives that are driven */
 #define BUS_SLAVE_COUNT     4                 /* slaves on the bus; exactly this many must answer */
-#define DRIVE_VENDOR_ID     0x00007595u
 #define ECAT_USE_DC         1                 /* DC SYNC0 on the drives: the L7N firmware 0.12 only stays in OP with it (I-40) */
 #elif ROBOT_TARGET == TARGET_INDY7
 #define AXIS_COUNT          6
 #define BUS_SLAVE_COUNT     7                 /* + the end-tool module as slave 7 (shortcut: left as the bus scan finds it, no PDO hook, no DC) */
-#define DRIVE_VENDOR_ID     0x0000089au
 #define ECAT_USE_DC         0                 /* free run, as the old Indy7 build ran (INDY7.cfg has no DC_SUPPORT key, 2026-11-17) */
 #else
 #error "ROBOT_TARGET must be TARGET_L7N_BENCH (0) or TARGET_INDY7 (1)"

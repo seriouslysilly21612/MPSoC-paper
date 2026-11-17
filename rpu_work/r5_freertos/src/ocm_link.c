@@ -134,7 +134,7 @@ void ocm_link_publish_state(uint64_t t_release, uint32_t period, uint32_t flags,
         state.tau_cmd_raw[i] = drive_out[i]->target_torque;      /* what this cycle's axis_control_update() wrote */
     }
     state.cmd_done       = command_done;
-    state.cfg_crc        = 0u;                       /* shortcut: no [CONTRACT] section in INDY7.cfg to take a CRC of yet */
+    state.cfg_crc        = FW_CFG_CRC;               /* of the constants this build has from the cfg (robot_target.h) */
     state.torque_period  = torque_period;
     state.n_torque_stale = axis_control_torque_stale_total();
     state.n_overrun      = n_overrun;                /* n_late and n_missed stay 0: the R5 has no send deadline yet */
