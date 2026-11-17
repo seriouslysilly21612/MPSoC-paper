@@ -2,7 +2,8 @@
  *   gcc -std=gnu11 -Itest/stub -Isrc test/test_axis_control.c src/axis_control.c src/robot_target.c -o /tmp/t && /tmp/t
  * (add -DROBOT_TARGET=1 for the Indy7 table: the torque test then only checks what holds for both)
  * It checks: servo off keeps the drives off, servo on walks the CiA402 states, the fault reset limit, the torque
- * (only when enabled, usable, servo on; the unit conversion and its limits), and the stale-torque stop. */
+ * (only when enabled, usable, servo on; the unit conversion and its limits), and the stale-torque stop, also with
+ * a drive that is not enabled. */
 #include <stdio.h>
 #include <string.h>
 #include "app_config.h"
@@ -101,10 +102,41 @@ int main(void)
             axis_control_servo(1);                                 /* the APU asks again: torque flows again */
             axis_control_torque_input(1, 1, tau); axis_control_update();
             CHECK(out[0].target_torque == held);
-            /* a drive that is not enabled does not count */
-            in[2].statusword = 0x0023;
+            /* The stop does not wait for every drive (review F1, 2026-11-17: it used to count only while all were
+             * enabled).  One drive in FAULT with its resets used up, one that stays switch-on disabled, one that is
+             * only switched on: the others are enabled and must not keep the last torque of an APU that is gone. */
+            {
+                static const unsigned short not_enabled[3] = { 0x0008, 0x0040, 0x0023 };
+                int c;
+                for (c = 0; c < 3; c++) {
+                    total = axis_control_torque_stale_total();
+                    axis_control_servo(0); axis_control_servo(1);
+                    in[2].statusword = not_enabled[c];
+                    for (k = 0; k < 5; k++) { axis_control_torque_input(1, 1, tau); axis_control_update(); }   /* the APU writes */
+                    CHECK(axis_control_servo_requested() && out[0].target_torque == held && out[2].target_torque == 0);
+                    for (k = 1; k < TORQUE_STALE_LIMIT; k++) {                                                 /* the APU is gone */
+                        axis_control_torque_input(0, 1, tau); axis_control_update();
+                        CHECK(out[0].target_torque == held && axis_control_servo_requested());
+                    }
+                    axis_control_torque_input(0, 1, tau); axis_control_update();
+                    CHECK(!axis_control_servo_requested() && stale_stop_events == 2 + c);
+                    CHECK(out[0].target_torque == 0 && out[0].controlword == CW_DISABLE_VOLTAGE);
+                    CHECK(axis_control_torque_stale_total() == total);        /* the State slot counts only cycles with every drive on */
+                }
+                in[2].statusword = 0x0027;
+            }
+            /* while the drives are on their way to OPERATION_ENABLED, an APU that writes every cycle is not stopped ... */
+            axis_control_servo(0); axis_control_servo(1);
+            for (i = 0; i < AXIS_COUNT; i++) in[i].statusword = 0x0040;
+            for (k = 0; k < 3 * TORQUE_STALE_LIMIT; k++) { axis_control_torque_input(1, 1, tau); axis_control_update(); }
+            CHECK(axis_control_servo_requested() && stale_stop_events == 4);
+            /* ... and one that does not write is, before any drive is enabled */
+            for (k = 0; k < TORQUE_STALE_LIMIT; k++) { axis_control_torque_input(0, 1, tau); axis_control_update(); }
+            CHECK(!axis_control_servo_requested() && stale_stop_events == 5);
+            /* servo off: nothing is stopped, however long the slot stands still after a write */
+            axis_control_torque_input(1, 1, tau); axis_control_update();
             for (k = 0; k < 3 * TORQUE_STALE_LIMIT; k++) { axis_control_torque_input(0, 1, tau); axis_control_update(); }
-            CHECK(axis_control_servo_requested() && stale_stop_events == 1);
+            CHECK(stale_stop_events == 5);
         }
     }
 

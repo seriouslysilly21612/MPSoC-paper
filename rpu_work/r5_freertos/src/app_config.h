@@ -58,7 +58,7 @@
 #define MAX_FAULT_RESETS    3                 /* automatic CiA402 fault resets per axis and servo-on */
 #endif
 #ifndef TORQUE_STALE_LIMIT
-#define TORQUE_STALE_LIMIT  10                /* cycles in a row with the drives on and no new Torque slot: torque 0 and servo off (D-03, D-10) */
+#define TORQUE_STALE_LIMIT  10                /* cycles in a row with the servo requested and no new Torque slot: torque 0 and servo off (D-03, D-10) */
 #endif
 _Static_assert(TORQUE_STALE_LIMIT >= 1, "TORQUE_STALE_LIMIT is a number of 1 ms cycles, at least 1");
 #ifndef WKC_BUS_FAULT_CYCLES
