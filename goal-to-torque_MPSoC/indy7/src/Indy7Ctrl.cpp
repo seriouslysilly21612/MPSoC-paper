@@ -275,6 +275,8 @@ CRobotIndy7::Init()
 
 	// the bridge of the camera application, the logs of the tests, the live
 	// view: before the tasks use them
+	if (FALSE == InitObs() || FALSE == InitSimCamera())
+		return FALSE;
 	InitBridge();
 	InitJointTest();
 	InitHighLevelTests();
@@ -386,6 +388,154 @@ CRobotIndy7::CheckSyncMode()
 	return TRUE;
 }
 
+// the goal checks and the smoothing of the camera application (cfg APP_*)
+CGoalFilter::Params
+CRobotIndy7::AppFilter() const
+{
+	const ST_CONFIG_SYSTEM& stSys = m_pConfig->System();
+	CGoalFilter::Params stP;
+	for (int k = 0; k < 6; k++)
+		stP.adBox[k] = k < (int)stSys.vAppGoalBox.size() ? stSys.vAppGoalBox[k] : 0.0;
+	stP.dRMax  = stSys.dAppGoalRMax;
+	stP.dFloor = stSys.dAppGoalFloor;
+	stP.dHover = stSys.dAppHover;
+	stP.dKappa = stSys.dAppKappa;
+	stP.dGapS  = stSys.dAppGapS;
+	return stP;
+}
+
+// The methods with the mailbox (--method; obs/ObsMethod.h): both sides of the
+// mailbox, before the bridge and the tasks use them. The camera side
+// (obs/ObsWriter.h) is called by the bridge, the control task's side
+// (obs/ObsGoal.h) by the Trajectory task. The settings are those of
+// [CONTRACT], which M1 does not read, with the goal checks and the smoothing
+// of the application (APP_*). FALSE: a setting cannot be used.
+BOOL
+CRobotIndy7::InitObs()
+{
+	if (!obs_method::UsesMailbox(m_nMethod))
+		return TRUE;
+	static_assert((int)OBS_DOF == (int)CHighLevelRT::DOF, "the joints of a recorded state");
+	const ST_CONFIG_SYSTEM& stSys = m_pConfig->System();
+	const ST_CONFIG_CONTRACT& stC = m_pConfig->Contract();
+	const char* const pcMethod = obs_method::Name(m_nMethod);
+	if (!m_cTraj.IsInit())
+	{
+		DBG_LOG_ERROR("(CRobotIndy7) --method %s needs the high-level controller (the position of the tool tag)", pcMethod);
+		return FALSE;
+	}
+	BOOL bOk = std::isfinite(stC.dAgeCapS) && stC.dAgeCapS > 0.0 && stC.dAgeCapS < 1e3;
+	for (int m = 0; m < 2; m++)
+		bOk = bOk && std::isfinite(stC.vEpsM[m]) && stC.vEpsM[m] >= 0.0;
+	for (int k = 0; k < 3; k++)
+		bOk = bOk && std::isfinite(stC.vTagOffset[k]);
+
+	CObsGoal::Config stG;
+	memset(&stG, 0, sizeof(stG));
+	stG.stSet.policy = obs_method::Policy(m_nMethod);
+	stG.stSet.ticks_per_s = 1e9;			// the times of the results and of the releases: CLOCK_MONOTONIC [ns]
+	stG.stSet.period_ticks = (uint64_t)m_pConfig->Tasks()[1].nPeriod;
+	stG.stSet.age_cap_ticks = bOk ? (uint64_t)std::llround(stC.dAgeCapS * 1e9) : 0;
+	stG.stSet.e0 = stC.dE0M;
+	stG.stSet.g = stC.dG;
+	stG.stSet.eps_v = stC.dEpsV;
+	stG.stSet.a_max = stC.dAMax;
+	stG.stSet.eps_cal = stC.dEpsCalM;
+	stG.dTolM = stC.dDeltaM;
+	// The joint angles that a period receives are this many periods old at its
+	// release: the simulated arm by its construction (sim/SimArm.h), the robot
+	// by the same model of its drives; the age of the drives' acquisition
+	// itself has not been measured (paper, Sec. III-B).
+	stG.nStateAge = (int)stSys.nSimStateDelay;
+	stG.stFilter = AppFilter();
+	stG.dLossS = stSys.dAppLossS;
+	stG.pTagAt = [](void* apArg, const float* afQ, double* adP)
+	{
+		CRobotIndy7* const pRobot = static_cast<CRobotIndy7*>(apArg);
+		double adQ[CHighLevelRT::DOF];
+		for (int i = 0; i < (int)CHighLevelRT::DOF; i++)
+			adQ[i] = afQ[i];
+		pRobot->m_cTraj.HighLevel().ToolPoint(adQ, pRobot->m_adTagOffset, adP);		// the IK model of the Trajectory task
+	};
+	stG.pTagArg = this;
+	for (int k = 0; k < 3; k++)
+		m_adTagOffset[k] = stC.vTagOffset[k];
+	if (!bOk || !m_obsGoal.Init(&m_obsBox, stG, &m_appGoalSlot))
+	{
+		DBG_LOG_ERROR("(CRobotIndy7) --method %s: [CONTRACT] cannot be used. DELTA_MM above 0; AGE_CAP_MS above 0 and "
+		              "below %d periods; E0_MM, G, EPS_V_MPS, A_MAX_MPS2, EPS_CAL_MM and EPS_M_MM not negative; "
+		              "SIM_STATE_DELAY_STEPS 0..%d", pcMethod, (int)OBS_STATES - 3, (int)CObsGoal::MAX_STATE_AGE);
+		return FALSE;
+	}
+	const CObsWriter::Config stW = { stC.dAgeCapS, { (float)stC.vEpsM[0], (float)stC.vEpsM[1] } };
+	m_obsWriter.Init(&m_obsBox, stW);
+
+	CObsLog::Meta& stM = m_stObsMeta;
+	snprintf(stM.acMethod, sizeof(stM.acMethod), "%s", pcMethod);
+	stM.bSim = stSys.bSim;
+	stM.stSet = stG.stSet;
+	stM.dTolM = stG.dTolM;
+	stM.nStateAge = stG.nStateAge;
+	for (int k = 0; k < 3; k++)
+		stM.adTagOffset[k] = m_adTagOffset[k];
+	printf("[APP] method %s: the camera results go through the mailbox; the control task uses one for at most %.0f ms "
+	       "after its capture%s\n", pcMethod, stC.dAgeCapS * 1e3,
+	       stG.stSet.policy == OBS_CONTRACT ? ", with the joint angles of the capture and the error bound of eq. (7)" :
+	       ", with the joint angles of its arrival");
+	if (stG.stSet.policy == OBS_CONTRACT)
+		printf("[APP] error bound: %.1f mm + %.2f x (%.1f | %.1f mm + %.3f m/s x age + %.3f m/s^2 x age^2 / 2 + %.1f mm) "
+		       "within %.1f mm\n", stC.dE0M * 1e3, stC.dG, stC.vEpsM[0] * 1e3, stC.vEpsM[1] * 1e3, stC.dEpsV, stC.dAMax,
+		       stC.dEpsCalM * 1e3, stC.dDeltaM * 1e3);
+	return TRUE;
+}
+
+// The camera of the simulation (cfg SIM_CAM=1; sim/SimCamera.h) in place of
+// the bridge, before the tasks. SAFETY: its goals are made up, so only the
+// simulation (-s) may have it. FALSE: refused, or a setting cannot be used.
+BOOL
+CRobotIndy7::InitSimCamera()
+{
+	const ST_CONFIG_SYSTEM& stSys = m_pConfig->System();
+	if (stSys.nSimCam == 0)
+		return TRUE;
+	if (!stSys.bSim || m_bHybridBus)
+	{
+		DBG_LOG_ERROR("(CRobotIndy7) SIM_CAM=1 is refused outside the simulation (-s)");
+		return FALSE;
+	}
+	if (!m_cTraj.IsInit() || stSys.nSimCamFormat < 0)
+	{
+		DBG_LOG_ERROR("(CRobotIndy7) SIM_CAM=1 needs the high-level controller, and SIM_CAM_FORMAT tag or base");
+		return FALSE;
+	}
+	const bool bMailbox = obs_method::UsesMailbox(m_nMethod);
+	CSimCamera::Config stC;
+	stC.dHz = stSys.dSimCamHz;
+	stC.dLatencyS = stSys.dSimCamLatencyS;
+	stC.dNoiseM = stSys.dSimCamNoiseM;
+	stC.bTagFormat = (stSys.nSimCamFormat == 0);
+	for (int k = 0; k < 3; k++)
+	{
+		stC.adObject[k] = stSys.vSimCamObject[k];
+		stC.adBias[k] = stSys.vSimCamBias[k];
+		stC.adTagOffset[k] = m_pConfig->Contract().vTagOffset[k];
+	}
+	stC.nStateAge = (int)stSys.nSimStateDelay;
+	stC.tPeriod = (RTTIME)m_pConfig->Tasks()[0].nPeriod;
+	stC.stFilter = AppFilter();
+	m_pSimCam = new CSimCamera();
+	if (FALSE == m_pSimCam->Start(stC, stSys.strURDFPath.c_str(), m_cTraj.HighLevel().GetParams(), &m_stateSlot,
+	                              bMailbox ? &m_obsWriter : NULL, &m_appGoalSlot))
+	{
+		delete m_pSimCam;
+		m_pSimCam = NULL;
+		return FALSE;
+	}
+	if (stSys.nAppBridge != 0)
+		printf("[APP] the camera of the simulation is the source of the application: the bridge is not started\n");
+	return TRUE;
+}
+
 // the bridge of the camera application (paper, Sec. V-C; ROS2PickBridge.h):
 // with APP_BRIDGE=1 in the cfg and a build with ROS 2, before the tasks
 // start. Also in simulation (-s): the goals from the camera then move the
@@ -396,17 +546,12 @@ CRobotIndy7::InitBridge()
 	const ST_CONFIG_SYSTEM& stSys = m_pConfig->System();
 	m_dAppHover = stSys.dAppHover;
 	m_dAppT = stSys.dAppDurationS;
-	if (stSys.nAppBridge == 0)
+	if (stSys.nAppBridge == 0 || m_pSimCam != NULL)		// the camera of the simulation is the only source then
 		return;
 	CROS2PickBridge::Config stCfg;
-	for (int k = 0; k < 6; k++)
-		stCfg.stFilter.adBox[k] = k < (int)stSys.vAppGoalBox.size() ? stSys.vAppGoalBox[k] : 0.0;
-	stCfg.stFilter.dRMax  = stSys.dAppGoalRMax;
-	stCfg.stFilter.dFloor = stSys.dAppGoalFloor;
-	stCfg.stFilter.dHover = stSys.dAppHover;
-	stCfg.stFilter.dKappa = stSys.dAppKappa;
-	stCfg.stFilter.dGapS  = stSys.dAppGapS;
+	stCfg.stFilter = AppFilter();
 	stCfg.dLossS = stSys.dAppLossS;
+	stCfg.pObs = obs_method::UsesMailbox(m_nMethod) ? &m_obsWriter : NULL;      // InitObs()
 	m_pBridge = new CROS2PickBridge();
 	if (FALSE == m_pBridge->Init(stCfg, &m_appGoalSlot))
 	{
@@ -577,9 +722,16 @@ CRobotIndy7::StopServices()
 		delete m_pBridge;
 		m_pBridge = NULL;
 	}
+	if (m_pSimCam != NULL)
+	{
+		m_pSimCam->Stop();
+		delete m_pSimCam;
+		m_pSimCam = NULL;
+	}
 	m_cView.Stop();
 	m_cJtLog.Stop();
 	m_cHlLog.Stop();
+	m_cObsLog.Stop();
 	m_cTimingLog.Stop();      // after the EtherCAT task has ended
 }
 
@@ -1352,6 +1504,8 @@ CRobotIndy7::DoInput()
 		case 'P':
 			if (m_pBridge != NULL)
 				m_pBridge->RequestMenu();
+			else if (m_pSimCam != NULL)
+				printf("[APP] the camera of the simulation has one object: 'y', 8 starts the application\n");
 			else
 				printf("[APP] no bridge (APP_BRIDGE=1 in the cfg, a build with ROS 2)\n");
 			break;
@@ -1379,7 +1533,8 @@ CRobotIndy7::DoInput()
 			       "     8 camera application: goals from the camera through the bridge (%s), hover %.2f m\n"
 			       "     goal [%.3f %.3f %.3f] m from the tool at q_r; jump [%.3f %.3f %.3f] m at %.2f m; "
 			       "noise %.1f mm at %.0f Hz for %.0f s; delta %.1f mm; friction FF %s\n",
-			       (int)HL_MENU, m_pBridge != NULL ? "up" : "not running", m_dAppHover,
+			       (int)HL_MENU, m_pSimCam != NULL ? "here: the camera of the simulation" :
+			       m_pBridge != NULL ? "up" : "not running", m_dAppHover,
 			       m_adHlGoalOff[0], m_adHlGoalOff[1], m_adHlGoalOff[2],
 			       m_adHlJump[0], m_adHlJump[1], m_adHlJump[2], m_dHlTrigger,
 			       m_dHlNoise * 1e3, m_dHlNoiseHz, m_dHlNoiseT, m_dHlDelta * 1e3, m_bHlFF ? "on" : "off");

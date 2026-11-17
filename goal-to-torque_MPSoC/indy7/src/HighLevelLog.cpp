@@ -99,6 +99,7 @@ HighLevelFormat::Finish(FILE* fp, const char* astrCsv, const Meta& m, const Resu
 		fprintf(fp, "  \"format\": \"g2t-high-level-test 1\",\n");
 		fprintf(fp, "  \"csv\": \"%s\",\n", pcBase);
 		fprintf(fp, "  \"test\": \"%s\",\n  \"run\": %d,\n", m.acTest, m.nRun);
+		fprintf(fp, "  \"method\": \"%s\",\n", m.acMethod);
 		fprintf(fp, "  \"platform\": \"%s\",\n", m.bSim ? "simulation" : "robot");
 		fprintf(fp, "  \"sim_friction\": %s,\n", m.bSim && m.bSimFriction ? "true" : "false");
 		fprintf(fp, "  \"sim_state_delay_steps\": %d,\n  \"sim_torque_delay_steps\": %d,\n",

@@ -230,6 +230,25 @@ CROS2PickBridge::OnTarget(const my_interfaces::msg::PickTarget3D::SharedPtr apMs
 		       apMsg->header.frame_id.c_str());
 	const bool bValid = apMsg->target_valid && apMsg->depth_valid && bFrame;
 	const double dNow = NowS();
+	if (m_stCfg.pObs != NULL)
+	{
+		/* the methods with the mailbox: the control task accepts the result, checks the workspace and averages */
+		const int64_t tCapture = CObsWriter::MonoOfReal((int64_t)apMsg->capture_stamp.sec * 1000000000LL +
+		                                                (int64_t)apMsg->capture_stamp.nanosec);
+		const CObsWriter::eResult eR = m_stCfg.pObs->Put(bValid, adP, OBS_Z_BASE, tCapture, 0, (int)apMsg->class_id);
+		m_nSamples.fetch_add(1, std::memory_order_relaxed);
+		if (eR != CObsWriter::eWritten)
+			return;
+		m_nWritten.fetch_add(1, std::memory_order_relaxed);
+		{
+			std::lock_guard<std::mutex> cLock(m_Mtx);
+			for (int k = 0; k < 3; k++)
+				m_adLastGoal[k] = adP[k];
+			m_strLastClass = apMsg->class_name;
+		}
+		m_dLastAcceptS.store(dNow, std::memory_order_release);
+		return;
+	}
 	double adOut[3];
 	const CGoalFilter::eVerdict eV = m_cFilter.Push(bValid, adP, dNow, adOut);
 	m_nSamples.fetch_add(1, std::memory_order_relaxed);
@@ -305,8 +324,9 @@ CROS2PickBridge::TickReport()
 				adG[k] = m_adLastGoal[k];
 			strClass = m_strLastClass;
 		}
-		printf("[bridge] target %s at (%.3f, %.3f, %.3f) m: goals go into the slot\n",
-		       strClass.empty() ? "?" : strClass.c_str(), adG[0], adG[1], adG[2]);
+		printf("[bridge] target %s at (%.3f, %.3f, %.3f) m: %s\n",
+		       strClass.empty() ? "?" : strClass.c_str(), adG[0], adG[1], adG[2],
+		       m_stCfg.pObs != NULL ? "results go into the mailbox" : "goals go into the slot");
 		m_bHaveTarget = true;
 	}
 	else if (!bFresh && m_bHaveTarget)
@@ -404,6 +424,8 @@ CROS2PickBridge::HandleDigit(int anSel)
 	const std::string strClass = m_vMenu[anSel - 1];
 	if (SetDesiredClass(strClass))
 	{
+		if (m_stCfg.pObs != NULL && strClass != m_strSelected)
+			m_stCfg.pObs->NextTarget();     // the estimate of the control task starts again
 		m_strSelected = strClass;
 		m_bClassSet.store(true, std::memory_order_release);
 		printf("[bridge] desired_class = '%s': the arm follows it\n", strClass.c_str());

@@ -14,11 +14,14 @@ test program of the controller writes into the goal slot:
   hl-noise0 (4)    the same with delta = 0
   hl-refcheck (5)  reference check: goal changes, goals out of reach, repeats, gaps (HL_TEST_REF_S); the
                    goal stream of the host-timing test (Sec. III-C)
+  hl-app (8)       the camera application on the camera of the simulation (cfg SIM_CAM=1, with APP_DURATION_S
+                   above 0), by the method of --method; not among the default tests
 The script drives nothing but the simulation.
 
 Usage (in the repository):
   python3 tools/hl_run_sim.py [-n N] [--tests hl-fixed,hl-jump,...] [--analyze]
   --cfg FILE, --direct: as for jt_run_sim.py
+  --method M: passed to the controller (only hl-app uses the camera: the other results must not depend on it)
 """
 import argparse
 import os
@@ -31,7 +34,7 @@ sys.path.insert(0, HERE)
 import jt_predict as jp  # noqa: E402
 from jt_run_sim import APP, Console, FAIL_START, SIM_START, SIM_READY, CTRL_ON, GRAV_COMP  # noqa: E402
 
-MENU = {'hl-fixed': '1', 'hl-jump': '2', 'hl-noise': '3', 'hl-noise0': '4', 'hl-refcheck': '5'}
+MENU = {'hl-fixed': '1', 'hl-jump': '2', 'hl-noise': '3', 'hl-noise0': '4', 'hl-refcheck': '5', 'hl-app': '8'}
 DEFAULT_TESTS = ['hl-fixed', 'hl-jump', 'hl-noise', 'hl-noise0', 'hl-refcheck']
 
 
@@ -46,6 +49,7 @@ def main():
     ap.add_argument('--direct', action='store_true', help='start bin/indy7_ctrl instead of run.sh')
     ap.add_argument('--settle', type=float, default=0.3, help='[s] between servo on and the test')
     ap.add_argument('--analyze', action='store_true', help='run tools/hl_analyze.py on the new logs')
+    ap.add_argument('--method', help='--method of the controller (M1, M2, A2, A3, FULL; default: its own, M1)')
     a = ap.parse_args()
 
     cfg = os.path.abspath(a.cfg)
@@ -54,7 +58,9 @@ def main():
         if t not in MENU:
             sys.exit('hl_run_sim: unknown test %s (%s)' % (t, ', '.join(MENU)))
     num = lambda k, d: float((jp.cfg_get(cfg, 'SYSTEM', k) or str(d)).split()[0])
-    longest = max(num('HL_TEST_REF_S', 60), num('HL_TEST_NOISE_S', 10), 20.0) + 15.0
+    longest = max(num('HL_TEST_REF_S', 60), num('HL_TEST_NOISE_S', 10), num('APP_DURATION_S', 0), 20.0) + 15.0
+    if 'hl-app' in tests and not (num('SIM_CAM', 0) == 1 and num('APP_DURATION_S', 0) > 0):
+        sys.exit('hl_run_sim: hl-app needs SIM_CAM=1 and APP_DURATION_S above 0 in %s' % cfg)
     log_dir = jp.cfg_get(cfg, 'SYSTEM', 'JOINT_TEST_LOG_DIR', 'jt_logs') or 'jt_logs'
     if not os.path.isabs(log_dir):
         log_dir = os.path.join(os.path.dirname(cfg), log_dir)
@@ -70,6 +76,8 @@ def main():
                 plan.append((run, t))
     env = dict(os.environ, MALLOC_ARENA_MAX='2')
     cmd = ['./bin/indy7_ctrl', '-f', cfg, '-s'] if a.direct else ['./run.sh', '-s', '-f', cfg]
+    if a.method:
+        cmd += ['--method', a.method]
     print('hl_run_sim: %s (in %s); %d test runs' % (' '.join(cmd), APP, len(plan)))
     print('hl_run_sim: console -> %s' % console_log)
     c = Console(cmd, APP, env, console_log)

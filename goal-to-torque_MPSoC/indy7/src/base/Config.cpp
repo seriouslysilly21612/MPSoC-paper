@@ -12,6 +12,12 @@
 #include <strings.h>
 #include <sys/stat.h>
 
+stConfigContract::stConfigContract()
+	: dDeltaM(0.010), dAgeCapS(0.250), dE0M(0.001), dG(1.0), dEpsV(0.0), dAMax(0.0), dEpsCalM(0.002),
+	  vEpsM{0.002, 0.003}, vTagOffset{-0.085, 0.0, 0.0}
+{
+}
+
 stConfigSystem::stConfigSystem()
 {
 	strName = "ROBOT";
@@ -79,6 +85,13 @@ stConfigSystem::stConfigSystem()
 	dAppGapS = 1.0;
 	dAppLossS = 1.0;
 	dAppDurationS = 0.0;
+	nSimCam = 0;
+	vSimCamObject = {0.55, 0.15, 0.10};
+	dSimCamHz = 30.0;
+	dSimCamLatencyS = 0.120;
+	dSimCamNoiseM = 0.0;
+	nSimCamFormat = 0;
+	vSimCamBias = {0.0, 0.0, 0.0};
 }
 
 namespace {
@@ -523,6 +536,21 @@ CConfig::Parse()
 	cF.Double(S, "APP_GAP_S", s.dAppGapS);
 	cF.Double(S, "APP_LOSS_S", s.dAppLossS);
 	cF.Double(S, "APP_DURATION_S", s.dAppDurationS);
+	cF.Int(S, "SIM_CAM", s.nSimCam);
+	cF.List(S, "SIM_CAM_OBJECT_M", s.vSimCamObject);
+	cF.Double(S, "SIM_CAM_HZ", s.dSimCamHz);
+	cF.Double(S, "SIM_CAM_LATENCY_MS", s.dSimCamLatencyS, 1e-3);
+	cF.Double(S, "SIM_CAM_NOISE_MM", s.dSimCamNoiseM, 1e-3);
+	{
+		TSTRING str = "tag";
+		cF.String(S, "SIM_CAM_FORMAT", str);
+		s.nSimCamFormat = (str.empty() || strcasecmp(str.c_str(), "tag") == 0) ? 0 :
+		                  (strcasecmp(str.c_str(), "base") == 0) ? 1 : -1;
+		std::vector<double> vMm = {0.0, 0.0, 0.0};
+		cF.List(S, "SIM_CAM_BIAS_MM", vMm);
+		for (int k = 0; k < 3; k++)
+			s.vSimCamBias[k] = vMm[k] * 1e-3;
+	}
 
 	/* the paths of the file, relative to its directory */
 	s.strURDFPath = Resolve(s.strURDFPath);
@@ -576,6 +604,24 @@ CConfig::Parse()
 	}
 	if (FALSE == ReadSlaves(cF, m_strPath, (int)m.nNoOfSlaves, m_vSlaves, vKnown))
 		return FALSE;
+
+	/* [CONTRACT] */
+	vKnown.push_back("CONTRACT");
+	ST_CONFIG_CONTRACT& c = m_stContract;
+	cF.Double("CONTRACT", "DELTA_MM", c.dDeltaM, 1e-3);
+	cF.Double("CONTRACT", "AGE_CAP_MS", c.dAgeCapS, 1e-3);
+	cF.Double("CONTRACT", "E0_MM", c.dE0M, 1e-3);
+	cF.Double("CONTRACT", "G", c.dG);
+	cF.Double("CONTRACT", "EPS_V_MPS", c.dEpsV);
+	cF.Double("CONTRACT", "A_MAX_MPS2", c.dAMax);
+	cF.Double("CONTRACT", "EPS_CAL_MM", c.dEpsCalM, 1e-3);
+	{
+		std::vector<double> vMm = {c.vEpsM[0] * 1e3, c.vEpsM[1] * 1e3};
+		cF.List("CONTRACT", "EPS_M_MM", vMm);
+		c.vEpsM[0] = vMm[0] * 1e-3;
+		c.vEpsM[1] = vMm[1] * 1e-3;
+	}
+	cF.List("CONTRACT", "TAG_OFFSET_M", c.vTagOffset);
 
 	cF.ReportSections(vKnown);
 	cF.ReportUnused();

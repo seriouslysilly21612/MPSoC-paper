@@ -130,9 +130,33 @@ typedef struct stConfigSystem
 	INT32	nAppBridge;
 	std::vector<double> vAppGoalBox;
 	double	dAppGoalRMax, dAppGoalFloor, dAppHover, dAppKappa, dAppGapS, dAppLossS, dAppDurationS;
+	/* the camera of the simulation (sim/SimCamera.h) */
+	INT32	nSimCam;					// SIM_CAM: 1 in place of the bridge (-s only)
+	std::vector<double> vSimCamObject;	// the object [m, base frame]
+	double	dSimCamHz, dSimCamLatencyS, dSimCamNoiseM;
+	INT32	nSimCamFormat;				// SIM_CAM_FORMAT: 0 tag, 1 base, -1 neither
+	std::vector<double> vSimCamBias;	// SIM_CAM_BIAS_MM [m]
 
 	stConfigSystem();
 } ST_CONFIG_SYSTEM;
+
+/* [CONTRACT]: the constants of the contract of the camera results (paper,
+ * eq. (2), (3), (7)), for the methods other than M1 (obs/ObsMethod.h). The
+ * control task and the camera side read the same values. */
+typedef struct stConfigContract
+{
+	double	dDeltaM;		// DELTA_MM: tolerance delta of the task error that a camera result may cause [m]
+	double	dAgeCapS;		// AGE_CAP_MS: a result is neither written nor used later than this after its capture [s]
+	double	dE0M;			// E0_MM: e0 of eq. (7), the alignment error with an exact goal [m]
+	double	dG;				// G: gain of the measurement error on the task error
+	double	dEpsV;			// EPS_V_MPS: bound of the speed of the target [m/s]
+	double	dAMax;			// A_MAX_MPS2: bound of the acceleration of the target [m/s^2]
+	double	dEpsCalM;		// EPS_CAL_MM: error of the calibration and the clocks [m]
+	std::vector<double> vEpsM;		// EPS_M_MM: measurement error of the modes 416 and 320 [m]
+	std::vector<double> vTagOffset;	// TAG_OFFSET_M: the centre of the tool tag in the frame of the tool [m]
+
+	stConfigContract();
+} ST_CONFIG_CONTRACT;
 
 typedef std::vector<ST_CONFIG_TASK>			VEC_TASK_CONF;
 typedef std::vector<ST_CONFIG_ECAT_SLAVE>	VEC_ECAT_SLAVE_CONF;
@@ -151,6 +175,7 @@ public:
 
 	const ST_CONFIG_SYSTEM&			System	(	) const { return m_stSystem; }
 	const ST_CONFIG_ECAT_MASTER&	Master	(	) const { return m_stMaster; }
+	const ST_CONFIG_CONTRACT&		Contract(	) const { return m_stContract; }
 	/* the joint drives of the arm and the end tool ([AXIS0].. of this file) */
 	const VEC_ECAT_SLAVE_CONF&		Slaves	(	) const { return m_vSlaves; }
 	/* the slaves of the bus: those of -B FILE, otherwise Slaves() */
@@ -171,6 +196,7 @@ private:
 	TSTRING					m_strPath;
 	ST_CONFIG_SYSTEM		m_stSystem;
 	ST_CONFIG_ECAT_MASTER	m_stMaster;
+	ST_CONFIG_CONTRACT		m_stContract;
 	VEC_ECAT_SLAVE_CONF		m_vSlaves;
 	VEC_TASK_CONF			m_vTasks;
 	TSTRING					m_strBusPath;

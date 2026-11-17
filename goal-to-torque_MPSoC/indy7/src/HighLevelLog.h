@@ -29,7 +29,8 @@ struct HighLevelFormat
 	enum { MAX_DOF = CTrajectoryRT::MAX_DOF };
 
 	struct Meta {
-		char	acTest[12];				// "fixed", "jump", "noise", "noise0", "refcheck"
+		char	acTest[12];				// "fixed", "jump", "noise", "noise0", "refcheck", "app"
+		char	acMethod[8];			// --method of the session (obs/ObsMethod.h): how "app" gets its goals
 		int		nRun;
 		int		nDof;
 		double	dPeriod;

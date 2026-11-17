@@ -107,6 +107,9 @@ public:
 	/* position of the tool [m] at adQ, on the model of the IK (RT-safe; the
 	 * IK updates the kinematics at its own iterate before it uses them) */
 	void	ToolPosition	(const double* adQ, double* adP);
+	/* the same for a point adLocal [m] of the frame of the tool (the tool tag
+	 * of the camera application, obs/ObsGoal.h) */
+	void	ToolPoint		(const double* adQ, const double* adLocal, double* adP);
 
 	/* Step 2 alone, as Update() runs it, from q_r until it converges or
 	 * gives up after N_max iterations. Not for the Trajectory task: the goals

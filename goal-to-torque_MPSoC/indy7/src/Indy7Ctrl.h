@@ -40,11 +40,15 @@
 #include "ecat/Indy7EndTool.h"
 #include "sim/SimArm.h"
 #include "sim/SimJoint.h"
+#include "sim/SimCamera.h"
 #include "FullDynControllerRT.h"
 #include "TrajectoryRT.h"
 #include "TaskSlots.h"
 #include "CalibCapture.h"
 #include "ROS2PickBridge.h"
+#include "obs/ObsMethod.h"
+#include "obs/ObsGoal.h"
+#include "obs/ObsLog.h"
 #include "JointTestLog.h"
 #include "HighLevelLog.h"
 #include "GoalSlot.h"
@@ -58,6 +62,8 @@ public:
 
 	/* before Init: -b, the bus beside the simulated arm; -t DIR */
 	void			SetHybridBus			(BOOL abOn) { m_bHybridBus = abOn; }
+	// --method: obs_method::eMethod, before Init()
+	void			SetMethod				(int anMethod) { m_nMethod = anMethod; }
 	void			SetTimingLogDir			(const TSTRING& astrDir) { m_strTimingDir = astrDir; }
 
 	/* the controller, the bus or the simulation, the tasks; FALSE: the
@@ -154,6 +160,7 @@ private:
 	// not joints of the arm: they stay in OP with the power stage off and the
 	// brakes engaged (Shutdown in every period)
 	BOOL			m_bHybridBus{FALSE};
+	int				m_nMethod{0};			// obs_method::eM1
 	BOOL			IsAnyBusServoOn			(	) const;
 	// the drives, on the command of the Dynamics task (EtherCAT task)
 	void			ApplyServoCommand		(int anCmd);
@@ -234,6 +241,27 @@ private:
 	// position that it reads. Started before the tasks, stopped after them.
 	CROS2PickBridge* m_pBridge{NULL};
 	CGoalSlot     m_appGoalSlot;
+	// -s with SIM_CAM=1: a camera of the simulation in place of the bridge
+	// (sim/SimCamera.h); 'y', 8 starts the application on its one object
+	CSimCamera*   m_pSimCam{NULL};
+	BOOL          InitSimCamera           (	);
+	// the methods other than M1 (--method, obs/ObsMethod.h): the camera side
+	// writes every result into the mailbox instead, and the control task
+	// takes them from there in every period, accepts them by the policy of
+	// the method and writes the object into m_appGoalSlot (obs/ObsGoal.h);
+	// the log of a run has a row for every result (obs/ObsLog.h)
+	obs_mailbox_t m_obsBox{};
+	CObsWriter    m_obsWriter;
+	CObsGoal      m_obsGoal;              // Trajectory task
+	CObsLog       m_cObsLog;
+	CObsLog::Meta m_stObsMeta{};          // the fields that do not change at run time
+	double        m_adTagOffset[3]{};     // the tool tag in the frame of the tool [m]
+	bool          m_bObsLost{false};      // Trajectory task: the target is lost (printed)
+	CObsGoal::Counts m_stObsAt0{};        // the counts at the start of the run, for its log
+	long          m_anObsWriter0[CObsWriter::eResults]{};
+	BOOL          InitObs                 (	);
+	CGoalFilter::Params AppFilter         (	) const;
+	void          ObsStep                 (const task_slots::ST_STATE_SLOT& astState);   // Trajectory task
 	double        m_dAppHover{0.05};
 	double        m_dAppT{0.0};           // length of a run of the application [s], 0: until 'x'
 	void          InitBridge              (	);
