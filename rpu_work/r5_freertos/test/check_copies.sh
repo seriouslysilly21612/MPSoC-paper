@@ -8,7 +8,9 @@
 #   2. src/cfg/fw_cfg_indy7.h and src/cfg/fw_cfg_l7n.h are what bin/fw_cfg_header writes from INDY7.cfg and
 #      bench/L7N4_bus.cfg (cd goal-to-torque_MPSoC/indy7 && make tools).  When one differs, write it again with the
 #      tool and build the firmware again; the header is not edited.
-# Exit 1 if something differs, 2 if the tool is not built (the headers were not checked).
+#   3. the record of a cycle (src/cycle_record.h) is the record of the application's timing log (TimingLog.h):
+#      test/check_record.cpp compiles only when the fields and the flag bits are the same.
+# Exit 1 if something differs, 2 if the tool is not built or there is no g++ (that part was not checked).
 APP=../../goal-to-torque_MPSoC/indy7
 bad=0
 for f in ipc/ipc_layout.h ipc/ipc_slot.h obs/obs_mailbox.h; do
@@ -29,5 +31,14 @@ else
     "$APP/bin/fw_cfg_header" -f "$APP/INDY7.cfg" -B "$APP/bench/L7N4_bus.cfg" -o "$tmp" > /dev/null 2>&1
     if cmp -s "$tmp" src/cfg/fw_cfg_l7n.h; then echo "same: src/cfg/fw_cfg_l7n.h"; else echo "DIFFERENT: src/cfg/fw_cfg_l7n.h and the cfg"; bad=1; fi
     rm -f "$tmp"
+fi
+if ! command -v g++ > /dev/null; then
+    echo "NOT CHECKED: src/cycle_record.h (no g++)"
+    [ $bad -eq 0 ] && bad=2
+elif g++ -std=c++17 -fsyntax-only -I"$APP/src" -Isrc test/check_record.cpp; then
+    echo "same: the record of src/cycle_record.h and of $APP/src/TimingLog.h"
+else
+    echo "DIFFERENT: the record of src/cycle_record.h and of $APP/src/TimingLog.h"
+    bad=1
 fi
 exit $bad

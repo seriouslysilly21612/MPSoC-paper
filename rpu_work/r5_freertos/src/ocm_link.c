@@ -16,20 +16,12 @@
 #include "cia402_drive.h"
 #include "robot_target.h"
 #include "axis_control.h"
+#include "sys_counter.h"
 
 #define LINK_HEAD       ((volatile ipc_head_t *)(OCM_LINK_BASE + IPC_OFF_HEAD))
 #define SLOT_STATE      ((volatile uint32_t *)(OCM_LINK_BASE + IPC_OFF_STATE))
 #define SLOT_TORQUE     ((volatile uint32_t *)(OCM_LINK_BASE + IPC_OFF_TORQUE))
 #define SLOT_COMMAND    ((volatile uint32_t *)(OCM_LINK_BASE + IPC_OFF_COMMAND))
-
-/* The system counter (D-08): the read-only window IOU_SCNTR, low word at 0x00, high word at 0x04.  The APU reads the
- * same counter as CNTVCT.  shortcut: that the R5 may read this window is not yet checked on the board (step 2-4 of
- * the plan); with LINK_TIMESTAMP 0 t_release stays 0 and nothing reads it. */
-#ifndef LINK_TIMESTAMP
-#define LINK_TIMESTAMP  1
-#endif
-#define SYSCNT_LOW      (*(volatile uint32_t *)0xFF250000UL)
-#define SYSCNT_HIGH     (*(volatile uint32_t *)0xFF250004UL)
 
 static uint32_t r5_epoch;
 static uint32_t command_epoch, command_seq;          /* (epoch, seq) of the last command seen */
@@ -37,22 +29,6 @@ static uint32_t command_done;                        /* seq of the last command 
 static uint32_t torque_stamp[2];                     /* (epoch, gen) of the last torque taken */
 static uint32_t torque_period;
 static link_torque_t torque_last;                    /* the last new torque */
-
-uint64_t ocm_link_counter(void)
-{
-#if LINK_TIMESTAMP
-    uint32_t hi, lo, hi_again;
-
-    do {                                             /* high, low, high: a carry between the two reads shows */
-        hi = SYSCNT_HIGH;
-        lo = SYSCNT_LOW;
-        hi_again = SYSCNT_HIGH;
-    } while (hi != hi_again);
-    return ((uint64_t)hi << 32) | lo;
-#else
-    return 0u;
-#endif
-}
 
 int ocm_link_start(void)
 {
@@ -68,7 +44,7 @@ int ocm_link_start(void)
     command_done = 0u;
     xil_printf("[link] OCM 0x%08x: R5 epoch %u, APU side %s, system counter 0x%08x%08x\r\n", (unsigned)OCM_LINK_BASE,
                (unsigned)r5_epoch, ipc_load32(&LINK_HEAD->apu.magic) == IPC_MAGIC ? "up" : "not up yet",
-               (unsigned)(ocm_link_counter() >> 32), (unsigned)ocm_link_counter());
+               (unsigned)(sys_counter_now() >> 32), (unsigned)sys_counter_now());
     return 1;
 }
 
@@ -113,7 +89,7 @@ int ocm_link_take_torque(link_torque_t *held)
     return fresh;
 }
 
-void ocm_link_publish_state(uint64_t t_release, uint32_t period, uint32_t flags, uint32_t n_overrun, uint32_t n_wkc)
+uint32_t ocm_link_publish_state(uint64_t t_release, uint32_t period, uint32_t flags, const link_faults_t *faults)
 {
     static ipc_state_t state;                        /* in ordinary memory: one copy, then 32-bit stores into the OCM */
     int i;
@@ -137,7 +113,10 @@ void ocm_link_publish_state(uint64_t t_release, uint32_t period, uint32_t flags,
     state.cfg_crc        = FW_CFG_CRC;               /* of the constants this build has from the cfg (robot_target.h) */
     state.torque_period  = torque_period;
     state.n_torque_stale = axis_control_torque_stale_total();
-    state.n_overrun      = n_overrun;                /* n_late and n_missed stay 0: the R5 has no send deadline yet */
-    state.n_wkc          = n_wkc;
+    state.n_late         = faults->late;
+    state.n_overrun      = faults->overruns;
+    state.n_missed       = faults->missed;
+    state.n_wkc          = faults->wkc;
     IPC_WRITE(SLOT_STATE, r5_epoch, &state);
+    return state.flags;
 }

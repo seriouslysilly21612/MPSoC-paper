@@ -1,56 +1,69 @@
 /*
- * loop_timing.h  --  loop period and execution time of the 1 kHz cycle, in CPU cycles of the Cortex-R5 PMU
- * cycle counter (PMCCNTR).  LOOP_TIMING 0 leaves the PMU alone and records nothing.
+ * loop_timing.h  --  the times of a 1 kHz cycle and what they are held to (review F5, plan 2-4), on the system
+ * counter (sys_counter.h):
+ *   release   the tick of the period timer that woke the task: the FreeRTOS tick, a TTC in interval mode
+ *   t_w       release -> start of the cycle (how far the timer has counted when the task runs)
+ *   t_s       start -> return of the send;  t_w + t_s <= t_b, the send deadline of the cfg (eq. (3) of the paper)
+ *   t_e       start -> end of the cycle.  The cycle ends with its send, so t_e = t_s here; the record of the times
+ *             is written after it and is in neither
+ * The names and the rules of late, missed and overrun are those of the EtherCAT task of the APU controller
+ * (TaskSlots.h, TimingLog.h).
  */
 #ifndef LOOP_TIMING_H
 #define LOOP_TIMING_H
 
 #include <stdint.h>
 #include "app_config.h"
+#include "sys_counter.h"
+#include "cycle_record.h"
+#include "robot_target.h"
 
-#if LOOP_TIMING
-#if defined(__arm__) && !defined(HOST_TEST)
-static inline void cycle_counter_start(void)
-{
-    uint32_t v;
-    __asm__ volatile ("mrc p15, 0, %0, c9, c12, 0" : "=r"(v));      /* PMCR */
-    v |= 0x5U;                                                      /* E = enable, C = reset the cycle counter */
-    v &= ~0x8U;                                                     /* D = 0: count every CPU cycle */
-    __asm__ volatile ("mcr p15, 0, %0, c9, c12, 0" : : "r"(v));
-    __asm__ volatile ("mcr p15, 0, %0, c9, c12, 1" : : "r"(0x80000000U));   /* PMCNTENSET: cycle counter on */
-}
-static inline uint32_t cycle_counter_read(void)
-{
-    uint32_t v;
-    __asm__ volatile ("mrc p15, 0, %0, c9, c13, 0" : "=r"(v));      /* PMCCNTR */
-    return v;
-}
-#else
-extern uint32_t host_test_cycles(void);                            /* host test provides it */
-static inline void cycle_counter_start(void) { }
-static inline uint32_t cycle_counter_read(void) { return host_test_cycles(); }
-#endif
-#else
-static inline void cycle_counter_start(void) { }
-static inline uint32_t cycle_counter_read(void) { return 0U; }
-#endif
+/* [ns] -> ticks of the system counter, at compile time */
+#define TICKS_OF_NS(ns)         ((uint32_t)(((uint64_t)SYSCNT_HZ * (ns) + 500000000u) / 1000000000u))
+#define TICKS_PER_CYCLE         TICKS_OF_NS(CYCLE_NS)
+#define TICKS_SEND_DEADLINE     TICKS_OF_NS(FW_CFG_SEND_DEADLINE_NS)
 
-#define CPU_CYCLES_PER_US   ((uint32_t)((CPU_HZ + 500000UL) / 1000000UL))
-#define CPU_CYCLES_PER_LOOP (CPU_CYCLES_PER_US * (CYCLE_NS / 1000u))
+/* A lost frame must not cost the send its deadline: the receive gives up after RX_TIMEOUT_US, and the rest of the
+ * cycle up to the return of the send took 0.1 ms at most on the board (2026-11-18: the whole cycle 96 us). */
+_Static_assert(RX_TIMEOUT_US * 1000 + 100000 <= FW_CFG_SEND_DEADLINE_NS,
+               "RX_TIMEOUT_US leaves no room before the send deadline of the cfg");
+
+typedef struct {                        /* one cycle [ticks of the system counter] */
+    uint64_t release;                   /* the release of the period */
+    uint32_t wake;                      /* t_w */
+    /* the low word of the counter at: the start of the cycle, the inputs in, before and after the send */
+    uint32_t start, recv, send_begin, send_end;
+} cycle_times_t;
 
 typedef struct {
-    uint32_t prev_start;
-    uint32_t warmup;                   /* iterations seen; the first period starts at an arbitrary point inside a tick */
-    uint32_t periods;                  /* period samples in this window */
+    uint32_t late, missed, overruns;    /* cycles so far: ST_FAULTS of the State slot */
+    /* the window of one status report [ticks] */
+    uint32_t periods;                   /* start-to-start samples */
     uint64_t period_sum;
-    uint32_t period_min, period_max, exec_max;   /* this window, CPU cycles */
-    uint32_t exec_max_run;             /* whole run */
-    uint32_t overruns;                 /* cycles whose execution took longer than one period */
+    uint32_t period_min, period_max;
+    uint32_t wake_max, send_max, exec_max;      /* t_w, t_w + t_s, t_e (start -> return of the send) */
+    uint32_t exec_max_run;              /* t_e, whole run */
+    uint32_t prev_start;
+    int      have_prev;
 } loop_timing_t;
 
 extern loop_timing_t loop_timing;
 
-void loop_timing_reset_window(void);
-void loop_timing_record(uint32_t start, uint32_t end);   /* start / end: cycle_counter_read() around one cycle */
+/* Before the first cycle: is the period timer what loop_timing_begin() takes it for?  0 = no (reason printed). */
+int      loop_timing_start(void);
+void     loop_timing_reset_window(void);
+
+/* At the start of a cycle, right after vTaskDelayUntil(): its release and t_w.  planned_tick: the tick the task
+ * was to wake at. */
+void     loop_timing_begin(uint32_t planned_tick, cycle_times_t *t);
+
+/* t_w [ticks of the system counter] of a cycle that starts periods_late whole periods after its release and
+ * timer_count counts of the period timer on top; the timer counts 0..timer_interval in one period, and
+ * timer_interval is not 0 (loop_timing_start() refuses such a timer). */
+uint32_t cycle_wake_ticks(uint32_t periods_late, uint32_t timer_count, uint32_t timer_interval);
+
+/* At the end of a cycle: its times into the record, RECORD_LATE / _MISSED / _OVERRUN into the record's flags,
+ * the counts and the window. */
+void     loop_timing_end(const cycle_times_t *t, cycle_record_t *record);
 
 #endif /* LOOP_TIMING_H */

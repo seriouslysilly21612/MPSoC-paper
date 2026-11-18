@@ -18,6 +18,9 @@
 #if defined(RUN_LEVEL)
 #error "RUN_LEVEL is gone: the firmware no longer moves anything by itself. Remove -DRUN_LEVEL; servo on / off come from the APU (Command slot)"
 #endif
+#if defined(LOOP_TIMING) || defined(CPU_HZ)
+#error "LOOP_TIMING and CPU_HZ are gone: every cycle is timed, with the system counter (sys_counter.h). Remove the -D"
+#endif
 
 /* ----------------------------------------------------------------------- */
 /* Which hardware this build drives.  0 = the L7N bench, 1 = the Indy7.     */
@@ -50,7 +53,8 @@
 #define OP_TIMEOUT_MS       10000             /* how long the drives get to reach OP (process data flowing) */
 #endif
 #ifndef RX_TIMEOUT_US
-#define RX_TIMEOUT_US       500               /* the reply to last cycle's frame is long there; 500 us = lost */
+#define RX_TIMEOUT_US       200               /* the reply to last cycle's frame is long there; 200 us = lost, and the send
+                                                 of the cycle still leaves before its deadline (loop_timing.h) */
 #endif
 #ifndef MAX_FAULT_RESETS
 #define MAX_FAULT_RESETS    3                 /* automatic CiA402 fault resets per axis and servo-on */
@@ -73,24 +77,11 @@ _Static_assert(WKC_DIAG_CYCLES >= 1 && WKC_DIAG_CYCLES < WKC_BUS_FAULT_CYCLES,
 #ifndef EVENTS_PER_REPORT
 #define EVENTS_PER_REPORT   40                /* max. event lines per report window (flood guard) */
 #endif
-#ifndef LOOP_TIMING
-#define LOOP_TIMING         1                 /* 0 = do not touch the PMU / no timing statistics */
-#endif
 #ifndef MAX_TORQUE_PERMILLE
 #define MAX_TORQUE_PERMILLE 100               /* torque limit set in PRE-OP, 0.1 % of rated (L7N: 1.337 Nm rated, 3000 = its default) */
 #endif
 _Static_assert(MAX_TORQUE_PERMILLE >= 1 && MAX_TORQUE_PERMILLE <= 1000,
                "MAX_TORQUE_PERMILLE is the limit for the first servo-on: 1..1000 (0.1 % .. 100 % of rated torque)");
-
-#ifndef CPU_HZ
-#if defined(XPAR_CPU_CORE_CLOCK_FREQ_HZ)
-#define CPU_HZ              XPAR_CPU_CORE_CLOCK_FREQ_HZ
-#elif defined(XPAR_PSU_CORTEXR5_0_CPU_CLK_FREQ_HZ)
-#define CPU_HZ              XPAR_PSU_CORTEXR5_0_CPU_CLK_FREQ_HZ
-#else
-#define CPU_HZ              500000000UL
-#endif
-#endif
 
 /* The loop is paced with vTaskDelayUntil(1 tick) and counts 1 ms per call. */
 _Static_assert(configTICK_RATE_HZ == 1000,
