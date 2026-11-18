@@ -8,10 +8,13 @@ summary of tools/timing_summary.py (the row of Table 6).
 
   python3 tools/run_timing.py --condition idle|stress|perception|pressure [--pressure 0|25|50|75|100]
                               [--duration 600] [--cfg indy7/INDY7.cfg] [--bus FILE] [--out DIR] [--settle 30]
-                              [--direct] [--no-hl-log]
+                              [--direct] [--no-hl-log] [--arch P0|S1]
 
   --bus FILE  another bus than that of the cfg (indy7 -B FILE, e.g. indy7/bench/L7N4_bus.cfg, the L7N
               bench); the arm and everything else stay those of the cfg; FILE is copied into OUT
+  --arch S1   the EtherCAT task on the R5 (rpu_work/README_S1.md): the R5 runs the bus and must have it in OP, the
+              controller takes its State slot and follows its period; no IgH master. The summary then has the
+              quantities of S1 (tools/timing_summary.py)
   --no-hl-log HL_LOG=0 in the copy of the cfg: the high-level test is not logged (the 30-min runs of
               tools/run_batch.py; the log takes about 0.7 kB per period)
 
@@ -107,6 +110,25 @@ def master_running():
     return subprocess.run(['pgrep', '-x', 'EtherCAT-(IDLE|OP)'], capture_output=True).returncode == 0
 
 
+def r5_missing(sys_root='/sys'):
+    """--arch S1: what of the R5 side is not there (rpu_work/README_S1.md)"""
+    missing = []
+    try:
+        if open(os.path.join(sys_root, 'class/remoteproc/remoteproc0/state')).read().strip() != 'running':
+            missing.append('the R5 is not running (remoteproc0; its bus must be in OP)')
+    except OSError:
+        missing.append('no remoteproc0: is this the device tree of the R5?')
+    names = []
+    for path in glob.glob(os.path.join(sys_root, 'class/uio/uio*/name')):
+        try:
+            names.append(open(path).read().strip())
+        except OSError:
+            pass
+    if 'ocm-link' not in names:
+        missing.append('no UIO device ocm-link: the slots of the R5 (the device tree of S1)')
+    return missing
+
+
 def checks(a, rt_cpu):
     try:
         rt = open('/sys/kernel/realtime').read().strip() == '1'
@@ -124,7 +146,10 @@ def checks(a, rt_cpu):
         pass
     if ntp_active():
         warn('NTP is active (Table 3: stopped during the measurements; sudo timedatectl set-ntp false)')
-    if not master_running():
+    if a.arch == 'S1':
+        for text in r5_missing():
+            warn(text)
+    elif not master_running():
         warn('no EtherCAT-IDLE or EtherCAT-OP thread: is the IgH master running (ethercat.service)?')
     if not os.path.exists(os.path.join(APP, 'bin', 'indy7_ctrl')):
         sys.exit('run_timing: indy7/bin/indy7_ctrl is missing: make')
@@ -267,6 +292,7 @@ def main():
     ap.add_argument('--direct', action='store_true', help='start bin/indy7_ctrl instead of run.sh (no limit check)')
     ap.add_argument('--bus', help='-B FILE of the controller: the slaves of the bus from FILE (the L7N bench)')
     ap.add_argument('--no-hl-log', action='store_true', help='HL_LOG=0: the high-level test not logged')
+    ap.add_argument('--arch', default='P0', choices=('P0', 'S1'), help='where the EtherCAT task runs (S1: on the R5)')
     a = ap.parse_args()
     if (a.condition == 'pressure') != (a.pressure is not None):
         ap.error('--pressure goes with --condition pressure, and only with it')
@@ -311,11 +337,13 @@ def main():
             bus = os.path.join(out, os.path.basename(a.bus))
             shutil.copyfile(os.path.abspath(a.bus), bus)        # the bus of the run, kept beside its log
             cmd += ['-B', bus]
+        if a.arch != 'P0':
+            cmd += ['--arch', a.arch]
         print('run_timing: %s (in %s)' % (' '.join(cmd), APP))
         c = Console(cmd, APP, dict(os.environ, MALLOC_ARENA_MAX='2'), os.path.join(out, 'console.txt'))
         # in any order: CRobotIndy7::Init() starts the bridge (InitBridge) before it prints B_READY, and the bus
         # reaches OP later still
-        ready, fail = [B_READY, r'\[BUS\] OP: \d+ slaves'], FAIL_START
+        ready, fail = [B_READY, r'\[R5\] OP: ' if a.arch == 'S1' else r'\[BUS\] OP: \d+ slaves'], FAIL_START
         if a.condition in ('perception', 'pressure'):
             ready.append(r'\[bridge\] up')
             fail += r'|\[bridge\] cannot start|built without ROS 2'
@@ -340,6 +368,8 @@ def main():
         print('run_timing: the goal stream runs for %.0f s' % a.duration)
         m = c.expect(r'\[HL\] reference check (done|ended|stopped)[^\n]*', a.duration + 300)
         print('run_timing: %s' % m.group(0).strip())
+        if 'coming to rest' in m.group(0):      # the arm stops at the accepted goal before the servo off
+            c.expect(r'\[HL\] (at rest at the accepted goal|not at rest after 20 s|stopped before the arm was at rest)', 30)
         time.sleep(1.0)
         c.send('j')
         c.expect(r'SERVO OFF', 10)
@@ -383,7 +413,7 @@ def main():
         return 1
     with c.lock:
         for line in c.text.splitlines():
-            if line.startswith(('[RT]', '[BUS]', '[SIM]')):
+            if line.startswith(('[RT]', '[BUS]', '[SIM]', '[R5]')):
                 print('run_timing: ' + line)
     logs = sorted(glob.glob(os.path.join(out, 'timing_*.bin')))
     if not logs:

@@ -455,6 +455,11 @@ IgH master running and NTP off (`sudo timedatectl set-ntp false`; it refuses to 
 `batch.csv` has a line per run (its exit code, the memory rate reached, the highest PS temperature) and
 `timing_tables.csv` the row of Table 6 of every run. The runs do not log the high-level test (`HL_LOG=0`).
 
+With the EtherCAT task on the R5 (`../rpu_work/README_S1.md`): `--arch S1` for `run_timing.py` and `run_batch.py`.
+No IgH master then: the R5 runs the bus and must have it in OP, and the device tree must have the node of its
+slots. The reference check ends with the arm at rest at the accepted goal (it used to end in motion, into gravity
+compensation); the time to rest is outside the TRACK window of the timing log.
+
 ### Camera application (Sec. V-C)
 
 Calibration (in `calib/`, the controller running with `r`, `g`, `h` and the capture armed with `w`):
