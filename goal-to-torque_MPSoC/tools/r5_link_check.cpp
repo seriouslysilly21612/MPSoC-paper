@@ -250,8 +250,9 @@ struct Bench
 		acApu.UseRegion(auRegion, "the test");
 		return acApu.Start(DOF, CFG_CRC, (RTTIME)PERIOD_NS, (RTTIME)DELAY_NS) ? true : false;
 	}
-	/* the next period of the R5: its measurement tells the period; true: the stale rule switched the servo off */
-	bool R5Period(int64_t anReleaseErrorNs = 0)
+	/* the next period of the R5: its measurement tells the period; true: the stale rule switched the servo off.
+	 * abStopping: a period of its stop, in which it takes no slot of the APU */
+	bool R5Period(int64_t anReleaseErrorNs = 0, bool abStopping = false)
 	{
 		uPeriod++;
 		for (unsigned i = 0; i < DOF; i++)
@@ -260,8 +261,8 @@ struct Bench
 			stDrives.adQd[i] = -0.5 * (double)uPeriod;
 			stDrives.adTau[i] = 2.0 * (double)i - (double)uPeriod;
 		}
-		const bool bStopped = cR5.TakeApuSlots(stDrives);
-		cR5.PublishState(cClock.TicksOf(ReleaseOf(uPeriod) + (RTTIME)anReleaseErrorNs), uPeriod, stDrives, 0);
+		const bool bStopped = abStopping ? false : cR5.TakeApuSlots(stDrives);
+		cR5.PublishState(cClock.TicksOf(ReleaseOf(uPeriod) + (RTTIME)anReleaseErrorNs), uPeriod, stDrives, 0, abStopping);
 		return bStopped;
 	}
 	/* the cycle of the application for the last period of the R5, released anLateNs after the delay */
@@ -320,12 +321,8 @@ void StateSlot()
 	// the first State: taken, with its release, and the grid set at once
 	const CR5Link::Counts& c = b.cApu.GetCounts();
 	(void)b.R5Period();
-	RTTIME tBefore = read_timer();
 	const bool bFirst = b.ApuReceive(b.cApu, 37000);
-	RTTIME tAfter = read_timer();
-	const RTTIME tFirstAge = c.tAgeMax;
-	Expect(c.nAges == 1 && c.tAgeMin == tFirstAge && IsAgeOfRead(tFirstAge, b.ReleaseOf(1), tBefore, tAfter),
-	       "how long after its release the State was read");
+	Expect(c.nAges == 0, "the read that sets the grid comes at any time: not among the times of the reads");
 	Expect(bFirst && b.cApu.State().period == 1 && b.cApu.State().dof == DOF &&
 	       b.cApu.State().q[5] == 0.001 + 5.0 && b.cApu.State().qd[0] == -0.5 && b.cApu.State().tau[3] == 5.0 &&
 	       b.cApu.State().cfg_crc == CFG_CRC && (b.cApu.State().flags & IPC_STATE_OP) &&
@@ -338,22 +335,22 @@ void StateSlot()
 
 	// the next periods: followed; periods that no cycle took
 	(void)b.R5Period();
-	tBefore = read_timer();
+	const RTTIME tBefore = read_timer();
 	const bool bSecond = b.ApuReceive(b.cApu, 400);
-	tAfter = read_timer();
+	const RTTIME tAfter = read_timer();
 	Expect(bSecond && b.cApu.State().period == 2 && Near(b.cApu.GridShift(), -100) &&
 	       b.cApu.GetCounts().nPeriodsMissed == 0, "the next period, a quarter of the error");
-	// its release is a period later, so it was read sooner after it unless the host stopped the test for 1 ms
-	const RTTIME tSecondAge = (c.tAgeMax == tFirstAge) ? c.tAgeMin : c.tAgeMax;
-	Expect(c.nAges == 2 && (c.tAgeMin == tFirstAge || c.tAgeMax == tFirstAge) && c.tAgeMin <= c.tAgeMax &&
-	       IsAgeOfRead(tSecondAge, b.ReleaseOf(2), tBefore, tAfter) &&
-	       c.dAgeSumNs == (double)tFirstAge + (double)tSecondAge, "the shortest, the longest and the sum of two");
+	const RTTIME tSecondAge = c.tAgeMax;
+	Expect(c.nAges == 1 && c.tAgeMin == tSecondAge && IsAgeOfRead(tSecondAge, b.ReleaseOf(2), tBefore, tAfter),
+	       "how long after its release the State was read");
 	(void)b.R5Period();
 	(void)b.R5Period();
 	(void)b.R5Period();
 	Expect(b.ApuReceive(b.cApu) && b.cApu.State().period == 5 && b.cApu.GetCounts().nPeriodsMissed == 2 &&
 	       Near((int64_t)b.cApu.StateRelease(), (int64_t)b.ReleaseOf(5)) && b.cApu.GetCounts().nBadTime == 0,
 	       "two periods that no cycle took");
+	Expect(c.nAges == 2 && (c.tAgeMin == tSecondAge || c.tAgeMax == tSecondAge) && c.tAgeMin <= c.tAgeMax &&
+	       c.dAgeSumNs == (double)c.tAgeMin + (double)c.tAgeMax, "the shortest, the longest and the sum of two");
 
 	// a State with another number of joints is not taken
 	b.stDrives.uDof = 4;
@@ -403,6 +400,17 @@ void StateSlot()
 	       b.cApu.GetFollow().nJumps == nJumps + 1 && Near(b.cApu.GridShift(), 60000) &&
 	       Near((int64_t)b.cApu.StateRelease(), (int64_t)b.ReleaseOf(1)), "the restart is seen, and the grid set again");
 	Expect(b.cApu.GetCounts().nBadTime == 5, "its first release time needs nothing before it");
+
+	// the cycle after a read that set the grid comes up to a period late: not counted; the ones after it are
+	const long nMissed = b.cApu.GetCounts().nPeriodsMissed, nLate = b.cApu.GetCounts().nTorqueLate;
+	(void)b.R5Period();
+	(void)b.R5Period();
+	Expect(b.ApuReceive(b.cApu) && b.cApu.State().period == 3 && b.cApu.GetCounts().nPeriodsMissed == nMissed &&
+	       b.cApu.GetCounts().nTorqueLate == nLate, "the period lost while the grid was set is not counted");
+	(void)b.R5Period();
+	(void)b.R5Period();
+	Expect(b.ApuReceive(b.cApu) && b.cApu.State().period == 5 && b.cApu.GetCounts().nPeriodsMissed == nMissed + 1 &&
+	       b.cApu.GetCounts().nTorqueLate == nLate + 1, "the next one, and the torque the R5 did not have, are");
 }
 
 /* 4 */
@@ -452,6 +460,11 @@ void TorqueSlot()
 	(void)b.R5Period();
 	Expect(b.ApuReceive(b.cApu) && b.cApu.GetCounts().nTorqueLate == 2 && b.cApu.GetCounts().nPeriodsMissed == 2,
 	       "but a torque that is not there two periods later is");
+
+	// an R5 in its stop (r5log.py -f, Ctrl-C) takes no torque: none is late
+	(void)b.R5Period(0, true);
+	Expect(b.ApuReceive(b.cApu) && (b.cApu.State().flags & IPC_STATE_STOP) && b.cApu.GetCounts().nTorqueLate == 2,
+	       "no torque is late while the R5 stops");
 
 	// the stale-torque rule: the servo asked for, every drive enabled
 	b.cApu.RequestCommand(IPC_CMD_SERVO_ON);
