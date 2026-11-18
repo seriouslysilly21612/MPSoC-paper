@@ -56,6 +56,11 @@ public:
 						// slot, the record is that of the task that takes the slot here, t_s and send are -1
 		TF_NOSTATE  = 1 << 15,	// --arch S1: the cycle found no State slot of a new period (period: the last one)
 	};
+	/* second flags of a record */
+	enum {
+		TF2_TORQUE_LATE = 1 << 0,	// --arch S1: the R5 began the period of this State without the torque of
+						// the State taken before it (CR5Link::Counts::nTorqueLate counted it)
+	};
 
 #pragma pack(push, 1)
 	struct Record {
@@ -69,7 +74,7 @@ public:
 		uint32_t uSyncDiff;		// SYNC_MODE=DC: system-time difference of the slaves [ns]
 						// (0xFFFFFFFF: not measured)
 		uint16_t usFlags;
-		uint16_t usReserved;		// 0
+		uint16_t usFlags2;		// TF2_*; the R5's own record (cycle_record.h) has 0 here
 		/* the phases of t_s (receive + process + send = t_s) */
 		int32_t  nRecv;			// receive [ns]: start -> the inputs of the cycle are in (the frame,
 						// the working counters and states; with -s/-b the state of the

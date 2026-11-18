@@ -213,10 +213,14 @@ proc_ethercat_control(void* apRobot)
 		UINT32 uSyncDiff = 0xFFFFFFFF;
 		// S1: the State slot brought a new period of the R5 (with the exchange in this task: every cycle does)
 		BOOL   bNewState = TRUE;
+		// S1: the R5 began the period of this State without the torque of the State taken before it
+		BOOL   bTorqueLate = FALSE;
 		if (pLink != NULL)
 		{
 			uPerBefore = pLink->State().period;
+			const long nTorqueLateBefore = pLink->GetCounts().nTorqueLate;
 			bNewState = pLink->Receive(tRelease);
+			bTorqueLate = (pLink->GetCounts().nTorqueLate != nTorqueLateBefore) ? TRUE : FALSE;
 			CRtTask::ShiftGrid(pLink->GridShift());
 			const ipc_state_t& stR5 = pLink->State();
 			uPer = stR5.period;
@@ -561,7 +565,7 @@ proc_ethercat_control(void* apRobot)
 			                         (bTrack ? TL::TF_TRACK : 0) | (bStop ? TL::TF_STOP : 0) |
 			                         (bServo ? TL::TF_SERVO : 0) | (bBusServo ? TL::TF_BUSSERVO : 0) |
 			                         (bTest ? TL::TF_TEST : 0) | (bNewState ? 0 : TL::TF_NOSTATE));
-			stR.usReserved = 0;
+			stR.usFlags2 = (uint16_t)(bTorqueLate ? TL::TF2_TORQUE_LATE : 0);
 			stR.nRecv = Sat32(tRecv - tStart);
 			stR.nSend = (pLink != NULL) ? -1 : Sat32(tSent - tProc);
 			stR.nTrajW = bTrajFresh ? stRef.nW : -1;

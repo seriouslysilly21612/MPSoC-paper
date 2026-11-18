@@ -786,10 +786,11 @@ CRobotIndy7::StartTimingLog()
 
 	char acLine[768];
 	TSTRING strHead = "format=g2t-timing-1\nrecord_bytes=60\n"
-	                  "fields=period,w_ns,s_ns,e_ns,dyn_ns,hl_ns,sim_ns,sync_ns,flags,reserved,recv_ns,send_ns,"
+	                  "fields=period,w_ns,s_ns,e_ns,dyn_ns,hl_ns,sim_ns,sync_ns,flags,flags2,recv_ns,send_ns,"
 	                  "traj_w_ns,traj_e_ns,dyn_w_ns,dyn_e_ns\n"
 	                  "flag_bits=OP:1,WKC:2,LATE:4,MISSED:8,OVERRUN:16,LAW:32,HL:64,TRACK:128,STOP:256,"
-	                  "SIM:512,BUS:1024,SERVO:2048,BUSSERVO:4096,TEST:8192,R5:16384,NOSTATE:32768\n";
+	                  "SIM:512,BUS:1024,SERVO:2048,BUSSERVO:4096,TEST:8192,R5:16384,NOSTATE:32768\n"
+	                  "flag2_bits=TORQUE_LATE:1\n";
 	snprintf(acLine, sizeof(acLine), "mode=%s\nperiod_ns=%d\ndeadline_ns=%llu\ncpu=%d\npriority=%d\n",
 	         m_bHybridBus ? "hybrid" : (bSim ? "simulation" : "robot"), (int)nPeriod,
 	         (unsigned long long)(m_stRt.tDeadline > 0 ? m_stRt.tDeadline : (RTTIME)nPeriod),

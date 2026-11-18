@@ -76,6 +76,33 @@ and for a moment after it appears the device is still root's (udev sets the grou
     sudo sh -c 'cat ocm_link_uio.dtbo > /configfs/device-tree/overlays/ocm_link/dtbo'
     cat /configfs/device-tree/overlays/ocm_link/status      # applied
 
+## The device tree: the record of the R5's cycles as a UIO device
+
+The firmware keeps a record of every cycle of its EtherCAT task in a ring in its DDR (`r5_freertos/README.md`).
+`r5_freertos/r5rec.py` copies it into a timing log, and `tools/run_timing.py --arch S1` starts it for the length of a
+run. So that it reads the ring as the user of the board, `r5_record_uio.dtso` adds a node `r5-record@36300000`
+(0xF0000 bytes, `compatible = "generic-uio"`); without the node `r5rec.py` uses `/dev/mem` and needs `sudo`. The
+node does not reserve the region: remoteproc and `r5log.py` go on as before.
+
+Without a reboot (gone at the next boot):
+
+    cd ~/rpu_work
+    sudo mkdir /configfs/device-tree/overlays/r5_record
+    sudo sh -c 'cat r5_record_uio.dtbo > /configfs/device-tree/overlays/r5_record/dtbo'
+    cat /configfs/device-tree/overlays/r5_record/status      # applied
+    sudo cp 99-ocm-link.rules /etc/udev/rules.d/             # it has the line of this device too
+    sudo udevadm control --reload && sudo udevadm trigger --subsystem-match=uio
+    for d in /sys/class/uio/uio*; do echo "$d $(cat $d/name) $(cat $d/maps/map0/addr) $(cat $d/maps/map0/size)"; done
+    # ... /sys/class/uio/uio5 r5-record 0x0000000036300000 0x00000000000f0000
+    python3 r5_freertos/r5rec.py --head                      # no sudo
+
+In the boot tree: merge it as the fourth overlay, from `base.dtb`, and install the result as above.
+
+    fdtoverlay -i base.dtb -o user-override.s1.dtb rpu_v2.dtbo gem3_off.dtbo ocm_link_uio.dtbo r5_record_uio.dtbo
+    sha256sum r5_record_uio.dtbo user-override.s1.dtb
+    # 11d092621ff0d47c5767c84d7c1f6f3afa8df2b014d81657c7f45b45c3b70871  r5_record_uio.dtbo
+    # eda7a7ae03767a7c0b9ef0e1e575ad9e1ee1cabdfaa5528a51d72b93365205fb  user-override.s1.dtb
+
 ## The firmware
 
 - It must have the OCM link and switch the servo on by command only: `main` since 2026-11-17 (it prints `[link]`
@@ -113,6 +140,14 @@ command that was in the slot (its drives are off).
 A test of the application (`u`, `y`) counts a State that no cycle took as a late release and a late torque as a
 missed send, beside the faults the R5 reports, and marks the run `TIMING FAULTS`. `tools/timing_summary.py` reads a
 `-t` log of `--arch S1` by the same quantities.
+
+The send is the R5's, so it is not in the log of the application. `tools/run_timing.py --arch S1` takes the record
+of the R5 during the run (`OUT/r5/timing_r5_<stamp>.bin`) and gives it to the summary (`--r5`): the rows `R5 Delta
+T_send`, `R5 t_w`, `R5 t_w + t_s` over the periods of the window, the faults of the R5 in them, and whether every
+one of them is in its log. These fill the first three columns of the row of Table 6. The log of the application
+marks the State whose period the R5 began without the torque of the State before it (`flags2`); with `-b` the
+summary sets apart those that were late only because the step of the simulated arm ran before the control task
+(the chain reached `T_s` with the step and not without it).
 
 `WAKE_DELAY_US` is chosen on the board: long enough that the State of the period is written when the tasks wake (the
 R5 took at most 88 us for a whole period on the bench), short enough that the torque is back before the next

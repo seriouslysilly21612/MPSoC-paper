@@ -15,7 +15,7 @@ condition and repetition, with nobody at the board.
              <nn>_<condition>.before-<time>
 
 Before it: the IgH master running (sudo systemctl start ethercat; with --arch S1 instead the R5 running, its bus
-in OP), NTP off (sudo timedatectl set-ntp false),
+in OP, and the UIO device of its record there: rpu_work/README_S1.md), NTP off (sudo timedatectl set-ntp false),
 none of the controller, stress-ng and the camera pipeline running, and a terminal that outlives the login (tmux). Every run gets OUT/<nn>_<condition>/
 (the files of run_timing.py, its output in run.txt), the high-level test not logged (--no-hl-log). A run that
 fails or hangs is recorded and the batch goes on.

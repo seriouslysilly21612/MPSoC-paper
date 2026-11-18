@@ -13,8 +13,10 @@ summary of tools/timing_summary.py (the row of Table 6).
   --bus FILE  another bus than that of the cfg (indy7 -B FILE, e.g. indy7/bench/L7N4_bus.cfg, the L7N
               bench); the arm and everything else stay those of the cfg; FILE is copied into OUT
   --arch S1   the EtherCAT task on the R5 (rpu_work/README_S1.md): the R5 runs the bus and must have it in OP, the
-              controller takes its State slot and follows its period; no IgH master. The summary then has the
-              quantities of S1 (tools/timing_summary.py)
+              controller takes its State slot and follows its period; no IgH master. The record of every cycle
+              of the R5 is taken during the run (rpu_work/r5_freertos/r5rec.py, into OUT/r5, its output in
+              OUT/r5rec.txt), and the summary has the quantities of S1 with the send of the R5 from that log
+              (tools/timing_summary.py --r5)
   --no-hl-log HL_LOG=0 in the copy of the cfg: the high-level test is not logged (the 30-min runs of
               tools/run_batch.py; the log takes about 0.7 kB per period)
 
@@ -79,6 +81,7 @@ MEMRATE_CAP = {25: 250, 50: 500, 75: 800}
 MEMRATE_ARGS = ['--memrate', '3', '--timeout', '0', '--metrics']
 AMS, INA = '/sys/bus/iio/devices/iio:device0', '/sys/bus/iio/devices/iio:device1'   # as tools/host/kv260_rt_setup.sh
 B_READY = r'\(CRobotIndy7\) \S+: the bus of the robot \(drives off\) beside the simulated arm \(-b\)'
+R5REC = os.path.normpath(os.path.join(HERE, '..', '..', 'rpu_work', 'r5_freertos', 'r5rec.py'))
 
 
 def warn(text):
@@ -110,8 +113,9 @@ def master_running():
     return subprocess.run(['pgrep', '-x', 'EtherCAT-(IDLE|OP)'], capture_output=True).returncode == 0
 
 
-def r5_missing(sys_root='/sys'):
-    """--arch S1: what of the R5 side is not there (rpu_work/README_S1.md)"""
+def r5_missing(sys_root='/sys', root=None):
+    """--arch S1: what of the R5 side is not there (rpu_work/README_S1.md); root: this user is root (r5rec.py then
+    reads the record of the R5 through /dev/mem)"""
     missing = []
     try:
         if open(os.path.join(sys_root, 'class/remoteproc/remoteproc0/state')).read().strip() != 'running':
@@ -126,7 +130,36 @@ def r5_missing(sys_root='/sys'):
             pass
     if 'ocm-link' not in names:
         missing.append('no UIO device ocm-link: the slots of the R5 (the device tree of S1)')
+    if 'r5-record' not in names and not (os.geteuid() == 0 if root is None else root):
+        missing.append('no UIO device r5-record: the record of the cycles of the R5 (rpu_work/r5_record_uio.dtso)')
+    if not os.path.isfile(R5REC):
+        missing.append('no %s, which takes that record' % R5REC)
     return missing
+
+
+def start_r5rec(out):
+    """--arch S1: r5rec.py takes the record of every cycle of the R5 from now on, into OUT/r5 (not OUT itself, where
+    the timing log of the controller is found by its name)"""
+    p = subprocess.Popen([sys.executable, R5REC, '--out', os.path.join(out, 'r5')],
+                         stdout=open(os.path.join(out, 'r5rec.txt'), 'w'), stderr=subprocess.STDOUT)
+    time.sleep(1.0)
+    if p.poll() is not None:
+        raise RuntimeError('r5rec.py ended at once: %s' % open(os.path.join(out, 'r5rec.txt')).read().strip())
+    return p
+
+
+def stop_r5rec(p, out):
+    """ends r5rec.py as Ctrl-C does -> the log it wrote, or None"""
+    if p.poll() is None:
+        p.send_signal(signal.SIGTERM)
+    try:
+        p.wait(timeout=10)
+    except subprocess.TimeoutExpired:
+        p.kill()
+    for line in open(os.path.join(out, 'r5rec.txt')).read().splitlines():
+        print('run_timing: ' + line)
+    logs = sorted(glob.glob(os.path.join(out, 'r5', 'timing_r5_*.bin')))
+    return logs[-1] if logs else None
 
 
 def checks(a, rt_cpu):
@@ -308,7 +341,7 @@ def main():
     stop = threading.Event()
     sampler = threading.Thread(target=sample, args=(os.path.join(out, 'temp_power.csv'), stop), daemon=True)
     sampler.start()
-    vision = load = mem = c = None
+    vision = load = mem = c = r5rec = r5_log = None
     code = 0
     try:
         if a.condition in ('perception', 'pressure'):
@@ -339,6 +372,8 @@ def main():
             cmd += ['-B', bus]
         if a.arch != 'P0':
             cmd += ['--arch', a.arch]
+        if a.arch == 'S1':
+            r5rec = start_r5rec(out)
         print('run_timing: %s (in %s)' % (' '.join(cmd), APP))
         c = Console(cmd, APP, dict(os.environ, MALLOC_ARENA_MAX='2'), os.path.join(out, 'console.txt'))
         # in any order: CRobotIndy7::Init() starts the bridge (InitBridge) before it prints B_READY, and the bus
@@ -387,6 +422,8 @@ def main():
                 pass
     if c is not None:
         c.close()
+    if r5rec is not None:
+        r5_log = stop_r5rec(r5rec, out)
     if mem is not None:
         mem.send_signal(signal.SIGINT)          # stress-ng then reports the rates reached (memrate.txt)
         try:
@@ -419,7 +456,11 @@ def main():
     if not logs:
         print('run_timing: no timing log in %s' % out)
         return 1
-    r = subprocess.run([sys.executable, os.path.join(HERE, 'timing_summary.py'), logs[-1], '--out', out])
+    if a.arch == 'S1' and r5_log is None:
+        print('run_timing: no log of the R5 (r5rec.txt): the summary is without its send')
+        code = 1
+    r = subprocess.run([sys.executable, os.path.join(HERE, 'timing_summary.py'), logs[-1], '--out', out] +
+                       (['--r5', r5_log] if r5_log else []))
     return code or r.returncode
 
 
