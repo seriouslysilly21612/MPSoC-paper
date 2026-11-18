@@ -24,6 +24,11 @@
 *	of the bus, paper, Sec. IV and V); -b the bus of the robot with the
 *	drives kept off beside the simulated arm (the host-timing test of
 *	Sec. III-C); -t DIR the timing log of every period (TimingLog.h).
+*
+*	--arch S1 (Arch.h): the EtherCAT task runs on the R5, in every mode. TASK0
+*	then takes the State slot of the R5 in place of the receive, the control
+*	task writes its Torque slot, and the grid of the two follows the period
+*	of the R5 (r5link/R5Link.h; the head of TaskEtherCAT.cpp).
 *****************************************************************************/
 #ifndef G2T_INDY7_CTRL_H
 #define G2T_INDY7_CTRL_H
@@ -38,9 +43,12 @@
 #include "ecat/EcatMaster.h"
 #include "ecat/Indy7Joint.h"
 #include "ecat/Indy7EndTool.h"
+#include "ecat/R5Joint.h"
+#include "r5link/R5Link.h"
 #include "sim/SimArm.h"
 #include "sim/SimJoint.h"
 #include "sim/SimCamera.h"
+#include "sim/SimR5.h"
 #include "FullDynControllerRT.h"
 #include "TrajectoryRT.h"
 #include "TaskSlots.h"
@@ -64,6 +72,8 @@ public:
 	void			SetHybridBus			(BOOL abOn) { m_bHybridBus = abOn; }
 	// --method: obs_method::eMethod, before Init()
 	void			SetMethod				(int anMethod) { m_nMethod = anMethod; }
+	// --arch: arch::eArch, before Init()
+	void			SetArch					(int anArch) { m_nArch = anArch; }
 	void			SetTimingLogDir			(const TSTRING& astrDir) { m_strTimingDir = astrDir; }
 
 	/* the controller, the bus or the simulation, the tasks; FALSE: the
@@ -95,6 +105,7 @@ private:
 	BOOL			CheckConfig				(	);
 	BOOL			InitEtherCAT			(	);
 	BOOL			InitSimulation			(	);
+	BOOL			InitR5Link				(	);
 	BOOL			InitTrajectory			(	);
 	BOOL			InitRTTasks				(	);
 
@@ -106,6 +117,12 @@ private:
 	CIndy7EndTool*				m_pEndTool;		// on the bus (robot, -b), NULL otherwise
 	CEcatMaster*				m_pcEcatMaster;	// the robot, and -b
 	CSimArm*					m_pSim;			// the simulated arm (-s, -b), NULL on the robot
+	// --arch S1: the exchange with the R5; the joints whose drives are on its bus (the robot, -s); and with -s
+	// the R5 of the simulation, which has the simulated arm and its joints
+	int							m_nArch{0};		// arch::eP0
+	CR5Link*					m_pLink{NULL};
+	std::vector<CR5Joint*>		m_vR5Joints;
+	CSimR5*						m_pSimR5{NULL};
 	CViewStream					m_cView;		// newest joint angles for an external viewer
 
 	/* the tasks, in the order of the cfg ([TASK0]..[TASK2]) */
@@ -414,8 +431,11 @@ private:
 	// simulator once per cycle that runs, so the loop keeps the timing of the
 	// robot whatever the host does: no timing faults there (JointTestLog.cpp).
 	// With -b the EtherCAT exchange is real, so its faults count as on the
-	// robot. And the controller faults and the drive dropouts during the test
-	// (latches since anCtrlFaults0 and anDropouts0), in every mode.
+	// robot. With --arch S1 the counts are those of the R5 and of the
+	// exchange with it (TaskEtherCAT.cpp), also with the simulated R5, whose
+	// periods do not wait for the tasks here. And the controller faults and
+	// the drive dropouts during the test (latches since anCtrlFaults0 and
+	// anDropouts0), in every mode.
 	template <class R> void FillRtResult(R& arResult, const task_slots::ST_FAULTS& astNow,
 	                                     const task_slots::ST_FAULTS& astAt0, long anCtrlFaults0,
 	                                     long anDropouts0) const
@@ -424,7 +444,7 @@ private:
 		arResult.nOverruns = astNow.nOverruns - astAt0.nOverruns;
 		arResult.nMissed   = astNow.nMissed - astAt0.nMissed;
 		arResult.nWkc      = astNow.nWkc - astAt0.nWkc;
-		arResult.nTimingFaults = (m_pSim != NULL && m_pcEcatMaster == NULL) ? 0 :
+		arResult.nTimingFaults = (m_pSim != NULL && m_pcEcatMaster == NULL && m_pLink == NULL) ? 0 :
 		                         arResult.nLate + arResult.nOverruns + arResult.nMissed;
 		arResult.nCtrlFaults = m_nCtrlFaults.load(std::memory_order_acquire) - anCtrlFaults0;
 		arResult.nDriveDropouts = m_nDriveDropouts.load(std::memory_order_acquire) - anDropouts0;

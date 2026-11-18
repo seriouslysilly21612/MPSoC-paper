@@ -52,11 +52,14 @@ public:
 		TF_SERVO    = 1 << 11,	// every joint of the arm is servo on
 		TF_BUSSERVO = 1 << 12,	// -b: a drive of the bus reports Operation enabled (must stay 0)
 		TF_TEST     = 1 << 13,	// a JOINT TEST, a high-level test or a motion of the operator runs
+		TF_R5       = 1 << 14,	// --arch S1: the EtherCAT exchange runs on the R5; the period is that of its State
+						// slot, the record is that of the task that takes the slot here, t_s and send are -1
+		TF_NOSTATE  = 1 << 15,	// --arch S1: the cycle found no State slot of a new period (period: the last one)
 	};
 
 #pragma pack(push, 1)
 	struct Record {
-		uint32_t uPeriod;		// release index k of the period (k = 0: the first release)
+		uint32_t uPeriod;		// release index k of the period (k = 0: the first release); TF_R5: of the R5
 		int32_t  nW;			// t_w [ns]: planned release -> start of the cycle
 		int32_t  nS;			// t_s [ns]: start -> return of the send
 		int32_t  nE;			// t_e [ns]: start -> end of the cycle

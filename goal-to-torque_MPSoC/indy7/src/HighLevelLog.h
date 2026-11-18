@@ -50,7 +50,7 @@ struct HighLevelFormat
 		double	adSimTauS[MAX_DOF];
 	};
 	struct Result {
-		long	nTimingFaults;			// robot: nLate + nOverruns + nMissed; simulation: 0
+		long	nTimingFaults;			// robot, and --arch S1: nLate + nOverruns + nMissed; simulation: 0
 		long	nLate, nOverruns, nMissed, nWkc;	// during the test (Indy7Ctrl.h, RtStats)
 		long	nAllocs;				// malloc-count build (-1: not counted)
 		long	nCtrlFaults;			// controller faults during the test (Indy7Ctrl.h)

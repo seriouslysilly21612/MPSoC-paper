@@ -1,0 +1,7 @@
+# The slots that the R5 and the control application exchange (--arch S1): the UIO device of the device tree
+# node "ocm-link" (ocm_link_uio.dtso). The control application runs as the user of the board, not as root:
+# this rule gives the device to that user's group. Another user: put its group here.
+#
+#   sudo cp 99-ocm-link.rules /etc/udev/rules.d/
+#   sudo udevadm control --reload && sudo udevadm trigger --subsystem-match=uio
+SUBSYSTEM=="uio", ATTR{name}=="ocm-link", GROUP="ubuntu", MODE="0660"

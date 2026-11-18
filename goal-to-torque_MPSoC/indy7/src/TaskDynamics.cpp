@@ -296,7 +296,8 @@ dynamics_cycle(CRobotIndy7* pRobot, RTTIME tRelease, RTTIME tStart)
 	/* publish: the torque of this period (sent by the EtherCAT task in the
 	 * next one) and the state of the controller. Without a new state
 	 * nothing is written: the torque of the last state stays in the slot
-	 * for the EtherCAT task. */
+	 * for the EtherCAT task (--arch S1: in the Torque slot of the R5, which
+	 * counts a period without a new one). */
 	const RTTIME tEnd0 = read_timer();
 	if (bNewState)
 	{
@@ -313,6 +314,9 @@ dynamics_cycle(CRobotIndy7* pRobot, RTTIME tRelease, RTTIME tStart)
 		stTorque.nE = Sat32(tEnd0 - tStart);
 		stTorque.uAllocUpdate = pRobot->m_uAllocUpdate;
 		pRobot->m_torqueSlot.Write(stTorque);
+		// --arch S1: also to the R5, now, which takes it at the start of its next period (r5link/R5Link.h)
+		if (pRobot->m_pLink != NULL)
+			pRobot->m_pLink->SendTorque(stTorque.uPeriod, stTorque.bValid, stTorque.bEnabled, stTorque.adTau, udof);
 		// the response of this period, for the status of the next (obs_status.h): same thread as ObsStep()
 		if (obs_method::UsesMailbox(pRobot->m_nMethod))
 			obs_recent_max_add(&pRobot->m_stObsResponse, (float)((double)(tEnd0 - tRelease) * 1e-9));
@@ -328,6 +332,8 @@ dynamics_cycle(CRobotIndy7* pRobot, RTTIME tRelease, RTTIME tStart)
 		stTorque.bEnabled = pRobot->m_bRTControllerEnabled;
 		stTorque.bJtRunning = (pCtl != NULL && pCtl->IsJointTestRunning()) ? TRUE : FALSE;
 		pRobot->m_torqueSlot.Write(stTorque);
+		if (pRobot->m_pLink != NULL)
+			pRobot->m_pLink->SendTorque(stTorque.uPeriod, stTorque.bValid, stTorque.bEnabled, stTorque.adTau, udof);
 	}
 
 	/* the timing of this task */

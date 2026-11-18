@@ -2,7 +2,7 @@
 *	Name: main.cpp
 *	Description: The controller of the Indy7 (paper, Fig. 1).
 *
-*	    indy7_ctrl [-f FILE] [-s | -b [-B FILE]] [-t DIR] [--method NAME]
+*	    indy7_ctrl [-f FILE] [-s | -b [-B FILE]] [-t DIR] [--method NAME] [--arch NAME]
 *
 *	  -f FILE  the configuration; without it ./INDY7.cfg, then INDY7.cfg in
 *	           the directory above the program (bin/..)
@@ -17,6 +17,10 @@
 *	  --method NAME (-m)  M1, M2, A2, A3 or FULL: what the camera application
 *	           does with the results of the camera (obs/ObsMethod.h; paper,
 *	           Table III). Default M1: the goal slot, as before
+*	  --arch NAME (-a)  P0 or S1: where the EtherCAT task runs (Arch.h).
+*	           Default P0: here, with the IgH master, as before. S1: on the
+*	           R5; with -s the R5 is simulated too, with -b it runs its bus
+*	           with the drives off beside the arm simulated here
 *
 *	The keys of the operator are listed at the start and with '?'
 *	(Indy7Ctrl.cpp, PrintHelp). 'q', SIGINT or SIGTERM end the controller:
@@ -30,6 +34,7 @@
 #include <getopt.h>
 #include <sys/mman.h>
 
+#include "Arch.h"
 #include "Indy7Ctrl.h"
 #include "base/RtConsole.h"
 #include "obs/ObsMethod.h"
@@ -49,14 +54,15 @@ void SignalHandler(int)
 
 void Usage(const char* apcProg)
 {
-	fprintf(stderr, "usage: %s [-f FILE] [-s | -b [-B FILE]] [-t DIR] [--method M1|M2|A2|A3|FULL]\n"
+	fprintf(stderr, "usage: %s [-f FILE] [-s | -b [-B FILE]] [-t DIR] [--method M1|M2|A2|A3|FULL] [--arch P0|S1]\n"
 	        "  -f FILE  configuration (default: ./INDY7.cfg, then <program dir>/../INDY7.cfg)\n"
 	        "  -s       simulation: MuJoCo in place of the bus\n"
 	        "  -b       the bus of the robot, drives off, beside the simulated arm (host-timing test)\n"
 	        "  -B FILE  with -b: the slaves of the bus from FILE (e.g. bench/L7N4_bus.cfg)\n"
 	        "  -t DIR   timing of every period into DIR\n"
 	        "  --method NAME (-m)  what the camera application does with the results of the camera (obs/ObsMethod.h);\n"
-	        "           default M1, the goal slot as before\n", apcProg);
+	        "           default M1, the goal slot as before\n"
+	        "  --arch NAME (-a)  where the EtherCAT task runs (Arch.h): P0 here (default), S1 on the R5\n", apcProg);
 }
 
 } // namespace
@@ -70,9 +76,11 @@ int main(int argc, char** argv)
 	TSTRING strCfg, strTimingDir, strBusCfg;
 	BOOL bSim = FALSE, bHybrid = FALSE;
 	int nMethod = obs_method::eM1;
-	static const struct option s_astLong[] = { {"method", required_argument, NULL, 'm'}, {NULL, 0, NULL, 0} };
+	int nArch = arch::eP0;
+	static const struct option s_astLong[] = { {"method", required_argument, NULL, 'm'},
+	                                           {"arch", required_argument, NULL, 'a'}, {NULL, 0, NULL, 0} };
 	int nOpt;
-	while ((nOpt = getopt_long(argc, argv, "f:sbB:t:m:h", s_astLong, NULL)) != -1)
+	while ((nOpt = getopt_long(argc, argv, "f:sbB:t:m:a:h", s_astLong, NULL)) != -1)
 	{
 		switch (nOpt)
 		{
@@ -86,6 +94,15 @@ int main(int argc, char** argv)
 				if (nMethod < 0)
 				{
 					fprintf(stderr, "--method %s: no such method\n", optarg);
+					Usage(argv[0]);
+					return 1;
+				}
+				break;
+			case 'a':
+				nArch = arch::Parse(optarg);
+				if (nArch < 0)
+				{
+					fprintf(stderr, "--arch %s: no such architecture\n", optarg);
 					Usage(argv[0]);
 					return 1;
 				}
@@ -118,11 +135,11 @@ int main(int argc, char** argv)
 			return 1;
 		}
 	}
-	DBG_LOG_INFO("configuration %s: %s%s%s; method %s", cConfig.Path().c_str(),
+	DBG_LOG_INFO("configuration %s: %s%s%s; method %s; architecture %s", cConfig.Path().c_str(),
 	             bHybrid ? "-b, the bus (drives off) beside the simulated arm" :
 	             cConfig.System().bSim ? "simulation, MuJoCo in place of the bus" : "the robot",
 	             cConfig.BusPath().empty() ? "" : ", the bus from ", cConfig.BusPath().c_str(),
-	             obs_method::Name(nMethod));
+	             obs_method::Name(nMethod), arch::Name(nArch));
 
 	// SIGINT and SIGTERM stop the tasks (the real-time tasks block both)
 	struct sigaction stSa;
@@ -145,6 +162,7 @@ int main(int argc, char** argv)
 	CRobotIndy7* pRobot = new CRobotIndy7(&cConfig);
 	pRobot->SetHybridBus(bHybrid);
 	pRobot->SetMethod(nMethod);
+	pRobot->SetArch(nArch);
 	if (!strTimingDir.empty())
 		pRobot->SetTimingLogDir(strTimingDir);
 	g_pRobot = pRobot;

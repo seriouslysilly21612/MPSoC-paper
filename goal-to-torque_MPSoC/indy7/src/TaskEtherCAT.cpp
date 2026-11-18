@@ -58,10 +58,37 @@
 *	    did not clear, whose next reset then comes with the next 'h'.
 *	An 'h' that arrives in the period of a dropout or of a withdrawal is
 *	dropped: it was given before the drives went off.
+*
+*	With --arch S1 the EtherCAT task itself runs on the R5, and this task is
+*	what remains of it here: it takes the State slot of the R5 in place of
+*	the receive (r5link/R5Link.h), and it does not send.
+*	  period   that of the R5. The release grid of the tasks follows it
+*	           (R5Follow.h), and the period number and the release time of
+*	           the State slot here are those of the R5.
+*	           A cycle that finds no State of a new period does nothing but
+*	           count: no State slot, so the control task does not compute.
+*	  faults   those the R5 counts, and those of the exchange: a State
+*	           that no cycle here took counts as a late release (the arm
+*	           moved for a period that the reference did not), a torque that
+*	           the R5 did not have at its next release as a missed send.
+*	  drives   the same rules, on the status that the R5 reports; what they
+*	           decide goes to the R5 as a command (servo on, servo off, stop:
+*	           R5Joint.h), which it carries out in its next period, one
+*	           period later than this task did with the bus in its hands. A
+*	           servo on leaves only to a firmware built from this
+*	           configuration. Should the application stop writing, the R5
+*	           switches the drives off by itself.
+*	  torque   the control task writes the Torque slot of the R5 itself,
+*	           right after the control law (TaskDynamics.cpp): passed on
+*	           here, in the next cycle, it would reach the R5 a period late.
+*	  -s       the R5 is simulated too and steps the arm (sim/SimR5.h);
+*	  -b       the R5 runs its bus, whose drives stay off, and the arm
+*	           simulated here steps once for every period of the R5 taken.
 *****************************************************************************/
 #include "Indy7Ctrl.h"
 #include "base/MallocCount.h"
 #include "base/RtConsole.h"
+#include "sim/SimR5.h"
 
 #include <cstring>
 
@@ -73,17 +100,25 @@ proc_ethercat_control(void* apRobot)
 	using namespace task_slots;
 	auto* pRobot = static_cast<CRobotIndy7*>(apRobot);
 	CRtTask* const pTask = CRtTask::Self();
-	CSimArm* const pSim = pRobot->m_pSim;
+	// --arch S1: the EtherCAT exchange runs on the R5 (or, with -s, on the simulated R5, which steps the arm)
+	CR5Link* const pLink = pRobot->m_pLink;
+	CSimR5* const pSimR5 = pRobot->m_pSimR5;
+	// the simulated arm that this task steps
+	CSimArm* const pSim = (pSimR5 != NULL) ? NULL : pRobot->m_pSim;
 	// the EtherCAT master: on the robot, and with -b beside the simulator
 	CEcatMaster* const pMaster = pRobot->m_pcEcatMaster;
-	const BOOL bHybrid = (pSim != NULL && pMaster != NULL) ? TRUE : FALSE;
+	const BOOL bHybrid = (pSim != NULL && (pMaster != NULL || pLink != NULL)) ? TRUE : FALSE;
 	DBG_LOG_INFO("(proc_ethercat_control) EtherCAT task started (%s)",
+	             pSimR5 != NULL ? "S1, simulation: the State slot of the simulated R5 in place of the receive" :
+	             (bHybrid && pLink != NULL) ? "S1: the State slot of the R5, whose drives stay off, beside the "
+	                                         "simulated arm" :
+	             pLink != NULL ? "S1: the State slot of the R5 in place of the receive" :
 	             bHybrid ? "the bus of the robot, drives off, beside the simulated arm" :
 	             pSim != NULL ? "simulation: MuJoCo in place of the EtherCAT exchange" : "EtherCAT");
 
 	const unsigned int udof = (unsigned int)pRobot->GetTotalAxis();
 	if (pTask == NULL || udof == 0 || udof > (unsigned int)CSimArm::MAX_DOF || udof > (unsigned int)MAX_DOF ||
-	    (pSim == NULL && pMaster == NULL))
+	    (pSim == NULL && pMaster == NULL && pLink == NULL))
 	{
 		DBG_LOG_ERROR("(proc_ethercat_control) %u joints, %s", udof, pMaster ? "EtherCAT" : "no EtherCAT master");
 		pRobot->m_bEcatDone.store(true, std::memory_order_release);
@@ -104,7 +139,9 @@ proc_ethercat_control(void* apRobot)
 	BOOL   bStaleTold = FALSE;    // no fresh torque while OP (printed once)
 	int    nCleanUp = 0;
 	CTimingLog& cLog = pRobot->m_cTimingLog;
-	const uint16_t usMode = (uint16_t)((pSim != NULL ? TL::TF_SIM : 0) | (pMaster != NULL ? TL::TF_BUS : 0));
+	const uint16_t usMode = (uint16_t)(((pSim != NULL || pSimR5 != NULL) ? TL::TF_SIM : 0) |
+	                                   ((pMaster != NULL || (pLink != NULL && pSimR5 == NULL)) ? TL::TF_BUS : 0) |
+	                                   (pLink != NULL ? TL::TF_R5 : 0));
 	// the LED of the end tool shows the state of the controller on the robot
 	// (with -b the end tool stays as it is)
 	CIndy7EndTool* const pTool = bHybrid ? NULL : pRobot->m_pEndTool;
@@ -151,7 +188,8 @@ proc_ethercat_control(void* apRobot)
 		/* release */
 		const RTTIME tRelease = pTask->WaitNextRelease();
 		const RTTIME tStart = read_timer();
-		const uint32_t uPer = (uint32_t)pTask->ReleaseIndex();
+		uint32_t uPer = (uint32_t)pTask->ReleaseIndex();
+		uint32_t uPerBefore = uPer - 1u;     // the period whose cycle the two other tasks ran last
 		const RTTIME tW = tStart - tRelease;
 		const BOOL bLate = (tW > st.tPeriod) ? TRUE : FALSE;
 		if (bLate)
@@ -172,6 +210,20 @@ proc_ethercat_control(void* apRobot)
 		BOOL   bOp = TRUE;
 		BOOL   bWkcErr = FALSE;
 		UINT32 uSyncDiff = 0xFFFFFFFF;
+		// S1: the State slot brought a new period of the R5 (with the exchange in this task: every cycle does)
+		BOOL   bNewState = TRUE;
+		if (pLink != NULL)
+		{
+			uPerBefore = pLink->State().period;
+			bNewState = pLink->Receive(tRelease);
+			CRtTask::ShiftGrid(pLink->GridShift());
+			const ipc_state_t& stR5 = pLink->State();
+			uPer = stR5.period;
+			bWkcErr = (bNewState && (stR5.flags & IPC_STATE_WKC_ERR)) ? TRUE : FALSE;
+			bOp = (bNewState && (stR5.flags & IPC_STATE_OP) && !(stR5.flags & (IPC_STATE_WKC_ERR | IPC_STATE_STOP))) ?
+			      TRUE : FALSE;
+			st.nWkc = (long)stR5.n_wkc;
+		}
 		if (pMaster != NULL)
 		{
 			const BOOL bWkc = pMaster->Receive();
@@ -198,7 +250,7 @@ proc_ethercat_control(void* apRobot)
 				pRobot->m_vSimJoints[i]->SetSimState(adQ[i], adQd[i], adTauM[i]);
 			// the drive-dropout test ('n', SIM_FAULT_WHAT=dropout; -s only):
 			// the joint leaves Operation enabled
-			if (pMaster == NULL && pRobot->m_nSimDropout.load(std::memory_order_relaxed) != 0)
+			if (!bHybrid && pRobot->m_nSimDropout.load(std::memory_order_relaxed) != 0)
 			{
 				const int nJ = pRobot->m_nSimDropout.exchange(0, std::memory_order_acq_rel);
 				if (nJ >= 1 && nJ <= (int)udof)
@@ -206,12 +258,22 @@ proc_ethercat_control(void* apRobot)
 			}
 			// the E-stop tests ('n', SIM_FAULT_WHAT=estop): the power of every
 			// simulated drive, as the status words of this period bring it
-			if (pMaster == NULL && pRobot->m_nSimEstopCmd.load(std::memory_order_relaxed) != 0)
+			if (!bHybrid && pRobot->m_nSimEstopCmd.load(std::memory_order_relaxed) != 0)
 			{
 				const int nE = pRobot->m_nSimEstopCmd.exchange(0, std::memory_order_acq_rel);
 				for (unsigned int i = 0; i < udof; i++)
 					pRobot->m_vSimJoints[i]->SetPowerCut(nE == 1 ? TRUE : FALSE, pRobot->m_nSimEstopReports);
 			}
+		}
+		// S1 with -s: the simulated drives are those of the simulated R5, which takes the two tests at its
+		// next receive
+		if (pSimR5 != NULL)
+		{
+			if (pRobot->m_nSimDropout.load(std::memory_order_relaxed) != 0)
+				pSimR5->Dropout(pRobot->m_nSimDropout.exchange(0, std::memory_order_acq_rel));
+			if (pRobot->m_nSimEstopCmd.load(std::memory_order_relaxed) != 0)
+				pSimR5->PowerCut(pRobot->m_nSimEstopCmd.exchange(0, std::memory_order_acq_rel),
+				                 pRobot->m_nSimEstopReports);
 		}
 		// the end of the receive phase: the inputs of the period are in
 		const RTTIME tRecv = read_timer();
@@ -221,7 +283,7 @@ proc_ethercat_control(void* apRobot)
 		uint32_t uOe = 0;           // the joints in Operation enabled
 		uint32_t uNotReady = 0;     // the joints in Switch on disabled / Not ready to switch on
 		stState.uPeriod = uPer;
-		stState.tRelease = tRelease;
+		stState.tRelease = (pLink != NULL) ? pLink->StateRelease() : tRelease;
 		stState.bOp = bOp;
 		stState.bWkcErr = bWkcErr;
 		stState.bStop = bStop;
@@ -248,6 +310,14 @@ proc_ethercat_control(void* apRobot)
 		stState.stFaults.nOverruns = st.nOverruns;
 		stState.stFaults.nMissed = st.nMissed;
 		stState.stFaults.nWkc = st.nWkc;
+		if (pLink != NULL)
+		{
+			// the faults of the EtherCAT task are those the R5 counts and those of the exchange with it
+			const CR5Link::Counts& stLink = pLink->GetCounts();
+			stState.stFaults.nLate = (long)pLink->State().n_late + stLink.nPeriodsMissed;
+			stState.stFaults.nOverruns = (long)pLink->State().n_overrun;
+			stState.stFaults.nMissed = (long)pLink->State().n_missed + stLink.nTorqueLate;
+		}
 
 		/* the drives: the dropout, the command of the operator, then the
 		 * torque of the Dynamics task's last cycle as the target of this
@@ -268,7 +338,7 @@ proc_ethercat_control(void* apRobot)
 		// again, before the enable sequence gets through. Then the servo on
 		// that has not completed within SERVO_ON_TIMEOUT_MS: withdrawn, every
 		// joint off (see the top of this file).
-		else if (bServoReq)
+		else if (bServoReq && bNewState)
 		{
 			uReached |= uOe;
 			const uint32_t uLost = uReached & ~uOe;
@@ -340,20 +410,29 @@ proc_ethercat_control(void* apRobot)
 				}
 			}
 		}
+		// S1: what this cycle asked of the drives of the R5, as one command
+		if (pLink != NULL && !pLink->SendCommand())
+		{
+			bServoReq = FALSE;
+			printf("[ARM] servo on refused - the firmware of the R5 was built from another configuration (its check "
+			       "value 0x%08X, this configuration 0x%08X): build it from this cfg (bin/fw_cfg_header)\n",
+			       (unsigned)pLink->State().cfg_crc, (unsigned)pLink->ConfigCrc());
+		}
 		for (unsigned int i = 0; i < udof; i++)
 			stState.anTauCmdRaw[i] = (int)pRobot->m_vJoints[i]->GetTargetTorRaw();
-		pRobot->m_stateSlot.Write(stState);
+		if (bNewState)
+			pRobot->m_stateSlot.Write(stState);
 
 		/* send */
 		int32_t nSim = -1;
 		const RTTIME tProc = read_timer();       // the end of the process phase (the slots and the drives)
 		if (pMaster != NULL)
 			pMaster->Send(tRelease);
-		else
+		else if (pLink == NULL)
 			nSim = stepSim();
 		const RTTIME tSent = read_timer();
-		// -b: the simulated arm moves after the send, as the robot does
-		if (bHybrid)
+		// -b: the simulated arm moves after the send, as the robot does (S1: with every period of the R5 taken)
+		if (bHybrid && bNewState)
 			nSim = stepSim();
 
 		/* after the send */
@@ -367,13 +446,28 @@ proc_ethercat_control(void* apRobot)
 				printf("[BUS] OP: %u slaves, working counters complete\n", pMaster->GetSlaveCnt());
 			}
 		}
+		if (pLink != NULL && bOp && !bOpSeen)
+		{
+			bOpSeen = TRUE;
+			pRobot->m_bBusOp.store(true, std::memory_order_release);
+			printf("[R5] OP: the State slot of period %u, %u joint drives; the check value of the firmware 0x%08X is "
+			       "%s\n", (unsigned)uPer, (unsigned)pLink->State().dof, (unsigned)pLink->State().cfg_crc,
+			       pLink->IsServoOnAllowed() ? "that of this configuration" :
+			       "NOT that of this configuration: a servo on will be refused");
+		}
 		// -b: the drives of the bus are never commanded on; should one report
 		// Operation enabled, it is switched off (the flag of the log must stay 0)
-		const BOOL bBusServo = bHybrid ? pRobot->IsAnyBusServoOn() : FALSE;
+		BOOL bBusServo = (bHybrid && pLink == NULL) ? pRobot->IsAnyBusServoOn() : FALSE;
+		if (bHybrid && pLink != NULL)
+			for (unsigned int i = 0; i < pLink->State().dof && i < (unsigned int)IPC_MAX_DOF; i++)
+				if ((pLink->State().status[i] & 0x6F) == 0x27)
+					bBusServo = TRUE;
 		if (bBusServo)
 		{
 			for (CIndy7Joint* p : pRobot->m_vDrives)
 				p->ServoOff();
+			if (pLink != NULL)
+				pLink->RequestCommand(IPC_CMD_SERVO_OFF, TRUE);     // written in the next cycle
 			if (!bBusAlarm)
 				printf("[BUS] SAFETY: a drive of the bus reports Operation enabled with -b - servo off\n");
 			bBusAlarm = TRUE;
@@ -424,7 +518,8 @@ proc_ethercat_control(void* apRobot)
 		if (tW > st.tWMax) st.tWMax = tW;
 		if (tS > st.tSMax) st.tSMax = tS;
 		if (tE > st.tEMax) st.tEMax = tE;
-		const BOOL bMissed = (tW + tS > st.tDeadline) ? TRUE : FALSE;
+		// S1: the send, and its deadline, are those of the R5
+		const BOOL bMissed = (pLink == NULL && tW + tS > st.tDeadline) ? TRUE : FALSE;
 		const BOOL bOverrun = (tW + tE > st.tPeriod) ? TRUE : FALSE;
 		if (bMissed)
 			st.nMissed++;
@@ -437,8 +532,8 @@ proc_ethercat_control(void* apRobot)
 		if (cLog.IsOn())
 		{
 			pRobot->m_refSlot.Read(stRef);
-			const BOOL bTrajFresh = (stRef.uPeriod + 1 == uPer) ? TRUE : FALSE;
-			const BOOL bDynFresh = (stTorque.uPeriod + 1 == uPer) ? TRUE : FALSE;
+			const BOOL bTrajFresh = (bNewState && stRef.uPeriod == uPerBefore) ? TRUE : FALSE;
+			const BOOL bDynFresh = (bNewState && stTorque.uPeriod == uPerBefore) ? TRUE : FALSE;
 			const int32_t nDyn = (bDynFresh && stTorque.bValid) ? stTorque.nDynNs : -1;
 			const int32_t nHl = (bTrajFresh && stRef.eMode != eRefNone) ? stRef.nHlNs : -1;
 			const BOOL bTrack = (bTrajFresh && stRef.eMode == eRefTrack) ? TRUE : FALSE;
@@ -446,7 +541,7 @@ proc_ethercat_control(void* apRobot)
 			TL::Record stR;
 			stR.uPeriod = uPer;
 			stR.nW = Sat32(tW);
-			stR.nS = Sat32(tS);
+			stR.nS = (pLink != NULL) ? -1 : Sat32(tS);
 			stR.nE = Sat32(tE);
 			stR.nDyn = nDyn;
 			stR.nHl = nHl;
@@ -458,10 +553,10 @@ proc_ethercat_control(void* apRobot)
 			                         (nDyn >= 0 ? TL::TF_LAW : 0) | (nHl >= 0 ? TL::TF_HL : 0) |
 			                         (bTrack ? TL::TF_TRACK : 0) | (bStop ? TL::TF_STOP : 0) |
 			                         (bServo ? TL::TF_SERVO : 0) | (bBusServo ? TL::TF_BUSSERVO : 0) |
-			                         (bTest ? TL::TF_TEST : 0));
+			                         (bTest ? TL::TF_TEST : 0) | (bNewState ? 0 : TL::TF_NOSTATE));
 			stR.usReserved = 0;
 			stR.nRecv = Sat32(tRecv - tStart);
-			stR.nSend = Sat32(tSent - tProc);
+			stR.nSend = (pLink != NULL) ? -1 : Sat32(tSent - tProc);
 			stR.nTrajW = bTrajFresh ? stRef.nW : -1;
 			stR.nTrajE = bTrajFresh ? stRef.nE : -1;
 			stR.nDynW = bDynFresh ? stTorque.nW : -1;
@@ -488,8 +583,13 @@ proc_ethercat_control(void* apRobot)
 	pRobot->m_bEcatDone.store(true, std::memory_order_release);
 	for (int nWait = 0; nWait < 500 && !(pRobot->m_bTrajDone.load() && pRobot->m_bDynDone.load()); nWait++)
 		usleep(1000);
-	if (pSim != NULL)
-		pSim->PrintSummary();
+	// the simulated R5 ends before the summaries: the arm is its own until then
+	if (pSimR5 != NULL)
+		pSimR5->Stop();
+	if (pRobot->m_pSim != NULL)
+		pRobot->m_pSim->PrintSummary();
+	if (pSimR5 != NULL)
+		pSimR5->PrintSummary();
 	pRobot->PrintRtSummary();
 	DBG_LOG_INFO("(proc_ethercat_control) task ended");
 	pRobot->m_bEcatEnded.store(true, std::memory_order_release);

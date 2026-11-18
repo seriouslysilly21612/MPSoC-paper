@@ -67,7 +67,7 @@ struct JointTestFormat
 	/* and at its end */
 	struct Result {
 		double	adQ0[MAX_DOF], adD[MAX_DOF];
-		long	nTimingFaults;			// robot: nLate + nOverruns + nMissed; simulation: 0 (see Finish)
+		long	nTimingFaults;			// robot, and --arch S1: nLate + nOverruns + nMissed; simulation: 0 (see Finish)
 		long	nLate, nOverruns, nMissed, nWkc;	// during the test (Indy7Ctrl.h, RtStats)
 		long	nAllocs;				// malloc-count build: allocations of the control law (-1: not counted)
 		long	nCtrlFaults;			// controller faults during the test (Indy7Ctrl.h)

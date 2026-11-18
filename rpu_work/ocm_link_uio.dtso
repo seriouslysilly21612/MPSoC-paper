@@ -1,0 +1,17 @@
+/dts-v1/;
+/plugin/;
+/* --arch S1: the first 16 KB of the OCM hold the slots that the R5 and the control application exchange
+ * (State, Torque, Command: goal-to-torque_MPSoC/indy7/src/ipc/ipc_layout.h; in the firmware ocm_link.h).
+ * This node gives them to Linux as a UIO device, so that the application maps them as its user, without
+ * /dev/mem (indy7/src/r5link/R5Link.h looks for the name "ocm-link"). The GEM3 buffers of the R5 start right
+ * behind them, at 0xFFFC4000, and stay outside. Needs uio_pdrv_genirq.of_id=generic-uio in the kernel
+ * command line (README_S1.md). */
+&{/} {
+    #address-cells = <2>;
+    #size-cells = <2>;
+
+    ocm-link@fffc0000 {
+        compatible = "generic-uio";
+        reg = <0x0 0xfffc0000 0x0 0x4000>;
+    };
+};

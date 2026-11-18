@@ -3,8 +3,10 @@
 *	Description: The controller of the Indy7. See Indy7Ctrl.h.
 *****************************************************************************/
 #include "Indy7Ctrl.h"
+#include "Arch.h"
 #include "base/MallocCount.h"
 #include "CallTiming.h"
+#include "ipc/FwCfg.h"
 #include "obs/ObsContract.h"
 
 #include <cmath>
@@ -49,6 +51,16 @@ CRobotIndy7::~CRobotIndy7()
 		delete p;
 	m_vSimJoints.clear();
 	m_vJoints.clear();
+	// the simulated R5 before the arm it steps
+	if (m_pSimR5 != NULL)
+		m_pSimR5->Stop();
+	delete m_pSimR5;
+	m_pSimR5 = NULL;
+	for (CR5Joint* p : m_vR5Joints)
+		delete p;
+	m_vR5Joints.clear();
+	delete m_pLink;
+	m_pLink = NULL;
 	delete m_pSim;
 	m_pSim = NULL;
 }
@@ -284,8 +296,11 @@ CRobotIndy7::Init()
 	if (stSys.nViewPort > 0)
 		m_cView.Start(stSys.nViewPort, stSys.dViewRateHz, (int)stSys.nRobotAxis);
 
-	// the bus, or the simulated arm (with -b also the bus)
-	if (FALSE == (bSim ? InitSimulation() : InitEtherCAT()))
+	// the bus, or the simulated arm (with -b also the bus); --arch S1: the R5 has the bus
+	const BOOL bS1 = (m_nArch == arch::eS1) ? TRUE : FALSE;
+	if (FALSE == (bSim ? InitSimulation() : (bS1 ? TRUE : InitEtherCAT())))
+		return FALSE;
+	if (bS1 && FALSE == InitR5Link())
 		return FALSE;
 
 	// -t: the log takes the first period of the EtherCAT task
@@ -294,9 +309,10 @@ CRobotIndy7::Init()
 
 	if (FALSE == InitRTTasks())
 		return FALSE;
-	DBG_LOG_INFO("(CRobotIndy7) %s: %s", m_strName.c_str(),
+	DBG_LOG_INFO("(CRobotIndy7) %s: %s%s", m_strName.c_str(),
 	             m_bHybridBus ? "the bus of the robot (drives off) beside the simulated arm (-b)" :
-	             bSim ? "simulation (MuJoCo in place of the bus)" : "the robot on the EtherCAT bus");
+	             bSim ? "simulation (MuJoCo in place of the bus)" : "the robot on the EtherCAT bus",
+	             bS1 ? "; the EtherCAT task on the R5 (--arch S1)" : "");
 	return TRUE;
 }
 
@@ -773,12 +789,20 @@ CRobotIndy7::StartTimingLog()
 	                  "fields=period,w_ns,s_ns,e_ns,dyn_ns,hl_ns,sim_ns,sync_ns,flags,reserved,recv_ns,send_ns,"
 	                  "traj_w_ns,traj_e_ns,dyn_w_ns,dyn_e_ns\n"
 	                  "flag_bits=OP:1,WKC:2,LATE:4,MISSED:8,OVERRUN:16,LAW:32,HL:64,TRACK:128,STOP:256,"
-	                  "SIM:512,BUS:1024,SERVO:2048,BUSSERVO:4096,TEST:8192\n";
+	                  "SIM:512,BUS:1024,SERVO:2048,BUSSERVO:4096,TEST:8192,R5:16384,NOSTATE:32768\n";
 	snprintf(acLine, sizeof(acLine), "mode=%s\nperiod_ns=%d\ndeadline_ns=%llu\ncpu=%d\npriority=%d\n",
 	         m_bHybridBus ? "hybrid" : (bSim ? "simulation" : "robot"), (int)nPeriod,
 	         (unsigned long long)(m_stRt.tDeadline > 0 ? m_stRt.tDeadline : (RTTIME)nPeriod),
 	         (int)vTasks[0].nCpu, (int)vTasks[0].nPriority);
 	strHead += acLine;
+	// where the EtherCAT task runs; S1: how long after the release of the R5's period the tasks here are released
+	snprintf(acLine, sizeof(acLine), "arch=%s\n", arch::Name(m_nArch));
+	strHead += acLine;
+	if (m_pLink != NULL)
+	{
+		snprintf(acLine, sizeof(acLine), "wake_delay_ns=%d\n", (int)m_pConfig->R5Link().nWakeDelayNs);
+		strHead += acLine;
+	}
 	// the tasks of the pipeline: name:priority:cpu of every periodic task, in the order of the cfg
 	strHead += "tasks=";
 	for (size_t n = 0, nAdded = 0; n < vTasks.size(); n++)
@@ -879,6 +903,14 @@ CRobotIndy7::DriveDropout(uint32_t auLost, uint32_t auPeriod)
 	DBG_LOG_ERROR(">>> DRIVE DROPOUT (period %u): %s left Operation enabled during servo on (E-stop, or a fault "
 	              "of the drive) - SERVO OFF (all joints, brakes), motion stopped; no drive enables by itself: "
 	              "clear the cause (release the E-stop), then 'h'", (unsigned)auPeriod, acJ);
+	if (m_pLink != NULL)
+	{
+		// --arch S1 has one more cause: the R5 switches the servo off when the torque of the application stops coming
+		const ipc_state_t& stR5 = m_pLink->State();
+		printf("[R5] in that period the R5 had the torque of period %u, %u before it (1: in time; from the "
+		       "TORQUE_STALE_LIMIT of the firmware on, the R5 itself switched the servo off)\n",
+		       (unsigned)stR5.torque_period, (unsigned)(stR5.period - stR5.torque_period));
+	}
 }
 
 // a servo on that has not brought every joint to Operation enabled within
@@ -910,12 +942,26 @@ CRobotIndy7::PrintRtSummary() const
 {
 	const RtStats& st = m_stRt;
 	const double dN = st.nCycles > 0 ? (double)st.nCycles : 1.0;
-	printf("[RT] EtherCAT task: %ld cycles of %.3f ms: t_w (release to start) mean %.1f us, max %.1f us; "
-	       "t_s (start to send) mean %.1f us, max %.1f us; t_e (start to end) mean %.1f us, max %.1f us\n",
-	       st.nCycles, (double)st.tPeriod * 1e-6, st.dWSum / dN * 1e-3, (double)st.tWMax * 1e-3,
-	       st.dSSum / dN * 1e-3, (double)st.tSMax * 1e-3, st.dESum / dN * 1e-3, (double)st.tEMax * 1e-3);
-	printf("[RT] EtherCAT task faults: %ld late releases (more than a period late), %ld overruns, %ld missed send "
-	       "deadlines (t_w + t_s > %.0f us)\n", st.nLate, st.nOverruns, st.nMissed, (double)st.tDeadline * 1e-3);
+	if (m_pLink == NULL)
+	{
+		printf("[RT] EtherCAT task: %ld cycles of %.3f ms: t_w (release to start) mean %.1f us, max %.1f us; "
+		       "t_s (start to send) mean %.1f us, max %.1f us; t_e (start to end) mean %.1f us, max %.1f us\n",
+		       st.nCycles, (double)st.tPeriod * 1e-6, st.dWSum / dN * 1e-3, (double)st.tWMax * 1e-3,
+		       st.dSSum / dN * 1e-3, (double)st.tSMax * 1e-3, st.dESum / dN * 1e-3, (double)st.tEMax * 1e-3);
+		printf("[RT] EtherCAT task faults: %ld late releases (more than a period late), %ld overruns, %ld missed "
+		       "send deadlines (t_w + t_s > %.0f us)\n", st.nLate, st.nOverruns, st.nMissed,
+		       (double)st.tDeadline * 1e-3);
+	}
+	else
+	{
+		// --arch S1: the exchange, its send and its faults are those of the R5 (the lines of the link below)
+		printf("[RT] EtherCAT task (--arch S1: here it takes the State slot of the R5): %ld cycles of %.3f ms: t_w "
+		       "(release to start) mean %.1f us, max %.1f us; t_e (start to end) mean %.1f us, max %.1f us; %ld late "
+		       "releases (more than a period late), %ld overruns\n", st.nCycles, (double)st.tPeriod * 1e-6,
+		       st.dWSum / dN * 1e-3, (double)st.tWMax * 1e-3, st.dESum / dN * 1e-3, (double)st.tEMax * 1e-3, st.nLate,
+		       st.nOverruns);
+		m_pLink->PrintSummary();
+	}
 	// the two parts of the control task (t_w of the dynamics part counts from the release)
 	const task_slots::ST_TASK_TIMING* apT[2] = { &m_stTrajTiming, &m_stDynTiming };
 	const char* apcName[2] = { "Control task, trajectory part", "Control task, dynamics part" };
@@ -1204,9 +1250,12 @@ CRobotIndy7::InitSimulation()
 		{
 			CSimJoint* p = new CSimJoint(vSl[n].strName, vSl[n].nDriveMode);
 			m_vSimJoints.push_back(p);
-			m_vJoints.push_back(p);
+			// S1 with -s: these are the drives of the simulated R5, and the joints of the arm are those of
+			// its State slot (InitR5Link)
+			if (m_nArch != arch::eS1 || m_bHybridBus)
+				m_vJoints.push_back(p);
 		}
-	const int nDof = GetTotalAxis();
+	const int nDof = (int)m_vSimJoints.size();
 	if (nDof != stSys.nRobotAxis || nDof > CSimArm::MAX_DOF)
 	{
 		DBG_LOG_ERROR("(CRobotIndy7) %d simulated joints, ROBOT_DOF=%d", nDof, (int)stSys.nRobotAxis);
@@ -1227,9 +1276,77 @@ CRobotIndy7::InitSimulation()
 	for (int i = 0; i < nDof; i++)
 		m_vSimJoints[i]->SetSimState(adQ[i], adQd[i], adTau[i]);
 
-	// -b: the bus of the robot beside the simulated arm
-	if (TRUE == m_bHybridBus && FALSE == InitEtherCAT())
+	// -b: the bus of the robot beside the simulated arm (S1: the R5 has it)
+	if (TRUE == m_bHybridBus && m_nArch != arch::eS1 && FALSE == InitEtherCAT())
 		return FALSE;
+	return TRUE;
+}
+
+namespace {
+/* a CPU of the process that neither periodic task is pinned to (-1: none): the simulated R5 is another processor */
+int CpuBesideTheTasks(const VEC_TASK_CONF& avTasks)
+{
+	cpu_set_t stCpus;
+	CPU_ZERO(&stCpus);
+	if (sched_getaffinity(0, sizeof(stCpus), &stCpus) != 0)
+		return -1;
+	for (int nCpu = 0; nCpu < CPU_SETSIZE; nCpu++)
+		if (CPU_ISSET(nCpu, &stCpus) && nCpu != avTasks[0].nCpu && nCpu != avTasks[1].nCpu)
+			return nCpu;
+	return -1;
+}
+}
+
+// --arch S1: the exchange with the R5 in place of the EtherCAT master (r5link/R5Link.h). With -s the R5 is
+// simulated as well and takes the arm (sim/SimR5.h); with -b the R5 runs its bus, whose drives stay off, beside
+// the arm simulated here; otherwise it runs the bus of the robot, and the joints of the arm are its drives.
+BOOL
+CRobotIndy7::InitR5Link()
+{
+	const VEC_TASK_CONF& vTasks = m_pConfig->Tasks();
+	const ST_CONFIG_R5_LINK& stLink = m_pConfig->R5Link();
+	const RTTIME tPeriod = (RTTIME)vTasks[0].nPeriod;
+	// the bus of the R5: of the configuration, or of -B FILE; its check value is what the firmware must carry
+	uint32_t uDrives = 0;
+	for (const ST_CONFIG_ECAT_SLAVE& s : m_pConfig->BusSlaves())
+		if (s.nSlaveType == 0)
+			uDrives++;
+	const uint32_t uCfgCrc = FwCfgCrc(m_pConfig->Master(), m_pConfig->BusSlaves());
+
+	m_pLink = new CR5Link();
+	if (m_pConfig->System().bSim && !m_bHybridBus)
+	{
+		CSimR5::Spec stSpec;
+		stSpec.tPeriod = tPeriod;
+		stSpec.uCfgCrc = uCfgCrc;
+		stSpec.nStaleLimit = (int)stLink.nSimStaleLimit;
+		stSpec.nPriority = (int)vTasks[0].nPriority;
+		stSpec.nCpu = CpuBesideTheTasks(vTasks);
+		m_pSimR5 = new CSimR5();
+		if (FALSE == m_pSimR5->Start(stSpec, m_pSim, m_vSimJoints))
+			return FALSE;
+		m_pLink->UseRegion(m_pSimR5->Region(), "the simulated R5");
+	}
+	else if (FALSE == m_pLink->OpenDevice())
+		return FALSE;
+	if (FALSE == m_pLink->Start(uDrives, uCfgCrc, tPeriod, (RTTIME)stLink.nWakeDelayNs))
+		return FALSE;
+	if (!m_bHybridBus)
+	{
+		const VEC_ECAT_SLAVE_CONF& vSl = m_pConfig->Slaves();
+		for (size_t n = 0; n < vSl.size(); n++)
+			if (vSl[n].nSlaveType == 0)
+			{
+				CR5Joint* p = new CR5Joint(vSl[n].strName, m_pLink, (unsigned)m_vR5Joints.size());
+				m_vR5Joints.push_back(p);
+				m_vJoints.push_back(p);
+			}
+	}
+	else
+		DBG_LOG_INFO("(CRobotIndy7) -b with --arch S1: the R5 runs the bus of %s (%u joint drives); they stay off",
+		             m_pConfig->BusPath().empty() ? "the robot" : m_pConfig->BusPath().c_str(), (unsigned)uDrives);
+	// the two periodic tasks follow the period of the R5 from their first release on
+	CRtTask::FollowGrid();
 	return TRUE;
 }
 
