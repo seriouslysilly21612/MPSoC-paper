@@ -142,6 +142,13 @@ public:
 		const uint32_t uCfgCrc = 0x600DC0DEu;
 		memset((void*)m_auRegion, 0, sizeof(m_auRegion));
 		(void)m_cR5.Start(m_auRegion, uCfgCrc, 10);
+		ipc_shadow_out_t stOld;				// the answer to a run of the control task before this one: not taken
+		memset(&stOld, 0, sizeof(stOld));
+		stOld.ctrl_crc = auCheck;
+		stOld.flags = IPC_SHADOW_OUT_CTRL;
+		stOld.tau_diff = 5.0;
+		stOld.n_missed = 1000;
+		m_cR5.PublishShadow(stOld);
 		m_cLink.UseRegion(m_auRegion, "the test");
 		if (FALSE == m_cLink.Start((uint32_t)N, uCfgCrc, (RTTIME)acConfig.Tasks()[1].nPeriod, 150000))
 			return false;
@@ -393,6 +400,7 @@ void ByHand(const char* astrURDF, const double* adNumbers)
 	 * difference above the limit or no number differs; apart is not compared; the times of the parts that ran */
 	CShadowTask cTask(NULL, 0x1111u);
 	memset(&stOut, 0, sizeof(stOut));
+	stOut.n_missed = 1000;				// what the R5 counted before this run of the control task
 	stOut.ctrl_crc = 0x2222u;
 	stOut.flags = IPC_SHADOW_OUT_CTRL;
 	stOut.tau_diff = 5.0;
@@ -414,7 +422,7 @@ void ByHand(const char* astrURDF, const double* adNumbers)
 	stOut.tau_diff = 9.0;
 	stOut.traj_ns = 0;
 	stOut.ctrl_ns = 45000;
-	stOut.n_missed = 7;
+	stOut.n_missed = 1007;
 	cTask.Take(stOut);
 	Expect(cTask.GetCounts().nCompared == 2 && cTask.GetCounts().nApart == 1 && cTask.GetCounts().nFault == 1 &&
 	       cTask.GetCounts().uMissed == 7 && cTask.GetCounts().dDiffMax == 2.0 * CShadowTask::TAU_SAME,
@@ -430,6 +438,12 @@ void ByHand(const char* astrURDF, const double* adNumbers)
 	       cTask.GetCounts().uCtrlMaxNs == 50000 && cTask.GetCounts().dTrajSumNs == 300000.0 &&
 	       cTask.GetCounts().dCtrlSumNs == 225000.0 && cTask.GetCounts().dBothMaxNs == 350000.0,
 	       "the times of the high-level controller and of the law, where they ran");
+	stOut.n_missed = 2;
+	cTask.Take(stOut);
+	const uint32_t uAgain = cTask.GetCounts().uMissed;
+	stOut.n_missed = 5;
+	cTask.Take(stOut);
+	Expect(uAgain == 0 && cTask.GetCounts().uMissed == 3, "a count of the R5 that went back (it started again) is counted from there");
 
 	/* the check value: every number counts, each of its 8 bytes */
 	const uint32_t uCrc = ShadowNumbersCrc(adNumbers);

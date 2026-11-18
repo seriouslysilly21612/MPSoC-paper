@@ -124,6 +124,9 @@ CR5Link::Start(uint32_t auDof, uint32_t auCfgCrc, RTTIME atPeriod, RTTIME atWake
 	m_stFollow.Start((int64_t)atPeriod, (int64_t)atWakeDelay);
 	volatile uint32_t* apSlots[3] = { Slot(IPC_OFF_TORQUE), Slot(IPC_OFF_COMMAND), Slot(IPC_OFF_SHADOW_IN) };
 	m_uApuEpoch = ipc_side_start(&Head()->apu, apSlots, 3);
+	// what the Shadow out slot holds now answers a run of this side before this one: not taken (no read: nothing there)
+	ipc_shadow_out_t stOld;
+	(void)IPC_READ(Slot(IPC_OFF_SHADOW_OUT), &Head()->r5, &stOld, m_auShadowStamp);
 	// a first offset of the counter while nothing is timed yet: a cycle whose pair of reads is refused keeps the last one
 	for (int nTry = 0; nTry < 100 && !m_cClock.Sample(); nTry++)
 		;

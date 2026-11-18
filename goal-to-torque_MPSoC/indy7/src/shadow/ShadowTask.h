@@ -39,14 +39,15 @@ public:
 		long	nApart, nFault;				// answers of a controller apart from this one; that failed its period
 		long	nCompared, nDiffer;			// answers with a torque to compare; of them above TAU_SAME or no number
 		double	dDiffMax;					// largest difference of the compared [N m]
-		uint32_t uMissed;					// payloads the R5 did not get (its count)
+		uint32_t uMissed;					// payloads the R5 did not get since its first answer here (by its count)
 		long	nTraj, nCtrl;				// answers with the time of the high-level controller, of the law
 		double	dTrajSumNs, dCtrlSumNs, dBothMaxNs;
 		uint32_t uTrajMaxNs, uCtrlMaxNs;
 	};
 
 	/* auCheck: the check value of this controller (ShadowCheckValue), which the R5's must have */
-	CShadowTask(CR5Link* apLink, uint32_t auCheck) : m_pLink(apLink), m_uCheck(auCheck), m_bTrajNew(false), m_uTrajPeriod(0)
+	CShadowTask(CR5Link* apLink, uint32_t auCheck)
+		: m_pLink(apLink), m_uCheck(auCheck), m_bTrajNew(false), m_uTrajPeriod(0), m_uMissed0(0)
 	{
 		memset(&m_stCounts, 0, sizeof(m_stCounts));
 		memset(m_adTrajQ, 0, sizeof(m_adTrajQ));
@@ -94,8 +95,12 @@ public:
 	void Take(const ipc_shadow_out_t& astOut)
 	{
 		Counts& c = m_stCounts;
+		// the count of the R5 goes on over the runs of this side, and holds the time between them: from the first
+		// answer here (or from a controller of the R5 that started again)
+		if (c.nAnswers == 0 || astOut.n_missed < m_uMissed0)
+			m_uMissed0 = astOut.n_missed;
 		c.nAnswers++;
-		c.uMissed = astOut.n_missed;
+		c.uMissed = astOut.n_missed - m_uMissed0;
 		if (astOut.ctrl_crc != m_uCheck)
 		{
 			c.nOtherCheck++;				// another controller: its torque is not this one's to compare
@@ -134,7 +139,8 @@ public:
 	{
 		const Counts& c = m_stCounts;
 		printf("[SHADOW] the control task told the R5 %ld periods (%ld with two measured states not told); the R5 "
-		       "answered %ld, did not get %u\n", c.nPayloads, c.nWithheld, c.nAnswers, (unsigned)c.uMissed);
+		       "answered %ld, did not get %u since its first answer\n", c.nPayloads, c.nWithheld, c.nAnswers,
+		       (unsigned)c.uMissed);
 		if (c.nOtherCheck > 0)
 			printf("[SHADOW] WARNING: %ld answers have another check value than this controller's 0x%08X: the firmware "
 			       "was built from other constants or another model (ctrl_numbers_indy7.h, ctrl_model_indy7.h); they "
@@ -155,6 +161,7 @@ private:
 	CShadowWriter	m_cWriter;
 	bool			m_bTrajNew;				// the Trajectory part had a new State in this cycle
 	uint32_t		m_uTrajPeriod;
+	uint32_t		m_uMissed0;				// the count of the R5 at its first answer here
 	double			m_adTrajQ[IPC_CTRL_DOF], m_adTrajQd[IPC_CTRL_DOF];	// the measured state it has
 	Counts			m_stCounts;
 };
