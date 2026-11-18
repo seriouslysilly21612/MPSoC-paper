@@ -314,6 +314,7 @@ and the affinity of every task at its start and refuses to run otherwise.
     ./run.sh -b -t DIR         # the bus of the robot in OP, drives off, beside the simulated arm; timing into DIR
     ./run.sh -b -B bench/L7N4_bus.cfg -t DIR   # the same with another bus: the four L7N drives of the bench
     ./run.sh --method A2       # the camera application by another method (M1, M2, A2, A3, FULL; see above)
+    ./run.sh -s --arch S1      # the EtherCAT task on the R5 (below); with -s the R5 is simulated as well
 
 The keys of the operator are printed at the start and with `?`:
 
@@ -345,6 +346,18 @@ the mode and runs in it once the bus is in OP, and ends with a warning otherwise
 
 Logs: the joint and high-level tests write a CSV and a JSON per run into `JOINT_TEST_LOG_DIR` (default
 `indy7/jt_logs`); `-t DIR` writes the timing of every period into `DIR/timing_<stamp>.bin`.
+
+**`--arch`: where the EtherCAT task runs.** `P0` (default) is everything above: the EtherCAT task here, with the IgH
+master. With `S1` the R5 of the board runs the EtherCAT exchange and the drives (`../rpu_work/r5_freertos`), and
+the application keeps the control task: TASK0 takes the State slot of the R5 in place of the receive, the control
+task writes its Torque slot right after the control law, and what the application decides about the drives goes
+to the R5 as a command (`indy7/src/r5link/R5Link.h`, the head of `TaskEtherCAT.cpp`). The period of the R5 is the
+period of the loop: the release grid of the two tasks follows it, `WAKE_DELAY_US` of `[R5_LINK]` behind
+(`r5link/R5Follow.h`). `--arch` and `--method` are independent. `-s --arch S1` simulates the R5 as well, a thread
+on another CPU that owns the simulated arm and keeps the firmware's rules for the slots (`sim/SimR5.h`): it does
+not wait for the tasks, so a host that is not real-time shows in the results (a State that the tasks did not take
+moves the arm a period ahead of the reference; such runs are marked `TIMING FAULTS`). On the board, the device tree,
+the firmware and what to look at: `../rpu_work/README_S1.md`. Not run with the real R5 yet (2026-11-18).
 
 ## The paper and the code
 
@@ -378,6 +391,7 @@ Logs: the joint and high-level tests write a CSV and a JSON per run into `JOINT_
     ./bin/obs_estimate_check                              # the object estimate from them, PASS
     ./bin/obs_goal_check                                  # the two ends of the mailbox in the application, PASS
     ./bin/obs_status_check                                # the status for the camera side, the contract check value, PASS
+    ./bin/r5_link_check                                   # --arch S1: the exchange with the R5 and following its period, PASS
     ./bin/hl_check models/indy7.urdf                      # the reference contract, PASS
     ./bin/goal_filter_check                               # the goal checks of the bridge, PASS
     ./bin/model_check models/indy7.urdf models/indy7_mujoco.xml B=6.07917,6.68933,1.99649,0.87306,0.86394,0.84747  # B as in INDY7.cfg
