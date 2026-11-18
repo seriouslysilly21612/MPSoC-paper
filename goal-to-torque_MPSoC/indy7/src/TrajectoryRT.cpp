@@ -26,6 +26,7 @@ CTrajectoryRT::CTrajectoryRT()
     for (int k = 0; k < 3; k++)
         m_adGoalOffset[k] = 0.0;
     memset(&m_sample, 0, sizeof(m_sample));
+    memset(&m_start, 0, sizeof(m_start));
 }
 
 BOOL
@@ -83,6 +84,10 @@ CTrajectoryRT::Start(bool abHome, const double* adQ, const double* adQd, BOOL ab
         m_hl.StartHome(adQ, adQd);
     else
         m_hl.StartTrack(adQ, adQd);
+    m_start.uCount++;
+    m_start.bHome = abHome;
+    for (int i = 0; i < MAX_DOF; ++i)
+        m_start.adTarget[i] = !abHome ? adQ[i] : (adHomeTarget != NULL ? adHomeTarget[i] : stP.adQr[i]);
     m_uGoalCountStart = (m_pGoalSlot != NULL) ? m_pGoalSlot->Count() : 0;
     m_uGoalCountSeen  = m_uGoalCountStart;
     m_nGoalAge   = 0;

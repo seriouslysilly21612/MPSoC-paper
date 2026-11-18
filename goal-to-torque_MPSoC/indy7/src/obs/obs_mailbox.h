@@ -34,10 +34,10 @@ extern "C" {
 #endif
 
 #define OBS_MAGIC	0x3153424Fu		/* "OBS1" */
-#define OBS_LAYOUT	1u				/* + 1 with every change of this file */
+#define OBS_LAYOUT	2u				/* + 1 with every change of this file */
 /* where the mailbox lies in the region that the APU and the R5 share (ipc_layout.h), once its reader is on the R5:
  * behind the slots. One number for both sides. */
-#define OBS_OFF_MAILBOX	0x400u
+#define OBS_OFF_MAILBOX	0x500u
 enum { OBS_SLOTS = 8, OBS_DESC_WORDS = 16 };
 
 /* one camera result (eq. (5)): 16 words */

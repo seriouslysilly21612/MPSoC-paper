@@ -281,8 +281,9 @@ of `ObsGoal.h` and `ObsWriter.h` fail it.
     make                       # bin/indy7_ctrl; prints [indy7] MUJOCO=.. ROS=.. MALLOC_COUNT=..
     make tools                 # bin/hl_check, bin/goal_filter_check, bin/slot_check, bin/ipc_slot_check,
                                # bin/obs_mailbox_check, bin/obs_receiver_check, bin/obs_estimate_check,
-                               # bin/obs_goal_check, bin/obs_status_check, bin/fw_cfg_header,
-                               # bin/model_check (MuJoCo)
+                               # bin/obs_goal_check, bin/obs_status_check, bin/r5_link_check, bin/shadow_check,
+                               # bin/fw_cfg_header, bin/rbdl_model_code, bin/ctrl_numbers_header (the three write
+                               # the headers of the R5 firmware), bin/model_check (MuJoCo)
 
 `make MUJOCO=0` builds without the simulation, `make ROS=0` without the bridge (the default is ROS=1 when ROS 2
 and the messages of `ros2/` are found: build `ros2/` first and source both environments, `ros2/README.md`).
@@ -392,6 +393,7 @@ the firmware and what to look at: `../rpu_work/README_S1.md`. Not run with the r
     ./bin/obs_goal_check                                  # the two ends of the mailbox in the application, PASS
     ./bin/obs_status_check                                # the status for the camera side, the contract check value, PASS
     ./bin/r5_link_check                                   # --arch S1: the exchange with the R5 and following its period, PASS
+    ./bin/shadow_check                                    # a second controller, told what the control task did, gives its torque and reference, PASS
     ./bin/hl_check models/indy7.urdf                      # the reference contract, PASS
     ./bin/goal_filter_check                               # the goal checks of the bridge, PASS
     ./bin/model_check models/indy7.urdf models/indy7_mujoco.xml B=6.07917,6.68933,1.99649,0.87306,0.86394,0.84747  # B as in INDY7.cfg
