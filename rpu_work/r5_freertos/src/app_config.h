@@ -46,6 +46,17 @@
 #error "ROBOT_TARGET must be TARGET_L7N_BENCH (0) or TARGET_INDY7 (1)"
 #endif
 
+/* ----------------------------------------------------------------------- */
+/* The second controller of --shadow (shadow_link.h; plan stage 3): 1 = the */
+/* control computation of the APU's control task runs here too, after the   */
+/* send of every cycle, and its torque is compared, not used.  It is C++    */
+/* with RBDL, Ruckig and Eigen: a C++ project with the sources of src/ctrl  */
+/* and of the three libraries (README.md).  0 = the firmware without it, C. */
+/* ----------------------------------------------------------------------- */
+#ifndef SHADOW_CONTROL
+#define SHADOW_CONTROL      1
+#endif
+
 #define CYCLE_NS            1000000u          /* 1 ms = 1 kHz            */
 #define DC_SHIFT_NS         125000            /* SYNC0 shift on the DC time grid (IgH: 12500) */
 

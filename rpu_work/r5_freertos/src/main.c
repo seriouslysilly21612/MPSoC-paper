@@ -31,8 +31,9 @@ int main(void)
    xil_printf("\r\n[main] r5_freertos starting: FreeRTOS tick %u Hz, %u priorities\r\n",
               (unsigned)configTICK_RATE_HZ, (unsigned)configMAX_PRIORITIES);
 
-   /* SOEM needs a roomy stack (protocol + config). Stack is in WORDS (4096 words = 16 KB). */
-   if (xTaskCreate(ecat_task, "ecat", 4096, NULL, configMAX_PRIORITIES - 2, NULL) != pdPASS)
+   /* SOEM needs a roomy stack (protocol + config), and the second controller of --shadow runs on it: 3 KB while it
+    * is built, 5.5 KB in a cycle (measured on an emulated R5, 2026-11-18).  In WORDS: 8192 words = 32 KB. */
+   if (xTaskCreate(ecat_task, "ecat", 8192, NULL, configMAX_PRIORITIES - 2, NULL) != pdPASS)
       xil_printf("[main] FAIL: could not create ecat_task (FreeRTOS heap too small? raise total_heap_size)\r\n");
 
    if (xTaskCreate(event_log_task, "ecatlog", 1024, NULL, tskIDLE_PRIORITY + 1, NULL) != pdPASS)

@@ -44,7 +44,7 @@ void cycle_record_start(void)
     h->counter_hz   = SYSCNT_HZ;
     h->cfg_crc      = FW_CFG_CRC;
     h->build        = ((uint32_t)ROBOT_TARGET << 8) | (GEM3_BUF_IN_OCM ? RECORD_BUILD_GEM3_OCM : 0u) |
-                      (ECAT_USE_DC ? RECORD_BUILD_DC : 0u)
+                      (ECAT_USE_DC ? RECORD_BUILD_DC : 0u) | (SHADOW_CONTROL ? RECORD_BUILD_SHADOW : 0u)
 #ifdef __OPTIMIZE__
                       | RECORD_BUILD_OPTIMIZED
 #endif

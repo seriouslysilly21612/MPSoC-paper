@@ -1,7 +1,7 @@
 /*
  * ocm_link.h  --  the R5's side of the shared region of the APU (ipc/ipc_layout.h): State slot out, Torque and
- * Command slots in.  Every call is one attempt and never waits for the APU.  The layout and the slot protocol are
- * the files of the APU build (src/ipc/), copied unchanged.
+ * Command slots in, and the two slots of --shadow.  Every call is one attempt and never waits for the APU.  The
+ * layout and the slot protocol are the files of the APU build (src/ipc/), copied unchanged.
  */
 #ifndef OCM_LINK_H
 #define OCM_LINK_H
@@ -36,5 +36,12 @@ int      ocm_link_take_torque(link_torque_t *held);
  * deadline, or had an incomplete working counter. */
 typedef struct { uint32_t late, overruns, missed, wkc; } link_faults_t;
 uint32_t ocm_link_publish_state(uint64_t t_release, uint32_t period, uint32_t flags, const link_faults_t *faults);
+
+/* Reads the Shadow in slot once.  Returns 1 when it holds a payload that is new since the last call, and then *in is
+ * that payload; otherwise 0, and *in is as it was. */
+int      ocm_link_take_shadow(ipc_shadow_in_t *in);
+
+/* Writes the Shadow out slot. */
+void     ocm_link_publish_shadow(const ipc_shadow_out_t *out);
 
 #endif /* OCM_LINK_H */

@@ -4,7 +4,8 @@
  * The record is that of the timing log of the APU controller (goal-to-torque_MPSoC/indy7/src/TimingLog.h, format
  * g2t-timing-1: 60 bytes, the same fields and flag bits), so that one tool reads the cycles of both sides
  * (tools/timing_summary.py).  test/check_record.cpp fails to compile when the two differ (test/check_copies.sh).
- * The fields of the control task stay -1 here: it runs on the APU.
+ * The fields of the control task stay -1 here: it runs on the APU.  In a cycle in which the second controller of
+ * --shadow ran (shadow_link.h), hl_ns and dyn_ns are the times of its two parts, and e_ns includes it.
  *
  * The ring is in the DDR that Linux reserves for the R5 (RECORD_RING_ADDR, outside what lscript.ld links), written
  * by the EtherCAT task only and read by Linux through /dev/mem (r5rec.py).  The R5 never waits for the reader: it
@@ -36,7 +37,8 @@
 enum {                                            /* build word of the head */
     RECORD_BUILD_GEM3_OCM  = 1u << 0,             /* the GEM3 descriptors and frame buffers are in the OCM (gem3_nic.h) */
     RECORD_BUILD_OPTIMIZED = 1u << 1,             /* compiled with optimization */
-    RECORD_BUILD_DC        = 1u << 2              /* DC SYNC0 on the drives (ECAT_USE_DC) */
+    RECORD_BUILD_DC        = 1u << 2,             /* DC SYNC0 on the drives (ECAT_USE_DC) */
+    RECORD_BUILD_SHADOW    = 1u << 3              /* with the second controller of --shadow (SHADOW_CONTROL) */
 };
 
 enum {                                            /* flags of a record: the bits of CTimingLog (TimingLog.h) */
@@ -56,7 +58,8 @@ typedef struct {
     int32_t  w_ns;                                /* t_w: release -> start of the cycle */
     int32_t  s_ns;                                /* t_s: start -> return of the send */
     int32_t  e_ns;                                /* t_e: start -> end of the cycle */
-    int32_t  dyn_ns, hl_ns, sim_ns;               /* -1: of the control task and the simulator, on the APU */
+    int32_t  dyn_ns, hl_ns, sim_ns;               /* -1: of the control task and the simulator, on the APU; dyn_ns
+                                                     and hl_ns: of the second controller, in a cycle in which it ran */
     uint32_t sync_ns;                             /* 0xFFFFFFFF: not measured */
     uint16_t flags;                               /* RECORD_* */
     uint16_t reserved;                            /* 0 */

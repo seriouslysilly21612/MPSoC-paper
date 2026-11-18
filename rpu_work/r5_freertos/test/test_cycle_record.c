@@ -68,7 +68,7 @@ int main(int argc, char **argv)
     CHECK(ddr_word(0x10) == 0u && ddr_word(0x14) == 7u && ddr_word(0x18) == CYCLE_NS);
     CHECK(ddr_word(0x1C) == FW_CFG_SEND_DEADLINE_NS && ddr_word(0x20) == SYSCNT_HZ && ddr_word(0x24) == FW_CFG_CRC);
     CHECK(ddr_word(0x28) == (((uint32_t)ROBOT_TARGET << 8) | (GEM3_BUF_IN_OCM ? RECORD_BUILD_GEM3_OCM : 0u) |
-                             (ECAT_USE_DC ? RECORD_BUILD_DC : 0u)
+                             (ECAT_USE_DC ? RECORD_BUILD_DC : 0u) | (SHADOW_CONTROL ? RECORD_BUILD_SHADOW : 0u)
 #ifdef __OPTIMIZE__
                              | RECORD_BUILD_OPTIMIZED
 #endif

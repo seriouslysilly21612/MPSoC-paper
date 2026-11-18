@@ -27,7 +27,9 @@ into modules with new names, without a change in the generated code (below); the
 | `src/oshw/freertos/r5log.c`, `.h` | `outbyte()` into a ring buffer in DDR: the BSP console (JTAG DCC) blocks for ever without a debugger, as under remoteproc. Linux reads it with `r5log.py` | own |
 | `src/oshw/freertos/xemacps*` | Xilinx emacps driver 3.16 (embeddedsw `xilinx_v2022.1`), unchanged | Xilinx, MIT |
 | `src/soem/`, `src/osal/osal.h` | SOEM 1.4.0, unchanged | SOEM, GPL-2.0 with exception, `LICENSE.SOEM` |
-| `src/lscript.ld` | the linker script: code and data in DDR 0x3600_0000–0x362F_FFFF, stack 8 KB, heap 8 KB. The last 1 MB of the 4 MB that `rpu_v2.dtbo` reserves stays out of the link: the record ring (0x3630_0000, 960 KB), and in the last 64 KB the stop page (0x363F_B000) and the log ring (0x363F_C000). In the build with `GEM3_BUF_IN_OCM` 0 those 64 KB are a non-cacheable window that also holds the GEM3 descriptor rings (from 0x363F_0000), and the frame buffers are cacheable `.bss` | own, from the Vitis template |
+| `src/shadow_link.c`, `.h` | the second controller of `--shadow` in the cycle: after the send, the payload of the control task through the controller of `src/ctrl`, the answer into its slot ("The second controller" below) | own |
+| `src/ctrl/` | that controller: the classes of the control task of the APU, copied unchanged, with what they need here in place of Linux, a file system and the URDF reader ("The second controller" below) | the application's (`goal-to-torque_MPSoC/indy7/src`), and own |
+| `src/lscript.ld` | the linker script: code and data in DDR 0x3600_0000–0x362F_FFFF, stack 8 KB, heap 256 KB (8 KB before the second controller, which takes about 80 KB of it when it is built). The last 1 MB of the 4 MB that `rpu_v2.dtbo` reserves stays out of the link: the record ring (0x3630_0000, 960 KB), and in the last 64 KB the stop page (0x363F_B000) and the log ring (0x363F_C000). In the build with `GEM3_BUF_IN_OCM` 0 those 64 KB are a non-cacheable window that also holds the GEM3 descriptor rings (from 0x363F_0000), and the frame buffers are cacheable `.bss` | own, from the Vitis template |
 | `bsp_ref/FreeRTOSConfig.h` | the FreeRTOS configuration the BSP generates from `system.mss` (tick 1000 Hz, heap 256 KB, 8 priorities), to read only | generated |
 | `r5_freertos.elf` | the build that ran, 936,504 bytes, sha256 `5d2e82c908e3cfaad145abfcb7496b4699455c1d81fe95db70fbf9d872e188eb`: the same file as `/lib/firmware/r5_freertos.elf` on the board (checked 2026-11-12). Built from the source of `ddc6d14` (`cia402_soem.c` in one file) | build |
 | `platform/design_1_wrapper.xsa` | the hardware hand-off from Vivado 2022.1 (board `kv260_som` 1.3): the PS only, no PL, GEM3 not enabled | Vivado |
@@ -317,6 +319,120 @@ the OCM and in the DDR passes the model of the GEM of 2026-11-11 (the same outpu
 machine code of 2026-11-11. Not checked: a Vitis build and link, anything on the board. On the board only: that the
 DMA of the GEM reaches the OCM, the read of the tick timer, what t_w and the send times are, that Linux reads the
 ring while the R5 writes it.
+
+## The second controller of `--shadow`: the control computation on the R5 (2026-11-18)
+
+Plan stage 3 asks whether the control computation of the control task (the high-level controller with the inverse
+kinematics and the trajectory generator, and the control law with the dynamics of the arm) fits the 1 ms of the R5
+next to the EtherCAT cycle, before the control task moves there (S2). This build measures it without moving
+anything: the APU keeps the arm, and tells in every period what it did with its controller; the R5 does the same
+with a controller of its own, after its send, and its torque is compared with the APU's and not used.
+
+**What runs.** The classes are those of the application, as they are: `Controller`, `FullDynControllerRT`,
+`HighLevelRT` and `ShadowControl` in `src/ctrl/` are copies (`sh test/check_copies.sh` tells when one is not what
+the application has now; a copy is updated from the application, never the other way round). What they take from
+Linux is in `src/ctrl/port/`, headers with the application's names that the compiler finds in their place:
+
+| File | In place of |
+|---|---|
+| `port/base/Common.h` | the application's `base/Common.h` (RT-POSIX, a terminal): the types, `read_timer()` and the log lines, which go to `ctrl_port.c` |
+| `port/CallTiming.h` | the call timing of the application: off |
+| `port/sys/mman.h` | `munlockall()`: nothing to unlock |
+| `port/rbdl/addons/urdfreader/urdfreader.h` | the URDF reader: the model comes from `ctrl_model.cpp` |
+| `port/rbdl/rbdl_config.h` | the header that RBDL's CMake writes: filled in by hand for a static core without logging |
+
+| File | Content |
+|---|---|
+| `ctrl_model.cpp`, `.h`, `ctrl_model_indy7.h` | the RBDL model as numbers: what the URDF reader of the application built from `models/indy7.urdf`, added to an empty model body by body. The header is written by `bin/rbdl_model_code` of the application |
+| `ctrl_numbers_indy7.h` | the 50 constants of the controller from `INDY7.cfg` (gains, torque limits, the parameters of the high-level controller), written by `bin/ctrl_numbers_header` of the application |
+| `shadow_ctrl.cpp`, `.h` | the controller for the C side: built once, then one step per payload; an exception of a library ends as a failed build or a fault answer, never in the firmware |
+| `ctrl_port.c`, `.h` | the clock of the classes (the system counter, in ns without a division), their log lines (printed while the controller is built, counted in the loop), and `_gettimeofday()`, which the trajectory generator reads through `std::chrono` and the BSP lacks |
+
+The two generated headers each carry a check value; the check value of the controller is of both and goes back to
+the APU in every answer. When `INDY7.cfg` changes a constant of the controller, or the URDF changes, the header is
+written again (`cd goal-to-torque_MPSoC/indy7 && make tools`, then `./bin/ctrl_numbers_header -o
+../../rpu_work/r5_freertos/src/ctrl/ctrl_numbers_indy7.h`, `./bin/rbdl_model_code models/indy7.urdf -o
+../../rpu_work/r5_freertos/src/ctrl/ctrl_model_indy7.h`) and the firmware is built again.
+
+**In the cycle** (`shadow_link.c`, called from `ecat_cycle()`): after the send returns, one look at the Shadow in
+slot (`ipc/ipc_layout.h`, layout 2). A payload that is new goes through the controller, and the answer (the torque,
+its largest difference to the APU's, the reference, the time of the two parts) into the Shadow out slot. The
+payload a cycle finds is that of the period before: the control task is not through with the State of this cycle
+when the send returns. Without a new payload nothing runs, so the firmware is as before while the APU runs without
+`--shadow`.
+
+- A cycle in which the controller ran ends with it: `t_e` of its record is start to that end, `hl_ns` and `dyn_ns`
+  are the times of the high-level controller and of the control law, and the overrun rule (`t_w + t_e <= T`) takes
+  it in. The send deadline is held by the send, as before: the controller runs after it.
+- The controller is built at the start of the task `ecat`, before the bring-up of the bus. It takes its memory
+  from the C heap then (about 80 KB of the 256 KB of `lscript.ld`) and none in a cycle. If it cannot be built, a
+  `[shadow] FAIL` line says so and the cycle runs without it.
+- Every status report has a line `[shadow] periods of the control task computed N (apart A, failed F), longest
+  L us | payloads missed so far M, lines of the controller not printed K`. "Apart": after a payload that did not
+  arrive, the motion of this controller is no longer that of the APU, until the next start of a motion; the time
+  of such a period still counts, its torque is not compared.
+- `SHADOW_CONTROL` (`app_config.h`): 1 = with it (the default), 0 = the firmware without it, which is C only and
+  builds in the project as it was. The head of the record ring tells which (`RECORD_BUILD_SHADOW`).
+
+**Building it: a C++ project.** The controller needs three libraries, which are not in this repository; their
+sources go into the project next to `src/ctrl`:
+
+| Library | Version | What goes where |
+|---|---|---|
+| RBDL | ORB-HD/rbdl-orb at `0606f2c`, what the board has (its core is that of RBDL 3.1.3, file for file) | the 12 files of its `src/` (`Constraint_Contact.cc Constraint_Loop.cc Constraints.cc Dynamics.cc Joint.cc Kinematics.cc Logging.cc Model.cc rbdl_errors.cc rbdl_mathutils.cc rbdl_utils.cc rbdl_version.cc`) into `src/third_party/rbdl/src/`, its `include/rbdl/` into `src/third_party/rbdl/include/rbdl/`. No addon: the URDF reader is not built |
+| Ruckig | v0.19.4 | `src/ruckig/*.cpp` but `cloud_client.cpp` (11 files) into `src/third_party/ruckig/src/`, `include/ruckig/` into `src/third_party/ruckig/include/ruckig/` |
+| Eigen | 3.4.0 | the directory `Eigen/` of headers into `src/third_party/eigen3/Eigen/` |
+
+1. A new application project on the same platform and domain with the language C++ (template "Empty Application
+   (C++)"), its `src/` replaced by this `src/` with the three libraries in it. The C files are compiled by the C
+   compiler as before, and the link is by `armr5-none-eabi-g++`, which adds the C++ library and `libm`.
+2. Both compilers: `-O2` (the verdict is about optimized code; the firmware ran at `-O0` so far), `-DARMR5`,
+   `-mcpu=cortex-r5 -mfloat-abi=hard -mfpu=vfpv3-d16`, the include paths of "Build" above.
+3. The C++ compiler, in addition: `-std=gnu++17` (not `-std=c++17`: the C library then has no `M_PI`),
+   `-DNDEBUG`, and the include paths `src`, `src/ctrl`, `src/ctrl/port`, `src/third_party/rbdl/include`,
+   `src/third_party/ruckig/include`, `src/third_party/eigen3`.
+4. The linker script is `src/lscript.ld` as before; the libraries of the link `-lxil -lfreertos -lgcc -lc
+   -lstdc++` in the group.
+
+Compiled here at `-O2`, the controller and the two libraries are about 550 KB of code next to the 115 KB of the C
+files, and the C++ library comes on top; the 3 MB that `lscript.ld` links hold it. A firmware of this layout needs
+the application and `r5cmd.py` of the same commit: `IPC_LAYOUT` is 2, and each side refuses the other's 1.
+
+**Checked on a PC**, from this directory (the application built first: `make` and `make tools` in
+`goal-to-torque_MPSoC/indy7`):
+
+    g++ -std=gnu++17 -O2 -Isrc/ctrl -isystem $RBDL_DIR/include -isystem /usr/include/eigen3 test/check_model.cpp \
+        src/ctrl/ctrl_model.cpp -L$RBDL_DIR/lib -lrbdl -lrbdl_urdfreader -Wl,-rpath,$RBDL_DIR/lib -o /tmp/check_model \
+        && /tmp/check_model ../../goal-to-torque_MPSoC/indy7/models/indy7.urdf
+    (cd ../../goal-to-torque_MPSoC/indy7 && ./bin/shadow_check -o /tmp/shadow_vectors.bin)
+    RBDL_SRC=<rbdl-orb> RUCKIG_SRC=<ruckig> sh test/shadow_replay.sh /tmp/shadow_vectors.bin
+    gcc -std=gnu11 -Wall -DHOST_TEST -Itest/stub -Isrc -Isrc/ctrl test/test_ctrl_port.c src/ctrl/ctrl_port.c -o /tmp/t_port && /tmp/t_port
+    gcc -std=gnu11 -Wall -DHOST_TEST -Itest/stub -Isrc test/test_shadow_link.c src/shadow_link.c -o /tmp/t_shadow && /tmp/t_shadow
+    sh test/check_copies.sh
+
+- `check_model`: the model from numbers is the model of the URDF reader, body by body, and gives the same gravity
+  torque, inertia matrix, bias force, tool position, orientation and Jacobian at 1000 random states, bit for bit.
+- `shadow_check` (the application's): a control task in small goes through gravity compensation, HOME, TRACK with
+  20 goals, a stop, a joint move and the corner cases of following (12,457 periods), and the second controller
+  gives the torque and the reference of the first bit for bit in every period it follows (12,018 and 10,195).
+- `shadow_replay.sh`: the controller as this firmware builds it (the port headers, the two generated headers,
+  `shadow_ctrl.cpp`) replays those periods. Built for the PC: 0 difference. Built for the R5 (`arm-none-eabi-g++`
+  13.2, run by `qemu-arm`): the largest torque difference is 5.1e-12 N m, the largest reference difference
+  1.1e-15 rad (the R5 has no fused multiply-add), and no period takes memory.
+- The instructions that the R5 executes per period, counted in that run (`COUNT=N` of `shadow_replay.sh`,
+  `test/count_periods.py`): 9,000 without a motion (the control law alone), 34,600 with one (median), 60,000 to
+  70,000 in the period of a start, and up to 136,000 while the inverse kinematics runs its 10 iterations of a
+  period (61 of the 12,457 periods above 100,000). At 533 MHz that is 65 us for a period of a motion and 256 us for
+  the largest at one cycle per instruction, and three times that at three; cache misses and the pipeline are not in
+  a count, so the board decides.
+- On the emulated R5 the controller takes 60 KB of the heap and 3 KB of stack while it is built, and 5.5 KB of stack
+  in a period; the task `ecat` has 32 KB now.
+- Every C file of the firmware compiles for the R5 at `-O2` with the headers of the BSP (embeddedsw
+  `xilinx_v2022.1`), and all of it together with the controller and the two libraries leaves nothing undefined but
+  the BSP, FreeRTOS and the C and C++ libraries.
+
+Not checked: a Vitis build (its compiler is GCC 11.2; the libraries were also compiled as C++17 here, so nothing of
+C++20 is needed), the link against the BSP, the board. The times above are an estimate.
 
 ## The split into modules (2026-11-15)
 
