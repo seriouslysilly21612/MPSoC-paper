@@ -214,12 +214,14 @@ private:
 	// reads it; the application reads the slot of the bridge. Trajectory task:
 	// the digit arrives from DoInput through m_nHlCmd.
 	enum { HL_MENU = 8, HL_APP = 8 };
-	enum eHlTest { eHlTestIdle = 0, eHlTestHoming, eHlTestTracking };
+	// eHlTestSettling: the reference check has ended (its log is closed) and its motion comes to rest
+	enum eHlTest { eHlTestIdle = 0, eHlTestHoming, eHlTestTracking, eHlTestSettling };
 	CGoalSlot     m_goalSlot;             // read by the high-level controller
 	bool          m_bHlMenu{false};       // DoInput (Dynamics task)
 	eHlTest       m_eHlTest{eHlTestIdle};
 	int           m_nHlSel{0};
 	long          m_nHlCycle{0};          // cycles of TRACK
+	long          m_nHlSettleCycles{0};   // cycles of eHlTestSettling
 	long          m_nHlLastEvent{0};      // cycle of the last goal change of the test
 	long          m_nHlRestSince{-1};     // first cycle at rest after it
 	bool          m_bHlJumped{false};

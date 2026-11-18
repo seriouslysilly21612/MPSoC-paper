@@ -92,14 +92,16 @@ public:
 	const double*	Torque			(	) const { return m_adTorque; }
 	int				StaleRun		(	) const { return m_nStaleRun; }
 
-	void PublishState(uint64_t auReleaseTicks, uint32_t auPeriod, const Drives& astDrives, uint32_t auOverruns)
+	/* abStopping: the firmware in its stop (r5log.py -f, Ctrl-C), which takes no slot of the APU */
+	void PublishState(uint64_t auReleaseTicks, uint32_t auPeriod, const Drives& astDrives, uint32_t auOverruns,
+	                  bool abStopping = false)
 	{
 		ipc_state_t& s = m_stState;
 		memset(&s, 0, sizeof(s));
 		s.t_release = auReleaseTicks;
 		s.period = auPeriod;
 		s.dof = astDrives.uDof;
-		s.flags = IPC_STATE_OP | IPC_STATE_SERVO_ON;
+		s.flags = IPC_STATE_OP | IPC_STATE_SERVO_ON | (abStopping ? (uint32_t)IPC_STATE_STOP : 0u);
 		for (unsigned i = 0; i < astDrives.uDof; i++)
 		{
 			const uint16_t usStatus = astDrives.ausStatus[i];

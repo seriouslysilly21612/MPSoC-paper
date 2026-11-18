@@ -31,7 +31,7 @@ const char* const READ_RESULT[IPC_BAD_SIZE + 1] = { "ok", "the R5 side not up", 
 
 CR5Link::CR5Link()
 	: m_pRegion(NULL), m_nFd(-1), m_uMapBytes(0), m_uApuEpoch(0), m_uDof(0), m_uCfgCrc(0), m_tPeriod(0),
-	  m_tWakeDelay(0), m_bHaveState(FALSE), m_uR5Epoch(0), m_tStateRelease(0), m_nGridShift(0),
+	  m_tWakeDelay(0), m_bHaveState(FALSE), m_bLastGridKept(FALSE), m_uR5Epoch(0), m_tStateRelease(0), m_nGridShift(0),
 	  m_uPending(IPC_CMD_NONE), m_bPendingAgain(FALSE), m_uLastCommand(IPC_CMD_NONE), m_uCommandSeq(0),
 	  m_bToldBadState(FALSE), m_bToldBadTime(FALSE), m_bToldFollowing(FALSE)
 {
@@ -184,10 +184,16 @@ CR5Link::Receive(RTTIME atPlannedRelease)
 	else if (m_bHaveState)
 	{
 		uPeriods = stRead.period - m_stState.period;
-		m_stCounts.nPeriodsMissed += (long)(uPeriods - 1u);
-		// the torque computed from the State taken before has that period's number
-		if (stRead.torque_period != m_stState.period)
-			m_stCounts.nTorqueLate++;
+		// counted from a State that was read on the grid: the read that sets the grid (the start, a restart of
+		// the R5) comes at any time in the period, and the cycle after it up to a period late
+		if (m_bLastGridKept)
+		{
+			m_stCounts.nPeriodsMissed += (long)(uPeriods - 1u);
+			// the torque computed from the State taken before has that period's number; an R5 that stops
+			// takes no torque
+			if (stRead.torque_period != m_stState.period && !(stRead.flags & IPC_STATE_STOP))
+				m_stCounts.nTorqueLate++;
+		}
 	}
 
 	/* its release on the clock of the tasks: the counter must have gone on by the periods that passed */
@@ -202,6 +208,7 @@ CR5Link::Receive(RTTIME atPlannedRelease)
 		if (nPassed < nExpected - (int64_t)m_tPeriod / 2 || nPassed > nExpected + (int64_t)m_tPeriod / 2)
 			bTimeOk = FALSE;
 	}
+	const long nJumpsBefore = m_stFollow.nJumps;
 	if (bTimeOk)
 	{
 		m_tStateRelease = m_cClock.MonotonicOf(stRead.t_release);
@@ -226,8 +233,9 @@ CR5Link::Receive(RTTIME atPlannedRelease)
 	m_stState = stRead;
 	m_uR5Epoch = auStamp[0];
 	m_bHaveState = TRUE;
+	m_bLastGridKept = (m_stFollow.nJumps == nJumpsBefore) ? TRUE : FALSE;
 	m_stCounts.nStates++;
-	if (tRead > m_tStateRelease)
+	if (m_bLastGridKept && tRead > m_tStateRelease)
 	{
 		const RTTIME tAge = tRead - m_tStateRelease;
 		if (m_stCounts.nAges == 0 || tAge < m_stCounts.tAgeMin) m_stCounts.tAgeMin = tAge;

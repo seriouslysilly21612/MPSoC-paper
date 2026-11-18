@@ -57,17 +57,18 @@ public:
 		long	nStates;			// periods of the R5 taken
 		long	nNoState;			// cycles without a new State
 		long	nNoStateFollowing;	// of them, once the grid followed the R5
-		long	nPeriodsMissed;		// periods of the R5 that no cycle took
+		long	nPeriodsMissed;		// periods of the R5 that no cycle took, after a State read on the grid
 		long	anReadFailed[IPC_BAD_SIZE + 1];	// reads of the State slot, by the result of ipc_slot_read
 		long	nBadState;			// States with another number of joints
 		long	nBadTime;			// States whose release time did not go on by the periods that passed
 		long	nClockPairsRefused;	// offsets of the counter not taken (LinkClock.h)
 		long	nR5Restarts;
 		long	nTorqueLate;		// States whose period the R5 began without the torque of the State taken before
+								// (after a State read on the grid; not while the R5 stops)
 		long	nTorquesWritten;	// control task
 		long	nCommands;			// Command slots written
 		long	nServoOnRefused;	// servo ons that did not leave: another check value
-		/* a new State was read this long after the release of its period [ns] */
+		/* a new State was read this long after the release of its period [ns] (not the read that set the grid) */
 		long	nAges;
 		double	dAgeSumNs;
 		RTTIME	tAgeMin, tAgeMax;
@@ -125,6 +126,7 @@ private:
 	/* the EtherCAT task of the application */
 	ipc_state_t			m_stState;			// the last State taken
 	BOOL				m_bHaveState;
+	BOOL				m_bLastGridKept;	// the last State taken was read on the grid: it did not set it
 	uint32_t			m_uR5Epoch;
 	RTTIME				m_tStateRelease;
 	int64_t				m_nGridShift;

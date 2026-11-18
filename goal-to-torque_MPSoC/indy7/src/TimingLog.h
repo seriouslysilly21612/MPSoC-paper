@@ -45,7 +45,7 @@ public:
 		TF_OVERRUN  = 1 << 4,	// t_w + t_e > T: the cycle ended after the next release
 		TF_LAW      = 1 << 5,	// the control law ran (controller enabled)
 		TF_HL       = 1 << 6,	// the high-level controller ran (TRACK or HOME)
-		TF_TRACK    = 1 << 7,	// TRACK (with TF_HL); HOME without it
+		TF_TRACK    = 1 << 7,	// TRACK (with TF_HL); HOME, and the reference check coming to rest after its end, without it
 		TF_STOP     = 1 << 8,	// the application is stopping: the drives are switched off
 		TF_SIM      = 1 << 9,	// the arm is simulated (-s, -b)
 		TF_BUS      = 1 << 10,	// an EtherCAT exchange ran (robot, -b)

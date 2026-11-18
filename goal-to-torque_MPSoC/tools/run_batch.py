@@ -2,18 +2,20 @@
 """run_batch.py - the unattended batch of the measurement protocol (D-11): tools/run_timing.py for every
 condition and repetition, with nobody at the board.
 
-  python3 tools/run_batch.py --out DIR [--quick] [--bus FILE] [--dry-run]
+  python3 tools/run_batch.py --out DIR [--quick] [--bus FILE] [--arch P0|S1] [--dry-run]
 
   (full)     the 7 conditions (idle, stress, perception, pressure 25, 50, 75, 100; perception is pressure 0) x 30 min x 3; each
              repetition is one round of the 7, so that a slow drift (the temperature of the board) falls on every
              condition alike; about 11.8 h, about 2.3 GB of timing logs
   --quick    idle, stress, perception, pressure 100 for 10 min each, then pressure 100 twice more; about 1.4 h
   --bus FILE the bus of every run (default indy7/bench/L7N4_bus.cfg, the L7N bench)
+  --arch S1  every run with the EtherCAT task on the R5 (run_timing.py --arch S1)
   --dry-run  the runs and their commands; nothing is run
   --from N   start at run N in an OUT of an earlier batch; the directory of a run done again is kept as
              <nn>_<condition>.before-<time>
 
-Before it: the IgH master running (sudo systemctl start ethercat), NTP off (sudo timedatectl set-ntp false),
+Before it: the IgH master running (sudo systemctl start ethercat; with --arch S1 instead the R5 running, its bus
+in OP), NTP off (sudo timedatectl set-ntp false),
 none of the controller, stress-ng and the camera pipeline running, and a terminal that outlives the login (tmux). Every run gets OUT/<nn>_<condition>/
 (the files of run_timing.py, its output in run.txt), the high-level test not logged (--no-hl-log). A run that
 fails or hangs is recorded and the batch goes on.
@@ -57,12 +59,12 @@ def name(n, cond, pressure):
     return '%02d_%s' % (n, cond if pressure is None else 'pressure%d' % pressure)
 
 
-def command(run, out, bus):
+def command(run, out, bus, arch):
     n, _, cond, pressure, dur = run
     return ([sys.executable, os.path.join(HERE, 'run_timing.py'), '--condition', cond] +
             (['--pressure', str(pressure)] if pressure is not None else []) +
             ['--duration', '%g' % dur, '--out', os.path.join(out, name(n, cond, pressure)), '--no-hl-log',
-             '--bus', bus])
+             '--bus', bus] + (['--arch', arch] if arch != 'P0' else []))
 
 
 def estimate(run):
@@ -93,9 +95,11 @@ def running(pattern):
     return subprocess.run(['pgrep', '-f', pattern], capture_output=True).returncode == 0
 
 
-def preflight(out, bus, runs):
+def preflight(out, bus, runs, arch):
     errs = []
-    if not rt.master_running():          # the master itself: it may be started without systemd (ethercatctl)
+    if arch == 'S1':
+        errs += rt.r5_missing()
+    elif not rt.master_running():        # the master itself: it may be started without systemd (ethercatctl)
         errs.append('the IgH master is not running (sudo systemctl start ethercat)')
     if rt.ntp_active():
         errs.append('NTP is active (sudo timedatectl set-ntp false; after the batch: sudo timedatectl set-ntp true)')
@@ -134,6 +138,7 @@ def main():
     ap.add_argument('--out', required=True, help='the directory of the batch')
     ap.add_argument('--quick', action='store_true', help='the short protocol, about 1.4 h')
     ap.add_argument('--bus', default=os.path.join(rt.APP, 'bench', 'L7N4_bus.cfg'), help='the bus of every run')
+    ap.add_argument('--arch', default='P0', choices=('P0', 'S1'), help='where the EtherCAT task runs (S1: on the R5)')
     ap.add_argument('--dry-run', action='store_true', help='the runs and their commands only')
     ap.add_argument('--from', dest='first', type=int, default=1, help='start at run N (an earlier batch in OUT)')
     a = ap.parse_args()
@@ -144,10 +149,10 @@ def main():
     print('run_batch: %d runs, about %.1f h, into %s' % (len(todo), total / 3600, out))
     if a.dry_run:
         for r in todo:
-            print('  %-16s %s' % (name(r[0], r[2], r[3]), ' '.join(command(r, out, bus))))
+            print('  %-16s %s' % (name(r[0], r[2], r[3]), ' '.join(command(r, out, bus, a.arch))))
         return 0
     os.makedirs(out, exist_ok=True)
-    preflight(out, bus, todo)
+    preflight(out, bus, todo, a.arch)
     path = os.path.join(out, 'batch.csv')
     new = not os.path.exists(path)
     with open(path, 'a', newline='') as f:
@@ -165,7 +170,7 @@ def main():
             print('run_batch: %d/%d %s (repetition %d) from %s' % (n, len(runs), name(n, cond, pressure), rep,
                                                                      start), flush=True)
             with open(os.path.join(d, 'run.txt'), 'w') as log:
-                p = subprocess.Popen(command(r, out, bus), stdout=log, stderr=subprocess.STDOUT,
+                p = subprocess.Popen(command(r, out, bus, a.arch), stdout=log, stderr=subprocess.STDOUT,
                                      start_new_session=True)
                 try:
                     code = p.wait(timeout=estimate(r) + 900)
