@@ -8,7 +8,7 @@ summary of tools/timing_summary.py (the row of Table 6).
 
   python3 tools/run_timing.py --condition idle|stress|perception|pressure [--pressure 0|25|50|75|100]
                               [--duration 600] [--cfg indy7/INDY7.cfg] [--bus FILE] [--out DIR] [--settle 30]
-                              [--direct] [--no-hl-log] [--arch P0|S1]
+                              [--direct] [--no-hl-log] [--arch P0|S1] [--shadow]
 
   --bus FILE  another bus than that of the cfg (indy7 -B FILE, e.g. indy7/bench/L7N4_bus.cfg, the L7N
               bench); the arm and everything else stay those of the cfg; FILE is copied into OUT
@@ -17,6 +17,9 @@ summary of tools/timing_summary.py (the row of Table 6).
               of the R5 is taken during the run (rpu_work/r5_freertos/r5rec.py, into OUT/r5, its output in
               OUT/r5rec.txt), and the summary has the quantities of S1 with the send of the R5 from that log
               (tools/timing_summary.py --r5)
+  --shadow    with --arch S1: the control task tells the R5 every period what it did (indy7 --shadow), and a
+              firmware with the second controller (SHADOW_CONTROL) runs the control computation after its send;
+              the summary then has its times on the R5 and what they say about the control task there (D-14)
   --no-hl-log HL_LOG=0 in the copy of the cfg: the high-level test is not logged (the 30-min runs of
               tools/run_batch.py; the log takes about 0.7 kB per period)
 
@@ -326,9 +329,12 @@ def main():
     ap.add_argument('--bus', help='-B FILE of the controller: the slaves of the bus from FILE (the L7N bench)')
     ap.add_argument('--no-hl-log', action='store_true', help='HL_LOG=0: the high-level test not logged')
     ap.add_argument('--arch', default='P0', choices=('P0', 'S1'), help='where the EtherCAT task runs (S1: on the R5)')
+    ap.add_argument('--shadow', action='store_true', help='with --arch S1: the R5 runs the control computation too')
     a = ap.parse_args()
     if (a.condition == 'pressure') != (a.pressure is not None):
         ap.error('--pressure goes with --condition pressure, and only with it')
+    if a.shadow and a.arch != 'S1':
+        ap.error('--shadow goes with --arch S1')
 
     src = os.path.abspath(a.cfg)
     rt_cpu = int(float(jp.cfg_get(src, 'TASK0', 'CPU', '3') or 3))
@@ -372,6 +378,8 @@ def main():
             cmd += ['-B', bus]
         if a.arch != 'P0':
             cmd += ['--arch', a.arch]
+        if a.shadow:
+            cmd += ['--shadow']
         if a.arch == 'S1':
             r5rec = start_r5rec(out)
         print('run_timing: %s (in %s)' % (' '.join(cmd), APP))
@@ -450,7 +458,7 @@ def main():
         return 1
     with c.lock:
         for line in c.text.splitlines():
-            if line.startswith(('[RT]', '[BUS]', '[SIM]', '[R5]')):
+            if line.startswith(('[RT]', '[BUS]', '[SIM]', '[R5]', '[SHADOW]')):
                 print('run_timing: ' + line)
     logs = sorted(glob.glob(os.path.join(out, 'timing_*.bin')))
     if not logs:

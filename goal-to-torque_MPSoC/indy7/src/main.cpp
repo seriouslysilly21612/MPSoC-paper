@@ -2,7 +2,7 @@
 *	Name: main.cpp
 *	Description: The controller of the Indy7 (paper, Fig. 1).
 *
-*	    indy7_ctrl [-f FILE] [-s | -b [-B FILE]] [-t DIR] [--method NAME] [--arch NAME]
+*	    indy7_ctrl [-f FILE] [-s | -b [-B FILE]] [-t DIR] [--method NAME] [--arch NAME] [--shadow]
 *
 *	  -f FILE  the configuration; without it ./INDY7.cfg, then INDY7.cfg in
 *	           the directory above the program (bin/..)
@@ -21,6 +21,11 @@
 *	           Default P0: here, with the IgH master, as before. S1: on the
 *	           R5; with -s the R5 is simulated too, with -b it runs its bus
 *	           with the drives off beside the arm simulated here
+*	  --shadow  with --arch S1: the control task tells the R5 every period
+*	           what it did with its controller, and the R5 computes the same
+*	           with a controller of its own (shadow/ShadowTask.h). Its torque
+*	           is compared, not used: plan stage 3, whether the control
+*	           computation fits the period of the R5
 *
 *	The keys of the operator are listed at the start and with '?'
 *	(Indy7Ctrl.cpp, PrintHelp). 'q', SIGINT or SIGTERM end the controller:
@@ -54,7 +59,7 @@ void SignalHandler(int)
 
 void Usage(const char* apcProg)
 {
-	fprintf(stderr, "usage: %s [-f FILE] [-s | -b [-B FILE]] [-t DIR] [--method M1|M2|A2|A3|FULL] [--arch P0|S1]\n"
+	fprintf(stderr, "usage: %s [-f FILE] [-s | -b [-B FILE]] [-t DIR] [--method M1|M2|A2|A3|FULL] [--arch P0|S1] [--shadow]\n"
 	        "  -f FILE  configuration (default: ./INDY7.cfg, then <program dir>/../INDY7.cfg)\n"
 	        "  -s       simulation: MuJoCo in place of the bus\n"
 	        "  -b       the bus of the robot, drives off, beside the simulated arm (host-timing test)\n"
@@ -62,7 +67,9 @@ void Usage(const char* apcProg)
 	        "  -t DIR   timing of every period into DIR\n"
 	        "  --method NAME (-m)  what the camera application does with the results of the camera (obs/ObsMethod.h);\n"
 	        "           default M1, the goal slot as before\n"
-	        "  --arch NAME (-a)  where the EtherCAT task runs (Arch.h): P0 here (default), S1 on the R5\n", apcProg);
+	        "  --arch NAME (-a)  where the EtherCAT task runs (Arch.h): P0 here (default), S1 on the R5\n"
+	        "  --shadow          with --arch S1: the R5 computes the control of every period as well (its torque is\n"
+	        "                    compared, not used), to tell whether the control computation fits its period\n", apcProg);
 }
 
 } // namespace
@@ -77,8 +84,10 @@ int main(int argc, char** argv)
 	BOOL bSim = FALSE, bHybrid = FALSE;
 	int nMethod = obs_method::eM1;
 	int nArch = arch::eP0;
+	BOOL bShadow = FALSE;
 	static const struct option s_astLong[] = { {"method", required_argument, NULL, 'm'},
-	                                           {"arch", required_argument, NULL, 'a'}, {NULL, 0, NULL, 0} };
+	                                           {"arch", required_argument, NULL, 'a'},
+	                                           {"shadow", no_argument, NULL, 'S'}, {NULL, 0, NULL, 0} };
 	int nOpt;
 	while ((nOpt = getopt_long(argc, argv, "f:sbB:t:m:a:h", s_astLong, NULL)) != -1)
 	{
@@ -98,6 +107,7 @@ int main(int argc, char** argv)
 					return 1;
 				}
 				break;
+			case 'S': bShadow = TRUE; break;
 			case 'a':
 				nArch = arch::Parse(optarg);
 				if (nArch < 0)
@@ -111,6 +121,13 @@ int main(int argc, char** argv)
 				Usage(argv[0]);
 				return 1;
 		}
+	}
+
+	if (bShadow && nArch != arch::eS1)
+	{
+		fprintf(stderr, "--shadow: only with --arch S1 (the second controller is on the R5)\n");
+		Usage(argv[0]);
+		return 1;
 	}
 
 	strCfg = CConfig::Find(strCfg, argv[0]);
@@ -163,6 +180,7 @@ int main(int argc, char** argv)
 	pRobot->SetHybridBus(bHybrid);
 	pRobot->SetMethod(nMethod);
 	pRobot->SetArch(nArch);
+	pRobot->SetShadow(bShadow);
 	if (!strTimingDir.empty())
 		pRobot->SetTimingLogDir(strTimingDir);
 	g_pRobot = pRobot;

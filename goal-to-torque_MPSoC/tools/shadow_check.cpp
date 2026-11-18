@@ -19,15 +19,18 @@
 *	the torque limit act), a stop, a new ready posture, a joint move, TRACK
 *	with the goal threshold 0, starts before and after the update of a
 *	period and in a period without one, and periods with two measured
-*	states. Each period goes through CShadowWriter into a second controller
-*	built from the numbers of shadow/ShadowParams.h.
+*	states. Each period goes the way of --shadow: through CShadowTask and
+*	the Shadow in slot of a link (CR5Link) to the R5's side of the slots
+*	(CSimR5Slots), there into a second controller built from the numbers of
+*	shadow/ShadowParams.h, and its answer back through the Shadow out slot.
 *
 *	Checked: the torque and the reference of the second controller are those
 *	of the first, bit for bit, in every period it follows; it is apart
 *	exactly in the periods after a payload that did not arrive or was not
 *	given and in the period whose start is not told, until the next start;
 *	the payloads it does not follow (a JOINT TEST, a period number that went
-*	back, a torque that is no number); the numbers and their check value.
+*	back, a torque that is no number); the numbers and their check value;
+*	what the control task counts of the answers.
 *	The same code and compiler on both sides here: a difference is a fault
 *	of the following, not of the arithmetic.
 *
@@ -49,8 +52,9 @@
 #include "base/Config.h"
 #include "shadow/ShadowControl.h"
 #include "shadow/ShadowParams.h"
-#include "shadow/ShadowWriter.h"
+#include "shadow/ShadowTask.h"
 #include "shadow/shadow_vectors.h"
+#include "sim/SimR5Slots.h"
 
 static_assert((int)SHADOW_VECTORS_NUMBERS == (int)SHADOW_NUMBERS, "shadow_vectors.h and ShadowControl.h");
 
@@ -87,10 +91,11 @@ enum
 class CApu
 {
 public:
-	~CApu() { delete m_pCtl; }
+	~CApu() { delete m_pTask; delete m_pCtl; }
 
-	/* as CRobotIndy7::InitController and InitTrajectory */
-	bool Init(const CConfig& acConfig)
+	/* as CRobotIndy7::InitController and InitTrajectory, then the link to an R5 whose side the scenario plays;
+	 * auCheck: the check value of the controller */
+	bool Init(const CConfig& acConfig, uint32_t auCheck)
 	{
 		const ST_CONFIG_SYSTEM& stS = acConfig.System();
 		m_pCtl = new C(stS.strURDFPath, (unsigned)N);
@@ -134,6 +139,13 @@ public:
 		if (FALSE == m_cTraj.Init(stS.strURDFPath.c_str(), (double)acConfig.Tasks()[1].nPeriod * 1e-9, stP))
 			return false;
 		m_cTraj.SetGoalSlot(&m_cGoal);
+		const uint32_t uCfgCrc = 0x600DC0DEu;
+		memset((void*)m_auRegion, 0, sizeof(m_auRegion));
+		(void)m_cR5.Start(m_auRegion, uCfgCrc, 10);
+		m_cLink.UseRegion(m_auRegion, "the test");
+		if (FALSE == m_cLink.Start((uint32_t)N, uCfgCrc, (RTTIME)acConfig.Tasks()[1].nPeriod, 150000))
+			return false;
+		m_pTask = new CShadowTask(&m_cLink, auCheck);
 		m_dDelta = stS.dHlDelta;
 		m_vQ.assign(N, 0.0);
 		m_vQd.assign(N, 0.0);
@@ -143,12 +155,11 @@ public:
 	}
 
 	/* one period. adQ, adQd: the measured state, which the law has; adTq, adTqd: the state that the Trajectory
-	 * part has (the same, or with A_SPLIT an earlier one). *appIn: the payload for the second controller, NULL
-	 * when the writer gives none; *apbRef: the reference m_adQr.. is of this period. FALSE: a start was refused,
-	 * or the law failed (the scenario is wrong). */
+	 * part has (the same, or with A_SPLIT an earlier one). The payload of the period is in the Shadow in slot
+	 * afterwards, unless the period had two states. *apbRef: the reference m_adQr.. is of this period. FALSE: a
+	 * start was refused, or the law failed (the scenario is wrong). */
 	bool Period(uint32_t auPeriod, const double* adQ, const double* adQd, const double* adTq, const double* adTqd,
-	            unsigned auAsk, const double* adGoal, const double* adHomeTarget, const ipc_shadow_in_t** appIn,
-	            bool* apbRef)
+	            unsigned auAsk, const double* adGoal, const double* adHomeTarget, bool* apbRef)
 	{
 		char acWhy[160] = "";
 		bool bStarted = true;
@@ -157,7 +168,8 @@ public:
 		const bool bTrajOp = !(auAsk & A_NOT_OP);
 		const bool bLawOp = bTrajOp || (auAsk & A_SPLIT);	// the State of this period, which the law has, is operational
 
-		/* the Trajectory part (trajectory_cycle): the commands, the goal, the step */
+		/* the Trajectory part (trajectory_cycle): its State, the commands, the goal, the step */
+		m_pTask->TrajState(auPeriod, adTq, adTqd);
 		if (auAsk & A_STOP)
 			m_cTraj.End(CTrajectoryRT::eAborted);
 		if (auAsk & A_HOLD)
@@ -177,7 +189,7 @@ public:
 		if (bTrajOp && m_cTraj.IsRunning())
 		{
 			const BOOL bOk = m_cTraj.Update(adTq, adTqd, m_adQr, m_adQdr, m_adQddr);
-			m_cWriter.TrajUpdated(m_cTraj);
+			m_pTask->TrajUpdated(m_cTraj);
 			m_bUpdated = true;
 			bRef = (bOk != FALSE);
 			bHome = (m_cTraj.GetMotion() == CTrajectoryRT::eMotionHome);
@@ -232,14 +244,24 @@ public:
 			bOk = m_pCtl->Update(m_vQ, m_vQd, m_vTor, m_vTau);
 		}
 		m_uClamp = bLaw ? m_pCtl->GetLastClamp() : 0u;
-		*appIn = m_cWriter.Finish(auPeriod, adTq, adTqd, bLaw ? adQ : NULL, bLaw ? adQd : NULL, m_cTraj, *m_pCtl, bRef,
-		                          bRefFf != FALSE, m_vTau.data());
+		m_pTask->Finish(true, auPeriod, bLaw ? adQ : NULL, bLaw ? adQd : NULL, m_cTraj, *m_pCtl, bRef, bRefFf != FALSE,
+		                m_vTau.data());
 		*apbRef = bRef;
 		return bStarted && bOk != FALSE;
 	}
 
+	/* the answer that is in the Shadow out slot now, as the next period of the control task would take it */
+	void TakeAnswer()
+	{
+		ipc_shadow_out_t stOut;
+		if (m_cLink.TakeShadow(&stOut))
+			m_pTask->Take(stOut);
+	}
+	const CShadowTask::Counts& Counts() const { return m_pTask->GetCounts(); }
+
+	CSimR5Slots		m_cR5;					// the R5's side of the slots, for the scenario
 	CTrajectoryRT	m_cTraj;
-	double			m_adQr[N], m_adQdr[N], m_adQddr[N];
+	double			m_adQr[N] = {}, m_adQdr[N] = {}, m_adQddr[N] = {};	// 0 until the first reference: they go into the vectors
 	bool			m_bEnded = false;		// the motion ended by itself in this period (HOME at rest, or an error)
 	bool			m_bUpdated = false;		// the high-level controller was updated in this period
 	unsigned int	m_uClamp = 0;			// bit i: the torque limit acted on joint i in this period
@@ -252,9 +274,11 @@ private:
 		return FALSE != m_cTraj.Start(false, adQ, adQd, (auAsk & A_FRICTION) ? TRUE : FALSE, astrWhy, auLen);
 	}
 
+	alignas(64) volatile uint32_t m_auRegion[IPC_OFF_END / 4];
+	CR5Link			m_cLink;
+	CShadowTask*	m_pTask = NULL;
 	C*				m_pCtl = NULL;
 	CGoalSlot		m_cGoal;
-	CShadowWriter	m_cWriter;
 	double			m_dDelta = 0.0;
 	std::vector<double> m_vQ, m_vQd, m_vTor, m_vTau;
 };
@@ -354,6 +378,48 @@ void ByHand(const char* astrURDF, const double* adNumbers)
 	cNone.Step(stIn, &stOut);
 	Expect(stOut.flags == IPC_SHADOW_OUT_FAULT && stOut.period == 12, "not built: every answer is a fault");
 
+	/* what the control task counts of the answers (CShadowTask::Take): another check value is not compared; a
+	 * difference above the limit or no number differs; apart is not compared; the times of the parts that ran */
+	CShadowTask cTask(NULL, 0x1111u);
+	memset(&stOut, 0, sizeof(stOut));
+	stOut.ctrl_crc = 0x2222u;
+	stOut.flags = IPC_SHADOW_OUT_CTRL;
+	stOut.tau_diff = 5.0;
+	cTask.Take(stOut);
+	Expect(cTask.GetCounts().nAnswers == 1 && cTask.GetCounts().nOtherCheck == 1 && cTask.GetCounts().nCompared == 0,
+	       "an answer with another check value is counted and not compared");
+	stOut.ctrl_crc = 0x1111u;
+	stOut.tau_diff = 0.5 * CShadowTask::TAU_SAME;
+	stOut.ctrl_ns = 40000;
+	cTask.Take(stOut);
+	stOut.tau_diff = 2.0 * CShadowTask::TAU_SAME;
+	stOut.flags = IPC_SHADOW_OUT_CTRL | IPC_SHADOW_OUT_TRAJ;
+	stOut.traj_ns = 300000;
+	stOut.ctrl_ns = 50000;
+	cTask.Take(stOut);
+	Expect(cTask.GetCounts().nCompared == 2 && cTask.GetCounts().nDiffer == 1 &&
+	       cTask.GetCounts().dDiffMax == 2.0 * CShadowTask::TAU_SAME, "a difference above the limit differs, one below does not");
+	stOut.flags = IPC_SHADOW_OUT_CTRL | IPC_SHADOW_OUT_APART | IPC_SHADOW_OUT_FAULT;
+	stOut.tau_diff = 9.0;
+	stOut.traj_ns = 0;
+	stOut.ctrl_ns = 45000;
+	stOut.n_missed = 7;
+	cTask.Take(stOut);
+	Expect(cTask.GetCounts().nCompared == 2 && cTask.GetCounts().nApart == 1 && cTask.GetCounts().nFault == 1 &&
+	       cTask.GetCounts().uMissed == 7 && cTask.GetCounts().dDiffMax == 2.0 * CShadowTask::TAU_SAME,
+	       "an answer apart is counted and not compared");
+	stOut.flags = IPC_SHADOW_OUT_CTRL;
+	stOut.tau_diff = std::nan("");
+	cTask.Take(stOut);
+	stOut.tau_diff = 1.0;
+	cTask.Take(stOut);
+	Expect(cTask.GetCounts().nCompared == 4 && cTask.GetCounts().nDiffer == 3 &&
+	       cTask.GetCounts().dDiffMax != cTask.GetCounts().dDiffMax, "a difference that is no number differs, and stays the largest");
+	Expect(cTask.GetCounts().nTraj == 1 && cTask.GetCounts().nCtrl == 5 && cTask.GetCounts().uTrajMaxNs == 300000 &&
+	       cTask.GetCounts().uCtrlMaxNs == 50000 && cTask.GetCounts().dTrajSumNs == 300000.0 &&
+	       cTask.GetCounts().dCtrlSumNs == 225000.0 && cTask.GetCounts().dBothMaxNs == 350000.0,
+	       "the times of the high-level controller and of the law, where they ran");
+
 	/* the check value: every number counts, each of its 8 bytes */
 	const uint32_t uCrc = ShadowNumbersCrc(adNumbers);
 	int nSame = 0;
@@ -413,7 +479,7 @@ int main(int argc, char** argv)
 	double adNumbers[SHADOW_NUMBERS];
 	CApu cApu;
 	CShadowControl cShadow;
-	if (!ShadowNumbers(cConfig, adNumbers) || !cApu.Init(cConfig) ||
+	if (!ShadowNumbers(cConfig, adNumbers) || !cApu.Init(cConfig, ShadowNumbersCrc(adNumbers)) ||
 	    !cShadow.Init(pcURDF, adNumbers, ShadowNumbersCrc(adNumbers)))
 	{
 		fprintf(stderr, "%s: the controller cannot be built from it\n", strCfg.c_str());
@@ -526,8 +592,7 @@ int main(int argc, char** argv)
 		const bool bSplit = (uAsk & A_SPLIT) != 0;
 		const double* const adTrajQ = (bSplit && k != P_TRACK3) ? adQBefore : adQ;
 		const double* const adTrajQd = (bSplit && k != P_SPLIT) ? adQdBefore : adQd;
-		const ipc_shadow_in_t* pIn = NULL;
-		bScenario = cApu.Period((uint32_t)(FIRST + k), adQ, adQd, adTrajQ, adTrajQd, uAsk, adGoal, adMove, &pIn,
+		bScenario = cApu.Period((uint32_t)(FIRST + k), adQ, adQd, adTrajQ, adTrajQd, uAsk, adGoal, adMove,
 		                        &bRefBefore) && bScenario;
 		if (cApu.m_bEnded && nHomeEnd < 0)
 			nHomeEnd = k;
@@ -548,11 +613,17 @@ int main(int argc, char** argv)
 					if (s.adTarget[i] == stP.adLimLo[i] + stP.dMargin || s.adTarget[i] == stP.adLimHi[i] - stP.dMargin)
 						bHardSolved = true;
 		}
-		if (pIn == NULL)
+		/* the R5's side: the payload of the period out of its slot, through the second controller, the answer
+		 * into its slot, where the next period of the control task takes it */
+		if (k == P_DROP)
+			continue;				// the R5 does not take this payload: the next one replaces it in the slot
+		ipc_shadow_in_t stIn;
+		if (!cApu.m_cR5.TakeShadow(&stIn))
 		{
 			nNone++;				// the period had two measured states: no payload
 			continue;
 		}
+		const ipc_shadow_in_t* const pIn = &stIn;
 		if (pIn->flags & IPC_SHADOW_START) nStartsTold++;
 		if (pIn->flags & IPC_SHADOW_START_AFTER) nAfter++;
 		if (pIn->flags & IPC_SHADOW_STARTS_LOST) nLost++;
@@ -565,11 +636,9 @@ int main(int argc, char** argv)
 			    memcmp(pIn->qd, bLaw ? adQd : adTrajQd, sizeof(pIn->qd)) != 0)
 				nState++;
 		}
-		if (k == P_DROP)
-			continue;				// this payload does not arrive
-
 		ipc_shadow_out_t stOut;
 		cShadow.Step(*pIn, &stOut);
+		cApu.m_cR5.PublishShadow(stOut);
 		const bool bApart = (stOut.flags & IPC_SHADOW_OUT_APART) != 0;
 		if (bApart)
 			setApart.insert(k);
@@ -602,6 +671,8 @@ int main(int argc, char** argv)
 		vVectors.push_back(stV);
 	}
 
+	cApu.TakeAnswer();
+	const CShadowTask::Counts& stC = cApu.Counts();
 	Expect(bScenario && nHomeEnd > P_HOME && nHomeEnd < P_TRACK, "the scenario ran: every start accepted, HOME at rest in time");
 	Expect(nGoals >= 10 && nFault == 0 && bHardSolved && nLead > 0 && nClamp > 0 && nNearIgnored > 0 && nNearTaken0 == 1,
 	       "and reached what it is for: ten goals or more, one solved in more than half the iterations allowed with "
@@ -613,6 +684,10 @@ int main(int argc, char** argv)
 	Expect(nNone == 2, "no payload for the two periods with two measured states");
 	Expect(setApart == setExpected, "apart in the period whose start is not told, and after a period without a payload until the next start");
 	Expect(uMissed == 3, "three payloads missed");
+	Expect(stC.nPayloads == (long)vVectors.size() + 1 && stC.nWithheld == 2 && stC.nAnswers == (long)vVectors.size() &&
+	       stC.nOtherCheck == 0 && stC.uMissed == 3 && stC.nApart == (long)setApart.size() && stC.nFault == 0 &&
+	       stC.nCompared == nLaw && stC.nDiffer == 0 && stC.dDiffMax == 0.0 && stC.nTraj > 6000 && stC.nCtrl > 10000,
+	       "the control task counts the same: its payloads (one did not arrive), the answers, apart, compared, none differs");
 	Expect(nStartsTold == 5 && nAfter == 2 && nLost == 1 && nCount == 0 && nState == 0,
 	       "five starts told, two after the update of their period, one start lost; the count of the starts and "
 	       "the measured state of the law in every payload");

@@ -31,128 +31,19 @@
 #include <rbdl/rbdl.h>
 #include <rbdl/addons/urdfreader/urdfreader.h>
 
-#include "ipc/FwCfg.h"
+#include "shadow/ModelCode.h"
 
 using namespace RigidBodyDynamics;
 using namespace RigidBodyDynamics::Math;
 
 namespace {
 
-/* the text of the header and the check value of its numbers and names, in the order written */
-class CHeader
-{
-public:
-	void Unsigned(unsigned au)
-	{
-		const uint8_t a[4] = { (uint8_t)au, (uint8_t)(au >> 8), (uint8_t)(au >> 16), (uint8_t)(au >> 24) };
-		m_uCrc = FwCfgCrc32(m_uCrc, a, sizeof(a));
-		char ac[16];
-		snprintf(ac, sizeof(ac), "%uu, ", au);
-		m_str += ac;
-	}
-	void Doubles(const double* ad, int anCount)
-	{
-		m_str += "{ ";
-		for (int i = 0; i < anCount; i++)
-		{
-			uint64_t u;
-			memcpy(&u, &ad[i], sizeof(u));
-			Bytes8(u);
-			char ac[40];
-			snprintf(ac, sizeof(ac), "%a%s", ad[i], i + 1 < anCount ? ", " : "");
-			m_str += ac;
-		}
-		m_str += " }, ";
-	}
-	void Name(const std::string& astr)
-	{
-		m_uCrc = FwCfgCrc32(m_uCrc, astr.c_str(), astr.size() + 1);
-		m_str += "\"" + astr + "\"";
-	}
-	void Text(const std::string& astr) { m_str += astr; }
-	uint32_t Crc() const { return m_uCrc; }
-	const std::string& Str() const { return m_str; }
-
-private:
-	void Bytes8(uint64_t au)
-	{
-		uint8_t a[8];
-		for (int i = 0; i < 8; i++)
-			a[i] = (uint8_t)(au >> (8 * i));
-		m_uCrc = FwCfgCrc32(m_uCrc, a, sizeof(a));
-	}
-	uint32_t	m_uCrc = 0;
-	std::string	m_str;
-};
-
-/* E (by rows) and r of a frame */
-void Frame(CHeader& ac, const SpatialTransform& aX)
-{
-	double adE[9], adR[3];
-	for (int i = 0; i < 3; i++)
-	{
-		for (int j = 0; j < 3; j++)
-			adE[3 * i + j] = aX.E(i, j);
-		adR[i] = aX.r[i];
-	}
-	ac.Doubles(adE, 9);
-	ac.Doubles(adR, 3);
-}
-
-/* the header of the model, or an empty string with the reason on the standard error */
+/* the header of the model, or an empty string (the reason is printed) */
 std::string Header(const Model& am, const char* apcUrdf)
 {
-	std::map<unsigned int, std::string> mapName;
-	for (const auto& kv : am.mBodyNameMap)
-		mapName[kv.second] = kv.first;
-	const unsigned uBodies = (unsigned)am.mBodies.size() - 1;		// body 0 is the base
-	const unsigned uFixed = (unsigned)am.mFixedBodies.size();
-
-	CHeader cBodies, cFixed;
-	for (unsigned i = 1; i <= uBodies; i++)
-	{
-		const Joint& j = am.mJoints[i];
-		if (j.mDoFCount != 1 || mapName.find(i) == mapName.end())
-		{
-			fprintf(stderr, "body %u: %u degrees of freedom or no name; only named bodies on one-axis joints are written\n",
-			        i, j.mDoFCount);
-			return "";
-		}
-		const Body& b = am.mBodies[i];
-		double adAxis[6], adCom[3], adI[9];
-		for (int k = 0; k < 6; k++)
-			adAxis[k] = j.mJointAxes[0][k];
-		for (int k = 0; k < 3; k++)
-		{
-			adCom[k] = b.mCenterOfMass[k];
-			for (int l = 0; l < 3; l++)
-				adI[3 * k + l] = b.mInertia(k, l);
-		}
-		cBodies.Text("\t{ ");
-		cBodies.Unsigned(am.lambda[i]);
-		Frame(cBodies, am.X_T[i]);
-		cBodies.Doubles(adAxis, 6);
-		cBodies.Doubles(&b.mMass, 1);
-		cBodies.Doubles(adCom, 3);
-		cBodies.Doubles(adI, 9);
-		cBodies.Name(mapName[i]);
-		cBodies.Text(" },\n");
-	}
-	for (unsigned i = 0; i < uFixed; i++)
-	{
-		const unsigned uId = am.fixed_body_discriminator + i;
-		if (mapName.find(uId) == mapName.end())
-		{
-			fprintf(stderr, "fixed body %u has no name\n", i);
-			return "";
-		}
-		cFixed.Text("\t{ ");
-		cFixed.Unsigned(am.mFixedBodies[i].mMovableParent);
-		Frame(cFixed, am.mFixedBodies[i].mParentTransform);
-		cFixed.Name(mapName[uId]);
-		cFixed.Text(" },\n");
-	}
-	const uint32_t auCrc[2] = { cBodies.Crc(), cFixed.Crc() };
+	model_code::ModelCode stCode;
+	if (!model_code::ModelCodeOf(am, &stCode))
+		return "";
 	const char* pcFile = strrchr(apcUrdf, '/') ? strrchr(apcUrdf, '/') + 1 : apcUrdf;
 	char ac[640];
 	snprintf(ac, sizeof(ac),
@@ -164,9 +55,9 @@ std::string Header(const Model& am, const char* apcUrdf)
 	         "#define CTRL_MODEL_BODIES %u\n"
 	         "#define CTRL_MODEL_FIXED  %u\n\n"
 	         "static const ctrl_model_body_t CTRL_MODEL_BODY[CTRL_MODEL_BODIES] =\n{\n",
-	         pcFile, (unsigned)FwCfgCrc32(0, auCrc, sizeof(auCrc)), uBodies, uFixed);
-	return std::string(ac) + cBodies.Str() + "};\n\nstatic const ctrl_model_fixed_t CTRL_MODEL_FIXED_BODY[CTRL_MODEL_FIXED] =\n{\n" +
-	       cFixed.Str() + "};\n\n#endif /* CTRL_MODEL_DATA_H */\n";
+	         pcFile, (unsigned)stCode.uCrc, stCode.uBodies, stCode.uFixed);
+	return std::string(ac) + stCode.strBodies + "};\n\nstatic const ctrl_model_fixed_t CTRL_MODEL_FIXED_BODY[CTRL_MODEL_FIXED] =\n{\n" +
+	       stCode.strFixed + "};\n\n#endif /* CTRL_MODEL_DATA_H */\n";
 }
 
 } // namespace

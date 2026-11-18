@@ -222,7 +222,7 @@ $(BIN_DIR)/fw_cfg_header: $(TOOLS_DIR)/fw_cfg_header.cpp $(SRC_DIR)/ipc/FwCfg.h 
 	$(CXX) $(CXXFLAGS) -I$(SRC_DIR) -I$(RTPOSIX_DIR)/include -o $@ $< $(OBJ_DIR)/base/Config.o
 
 # the RBDL model of the controller as numbers for the firmware of the R5 (rpu_work/r5_freertos/src/ctrl)
-$(BIN_DIR)/rbdl_model_code: $(TOOLS_DIR)/rbdl_model_code.cpp $(SRC_DIR)/ipc/FwCfg.h
+$(BIN_DIR)/rbdl_model_code: $(TOOLS_DIR)/rbdl_model_code.cpp $(SRC_DIR)/shadow/ModelCode.h $(SRC_DIR)/ipc/FwCfg.h
 	@mkdir -p $(BIN_DIR)
 	$(CXX) $(CXXFLAGS) $(INCLUDES) -o $@ $< -L$(RBDL_DIR)/lib -lrbdl -lrbdl_urdfreader -Wl,-rpath,$(RBDL_DIR)/lib
 
@@ -234,9 +234,10 @@ $(BIN_DIR)/ctrl_numbers_header: $(TOOLS_DIR)/ctrl_numbers_header.cpp $(TOOL_OBJS
 
 # the second controller of --shadow (src/shadow) against the controller it follows; -o writes its periods for
 # the controller as the firmware of the R5 builds it
-SHADOW_OBJS := $(OBJ_DIR)/shadow/ShadowControl.o $(OBJ_DIR)/TrajectoryRT.o $(OBJ_DIR)/base/Config.o
+SHADOW_OBJS := $(OBJ_DIR)/shadow/ShadowControl.o $(OBJ_DIR)/TrajectoryRT.o $(OBJ_DIR)/base/Config.o $(OBJ_DIR)/r5link/R5Link.o
 $(BIN_DIR)/shadow_check: $(TOOLS_DIR)/shadow_check.cpp $(TOOL_OBJS) $(SHADOW_OBJS) $(SRC_DIR)/shadow/ShadowWriter.h \
-                         $(SRC_DIR)/shadow/ShadowParams.h $(SRC_DIR)/shadow/shadow_vectors.h
+                         $(SRC_DIR)/shadow/ShadowTask.h $(SRC_DIR)/shadow/ShadowParams.h \
+                         $(SRC_DIR)/shadow/shadow_vectors.h $(SRC_DIR)/sim/SimR5Slots.h
 	@mkdir -p $(BIN_DIR)
 	$(CXX) $(CXXFLAGS) $(INCLUDES) -o $@ $< $(TOOL_OBJS) $(SHADOW_OBJS) $(LDLIBS)
 

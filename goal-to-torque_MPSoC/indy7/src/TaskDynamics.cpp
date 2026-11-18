@@ -34,6 +34,7 @@
 #include "base/MallocCount.h"
 #include "base/RtConsole.h"
 #include "CallTiming.h"
+#include "shadow/ShadowTask.h"
 
 #include <cstring>
 #include <limits>
@@ -111,7 +112,7 @@ dynamics_cycle(CRobotIndy7* pRobot, RTTIME tRelease, RTTIME tStart)
 	const bool bNewState = pRobot->m_stateSlot.Read(stState) && stState.uPeriod != uLastPeriod;
 	pRobot->m_refSlot.Read(stRef);
 	int32_t nDynNs = -1;
-	BOOL bValid = FALSE;
+	BOOL bValid = FALSE, bFollowed = FALSE;		// the law was updated in this cycle; on the reference of the period
 	unsigned int uClamp = 0;
 
 	if (bNewState)
@@ -193,6 +194,7 @@ dynamics_cycle(CRobotIndy7* pRobot, RTTIME tRelease, RTTIME tStart)
 					// or stale): gravity compensation
 					pRobot->SetControllerMode(C::eGravityCompensation);
 				}
+				bFollowed = bFollow;
 			}
 
 			/* the law */
@@ -321,6 +323,13 @@ dynamics_cycle(CRobotIndy7* pRobot, RTTIME tRelease, RTTIME tStart)
 		if (obs_method::UsesMailbox(pRobot->m_nMethod))
 			obs_recent_max_add(&pRobot->m_stObsResponse, (float)((double)(tEnd0 - tRelease) * 1e-9));
 	}
+
+	/* --shadow: what this period did with the controller, for the second controller on the R5, and its last
+	 * answer (shadow/ShadowTask.h). Before the commands: they may change the mode and the hold for the next period */
+	if (pRobot->m_pShadow != NULL && pCtl != NULL)
+		pRobot->m_pShadow->Finish(bNewState, stState.uPeriod, bValid ? pRobot->m_vCurrentPos.data() : NULL,
+		                          bValid ? pRobot->m_vCurrentVel.data() : NULL, pRobot->m_cTraj, *pCtl,
+		                          bFollowed != FALSE, stReference.bFrictionFF != FALSE, pRobot->m_vOutputTorque.data());
 
 	/* then: the operator commands, after the torque is out */
 	if (bNewState && stState.bOp && !stState.bStop && pRobot->m_cKeyPress.load() != ' ')

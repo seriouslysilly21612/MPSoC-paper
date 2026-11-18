@@ -16,6 +16,7 @@
 *	                the servo off, until the APU asks again (D-03, D-10)
 *	  PublishState  the State slot of the period: the status and the
 *	                measurement of the receive, and what TakeApuSlots left
+*	  TakeShadow, PublishShadow  the two slots of --shadow
 *****************************************************************************/
 #ifndef G2T_SIM_R5_SLOTS_H
 #define G2T_SIM_R5_SLOTS_H
@@ -40,6 +41,7 @@ public:
 	                m_bServoAsked(false), m_nStaleRun(0), m_uStaleTotal(0)
 	{
 		m_auTorqueStamp[0] = m_auTorqueStamp[1] = 0;
+		m_auShadowStamp[0] = m_auShadowStamp[1] = 0;
 		memset(m_adTorque, 0, sizeof(m_adTorque));
 	}
 
@@ -52,8 +54,8 @@ public:
 		m_pRegion = apRegion;
 		m_uCfgCrc = auCfgCrc;
 		m_nStaleLimit = anStaleLimit;
-		volatile uint32_t* apSlots[1] = { Slot(IPC_OFF_STATE) };
-		m_uEpoch = ipc_side_start(&Head()->r5, apSlots, 1);
+		volatile uint32_t* apSlots[2] = { Slot(IPC_OFF_STATE), Slot(IPC_OFF_SHADOW_OUT) };
+		m_uEpoch = ipc_side_start(&Head()->r5, apSlots, 2);
 		(void)TakeCommand();
 		m_uCommandDone = 0;
 		return m_uEpoch;
@@ -122,6 +124,21 @@ public:
 		IPC_WRITE(Slot(IPC_OFF_STATE), m_uEpoch, &s);
 	}
 
+	/* --shadow, after the send of a period (ocm_link.c): true: *apIn is a payload that is new since the last call */
+	bool TakeShadow(ipc_shadow_in_t* apIn)
+	{
+		ipc_shadow_in_t stIn;
+		uint32_t auStamp[2];
+		if (IPC_READ(Slot(IPC_OFF_SHADOW_IN), &Head()->apu, &stIn, auStamp) != IPC_OK ||
+		    (auStamp[0] == m_auShadowStamp[0] && auStamp[1] == m_auShadowStamp[1]))
+			return false;
+		m_auShadowStamp[0] = auStamp[0];
+		m_auShadowStamp[1] = auStamp[1];
+		*apIn = stIn;
+		return true;
+	}
+	void PublishShadow(const ipc_shadow_out_t& astOut) { IPC_WRITE(Slot(IPC_OFF_SHADOW_OUT), m_uEpoch, &astOut); }
+
 private:
 	volatile ipc_head_t*	Head	(	) const { return (volatile ipc_head_t*)m_pRegion; }
 	volatile uint32_t*		Slot	(unsigned auOffset) const { return m_pRegion + auOffset / 4u; }
@@ -163,6 +180,7 @@ private:
 	uint32_t	m_uEpoch;
 	uint32_t	m_uCommandEpoch, m_uCommandSeq, m_uCommandDone;
 	uint32_t	m_auTorqueStamp[2];
+	uint32_t	m_auShadowStamp[2];
 	uint32_t	m_uTorquePeriod;
 	bool		m_bTorqueUsable;
 	double		m_adTorque[IPC_MAX_DOF];

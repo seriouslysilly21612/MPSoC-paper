@@ -40,6 +40,8 @@
 #include "SimJoint.h"
 #include "SimR5Slots.h"
 
+class CShadowControl;
+
 class CSimR5
 {
 public:
@@ -66,6 +68,9 @@ public:
 	volatile uint32_t*	Region	(	) { return m_auRegion; }
 	/* the R5 side comes up and the thread starts: the arm and its joints belong to it from here on */
 	BOOL	Start			(const Spec& astSpec, CSimArm* apArm, const std::vector<CSimJoint*>& avJoints);
+	/* --shadow, before Start(): the controller that the R5 runs after the send of every period on what the
+	 * control task told (the firmware: shadow_link.c). It stays the caller's. */
+	void	SetShadow		(CShadowControl* apShadow) { m_pShadow = apShadow; }
 	/* the thread ends: the servo off first */
 	void	Stop			(	);
 	/* the fault tests of the simulation ('n'), taken at the next receive: a joint (1-based) leaves Operation
@@ -83,6 +88,7 @@ private:
 
 	alignas(64) volatile uint32_t m_auRegion[IPC_OFF_END / 4];
 	Spec					m_stSpec;
+	CShadowControl*			m_pShadow{NULL};
 	CSimArm*				m_pArm;
 	std::vector<CSimJoint*>	m_vJoints;
 	CRtTask					m_cTask;

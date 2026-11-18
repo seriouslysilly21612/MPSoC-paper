@@ -1,9 +1,12 @@
-"""pytest: the architecture (--arch) of tools/run_batch.py and tools/run_timing.py.
+"""pytest: the architecture (--arch) of tools/run_batch.py and tools/run_timing.py, and --shadow of the latter.
 
   python3 -m pytest tools/test_run_batch.py
 """
 import os
 import sys
+import threading
+
+import pytest
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
@@ -118,3 +121,55 @@ def test_s1_batch_needs_the_r5(tmp_path, monkeypatch, capsys):
     except SystemExit as ex:
         stopped = str(ex)
     assert stopped is not None and 'the R5 is not running' in stopped
+
+
+class FakeConsole:
+    """in place of the controller: keeps its command, has printed its start, and is gone at the first wait"""
+    made = []
+
+    def __init__(self, cmd, cwd, env, log_path):
+        self.cmd, self.lock = cmd, threading.Lock()
+        self.text = ('[R5] OP: the bus of the R5\n[SHADOW] the control task tells the R5 every period\n'
+                     'another line\n')
+        FakeConsole.made.append(self)
+
+    def expect_all(self, patterns, timeout, fail=None):
+        raise RuntimeError('the controller has exited (see the console log)')
+
+    def send(self, key):
+        pass
+
+    def close(self):
+        pass
+
+
+def timing_run(tmp_path, monkeypatch, args):
+    FakeConsole.made = []
+    monkeypatch.setattr(rt, 'Console', FakeConsole)
+    monkeypatch.setattr(rt, 'checks', lambda a, cpu: None)
+    monkeypatch.setattr(rt, 'cfg_copy', lambda *a, **k: None)
+    monkeypatch.setattr(rt, 'sample', lambda path, stop: None)
+    monkeypatch.setattr(rt, 'start_r5rec', lambda out: None)
+    monkeypatch.setattr(rt, 'vision_missing', lambda: list(rt.PERCEPTION))
+    monkeypatch.setattr(rt, 'run_extras', lambda out: (None, None))
+    monkeypatch.setattr(rt.time, 'sleep', lambda s: None)
+    monkeypatch.setattr(sys, 'argv', ['run_timing.py', '--condition', 'idle', '--out', str(tmp_path / 'out')] + args)
+    return rt.main()
+
+
+def test_shadow_reaches_the_controller_and_its_lines_the_output_of_the_run(tmp_path, monkeypatch, capsys):
+    assert timing_run(tmp_path, monkeypatch, ['--arch', 'S1', '--shadow']) == 1      # the fake wrote no timing log
+    cmd = FakeConsole.made[0].cmd
+    assert cmd[cmd.index('--arch'):] == ['--arch', 'S1', '--shadow']
+    printed = capsys.readouterr().out
+    assert 'run_timing: [SHADOW] the control task tells the R5 every period' in printed
+    assert 'another line' not in printed
+    timing_run(tmp_path, monkeypatch, ['--arch', 'S1'])
+    assert '--shadow' not in FakeConsole.made[0].cmd
+
+
+def test_shadow_goes_with_the_ethercat_task_on_the_r5_only(tmp_path, monkeypatch, capsys):
+    with pytest.raises(SystemExit):
+        timing_run(tmp_path, monkeypatch, ['--shadow'])
+    assert '--shadow goes with --arch S1' in capsys.readouterr().err
+    assert FakeConsole.made == [] and not (tmp_path / 'out').exists()

@@ -9,6 +9,13 @@ slots in the first 16 KB of the OCM (`0xFFFC0000`; `ipc_layout.h`, the same file
 | State | R5 → APU | the measurement of the period, its number, its release time on the system counter, the status of the drives, the fault counts of the R5, the check value of the firmware's constants |
 | Torque | APU → R5 | the torque computed from that State, with its period number |
 | Command | APU → R5 | servo on, servo off, stop |
+| Shadow in | APU → R5 | with `--shadow` only: what the control task did with its controller in the period (the measured state, the goal and the calls of the Trajectory part, the mode of the law, its torque) |
+| Shadow out | R5 → APU | with `--shadow` only: the torque of the R5's second controller for that period, its largest difference to the torque of the APU, the time of its two parts |
+
+The two Shadow slots came with layout 2 of the region (2026-11-18). A side reads a slot only while the other side
+has its own layout number in the head, so the firmware, the application and `r5_freertos/r5cmd.py` are updated
+together: to an application of layout 2 a firmware of layout 1 is an R5 that is not up (`not up yet (no State slot
+until it is)`), and that firmware takes neither its torque nor its commands.
 
 The period of the R5 is the period of the loop. The two tasks of the application are released `WAKE_DELAY_US`
 (`[R5_LINK]` of the cfg, first value 150) after the release of the R5, read the State of that period, and must have
@@ -148,6 +155,13 @@ one of them is in its log. These fill the first three columns of the row of Tabl
 marks the State whose period the R5 began without the torque of the State before it (`flags2`); with `-b` the
 summary sets apart those that were late only because the step of the simulated arm ran before the control task
 (the chain reached `T_s` with the step and not without it).
+
+`--shadow` (the application's README; the firmware side in `r5_freertos/README.md`, built with `SHADOW_CONTROL`):
+the R5 runs the control computation after its send, on what the control task told it. The firmware says `[shadow]
+the controller of the control task is built: check value 0x...` at its start, the application prints the same
+value in its first `[SHADOW]` line and, at its end, how many torques it compared with the R5's and how many
+differ. `tools/run_timing.py --arch S1 --shadow` adds the times of that computation on the R5 to the summary, and
+what the largest release-to-end of a cycle with it says about moving the control task to the R5 (D-14).
 
 `WAKE_DELAY_US` is chosen on the board: long enough that the State of the period is written when the tasks wake (the
 R5 took at most 88 us for a whole period on the bench), short enough that the torque is back before the next

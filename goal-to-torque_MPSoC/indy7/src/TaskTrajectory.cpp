@@ -21,6 +21,7 @@
 #include "Indy7Ctrl.h"
 #include "base/MallocCount.h"
 #include "base/RtConsole.h"
+#include "shadow/ShadowTask.h"
 
 #include <cmath>
 #include <cstring>
@@ -1121,6 +1122,8 @@ trajectory_cycle(CRobotIndy7* pRobot, RTTIME tRelease, RTTIME tStart)
 			adQ[i]  = stState.adQ[i];
 			adQd[i] = stState.adQd[i];
 		}
+		if (pRobot->m_pShadow != NULL)		// --shadow: the measured state that this part has from here on
+			pRobot->m_pShadow->TrajState(stState.uPeriod, adQ, adQd);
 	}
 
 	/* the camera results of this period (the methods with the mailbox) */
@@ -1169,6 +1172,8 @@ trajectory_cycle(CRobotIndy7* pRobot, RTTIME tRelease, RTTIME tStart)
 			if (pRobot->m_cTraj.IsRunning())
 			{
 				const BOOL bOk = pRobot->m_cTraj.Update(adQ, adQd, adQr, adQdr, adQddr);
+				if (pRobot->m_pShadow != NULL)
+					pRobot->m_pShadow->TrajUpdated(pRobot->m_cTraj);
 				nHlNs = Sat32((RTTIME)(pRobot->m_cTraj.HighLevel().GetStatus().dUs * 1e3));
 				if (bOk)
 					eMode = (pRobot->m_cTraj.GetMotion() == CTrajectoryRT::eMotionHome) ? eRefHome : eRefTrack;

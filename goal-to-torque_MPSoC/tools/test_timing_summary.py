@@ -3,6 +3,8 @@
 Guards what a log of --arch S1 is judged by: a State that no cycle took, a cycle without a new State, a chain
 that counts from the release of the R5, a torque the R5 did not have at its release, and the send of the R5 from
 its own log (--r5). A slip there would pass a run whose torque came after that release, or whose send was late.
+And what a run with --shadow says about the control task on the R5 (D-14): a slip there would move the control
+task to the R5 on a time that was not that of its control computation.
     python3 -m pytest tools/test_timing_summary.py
 """
 import os
@@ -154,10 +156,11 @@ def test_s1_with_b_a_torque_late_only_by_the_simulator_step_is_counted_apart(tmp
     assert not passed and 'FAIL  1 late' in text
 
 
-def r5_record(period, t_w=3000, t_s=63000, flags=0):
-    """a record of the R5's own log (cycle_record.c): BUS and OP, nothing of the other tasks"""
-    return ts.REC.pack(period, t_w, t_s, t_s, -1, -1, -1, 0xFFFFFFFF, F['BUS'] | F['OP'] | flags, 0, 20000, 16000,
-                       -1, -1, -1, -1)
+def r5_record(period, t_w=3000, t_s=63000, flags=0, t_e=None, traj=-1, dyn=-1):
+    """a record of the R5's own log (cycle_record.c): BUS and OP, nothing of the other tasks; with --shadow the
+    cycle goes on after the send (t_e) with the two parts of the control computation (traj, dyn; -1: not run)"""
+    return ts.REC.pack(period, t_w, t_s, t_s if t_e is None else t_e, dyn, traj, -1, 0xFFFFFFFF,
+                       F['BUS'] | F['OP'] | flags, 0, 20000, 16000, -1, -1, -1, -1)
 
 
 def r5_log(tmp_path, records, extra='mode=r5\n'):
@@ -233,3 +236,71 @@ def test_the_log_of_the_r5_is_taken_only_with_a_log_of_s1_and_only_if_it_is_one(
     with pytest.raises(SystemExit, match='started again'):
         summary(tmp_path, [s1_record(k, on) for k in (84, 85)], S1,
                 ['--r5', r5_log(tmp_path, [r5_record(k) for k in (84, 85, 1, 2)])])
+
+
+OPTIMIZED = 'mode=r5\noptimized=1\n'
+
+
+def test_shadow_the_control_computation_of_the_r5_is_judged_by_its_own_cycles(tmp_path):
+    on = F['OP'] | F['TRACK']
+    apu = [s1_record(k, on) for k in range(84, 90)]
+    cycles = {85: dict(t_e=185000, traj=20000, dyn=100000),         # both parts
+              86: dict(t_e=155000, dyn=90000),                      # the law only
+              87: dict(t_e=425000, traj=250000, dyn=110000),        # the largest with the control computation
+              88: dict(t_e=950000),                                 # longer, but without it: not what is judged
+              92: dict(t_e=990000, traj=600000, dyn=300000)}        # after the window
+    r5 = r5_log(tmp_path, [r5_record(k, **cycles.get(k, {})) for k in range(80, 95)], OPTIMIZED)
+    passed, text = summary(tmp_path, apu, S1, ['--r5', r5])
+    assert passed                                                   # the verdict is no criterion of the run
+    assert re.search(r'R5 Trajectory part +135\.0 +115\.0 +250\.0 +250\.0 +250\.0 +2\n', text)
+    assert re.search(r'R5 Dynamics part +100\.0 +8\.2 +110\.0 +110\.0 +110\.0 +3\n', text)
+    assert re.search(r'R5 control \(both parts\) +190\.0 +\S+ +360\.0 +360\.0 +360\.0 +3\n', text)
+    assert re.search(r'R5 t_w \+ t_e with control +258\.0 +\S+ +428\.0 +428\.0 +428\.0 +3\n', text)
+    assert ('largest t_w + t_e of the R5 with the control computation: 428.0 us (its period 87: t_w 3.0, t_s 63.0, '
+            'the Trajectory part 250.0, the Dynamics part 110.0)') in text
+    assert 'the control computation on the R5 (--shadow), in 3 of the 6 periods of the window' in text
+    assert '  largest t_w + t_e 428.0 us, at most 500 us: the control task fits on the R5 (S2)' in text
+    # the first periods left out on both sides: 87 is not in the window any more
+    passed, text = summary(tmp_path, apu, S1, ['--r5', r5, '--skip', '4'])
+    assert 'control computation' not in text and 'R5 Dynamics part' not in text
+    # a cycle with the law only is told as that
+    r5 = r5_log(tmp_path, [r5_record(k, **cycles.get(k, {})) for k in range(80, 95) if k != 87], OPTIMIZED)
+    passed, text = summary(tmp_path, apu, S1, ['--r5', r5])
+    assert ('188.0 us (its period 85: t_w 3.0, t_s 63.0, the Trajectory part 20.0, the Dynamics part 100.0)') in text
+    r5 = r5_log(tmp_path, [r5_record(k, **cycles.get(k, {})) for k in range(80, 95) if k not in (85, 87)], OPTIMIZED)
+    passed, text = summary(tmp_path, apu, S1, ['--r5', r5])
+    assert '158.0 us (its period 86: t_w 3.0, t_s 63.0, the Trajectory part -, the Dynamics part 90.0)' in text
+
+
+@pytest.mark.parametrize('worst_ns, verdict', [
+    (500000, 'at most 500 us: the control task fits on the R5 (S2)'),
+    (500001, 'above 500 us, at most 800 us: S2 with a small margin'),
+    (800000, 'above 500 us, at most 800 us: S2 with a small margin'),
+    (800001, 'above 800 us: trajectory generation (IK and the replanning) leaves the 1 ms task')])
+def test_shadow_the_two_lines_of_the_verdict(tmp_path, worst_ns, verdict):
+    on = F['OP'] | F['TRACK']
+    apu = [s1_record(k, on) for k in range(84, 90)]
+    # t_w counts: the cycle started 40 us after its release
+    r5 = r5_log(tmp_path, [r5_record(k, t_w=40000, t_e=worst_ns - 40000 if k == 86 else 150000, traj=10000, dyn=70000)
+                           for k in range(80, 95)], OPTIMIZED)
+    passed, text = summary(tmp_path, apu, S1, ['--r5', r5])
+    assert passed and '  largest t_w + t_e %.1f us, %s' % (worst_ns / 1000.0, verdict) in text
+    assert sum(text.count(word) for word in ('at most 500 us:', 'at most 800 us:', 'above 800 us:')) == 1
+
+
+def test_shadow_no_verdict_from_a_firmware_that_is_not_an_optimized_build(tmp_path):
+    on = F['OP'] | F['TRACK']
+    apu = [s1_record(k, on) for k in range(84, 90)]
+    records = [r5_record(k, t_e=150000, traj=10000, dyn=70000) for k in range(80, 95)]
+    for extra, told in (('mode=r5\noptimized=0\n', 'optimized=0'), ('mode=r5\n', 'optimized=?')):
+        passed, text = summary(tmp_path, apu, S1, ['--r5', r5_log(tmp_path, records, extra)])
+        assert '  no verdict: the firmware is not an optimized build (%s in its log)' % told in text
+        assert 'at most' not in text and 'R5 control (both parts)' in text         # the times are still given
+
+
+def test_s1_a_run_without_shadow_has_nothing_of_the_control_computation_on_the_r5(tmp_path):
+    on = F['OP'] | F['TRACK']
+    r5 = r5_log(tmp_path, [r5_record(k) for k in range(80, 95)], OPTIMIZED)
+    passed, text = summary(tmp_path, [s1_record(k, on) for k in range(84, 90)], S1, ['--r5', r5])
+    assert passed and 'control computation' not in text and 'verdict' not in text
+    assert not any(row in text for row in ts.R5_CTRL_ROWS)
