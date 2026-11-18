@@ -6,20 +6,17 @@
  *   osal_timer_start, osal_timer_is_expired,
  *   osal_thread_create, osal_thread_create_rt
  *
- * TIME SOURCE (v1): FreeRTOS tick (configTICK_RATE_HZ).
- *   -> resolution = 1 tick (e.g. 1 ms at 1000 Hz).
- *   Fine for bring-up (slaveinfo / simple_test): EtherCAT frames return in
- *   microseconds, so the coarse timer only bounds timeout ceilings, not the
- *   happy path.
- *   TODO before 1 kHz hard-real-time control: replace osal_current_time()
- *   with a hardware high-resolution source - a free-running TTC channel, or
- *   the Cortex-R5 PMU cycle counter (PMCCNTR) - for microsecond resolution.
+ * TIME SOURCE: the system counter of the chip (sys_counter.h), about 10 ns a tick (plan 2-4).  With the FreeRTOS
+ * tick (v1) a timeout ended at a tick: the receive of a lost frame waited up to 1 ms, to the next tick, and the
+ * send of that cycle left a period late.  Now a timeout ends after its microseconds.
+ *   osal_usleep still sleeps in whole ticks: SOEM calls it between the steps of the bring-up, not in a cycle.
  */
 
 #include <stddef.h>
 #include "osal.h"
 #include "FreeRTOS.h"
 #include "task.h"
+#include "../../sys_counter.h"
 
 /* microseconds per FreeRTOS tick */
 #define OSAL_USEC_PER_TICK   (1000000UL / configTICK_RATE_HZ)
@@ -42,12 +39,13 @@ int osal_usleep(uint32 usec)
    return 0;
 }
 
+/* time since the counter started, i.e. since the boot of the board */
 ec_timet osal_current_time(void)
 {
    ec_timet t;
-   TickType_t ticks = xTaskGetTickCount();
-   t.sec  = (uint32)(ticks / configTICK_RATE_HZ);
-   t.usec = (uint32)((ticks % configTICK_RATE_HZ) * OSAL_USEC_PER_TICK);
+   uint64_t ticks = sys_counter_now();
+   t.sec  = (uint32)(ticks / SYSCNT_HZ);
+   t.usec = (uint32)((ticks % SYSCNT_HZ) * 1000000u / SYSCNT_HZ);
    return t;
 }
 
@@ -62,23 +60,20 @@ void osal_time_diff(ec_timet *start, ec_timet *end, ec_timet *diff)
    }
 }
 
+/* A timer keeps its stop time in ticks of the system counter, not in seconds: the high word in stop_time.sec, the
+ * low word in stop_time.usec.  Only the two functions below read it, and osal_timer_is_expired() runs in the
+ * loop that waits for a frame: a comparison there, no division. */
 void osal_timer_start(osal_timert *self, uint32 timeout_usec)
 {
-   ec_timet now = osal_current_time();
-   self->stop_time.sec  = now.sec  + timeout_usec / 1000000UL;
-   self->stop_time.usec = now.usec + timeout_usec % 1000000UL;
-   if (self->stop_time.usec >= 1000000UL) {
-      self->stop_time.sec  += 1;
-      self->stop_time.usec -= 1000000UL;
-   }
+   uint64_t stop = sys_counter_now() + sys_counter_ticks(timeout_usec);
+   self->stop_time.sec  = (uint32)(stop >> 32);
+   self->stop_time.usec = (uint32)stop;
 }
 
 boolean osal_timer_is_expired(osal_timert *self)
 {
-   ec_timet now = osal_current_time();
-   if (now.sec > self->stop_time.sec) return TRUE;
-   if (now.sec == self->stop_time.sec && now.usec >= self->stop_time.usec) return TRUE;
-   return FALSE;
+   uint64_t stop = ((uint64_t)self->stop_time.sec << 32) | self->stop_time.usec;
+   return (sys_counter_now() >= stop) ? TRUE : FALSE;
 }
 
 static int osal_thread_spawn(void *thandle, int stacksize, void *func,

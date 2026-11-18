@@ -18,12 +18,15 @@
 #if defined(RUN_LEVEL)
 #error "RUN_LEVEL is gone: the firmware no longer moves anything by itself. Remove -DRUN_LEVEL; servo on / off come from the APU (Command slot)"
 #endif
+#if defined(LOOP_TIMING) || defined(CPU_HZ)
+#error "LOOP_TIMING and CPU_HZ are gone: every cycle is timed, with the system counter (sys_counter.h). Remove the -D"
+#endif
 
 /* ----------------------------------------------------------------------- */
 /* Which hardware this build drives.  0 = the L7N bench, 1 = the Indy7.     */
 /* Change the number here (or give -DROBOT_TARGET=1).  Everything that      */
-/* differs between the two lives under this switch: the number of axes, the */
-/* vendor id the drives must report, the unit constants (robot_target.c).   */
+/* differs between the two lives under this switch: the number of axes and  */
+/* which constants of the cfg are used (robot_target.h: identity, units).    */
 /* ----------------------------------------------------------------------- */
 #define TARGET_L7N_BENCH    0                 /* four LS Mecapion L7N single-axis drives, motors lying flat */
 #define TARGET_INDY7        1                 /* the Indy7: six joint drives + the end-tool module */
@@ -34,12 +37,10 @@
 #if ROBOT_TARGET == TARGET_L7N_BENCH
 #define AXIS_COUNT          4                 /* drives that are driven */
 #define BUS_SLAVE_COUNT     4                 /* slaves on the bus; exactly this many must answer */
-#define DRIVE_VENDOR_ID     0x00007595u
 #define ECAT_USE_DC         1                 /* DC SYNC0 on the drives: the L7N firmware 0.12 only stays in OP with it (I-40) */
 #elif ROBOT_TARGET == TARGET_INDY7
 #define AXIS_COUNT          6
 #define BUS_SLAVE_COUNT     7                 /* + the end-tool module as slave 7 (shortcut: left as the bus scan finds it, no PDO hook, no DC) */
-#define DRIVE_VENDOR_ID     0x0000089au
 #define ECAT_USE_DC         0                 /* free run, as the old Indy7 build ran (INDY7.cfg has no DC_SUPPORT key, 2026-11-17) */
 #else
 #error "ROBOT_TARGET must be TARGET_L7N_BENCH (0) or TARGET_INDY7 (1)"
@@ -52,13 +53,14 @@
 #define OP_TIMEOUT_MS       10000             /* how long the drives get to reach OP (process data flowing) */
 #endif
 #ifndef RX_TIMEOUT_US
-#define RX_TIMEOUT_US       500               /* the reply to last cycle's frame is long there; 500 us = lost */
+#define RX_TIMEOUT_US       200               /* the reply to last cycle's frame is long there; 200 us = lost, and the send
+                                                 of the cycle still leaves before its deadline (loop_timing.h) */
 #endif
 #ifndef MAX_FAULT_RESETS
 #define MAX_FAULT_RESETS    3                 /* automatic CiA402 fault resets per axis and servo-on */
 #endif
 #ifndef TORQUE_STALE_LIMIT
-#define TORQUE_STALE_LIMIT  10                /* cycles in a row with the drives on and no new Torque slot: torque 0 and servo off (D-03, D-10) */
+#define TORQUE_STALE_LIMIT  10                /* cycles in a row with the servo requested and no new Torque slot: torque 0 and servo off (D-03, D-10) */
 #endif
 _Static_assert(TORQUE_STALE_LIMIT >= 1, "TORQUE_STALE_LIMIT is a number of 1 ms cycles, at least 1");
 #ifndef WKC_BUS_FAULT_CYCLES
@@ -75,24 +77,11 @@ _Static_assert(WKC_DIAG_CYCLES >= 1 && WKC_DIAG_CYCLES < WKC_BUS_FAULT_CYCLES,
 #ifndef EVENTS_PER_REPORT
 #define EVENTS_PER_REPORT   40                /* max. event lines per report window (flood guard) */
 #endif
-#ifndef LOOP_TIMING
-#define LOOP_TIMING         1                 /* 0 = do not touch the PMU / no timing statistics */
-#endif
 #ifndef MAX_TORQUE_PERMILLE
 #define MAX_TORQUE_PERMILLE 100               /* torque limit set in PRE-OP, 0.1 % of rated (L7N: 1.337 Nm rated, 3000 = its default) */
 #endif
 _Static_assert(MAX_TORQUE_PERMILLE >= 1 && MAX_TORQUE_PERMILLE <= 1000,
                "MAX_TORQUE_PERMILLE is the limit for the first servo-on: 1..1000 (0.1 % .. 100 % of rated torque)");
-
-#ifndef CPU_HZ
-#if defined(XPAR_CPU_CORE_CLOCK_FREQ_HZ)
-#define CPU_HZ              XPAR_CPU_CORE_CLOCK_FREQ_HZ
-#elif defined(XPAR_PSU_CORTEXR5_0_CPU_CLK_FREQ_HZ)
-#define CPU_HZ              XPAR_PSU_CORTEXR5_0_CPU_CLK_FREQ_HZ
-#else
-#define CPU_HZ              500000000UL
-#endif
-#endif
 
 /* The loop is paced with vTaskDelayUntil(1 tick) and counts 1 ms per call. */
 _Static_assert(configTICK_RATE_HZ == 1000,

@@ -17,8 +17,6 @@
  * now (a command that was there before this start is not carried out).  0 = failed (reason printed). */
 int      ocm_link_start(void);
 
-uint64_t ocm_link_counter(void);                 /* system counter (IOU_SCNTR), the clock of t_release; 0 with LINK_TIMESTAMP 0 */
-
 /* The command that is new since the last call (IPC_CMD_*), or IPC_CMD_NONE. */
 uint32_t ocm_link_take_command(void);
 
@@ -32,7 +30,11 @@ typedef struct {
  * that torque; returns 0 when it does not (nothing new, or a read that failed) and *held is the last new one. */
 int      ocm_link_take_torque(link_torque_t *held);
 
-/* Writes the State slot: this cycle's drive values.  flags: IPC_STATE_OP / _WKC_ERR / _STOP, the rest is added here. */
-void     ocm_link_publish_state(uint64_t t_release, uint32_t period, uint32_t flags, uint32_t n_overrun, uint32_t n_wkc);
+/* Writes the State slot: this cycle's drive values.  t_release: the release of the period on the system counter
+ * (sys_counter.h).  flags: IPC_STATE_OP / _WKC_ERR / _STOP; IPC_STATE_SERVO_ON is added here, and the flags as written
+ * are returned.  faults: the cycles so far that started late, ended after the next release, sent after the send
+ * deadline, or had an incomplete working counter. */
+typedef struct { uint32_t late, overruns, missed, wkc; } link_faults_t;
+uint32_t ocm_link_publish_state(uint64_t t_release, uint32_t period, uint32_t flags, const link_faults_t *faults);
 
 #endif /* OCM_LINK_H */

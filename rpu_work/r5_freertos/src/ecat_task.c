@@ -9,7 +9,8 @@
  *     structs over the IOmap (ecat_bringup.c, cia402_drive.c).  DC SYNC0 on every drive for the L7N bench, none for
  *     the Indy7 (ECAT_USE_DC in app_config.h, ecat_bringup.c).
  *   NEW for the embedded target: PDO mapping by CoE SDO writes, a FreeRTOS task instead of a Linux RT thread,
- *     a 1 kHz loop that never prints (event_log.c), loop period / execution time statistics (loop_timing.c)
+ *     a 1 kHz loop that never prints (event_log.c), the times of every cycle and its send deadline (loop_timing.c),
+ *     a record of every cycle for Linux (cycle_record.c)
  *
  * - WKC gate (IgH: domain wc_state == complete): the CiA402 state machine and the torque only run on a
  *   cycle whose working counter is complete.  On a lost frame the torque is set to 0.
@@ -28,9 +29,12 @@
  * - The FPU is declared (portTASK_USES_FLOATING_POINT), sin() is computed locally (no -lm needed), the build
  *   fails with a clear message if the FreeRTOS tick is not 1000 Hz (app_config.h).
  *
- * Timing: the loop is paced with vTaskDelayUntil(1 tick).  The drives take the outputs at their SYNC0; the loop
- * is not phase-locked to SYNC0 (no master clock alignment), as in the colleague's DC build.  The printed
- * "period"/"exec" statistics show how steady the loop is; a hardware-timer ISR is the next step (see ecat_task()).
+ * Timing: the release of a cycle is the FreeRTOS tick, i.e. the interrupt of the TTC that wakes this task out of
+ * vTaskDelayUntil(1 tick).  Every cycle is timed from that release on the system counter (loop_timing.c): how late
+ * it starts (t_w), when its send returns (t_w + t_s, held to the send deadline of the cfg), and the counts of late
+ * starts, missed deadlines and overruns go into the State slot and the status report; the times of every cycle go
+ * into the record ring (cycle_record.c, r5rec.py on Linux).  The drives take the outputs at their SYNC0; the loop is
+ * not phase-locked to SYNC0 (no master clock alignment), as in the colleague's DC build.
  */
 #include "FreeRTOS.h"
 #include "task.h"
@@ -44,6 +48,8 @@
 #include "axis_control.h"
 #include "event_log.h"
 #include "loop_timing.h"
+#include "cycle_record.h"
+#include "sys_counter.h"
 #include "r5log.h"
 #include "ocm_link.h"
 #include "obs_link.h"
@@ -225,15 +231,20 @@ static void take_apu_slots(uint64_t now)
 /* ----------------------------------------------------------------------- */
 /* One 1 kHz cycle: receive -> logic -> send                               */
 /* ----------------------------------------------------------------------- */
-static void ecat_cycle(void)
+static void ecat_cycle(uint32_t planned_tick)
 {
-    uint32_t start = cycle_counter_read(), end;
-    uint64_t t_release = ocm_link_counter();
+    cycle_times_t t;
+    cycle_record_t record;
+    link_faults_t faults;
     uint32_t link_flags = IPC_STATE_OP;
-    int wkc = ec_receive_processdata(RX_TIMEOUT_US);
+    int wkc;
+
+    loop_timing_begin(planned_tick, &t);
+    wkc = ec_receive_processdata(RX_TIMEOUT_US);
+    t.recv = sys_counter_low();
 
     cycle_index++;
-    if (stop_step == STOP_NONE) take_apu_slots(t_release);     /* a command during a stop would only fight the stop */
+    if (stop_step == STOP_NONE) take_apu_slots(t.release);     /* a command during a stop would only fight the stop */
 
     if (stop_step != STOP_NONE) {
         stop_cycle();                   /* the working counter falls as the drives leave OP: no bus fault then */
@@ -268,16 +279,32 @@ static void ecat_cycle(void)
     }
     if (stop_step != STOP_NONE) link_flags |= IPC_STATE_STOP;
     else if (wkc < ecat_expected_wkc) link_flags |= IPC_STATE_WKC_ERR;
-#if LOOP_TIMING
-    ocm_link_publish_state(t_release, cycle_index, link_flags, loop_timing.overruns, wkc_bad_total);
-#else
-    ocm_link_publish_state(t_release, cycle_index, link_flags, 0u, wkc_bad_total);
-#endif
+    faults.late     = loop_timing.late;         /* of the cycles before this one: its send is still to come */
+    faults.overruns = loop_timing.overruns;
+    faults.missed   = loop_timing.missed;
+    faults.wkc      = wkc_bad_total;
+    link_flags = ocm_link_publish_state(t.release, cycle_index, link_flags, &faults);
+
+    t.send_begin = sys_counter_low();
     if (stop_step != STOP_DONE) {
         ec_send_processdata();          /* outputs are re-sent unchanged on a bad cycle */
     }
-    end = cycle_counter_read();
-    loop_timing_record(start, end);
+    t.send_end = sys_counter_low();     /* the end of the cycle: what follows is the record of its times */
+
+    cycle_record_init(&record);
+    record.period = cycle_index;
+    record.flags  = RECORD_BUS | (wkc >= ecat_expected_wkc ? RECORD_OP : 0u) |
+                    ((link_flags & IPC_STATE_SERVO_ON) ? RECORD_SERVO : 0u);
+    if (stop_step != STOP_NONE) record.flags |= RECORD_STOP;
+    else if (wkc < ecat_expected_wkc) record.flags |= RECORD_WKC;
+    loop_timing_end(&t, &record);
+    cycle_record_push(&record);
+}
+
+/* [ticks of the system counter] -> [us], rounded */
+static int32_t ticks_us(uint32_t ticks)
+{
+    return (int32_t)((sys_counter_ns(ticks) + 500u) / 1000u);
 }
 
 /* once per REPORT_PERIOD_S: status + timing statistics of the window just ended */
@@ -290,14 +317,6 @@ static void post_status_report(uint32_t cycles)
         e->value[0] = (int32_t)(cycles / 1000u);
         e->value[1] = (int32_t)wkc_bad_total;
         e->value[2] = axis_control_servo_requested();
-#if LOOP_TIMING
-        e->value[3] = (int32_t)(loop_timing.periods ? loop_timing.period_min / CPU_CYCLES_PER_US : 0U);
-        e->value[4] = (int32_t)(loop_timing.periods ? (uint32_t)(loop_timing.period_sum / ((uint64_t)loop_timing.periods * CPU_CYCLES_PER_US)) : 0U);
-        e->value[5] = (int32_t)(loop_timing.period_max / CPU_CYCLES_PER_US);
-        e->value[6] = (int32_t)(loop_timing.exec_max / CPU_CYCLES_PER_US);
-        e->value[7] = (int32_t)(loop_timing.exec_max_run / CPU_CYCLES_PER_US);
-        e->value[8] = (int32_t)loop_timing.overruns;
-#endif
         e->value[9] = (int32_t)(events_dropped + events_suppressed);
         for (i = 0; i < AXIS_COUNT; i++) {
             e->value[10 + i]              = (int32_t)drive_in[i]->statusword;
@@ -305,7 +324,21 @@ static void post_status_report(uint32_t cycles)
         }
         event_publish();
     }
-    obs_link_report(ocm_link_counter());
+    e = event_reserve(EVENT_TIMING_REPORT, 0);
+    if (e != NULL) {
+        e->value[0] = loop_timing.periods ? ticks_us(loop_timing.period_min) : 0;
+        e->value[1] = loop_timing.periods ? ticks_us((uint32_t)(loop_timing.period_sum / loop_timing.periods)) : 0;
+        e->value[2] = ticks_us(loop_timing.period_max);
+        e->value[3] = ticks_us(loop_timing.wake_max);
+        e->value[4] = ticks_us(loop_timing.send_max);
+        e->value[5] = ticks_us(loop_timing.exec_max);
+        e->value[6] = ticks_us(loop_timing.exec_max_run);
+        e->value[7] = (int32_t)loop_timing.late;
+        e->value[8] = (int32_t)loop_timing.missed;
+        e->value[9] = (int32_t)loop_timing.overruns;
+        event_publish();
+    }
+    obs_link_report(sys_counter_now());
     loop_timing_reset_window();
     event_budget = EVENTS_PER_REPORT;
 }
@@ -313,11 +346,9 @@ static void post_status_report(uint32_t cycles)
 /* ----------------------------------------------------------------------- */
 /* FreeRTOS task "ecat".                                                    */
 /*                                                                          */
-/* TODO (hard real-time): vTaskDelayUntil is quantized to the FreeRTOS tick */
-/* (1 ms here). For true 1 kHz jitter control, drive ecat_cycle() from a    */
-/* TTC hardware-timer ISR (or a task unblocked by it). This placeholder     */
-/* gets the loop running; the "loop period" line of the report tells how   */
-/* much that matters on your hardware.                                      */
+/* The period is the FreeRTOS tick (1 ms): the interrupt of its TTC unblocks */
+/* this task, the highest of the application, out of vTaskDelayUntil().     */
+/* How long that takes is t_w of every cycle (loop_timing.c).               */
 /* ----------------------------------------------------------------------- */
 void ecat_task(void *arg)
 {
@@ -327,13 +358,12 @@ void ecat_task(void *arg)
 
     portTASK_USES_FLOATING_POINT();     /* the unit conversions (robot_target.h) are double: this task needs an FPU context */
     ctl_init();
-    if (!ocm_link_start()) {
+    if (!ocm_link_start() || !loop_timing_start()) {
         set_status(ECAT_STATUS_INIT_FAILED);
         for (;;) vTaskDelay(pdMS_TO_TICKS(1000));
     }
     obs_link_start();
-    cycle_counter_start();
-    loop_timing_reset_window();
+    cycle_record_start();
 
     xil_printf("[ecat] ecat_task: target %s, %d axes, cycle %u us, tick %u Hz; servo on / off come from the APU\r\n",
                ROBOT_TARGET == TARGET_INDY7 ? "Indy7" : "L7N bench", AXIS_COUNT,
@@ -351,12 +381,13 @@ void ecat_task(void *arg)
 
     next = xTaskGetTickCount();
     while (stop_step != STOP_DONE) {
-        ecat_cycle();
+        vTaskDelayUntil(&next, pdMS_TO_TICKS(1));    /* the release: tick `next`.  The frame of the cycle before
+                                                        (of the bring-up, the first time) is back by then */
+        ecat_cycle((uint32_t)next);
         cycles++;
         if ((cycles % (1000u * REPORT_PERIOD_S)) == 0u) {
             post_status_report(cycles);
         }
-        vTaskDelayUntil(&next, pdMS_TO_TICKS(1));    /* ~1 kHz placeholder */
     }
 
     /* stopped on request; the last cycle sent no frame, so none is in flight */

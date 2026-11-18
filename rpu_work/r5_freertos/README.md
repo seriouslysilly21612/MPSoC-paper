@@ -4,8 +4,9 @@ The FreeRTOS application of the R5F-0 (split mode) as it ran on the KV260 on 202
 master (SOEM 1.4.0) on GEM3, which Linux leaves to the R5, driving the L7N bench (4 axes, CSP, DC on,
 1 kHz). Commit `ddc6d14` holds the source of that build unchanged. Since then the application is split
 into modules with new names, without a change in the generated code (below); the master went FREE_RUN on
-2026-11-15 and back to DC SYNC0 on 2026-11-16 (below). Torque mode and the GEM3 buffers in OCM come as later
-commits.
+2026-11-15 and back to DC SYNC0 on 2026-11-16 (below). Torque mode and the slots of the APU came on 2026-11-17
+(commit `51a7ad8`); the send deadline, the record of every cycle and the GEM3 buffers in the OCM on 2026-11-18
+(below).
 
 | Path | Content | Origin |
 |---|---|---|
@@ -17,14 +18,16 @@ commits.
 | `src/axis_control.c`, `.h` | what one cycle does with the axes: CiA 402 state machine (enable, fault reset), hold, sine trajectory | own, from the same example |
 | `src/event_log.c`, `.h` | the loop never prints: it posts events to a queue, the task `ecatlog` prints them at low priority | own |
 | `src/ecat_diag.c`, `.h` | AL states, AL status codes and SDO abort codes in words, SOEM's error list, the slave states | own |
-| `src/loop_timing.c`, `.h` | loop period and execution time from the PMU cycle counter | own |
-| `src/oshw/freertos/gem3_nic.c`, `.h` | the GEM3 driver below SOEM: clock and reset, PHY reset and MDIO, DMA descriptors and buffers, polled send and receive, a PHY-loopback self-test | own |
+| `src/loop_timing.c`, `.h` | the release of a cycle, its times, the send deadline and the counts of late, missed and overrun | own |
+| `src/sys_counter.h` | the system counter of the chip (IOU_SCNTR, the APU's CNTVCT): the one clock of the firmware | own |
+| `src/cycle_record.c`, `.h` | the record of every cycle (that of the APU's timing log) and its ring in the DDR for Linux | own |
+| `src/oshw/freertos/gem3_nic.c`, `.h` | the GEM3 driver below SOEM: clock and reset, PHY reset and MDIO, DMA descriptors and buffers (in the OCM, or in the DDR as before: `GEM3_BUF_IN_OCM`), polled send and receive, a PHY-loopback self-test | own |
 | `src/oshw/freertos/nicdrv.c`, `.h`, `oshw.c`, `.h` | the SOEM hardware layer for FreeRTOS | own, from the SOEM templates (GPL-2.0 with exception) |
 | `src/osal/freertos/` | the SOEM OS layer for FreeRTOS | own |
 | `src/oshw/freertos/r5log.c`, `.h` | `outbyte()` into a ring buffer in DDR: the BSP console (JTAG DCC) blocks for ever without a debugger, as under remoteproc. Linux reads it with `r5log.py` | own |
 | `src/oshw/freertos/xemacps*` | Xilinx emacps driver 3.16 (embeddedsw `xilinx_v2022.1`), unchanged | Xilinx, MIT |
 | `src/soem/`, `src/osal/osal.h` | SOEM 1.4.0, unchanged | SOEM, GPL-2.0 with exception, `LICENSE.SOEM` |
-| `src/lscript.ld` | the linker script: code and data in DDR 0x3600_0000–0x363E_FFFF, stack 8 KB, heap 8 KB. The last 64 KB of the 4 MB that `rpu_v2.dtbo` reserves stays out of the link: a non-cacheable window with the GEM3 descriptor rings (from 0x363F_0000), the stop page (0x363F_B000) and the log ring (0x363F_C000). The frame buffers are cacheable `.bss` | own, from the Vitis template |
+| `src/lscript.ld` | the linker script: code and data in DDR 0x3600_0000–0x362F_FFFF, stack 8 KB, heap 8 KB. The last 1 MB of the 4 MB that `rpu_v2.dtbo` reserves stays out of the link: the record ring (0x3630_0000, 960 KB), and in the last 64 KB the stop page (0x363F_B000) and the log ring (0x363F_C000). In the build with `GEM3_BUF_IN_OCM` 0 those 64 KB are a non-cacheable window that also holds the GEM3 descriptor rings (from 0x363F_0000), and the frame buffers are cacheable `.bss` | own, from the Vitis template |
 | `bsp_ref/FreeRTOSConfig.h` | the FreeRTOS configuration the BSP generates from `system.mss` (tick 1000 Hz, heap 256 KB, 8 priorities), to read only | generated |
 | `r5_freertos.elf` | the build that ran, 936,504 bytes, sha256 `5d2e82c908e3cfaad145abfcb7496b4699455c1d81fe95db70fbf9d872e188eb`: the same file as `/lib/firmware/r5_freertos.elf` on the board (checked 2026-11-12). Built from the source of `ddc6d14` (`cia402_soem.c` in one file) | build |
 | `platform/design_1_wrapper.xsa` | the hardware hand-off from Vivado 2022.1 (board `kv260_som` 1.3): the PS only, no PL, GEM3 not enabled | Vivado |
@@ -33,6 +36,7 @@ commits.
 | `user-override.dtb` | the device tree the board boots with this firmware, sha256 `b1f13abe9be882fb887bfd6fdc8bc540edcd0a8acdb6facbb2064befa2a34207`: byte for byte `fdtoverlay -i ../base.dtb -o user-override.dtb ../rpu_v2.dtbo ../gem3_off.dtbo` | board |
 | `../gem3_off.dtso`, `.dtbo` | the overlay that disables GEM3 (`ethernet@ff0e0000`) for Linux; the `.dtbo` is `dtc -@` of the `.dtso` | own |
 | `r5log.py` | reads the log ring through `/dev/mem` on Linux (single-byte loads: the carveout is Device memory); with `-f`, Ctrl-C stops the run cleanly ("Clean stop") | own |
+| `r5rec.py` | reads the record ring through `/dev/mem` on Linux and writes a timing log that `goal-to-torque_MPSoC/tools/timing_summary.py` reads | own |
 
 The BSP was not modified: its `mpu.c` is the same file as in the FSBL and PMU firmware BSPs, and the three
 copies of `FreeRTOSConfig.h` are identical. The BSP can be generated again from the platform files.
@@ -58,11 +62,15 @@ release `xilinx_v2022.1`), and the ELF records GCC 11.2.0.
    - linker: `-mcpu=cortex-r5 -mfloat-abi=hard -mfpu=vfpv3-d16 -Wl,--gc-sections -Wl,-T -Wl,src/lscript.ld -L <BSP>/bsplib/lib`,
      libraries (`objects.mk`) `-Wl,--start-group,-lxil,-lfreertos,-lgcc,-lc,--end-group`
 4. The switches in the source, as built:
-   - `RUN_LEVEL` (`src/app_config.h`, `CIA402_MODE` before the split): 0 = bus only, 1 = + servo on and hold,
-     2 = + sine trajectory (the default). The ELF was built with 2. A leftover `-DCIA402_...` stops the build
-     with an error, so that an old `-DCIA402_MODE=0` cannot silently turn into level 2.
-   - `GEM3_*` (`gem3_nic.c`): descriptor window 0x363F_0000 (64 KB, must match `lscript.ld`), self-test on, PHY reset on MIO 38.
-   - `R5LOG_ADDR` (`r5log.c`): the log ring at 0x363F_C000, 16 KB.
+   - `ROBOT_TARGET` (`src/app_config.h`): 0 = the L7N bench (the default), 1 = the Indy7. The ELF of 2026-11-11
+     was built with `RUN_LEVEL` 2 (servo on and a sine trajectory by itself); that switch is gone, and a leftover
+     `-DRUN_LEVEL`, `-DCIA402_...`, `-DLOOP_TIMING` or `-DCPU_HZ` stops the build with an error.
+   - `GEM3_BUF_IN_OCM` (`gem3_nic.h`): 1 = the descriptors and frame buffers in the OCM, 0xFFFC_4000–0xFFFC_DFFF
+     (the default); 0 = as on 2026-11-11, the descriptor window at 0x363F_0000 (64 KB) and the buffers in `.bss`.
+     Other `GEM3_*` (`gem3_nic.c`): self-test on, PHY reset on MIO 38.
+   - `R5LOG_ADDR` (`r5log.c`): the log ring at 0x363F_C000, 16 KB. `RECORD_RING_ADDR` (`cycle_record.h`): the
+     record ring at 0x3630_0000, 960 KB; both outside what `lscript.ld` links.
+   - `SYSCNT_HZ` (`sys_counter.h`): the ticks of the system counter per second, 99,999,000 on this board.
 
 ## Run
 
@@ -73,6 +81,7 @@ release `xilinx_v2022.1`), and the ELF records GCC 11.2.0.
   firmware with it.
 - The firmware: `r5_freertos.elf` into `/lib/firmware/`, then remoteproc0 as in the top `README.md`.
 - The log: `sudo python3 r5log.py -f` on Linux. The ring survives an R5 hang; read it before starting the R5 again.
+- The record of every cycle: `sudo python3 r5rec.py --out DIR` on Linux, while the R5 runs (below, "The release ...").
 - The stop: Ctrl-C in `r5log.py -f` (below, "Clean stop"). It ends with `[r5log: R5 stopped ...]`.
 - Safety: one EtherCAT master at a time. Do not stop the R5 with `echo stop` alone while a motor is enabled, and do
   not use `r5log.py -f` with a firmware that has no stop command, without the E-stop or the drive power off first.
@@ -208,6 +217,106 @@ What was tested (2026-11-17, without the board):
 - `r5log.py` against a simulated ring, page and remoteproc file, with real SIGINTs: nine cases pass.
 
 Not yet on the board.
+
+## The constants of the cfg, the stale-torque stop, the copies (2026-11-18)
+
+Three points of the review of the torque firmware (`51a7ad8`), changed without the board and without a Vitis
+build; the rest of this file still describes the build of 2026-11-11 to 2026-11-17.
+
+- **The constants come from the cfg of the APU controller.** `src/robot_target.c` (a table typed by hand) is gone.
+  `src/cfg/fw_cfg_l7n.h` and `src/cfg/fw_cfg_indy7.h` are written by the controller's tool, and
+  `src/robot_target.h` takes the unit constants and the identity of every slave from the one of `ROBOT_TARGET`:
+
+      cd goal-to-torque_MPSoC/indy7 && make tools
+      ./bin/fw_cfg_header -o ../../rpu_work/r5_freertos/src/cfg/fw_cfg_indy7.h
+      ./bin/fw_cfg_header -B bench/L7N4_bus.cfg -o ../../rpu_work/r5_freertos/src/cfg/fw_cfg_l7n.h
+
+  The bring-up now compares the vendor id and the product code of every slave with the cfg (it compared the
+  vendor id of the drives). The State slot carries `FW_CFG_CRC`, the check value of those constants, instead of 0;
+  the APU is to ask for servo on only when it equals the check value of its own cfg (not wired yet). The sync mode
+  is still `ECAT_USE_DC` of `app_config.h`. An application project that still has `src/robot_target.c` does not
+  compile: delete the file there.
+- **The stale-torque stop looks at the request, not at the drives.** `TORQUE_STALE_LIMIT` cycles without a new
+  Torque slot while the servo is requested switch it off, also when an axis is in FAULT or does not come up (the
+  count used to run only while every axis was enabled, and then never started). The APU therefore writes the
+  Torque slot in every cycle from the servo-on command on; `r5cmd.py run` does.
+- **The copies.** `OBS_OFF_MAILBOX` is in `obs/obs_mailbox.h`, the file both sides are built from.
+  `sh test/check_copies.sh` tells when one of the three files copied from the application, or one of the two
+  headers of the cfg, is not what the application has now.
+
+Host tests (no board), from this directory; each prints `all passed`:
+
+    gcc -std=gnu11 -Itest/stub -Isrc test/test_axis_control.c src/axis_control.c -lm -o /tmp/t && /tmp/t
+    gcc -std=gnu11 -DROBOT_TARGET=1 -Itest/stub -Isrc test/test_axis_control.c src/axis_control.c -lm -o /tmp/t && /tmp/t
+    gcc -std=gnu11 -DHOST_TEST -Itest/stub -Isrc test/test_obs_link.c src/obs_link.c -o /tmp/t_obs && /tmp/t_obs
+    python3 test/test_r5cmd.py
+    sh test/check_copies.sh
+
+Checked on a PC: the tests above; the unit conversions give the same bits as the table typed by hand for 80,000
+(L7N) and 120,000 (Indy7) random inputs; the changed files compile for the R5 (arm-none-eabi-gcc 13, stand-ins for
+the BSP headers). Not checked: a Vitis build, the bench, the Indy7; the comparison of the product codes has run
+nowhere.
+
+## The release and the send deadline, the record of every cycle, the GEM3 buffers in the OCM (2026-11-18)
+
+The last point of that review (F5: no send deadline, no base for the period) and the plan's 2-2, 2-4 and 2-11,
+written without the board and without a Vitis build.
+
+- **One clock.** Every time of the firmware is the system counter of the chip (`src/sys_counter.h`: IOU_SCNTR,
+  which the APU reads as CNTVCT; 99,999,000 ticks/s on this board). The PMU cycle counter is no longer used, and
+  `LOOP_TIMING` and `CPU_HZ` are gone.
+- **The release of a cycle is the FreeRTOS tick**, the interrupt of the TTC that wakes the task. At the start of a
+  cycle the task reads how far that timer has counted: that is t_w, and the release is the start minus t_w
+  (`loop_timing_begin()`). The State slot carries that release (it carried the start of the cycle), so the APU
+  reads the State t_w earlier than before, a few microseconds. `loop_timing_start()` checks that the timer runs up
+  in interval mode; when it does not, the firmware parks before the bus scan and says why.
+- **The send deadline.** A cycle whose send returns later than `SEND_DEADLINE` of the cfg (400 us) after its
+  release is counted (missed), as are a start more than a period late (late) and an end after the next release
+  (overrun): the rules and names of the EtherCAT task of the APU controller. The counts are in the State slot
+  (`n_late`, `n_missed`, `n_overrun`, of the cycles before the one that writes them) and in the status report:
+
+      [ecat]   loop period min/avg/max = <a>/<b>/<c> us   t_w max = <n> us   release to send max = <n> us of 400   exec max = <n> us (run max <n> us)   late <k>, sends past the deadline <k>, overruns <k>
+
+  The loop period is start to start; an average that is not 1000 us says that `SYSCNT_HZ` is wrong.
+- **SOEM's timers run on that clock** (`osal.c`). With the FreeRTOS tick a timeout ended at a tick: the receive of
+  a lost frame waited up to 1 ms, and the send of that cycle left a period late. `RX_TIMEOUT_US` is 200 now
+  (500 before), so that a cycle that loses its frame still sends inside the deadline.
+- **A record of every cycle** (`src/cycle_record.c`): 60 bytes with t_w, t_s, the receive, the send and the flags,
+  the record of the APU's timing log (`TimingLog.h`; `test/check_record.cpp` does not compile when they differ).
+  The R5 writes it into a ring of 16,382 records (16 s) at 0x3630_0000, in the DDR that Linux reserves for the R5,
+  and never waits for a reader. On Linux:
+
+      sudo python3 r5rec.py --out DIR          # until Ctrl-C; DIR/timing_r5_<stamp>.bin and .txt
+      python3 ../../goal-to-torque_MPSoC/tools/timing_summary.py DIR/timing_r5_<stamp>.bin --window op
+
+  The summary has the rows of the send (Delta T_send, t_w + t_s and its deadline) that a log of the APU with
+  `--arch S1` leaves empty; the two logs carry the same period numbers. The head of the file tells the build:
+  `gem3_buffers=ocm|ddr`, `optimized=0|1`, `sync_mode`, the check value of the cfg.
+- **The GEM3 descriptors and frame buffers are in the OCM** (0xFFFC_4000–0xFFFC_DFFF, `GEM3_BUF_IN_OCM` 1), so
+  that a frame does not pass through the DDR. The start-up prints three checks: the R5 reads back what it writes
+  there, the four queue base registers, and the PHY-loopback self-test, which now also shows that the DMA of the
+  GEM reaches the OCM (a DMA bus error is said in words, and the bring-up ends). With `-DGEM3_BUF_IN_OCM=0` the
+  driver is the one of 2026-11-11, instruction for instruction. Build both: when the OCM does not work the DDR
+  build is ready, and the two are compared later (plan 2-14).
+- `lscript.ld` links 3 MB instead of 3.9 MB (the image is 0.65 MB): the record ring has the megabyte above.
+
+Host tests added (no board), from this directory:
+
+    gcc -std=gnu11 -DHOST_TEST -Itest/stub -Isrc test/test_loop_timing.c src/loop_timing.c -o /tmp/t_loop && /tmp/t_loop
+    gcc -std=gnu11 -DHOST_TEST -Itest/stub -Isrc/osal -Isrc/osal/freertos test/test_osal_clock.c src/osal/freertos/osal.c -o /tmp/t_osal && /tmp/t_osal
+    gcc -std=gnu11 -DHOST_TEST -DRECORD_RING_BYTES=1024 -Itest/stub -Isrc -Isrc/oshw/freertos test/test_cycle_record.c src/cycle_record.c -lm -o /tmp/t_rec && /tmp/t_rec
+    gcc -std=gnu11 -DHOST_TEST -DRECORD_RING_BYTES=4096 -Isrc/soem -Isrc/osal -Isrc/osal/freertos -Isrc/oshw/freertos -Itest/stub -Isrc test/test_ecat_cycle.c src/loop_timing.c src/cycle_record.c -lm -o /tmp/t_cycle && /tmp/t_cycle
+    python3 test/test_r5rec.py
+    sh test/check_copies.sh
+
+Checked on a PC: those tests and the five above; 67 deliberately wrong versions of the new code each fail one of
+them; every source compiles for the R5 without a warning at `-O0` and `-O2`, for both targets and both places of
+the GEM3 buffers (arm-none-eabi-gcc 13, the BSP headers of embeddedsw 2022.1, stand-ins for `xparameters.h` and
+`FreeRTOSConfig.h`), and needs no symbol from the BSP that it did not need before; the driver with the buffers in
+the OCM and in the DDR passes the model of the GEM of 2026-11-11 (the same output), and the DDR build has the
+machine code of 2026-11-11. Not checked: a Vitis build and link, anything on the board. On the board only: that the
+DMA of the GEM reaches the OCM, the read of the tick timer, what t_w and the send times are, that Linux reads the
+ring while the R5 writes it.
 
 ## The split into modules (2026-11-15)
 

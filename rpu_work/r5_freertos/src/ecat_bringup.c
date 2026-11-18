@@ -18,6 +18,7 @@
 #include "app_config.h"
 #include "ecat_bringup.h"
 #include "cia402_drive.h"
+#include "robot_target.h"
 #include "ecat_diag.h"
 
 /* gem3_nic.c (rev4): NWSR/TXSR/RXSR, frame counters and the PHY link bits - printed when the bus scan finds nobody. */
@@ -68,10 +69,13 @@ int ecat_bring_up(void)
                    " Nothing will be moved.\r\n", ec_slavecount, ROBOT_TARGET, BUS_SLAVE_COUNT);
         return 0;
     }
-    for (i = 1; i <= AXIS_COUNT; i++) {      /* the wrong target on the wrong hardware: the unit constants would be wrong */
-        if (ec_slave[i].eep_man != DRIVE_VENDOR_ID) {
-            xil_printf("[ecat] FAIL: slave %d has vendor 0x%08x, ROBOT_TARGET %d expects 0x%08x. Nothing will be moved.\r\n",
-                       i, (unsigned)ec_slave[i].eep_man, ROBOT_TARGET, (unsigned)DRIVE_VENDOR_ID);
+    for (i = 1; i <= BUS_SLAVE_COUNT; i++) { /* the wrong target on the wrong hardware: the unit constants would be wrong */
+        const fw_cfg_axis_t *cfg = &FW_CFG_AXIS[i - 1];
+
+        if (ec_slave[i].eep_man != cfg->vendor_id || ec_slave[i].eep_id != cfg->product_code) {
+            xil_printf("[ecat] FAIL: slave %d is vendor 0x%08x product 0x%08x, the cfg of this build (ROBOT_TARGET %d) has"
+                       " 0x%08x 0x%08x. Nothing will be moved.\r\n", i, (unsigned)ec_slave[i].eep_man,
+                       (unsigned)ec_slave[i].eep_id, ROBOT_TARGET, (unsigned)cfg->vendor_id, (unsigned)cfg->product_code);
             return 0;
         }
     }
@@ -136,7 +140,7 @@ int ecat_bring_up(void)
 
     /* A low torque limit before any servo-on (D-10 condition 1).  The objects 0x6072 / 0x60E0 / 0x60E1 are those of
      * the L7N manual; shortcut: for the Indy7 drives they are not checked, so nothing is written there (the torque
-     * limit of the Indy7 is TORQUE_LIMIT_U in robot_target.c, applied by the APU) - look at it before the first
+     * limit of the Indy7 is TORQUE_LIMIT_U of the cfg, applied by the APU) - look at it before the first
      * servo-on on the robot. */
 #if ROBOT_TARGET == TARGET_L7N_BENCH
     {

@@ -1,0 +1,44 @@
+#!/bin/sh
+# check_copies.sh -- what this firmware has from the APU application (goal-to-torque_MPSoC/indy7) must be what the
+# application has now.  From r5_freertos/:
+#   sh test/check_copies.sh
+#   1. src/ipc/ipc_layout.h, src/ipc/ipc_slot.h, src/obs/obs_mailbox.h are copies of the application's files: the
+#      two sides must be built from the same text.  A copy is updated from the application (cp), never the other
+#      way round.
+#   2. src/cfg/fw_cfg_indy7.h and src/cfg/fw_cfg_l7n.h are what bin/fw_cfg_header writes from INDY7.cfg and
+#      bench/L7N4_bus.cfg (cd goal-to-torque_MPSoC/indy7 && make tools).  When one differs, write it again with the
+#      tool and build the firmware again; the header is not edited.
+#   3. the record of a cycle (src/cycle_record.h) is the record of the application's timing log (TimingLog.h):
+#      test/check_record.cpp compiles only when the fields and the flag bits are the same.
+# Exit 1 if something differs, 2 if the tool is not built or there is no g++ (that part was not checked).
+APP=../../goal-to-torque_MPSoC/indy7
+bad=0
+for f in ipc/ipc_layout.h ipc/ipc_slot.h obs/obs_mailbox.h; do
+    if cmp -s "$APP/src/$f" "src/$f"; then
+        echo "same: src/$f"
+    else
+        echo "DIFFERENT: src/$f and $APP/src/$f"
+        bad=1
+    fi
+done
+if [ ! -x "$APP/bin/fw_cfg_header" ]; then
+    echo "NOT CHECKED: src/cfg/fw_cfg_*.h ($APP/bin/fw_cfg_header is not built: make tools)"
+    [ $bad -eq 0 ] && bad=2
+else
+    tmp=$(mktemp)
+    "$APP/bin/fw_cfg_header" -f "$APP/INDY7.cfg" -o "$tmp" > /dev/null 2>&1
+    if cmp -s "$tmp" src/cfg/fw_cfg_indy7.h; then echo "same: src/cfg/fw_cfg_indy7.h"; else echo "DIFFERENT: src/cfg/fw_cfg_indy7.h and the cfg"; bad=1; fi
+    "$APP/bin/fw_cfg_header" -f "$APP/INDY7.cfg" -B "$APP/bench/L7N4_bus.cfg" -o "$tmp" > /dev/null 2>&1
+    if cmp -s "$tmp" src/cfg/fw_cfg_l7n.h; then echo "same: src/cfg/fw_cfg_l7n.h"; else echo "DIFFERENT: src/cfg/fw_cfg_l7n.h and the cfg"; bad=1; fi
+    rm -f "$tmp"
+fi
+if ! command -v g++ > /dev/null; then
+    echo "NOT CHECKED: src/cycle_record.h (no g++)"
+    [ $bad -eq 0 ] && bad=2
+elif g++ -std=c++17 -fsyntax-only -I"$APP/src" -Isrc test/check_record.cpp; then
+    echo "same: the record of src/cycle_record.h and of $APP/src/TimingLog.h"
+else
+    echo "DIFFERENT: the record of src/cycle_record.h and of $APP/src/TimingLog.h"
+    bad=1
+fi
+exit $bad

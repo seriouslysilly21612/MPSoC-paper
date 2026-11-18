@@ -11,6 +11,7 @@
 #include "cia402_drive.h"
 #include "ecat_diag.h"
 #include "ecat_task.h"
+#include "robot_target.h"
 
 #if defined(__arm__) && !defined(HOST_TEST)
 #define MEMORY_BARRIER()    __asm__ volatile ("dmb" : : : "memory")
@@ -105,10 +106,13 @@ static void print_event(const event_t *e)
             xil_printf(" ax%d sw=%04x pos=%d", i, (unsigned)e->value[10 + i], (int)e->value[10 + AXIS_COUNT + i]);
         }
         xil_printf("\r\n");
-#if LOOP_TIMING
-        xil_printf("[ecat]   loop period min/avg/max = %d/%d/%d us   exec max = %d us (run max %d us)   cycles over 1 ms: %d\r\n",
-                   (int)e->value[3], (int)e->value[4], (int)e->value[5], (int)e->value[6], (int)e->value[7], (int)e->value[8]);
-#endif
+        break;
+    case EVENT_TIMING_REPORT:       /* the window since the last report; the run max and the counts since the start */
+        xil_printf("[ecat]   loop period min/avg/max = %d/%d/%d us   t_w max = %d us   release to send max = %d us of %d"
+                   "   exec max = %d us (run max %d us)   late %d, sends past the deadline %d, overruns %d\r\n",
+                   (int)e->value[0], (int)e->value[1], (int)e->value[2], (int)e->value[3], (int)e->value[4],
+                   (int)(FW_CFG_SEND_DEADLINE_NS / 1000), (int)e->value[5], (int)e->value[6], (int)e->value[7],
+                   (int)e->value[8], (int)e->value[9]);
         break;
     case EVENT_SLAVE_AL_STATUS: {
         unsigned st = (unsigned)e->value[1];

@@ -9,8 +9,11 @@
  *   reset worked and the servo is still requested, the drive is enabled again, as before.
  * - Torque: an axis gets the torque of the Torque slot only while it is OPERATION_ENABLED, the servo is requested and
  *   the APU marked the slot valid and enabled; otherwise 0.  A cycle without a new slot repeats the last torque (D-03);
- *   TORQUE_STALE_LIMIT such cycles in a row, counted while every axis is enabled, switch the servo off: torque 0 and
- *   CW_DISABLE_VOLTAGE.  The servo stays off until the APU asks for servo on again (D-10).
+ *   TORQUE_STALE_LIMIT such cycles in a row while the servo is requested switch the servo off: torque 0 and
+ *   CW_DISABLE_VOLTAGE.  The servo stays off until the APU asks for servo on again (D-10).  The stop does not wait
+ *   for every axis to be enabled: with one axis in FAULT, or one that does not come up, the others are enabled and
+ *   would keep the last torque of an APU that is gone.  So the APU writes the Torque slot in every cycle from the
+ *   servo-on command on, also while the drives are still on their way to OPERATION_ENABLED.
  * - target_position follows position_actual: CST ignores it, and a drive switched to CSP would not jump.
  */
 #include <stdint.h>
@@ -79,16 +82,16 @@ static unsigned short next_controlword(int axis, int state, unsigned short curre
     }
 }
 
-/* the stale-torque rule: called once per cycle, after the states of this cycle are known */
+/* the stale-torque rule: called once per cycle, after the states of this cycle are known.  all_enabled only says
+ * which cycles the State slot counts (as the APU application counts them); the stop itself looks at the request. */
 static void check_torque_stale(int all_enabled)
 {
-    if (torque_fresh || !all_enabled) {
+    if (!torque_fresh && all_enabled) stale_total++;
+    if (torque_fresh || !servo_requested) {
         stale_run = 0;
         return;
     }
-    stale_total++;
-    stale_run++;
-    if (stale_run == TORQUE_STALE_LIMIT && servo_requested) {
+    if (++stale_run == TORQUE_STALE_LIMIT) {
         servo_requested = 0;
         event_post(EVENT_TORQUE_STALE_STOP, 0, (int)stale_run, 0, 0);
     }
