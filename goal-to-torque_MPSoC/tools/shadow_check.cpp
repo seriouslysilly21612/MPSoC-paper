@@ -250,6 +250,17 @@ public:
 		return bStarted && bOk != FALSE;
 	}
 
+	/* a cycle in which the two parts did not both have a new State (the control task ran over a period), with
+	 * nothing started or updated. adLawQ: the state of the law, NULL: it was not updated. -> a payload was told (*apIn) */
+	bool Cycle(bool abTrajNew, uint32_t auTrajPeriod, const double* adTq, const double* adTqd, bool abDynNew,
+	           uint32_t auDynPeriod, const double* adLawQ, const double* adLawQd, ipc_shadow_in_t* apIn)
+	{
+		if (abTrajNew)
+			m_pTask->TrajState(auTrajPeriod, adTq, adTqd);
+		m_pTask->Finish(abDynNew, auDynPeriod, adLawQ, adLawQd, m_cTraj, *m_pCtl, false, false, m_vTau.data());
+		return m_cR5.TakeShadow(apIn);
+	}
+
 	/* the answer that is in the Shadow out slot now, as the next period of the control task would take it */
 	void TakeAnswer()
 	{
@@ -389,7 +400,7 @@ void ByHand(const char* astrURDF, const double* adNumbers)
 	Expect(cTask.GetCounts().nAnswers == 1 && cTask.GetCounts().nOtherCheck == 1 && cTask.GetCounts().nCompared == 0,
 	       "an answer with another check value is counted and not compared");
 	stOut.ctrl_crc = 0x1111u;
-	stOut.tau_diff = 0.5 * CShadowTask::TAU_SAME;
+	stOut.tau_diff = CShadowTask::TAU_SAME;
 	stOut.ctrl_ns = 40000;
 	cTask.Take(stOut);
 	stOut.tau_diff = 2.0 * CShadowTask::TAU_SAME;
@@ -398,7 +409,7 @@ void ByHand(const char* astrURDF, const double* adNumbers)
 	stOut.ctrl_ns = 50000;
 	cTask.Take(stOut);
 	Expect(cTask.GetCounts().nCompared == 2 && cTask.GetCounts().nDiffer == 1 &&
-	       cTask.GetCounts().dDiffMax == 2.0 * CShadowTask::TAU_SAME, "a difference above the limit differs, one below does not");
+	       cTask.GetCounts().dDiffMax == 2.0 * CShadowTask::TAU_SAME, "a difference above the limit differs, one at it does not");
 	stOut.flags = IPC_SHADOW_OUT_CTRL | IPC_SHADOW_OUT_APART | IPC_SHADOW_OUT_FAULT;
 	stOut.tau_diff = 9.0;
 	stOut.traj_ns = 0;
@@ -691,6 +702,28 @@ int main(int argc, char** argv)
 	Expect(nStartsTold == 5 && nAfter == 2 && nLost == 1 && nCount == 0 && nState == 0,
 	       "five starts told, two after the update of their period, one start lost; the count of the starts and "
 	       "the measured state of the law in every payload");
+
+	/* the control task ran over a period: a cycle in which only one part, or none, had a new State */
+	{
+		const uint32_t uOver = 4000000u;
+		const long nTold = stC.nPayloads;
+		double adA[N], adB[N], adZero[N] = {};
+		for (int i = 0; i < N; i++)
+		{
+			adA[i] = 0.1 * (i + 1);
+			adB[i] = -0.05 * (i + 1);
+		}
+		ipc_shadow_in_t stOne;
+		memset(&stOne, 0, sizeof(stOne));
+		Expect(cApu.Cycle(true, uOver + 1, adA, adZero, false, uOver, NULL, NULL, &stOne) && stOne.period == uOver + 1 &&
+		       memcmp(stOne.q, adA, sizeof(adA)) == 0 && !(stOne.flags & IPC_SHADOW_CTRL),
+		       "a new State for the Trajectory part only: its period and its state are told, no law");
+		Expect(!cApu.Cycle(false, 0, NULL, NULL, false, uOver + 1, NULL, NULL, &stOne) && stC.nPayloads == nTold + 1,
+		       "a new State for neither part: nothing is told");
+		Expect(cApu.Cycle(false, 0, NULL, NULL, true, uOver + 3, adB, adZero, &stOne) && stOne.period == uOver + 3 &&
+		       memcmp(stOne.q, adB, sizeof(adB)) == 0 && stC.nPayloads == nTold + 2,
+		       "a new State for the Dynamics part only: its period and the state of the law are told");
+	}
 	printf("  %ld periods with the law followed (%ld differ), %ld with the reference (%ld differ); apart in %zu periods; "
 	       "%ld goals; the lead bound acted in %ld periods, the torque limit in %ld\n",
 	       nLaw, nLawDiff, nTraj, nTrajDiff, setApart.size(), nGoals, nLead, nClamp);
