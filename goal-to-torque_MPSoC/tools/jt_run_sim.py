@@ -24,6 +24,7 @@ Usage (in the repository; run.sh checks the limits: rtprio >= 97, memlock unlimi
   python3 tools/jt_run_sim.py [-n 5] [--tests fast-pdg,fast-ctc,slow-ctc] [--analyze]
   --cfg FILE    another cfg (default indy7/INDY7.cfg, through run.sh)
   --direct      start bin/indy7_ctrl directly instead of run.sh (no check of the limits)
+  --arch A      passed to the controller (P0, S1: where the EtherCAT task runs; with S1 the R5 is simulated as well)
 The console of the controller is saved next to the logs: <JOINT_TEST_LOG_DIR>/run_sim_<time>.txt.
 """
 import argparse
@@ -155,6 +156,7 @@ def main():
     ap.add_argument('--direct', action='store_true', help='start bin/indy7_ctrl instead of run.sh')
     ap.add_argument('--settle', type=float, default=0.3, help='[s] between servo on and the test')
     ap.add_argument('--analyze', action='store_true', help='run tools/jt_analyze.py on the new logs')
+    ap.add_argument('--arch', help='--arch of the controller (P0, S1; default: its own, P0)')
     a = ap.parse_args()
 
     cfg = os.path.abspath(a.cfg)
@@ -188,6 +190,8 @@ def main():
         cmd = ['./bin/indy7_ctrl', '-f', cfg, '-s']
     else:
         cmd = ['./run.sh', '-s', '-f', cfg]
+    if a.arch:
+        cmd += ['--arch', a.arch]
     print('jt_run_sim: %s (in %s); tests %s x %d; friction %s' % (' '.join(cmd), APP, ', '.join(tests), a.n,
                                                                   'on' if friction else 'off'))
     print('jt_run_sim: console -> %s' % console_log)
@@ -240,7 +244,7 @@ def main():
     c.close()
     with c.lock:
         for line in c.text.splitlines():
-            if line.startswith(('[SIM]', '[RT]', '[MALLOC]')):
+            if line.startswith(('[SIM]', '[SIM R5]', '[R5]', '[RT]', '[MALLOC]')):
                 print('jt_run_sim: ' + line)
     print('jt_run_sim: %d logs in %s' % (len(saved), log_dir))
     steps = [f for f in saved if os.path.basename(f).startswith('jt_step_')]

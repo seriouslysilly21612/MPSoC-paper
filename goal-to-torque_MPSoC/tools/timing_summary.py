@@ -27,6 +27,17 @@ period before (its Dynamics cycle not complete when the EtherCAT task read the T
 chain for it, so the chain criterion cannot see it); with -b also that no drive of the bus was ever enabled. It writes timing_summary.txt, timing_table.csv (the row of Table 6) and timing_tw.hist
 (t_w of the EtherCAT task in 1 us bins, the format of the cyclictest histograms) into --out (default: the
 directory of the log). Standard library only.
+
+A log of --arch S1 (arch=S1 in the header): the EtherCAT exchange runs on the R5, and the records are those of
+the task that takes its State slot here, one per cycle, with the period number of the R5. That task does not
+send, so the send rows and the send deadline are those of the R5, not of this log. Instead:
+  cycles without a new State     the cycle found no State of a new period (the R5 late, or the task early)
+  States that no cycle took      periods of the R5 between two States taken: the arm moved for a period that
+                                 the reference did not
+  chain  R = WAKE_DELAY + START_DELAY + t_w + t_e of the Dynamics task: from the release of the R5, which the
+         tasks follow WAKE_DELAY behind, to the torque in its slot; R < T_s means before the next release of
+         the R5. The phase error of the following is not in the records: the console summary of the run has
+         it ([R5] following), and the torques that the R5 did not have in time, exactly ([R5] Torque slot).
 """
 import argparse
 import csv
@@ -38,7 +49,7 @@ HEADER_BYTES = 1024
 REC = struct.Struct('<IiiiiiiIHHiiiiii')
 FORMAT = 'g2t-timing-1'
 FLAGS = dict(OP=1, WKC=2, LATE=4, MISSED=8, OVERRUN=16, LAW=32, HL=64, TRACK=128, STOP=256, SIM=512,
-             BUS=1024, SERVO=2048, BUSSERVO=4096, TEST=8192)
+             BUS=1024, SERVO=2048, BUSSERVO=4096, TEST=8192, R5=16384, NOSTATE=32768)
 BIN_NS = 100            # bins of the percentiles
 MAX_NS = 10_000_000     # the last bin: 10 ms (beyond: overflow, the maximum stays exact)
 
@@ -139,15 +150,23 @@ def main(argv=None):
     period = int(head.get('period_ns', '1000000'))
     tb_ns = a.tb_us * 1000.0 if a.tb_us is not None else float(head.get('deadline_ns', period) or period)
     hybrid = head.get('mode') == 'hybrid'
+    # --arch S1: the records of the task that takes the State slot of the R5, released wake_delay after it (a
+    # line that only a log of S1 has)
+    s1 = head.get('arch') == 'S1'
+    wake_delay = int(head.get('wake_delay_ns', '0') or 0)
     # START_DELAY of the Dynamics task (the third periodic task; logs before the KV260 port have none): its
     # t_w counts from its own release, the chain from the release of the period
     delays = [int(x) for x in head.get('start_delay_ns', '').split(',') if x.strip()]
     dyn_delay = delays[2] if len(delays) > 2 else 0
 
     # pass 1: the window [first, last] in release periods
-    first = last = None
+    first = last = before = None
     for r in REC.iter_unpack(data):
         per, fl = r[0], r[8]
+        if s1 and before is not None and per < before:
+            raise SystemExit('the periods of the R5 go back (%d after %d): the R5 started again during the run; a '
+                             'summary is of one run of it' % (per, before))
+        before = per
         if a.window == 'track':
             ok = bool(fl & FLAGS['TRACK'])
         elif a.window == 'op':
@@ -168,9 +187,10 @@ def main(argv=None):
     d['Delta T_send (signed)'] = Dist(off=MAX_NS // 2)
     CHAIN = names[-1]
     cnt = dict(periods=0, late=0, overrun=0, missed=0, wkc=0, notop=0, busservo=0, chain_n=0,
-               over_chain=0, nosim=0, notorque=0)
+               over_chain=0, nosim=0, notorque=0, nostate=0, states_missed=0)
     worst_ws = worst_chain = None
     prev = None        # (period, t_w + t_s) of the last period of the window
+    prev_state = None  # S1: the period of the R5 of the last State taken in the window
     prev_sim = None    # (period, simulator step, EtherCAT t_w + t_e) of the last record
     seen = present = 0
     tw_hist = {}
@@ -184,10 +204,16 @@ def main(argv=None):
             continue
         present += 1
         seen += 1
+        nostate = s1 and bool(fl & FLAGS['NOSTATE'])
+        states_missed = per - prev_state - 1 if (s1 and not nostate and prev_state is not None) else 0
+        if s1 and not nostate:
+            prev_state = per
         if seen <= a.skip:
             prev = (per, w + s)
             continue
-        if prev is not None and per == prev[0] + 1:
+        cnt['nostate'] += nostate
+        cnt['states_missed'] += states_missed
+        if not s1 and prev is not None and per == prev[0] + 1:
             dv = (w + s) - prev[1]
             d['Delta T_send (signed)'].add(dv)
             d['|Delta T_send|'].add(abs(dv))
@@ -203,21 +229,24 @@ def main(argv=None):
                 cnt[key] += 1
                 if hh is not None:
                     hh[idx] += 1
-        if not (fl & FLAGS['OP']):
+        if nostate:
+            pass                    # counted above: a cycle without a State has no OP and no torque to tell
+        elif not (fl & FLAGS['OP']):
             cnt['notop'] += 1
         elif dyw < 0 or dye < 0:    # the EtherCAT task found no torque of the period before (TaskEtherCAT.cpp)
             cnt['notorque'] += 1
         if fl & FLAGS['BUSSERVO']:
             cnt['busservo'] += 1
         d['EtherCAT t_w'].add(w)
-        d['EtherCAT t_s'].add(s)
-        if rcv >= 0 and snd >= 0:
-            d['  receive'].add(rcv)
-            d['  send'].add(snd)
-            d['  process'].add(s - rcv - snd)
-        d['EtherCAT t_w + t_s'].add(w + s)
-        if worst_ws is None or w + s > worst_ws[0]:
-            worst_ws = (w + s, per)
+        if not s1:                  # the task of S1 does not send
+            d['EtherCAT t_s'].add(s)
+            if rcv >= 0 and snd >= 0:
+                d['  receive'].add(rcv)
+                d['  send'].add(snd)
+                d['  process'].add(s - rcv - snd)
+            d['EtherCAT t_w + t_s'].add(w + s)
+            if worst_ws is None or w + s > worst_ws[0]:
+                worst_ws = (w + s, per)
         d['EtherCAT t_e'].add(e)
         # with -b the step of the simulated arm after the send is not part of the response of the task
         resp = w + e - (sim if (hybrid and sim >= 0) else 0)
@@ -243,7 +272,7 @@ def main(argv=None):
                     # as the work before it (EtherCAT with the step, then Trajectory) ran past its release
                     before = max(ecat_end_before or 0, tjw + tje if (tjw >= 0 and tje >= 0) else 0)
                     corr_dyn = min(corr, max(0, before - dyn_delay)) if dyn_delay > 0 else corr
-                    chain = dyn_delay + dyw - corr_dyn + dye
+                    chain = wake_delay + dyn_delay + dyw - corr_dyn + dye
                     d['Dynamics t_w'].add(dyw - corr_dyn)
                     d['Dynamics t_e'].add(dye)
                     d[CHAIN].add(chain)
@@ -253,7 +282,7 @@ def main(argv=None):
                     if worst_chain is None or chain > worst_chain[0]:
                         worst_chain = (chain, per - 1)
         if hh is not None:
-            hh[1] = max(hh[1], w + s)
+            hh[1] = max(hh[1], 0 if s1 else w + s)
             hh[2] = max(hh[2], resp)
             hh[3] = max(hh[3], chain or 0)
         b = w // 1000
@@ -264,15 +293,25 @@ def main(argv=None):
     os.makedirs(out, exist_ok=True)
     L = []
     L.append('%s: mode %s, %s' % (os.path.basename(a.log), head.get('mode', '?'), head.get('created', '')))
-    L.append('window: %s, release periods %d..%d (%.1f s), the first %d left out; %d periods measured; T_s %.3f ms, '
-             't_b %.1f us after the release; sync mode %s' % (a.window, first, last, (last - first + 1) * period * 1e-9,
-                                                              a.skip, cnt['periods'], period / 1e6, tb_ns / 1000.0,
-                                                              head.get('sync_mode', '-')))
+    if s1:
+        L.append('--arch S1: the cycles of the task that takes the State slot of the R5, released %.0f us after the '
+                 'R5; the send and its deadline are those of the R5, not in this log' % (wake_delay / 1e3))
+        L.append('window: %s, periods of the R5 %d..%d (%.1f s), the first %d cycles left out; %d cycles measured, %d '
+                 'with a new State; T_s %.3f ms' % (a.window, first, last, (last - first + 1) * period * 1e-9, a.skip,
+                                                     cnt['periods'], cnt['periods'] - cnt['nostate'], period / 1e6))
+    else:
+        L.append('window: %s, release periods %d..%d (%.1f s), the first %d left out; %d periods measured; T_s %.3f '
+                 'ms, t_b %.1f us after the release; sync mode %s'
+                 % (a.window, first, last, (last - first + 1) * period * 1e-9, a.skip, cnt['periods'], period / 1e6,
+                    tb_ns / 1000.0, head.get('sync_mode', '-')))
     if head.get('tasks'):
         L.append('tasks (name:priority:cpu): %s' % head['tasks'])
     if any(delays):
         L.append('start delays [us]: %s (the chain includes that of the Dynamics task)'
                  % ','.join('%.0f' % (d / 1e3) for d in delays))
+    if s1:
+        L.append('the chain counts from the release of the R5: the %.0f us that the tasks follow behind it are in it, '
+                 'the phase error of the following is not' % (wake_delay / 1e3))
     if head.get('call_timing') == '1':
         L.append('NOTE: call timing was on (G2T_CALL_TIMING): the times include the clock reads around the library '
                  'calls')
@@ -300,9 +339,14 @@ def main(argv=None):
         row.append(cell)
         L.append('  %-20s %s' % (c, cell))
     L.append('')
-    L.append('faults in the window: %d late releases, %d overruns, %d missed send deadlines, %d incomplete working '
-             'counters, %d periods without OP, %d periods missing from the log'
-             % (cnt['late'], cnt['overrun'], cnt['missed'], cnt['wkc'], cnt['notop'], gaps))
+    if s1:
+        L.append('faults in the window: %d late releases, %d overruns, %d cycles without a new State, %d States of the '
+                 'R5 that no cycle took, %d incomplete working counters, %d periods without OP'
+                 % (cnt['late'], cnt['overrun'], cnt['nostate'], cnt['states_missed'], cnt['wkc'], cnt['notop']))
+    else:
+        L.append('faults in the window: %d late releases, %d overruns, %d missed send deadlines, %d incomplete '
+                 'working counters, %d periods without OP, %d periods missing from the log'
+                 % (cnt['late'], cnt['overrun'], cnt['missed'], cnt['wkc'], cnt['notop'], gaps))
     if cnt['chain_n']:
         L.append('periods in OP without the torque of the period before: %d (their chain is not in the log)%s'
                  % (cnt['notorque'], '; with -b the simulator step ran before the control task on the same core'
@@ -317,12 +361,16 @@ def main(argv=None):
                                                              'overrun', 'missed', 'wkc'))
         for h in sorted(hours):
             c = hours[h]
-            L.append('%6d %10d %10.1f %10.1f %10.1f %6d %8d %7d %5d' % (h + 1, c[0], c[1] / 1e3, c[2] / 1e3, c[3] / 1e3,
-                                                                       c[4], c[5], c[6], c[7]))
-    crit = [('t_w + t_s <= t_b in every period', cnt['missed'] == 0, '%d missed' % cnt['missed']),
-            ('no late release', cnt['late'] == 0, str(cnt['late'])),
-            ('no overrun', cnt['overrun'] == 0, str(cnt['overrun'])),
-            ('no incomplete working counter', cnt['wkc'] == 0, str(cnt['wkc']))]
+            L.append('%6d %10d %10s %10.1f %10.1f %6d %8d %7d %5d' % (h + 1, c[0], '-' if s1 else '%.1f' % (c[1] / 1e3),
+                                                                     c[2] / 1e3, c[3] / 1e3, c[4], c[5], c[6], c[7]))
+    if s1:
+        crit = [('a new State of the R5 in every cycle', cnt['nostate'] == 0, '%d without' % cnt['nostate']),
+                ('no State of the R5 that no cycle took', cnt['states_missed'] == 0, str(cnt['states_missed']))]
+    else:
+        crit = [('t_w + t_s <= t_b in every period', cnt['missed'] == 0, '%d missed' % cnt['missed'])]
+    crit += [('no late release', cnt['late'] == 0, str(cnt['late'])),
+             ('no overrun', cnt['overrun'] == 0, str(cnt['overrun'])),
+             ('no incomplete working counter', cnt['wkc'] == 0, str(cnt['wkc']))]
     if cnt['chain_n']:
         crit.append(('chain < T_s in every period', cnt['over_chain'] == 0, '%d at or above' % cnt['over_chain']))
         crit.append(('a fresh torque in every period', cnt['notorque'] == 0, '%d without' % cnt['notorque']))

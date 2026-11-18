@@ -22,6 +22,7 @@ Usage (in the repository):
   python3 tools/hl_run_sim.py [-n N] [--tests hl-fixed,hl-jump,...] [--analyze]
   --cfg FILE, --direct: as for jt_run_sim.py
   --method M: passed to the controller (only hl-app uses the camera: the other results must not depend on it)
+  --arch A: passed to the controller (P0, S1: where the EtherCAT task runs; with S1 the R5 is simulated as well)
 """
 import argparse
 import os
@@ -50,6 +51,7 @@ def main():
     ap.add_argument('--settle', type=float, default=0.3, help='[s] between servo on and the test')
     ap.add_argument('--analyze', action='store_true', help='run tools/hl_analyze.py on the new logs')
     ap.add_argument('--method', help='--method of the controller (M1, M2, A2, A3, FULL; default: its own, M1)')
+    ap.add_argument('--arch', help='--arch of the controller (P0, S1; default: its own, P0)')
     a = ap.parse_args()
 
     cfg = os.path.abspath(a.cfg)
@@ -78,6 +80,8 @@ def main():
     cmd = ['./bin/indy7_ctrl', '-f', cfg, '-s'] if a.direct else ['./run.sh', '-s', '-f', cfg]
     if a.method:
         cmd += ['--method', a.method]
+    if a.arch:
+        cmd += ['--arch', a.arch]
     print('hl_run_sim: %s (in %s); %d test runs' % (' '.join(cmd), APP, len(plan)))
     print('hl_run_sim: console -> %s' % console_log)
     c = Console(cmd, APP, env, console_log)
@@ -156,7 +160,7 @@ def main():
     c.close()
     with c.lock:
         for line in c.text.splitlines():
-            if line.startswith(('[SIM]', '[RT]', '[MALLOC]')):
+            if line.startswith(('[SIM]', '[SIM R5]', '[R5]', '[RT]', '[MALLOC]')):
                 print('hl_run_sim: ' + line)
     print('hl_run_sim: %d logs in %s' % (len(saved), log_dir))
     if a.analyze and saved:
