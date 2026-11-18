@@ -50,6 +50,9 @@ void __attribute__((noinline)) PrefaultStack(size_t auBytes)
 
 } // namespace
 
+bool					CRtTask::s_bFollow = false;
+std::atomic<int64_t>	CRtTask::s_nShiftNs{0};
+
 CRtTask::CRtTask()
 	: m_tFirst(0), m_uRelease(0), m_bWaited(FALSE), m_bCreated(FALSE), m_bStarted(FALSE),
 	  m_pFcn(NULL), m_pArg(NULL), m_nCheck(eCheckPending)
@@ -196,13 +199,16 @@ CRtTask::Verify()
 RTTIME
 CRtTask::WaitNextRelease()
 {
-	wait_next_period(NULL);
+	// a grid that follows the R5 is not the one RT-POSIX sleeps on: the sleep below takes the task to its release
+	if (!s_bFollow)
+		wait_next_period(NULL);
 	if (m_bWaited)
 		m_uRelease++;
 	else
 		m_bWaited = TRUE;
-	const RTTIME tRelease = m_tFirst + (RTTIME)m_uRelease * m_stSpec.tPeriod;
-	/* a sleep that a signal ended early: on to the release */
+	const RTTIME tRelease = m_tFirst + (RTTIME)m_uRelease * m_stSpec.tPeriod +
+	                        (RTTIME)s_nShiftNs.load(std::memory_order_relaxed);
+	/* a sleep that a signal ended early, or a grid that follows: on to the release */
 	if (read_timer() < tRelease)
 	{
 		struct timespec stTs;

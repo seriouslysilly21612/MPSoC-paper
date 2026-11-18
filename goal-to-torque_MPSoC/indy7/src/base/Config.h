@@ -158,6 +158,16 @@ typedef struct stConfigContract
 	stConfigContract();
 } ST_CONFIG_CONTRACT;
 
+/* [R5_LINK]: the EtherCAT task on the R5 (--arch S1; r5link/R5Link.h) */
+typedef struct stConfigR5Link
+{
+	INT32	nWakeDelayNs;		// WAKE_DELAY_US: the tasks are released this long after the release of the R5's period [ns]
+	INT32	nSimStaleLimit;		// SIM_STALE_LIMIT: -s, the simulated R5 switches the servo off after this many periods
+								// in a row without a new Torque slot (TORQUE_STALE_LIMIT of the firmware)
+
+	stConfigR5Link() : nWakeDelayNs(150000), nSimStaleLimit(10) {}
+} ST_CONFIG_R5_LINK;
+
 typedef std::vector<ST_CONFIG_TASK>			VEC_TASK_CONF;
 typedef std::vector<ST_CONFIG_ECAT_SLAVE>	VEC_ECAT_SLAVE_CONF;
 
@@ -176,6 +186,7 @@ public:
 	const ST_CONFIG_SYSTEM&			System	(	) const { return m_stSystem; }
 	const ST_CONFIG_ECAT_MASTER&	Master	(	) const { return m_stMaster; }
 	const ST_CONFIG_CONTRACT&		Contract(	) const { return m_stContract; }
+	const ST_CONFIG_R5_LINK&		R5Link	(	) const { return m_stR5Link; }
 	/* the joint drives of the arm and the end tool ([AXIS0].. of this file) */
 	const VEC_ECAT_SLAVE_CONF&		Slaves	(	) const { return m_vSlaves; }
 	/* the slaves of the bus: those of -B FILE, otherwise Slaves() */
@@ -197,6 +208,7 @@ private:
 	ST_CONFIG_SYSTEM		m_stSystem;
 	ST_CONFIG_ECAT_MASTER	m_stMaster;
 	ST_CONFIG_CONTRACT		m_stContract;
+	ST_CONFIG_R5_LINK		m_stR5Link;
 	VEC_ECAT_SLAVE_CONF		m_vSlaves;
 	VEC_TASK_CONF			m_vTasks;
 	TSTRING					m_strBusPath;

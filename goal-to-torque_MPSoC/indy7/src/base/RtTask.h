@@ -16,6 +16,14 @@
 *	used, and a late release is not skipped: the cycle runs late and the
 *	next releases stay on the grid.
 *
+*	With the EtherCAT task on the R5 (--arch S1) the period of the R5 is the
+*	period of the loop, and the grid follows it (r5link/R5Follow.h): after
+*	FollowGrid(), ShiftGrid() moves the releases of every periodic task that
+*	come after the call,
+*	    t_k = origin + START_DELAY + (k + 1) T + shift.
+*	RT-POSIX's own deadline stays on the grid of the origin, so a task that
+*	follows sleeps here, until t_k.
+*
 *	In the new thread, before the task function: the scheduling policy, the
 *	priority and the CPU affinity are read back and compared with the request
 *	(the result is printed, and the application refuses to go on if they
@@ -66,6 +74,10 @@ public:
 	 * first releases come atLeadNs after the call, so that every task has
 	 * started (and prefaulted its stack) before its first release */
 	static RTTIME	GridOrigin	(RTTIME atLeadNs) { return read_timer() + atLeadNs; }
+	/* before the tasks start: the grid can be moved (see the head of this file) */
+	static void		FollowGrid	(	) { s_bFollow = true; }
+	/* the releases after this call come anNs later (earlier if negative) */
+	static void		ShiftGrid	(int64_t anNs) { s_nShiftNs.fetch_add(anNs, std::memory_order_relaxed); }
 
 private:
 	static void		Entry		(void* apArg);
@@ -82,6 +94,8 @@ private:
 	void*			m_pArg;
 	std::atomic<int> m_nCheck;
 	cpu_set_t		m_stProcessCpus;	// the CPUs of the process at Create()
+	static bool					s_bFollow;		// the grid follows the R5
+	static std::atomic<int64_t>	s_nShiftNs;		// by how much it has moved so far [ns]
 };
 
 #endif // G2T_RT_TASK_H

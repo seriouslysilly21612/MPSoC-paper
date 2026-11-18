@@ -623,6 +623,26 @@ CConfig::Parse()
 	}
 	cF.List("CONTRACT", "TAG_OFFSET_M", c.vTagOffset);
 
+	/* [R5_LINK] */
+	vKnown.push_back("R5_LINK");
+	{
+		double dDelayUs = (double)m_stR5Link.nWakeDelayNs * 1e-3;
+		cF.Double("R5_LINK", "WAKE_DELAY_US", dDelayUs);
+		// inside the period, with room on both sides: the State slot must be written, and the torque must get back
+		if (!(dDelayUs >= 1.0 && dDelayUs * 1e3 <= 0.9 * (double)m.nCycleTime))
+		{
+			DBG_LOG_ERROR("(CConfig) [R5_LINK] WAKE_DELAY_US=%g: between 1 us and 0.9 of CYCLE_TIME", dDelayUs);
+			return FALSE;
+		}
+		m_stR5Link.nWakeDelayNs = (INT32)(dDelayUs * 1e3 + 0.5);
+	}
+	cF.Int("R5_LINK", "SIM_STALE_LIMIT", m_stR5Link.nSimStaleLimit);
+	if (m_stR5Link.nSimStaleLimit < 1)
+	{
+		DBG_LOG_ERROR("(CConfig) [R5_LINK] SIM_STALE_LIMIT=%d: at least 1 period", (int)m_stR5Link.nSimStaleLimit);
+		return FALSE;
+	}
+
 	cF.ReportSections(vKnown);
 	cF.ReportUnused();
 	return TRUE;

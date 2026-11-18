@@ -105,7 +105,7 @@ $(info [indy7] MUJOCO=$(MUJOCO) ROS=$(ROS) MALLOC_COUNT=$(MALLOC_COUNT))
 
 SOURCES := base/Config.cpp base/RtTask.cpp base/ViewStream.cpp base/MallocCount.cpp base/RtConsole.cpp \
            ecat/EcatMaster.cpp ecat/Indy7Joint.cpp ecat/Indy7EndTool.cpp \
-           sim/SimArm.cpp sim/SimJoint.cpp sim/SimCamera.cpp r5link/R5Link.cpp \
+           sim/SimArm.cpp sim/SimJoint.cpp sim/SimCamera.cpp sim/SimR5.cpp r5link/R5Link.cpp \
            Controller.cpp FullDynControllerRT.cpp HighLevelRT.cpp TrajectoryRT.cpp \
            JointTestLog.cpp HighLevelLog.cpp obs/ObsLog.cpp TimingLog.cpp CalibCapture.cpp $(BRIDGE_SOURCE) \
            Indy7Ctrl.cpp TaskEtherCAT.cpp TaskTrajectory.cpp TaskDynamics.cpp main.cpp
