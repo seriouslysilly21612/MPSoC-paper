@@ -135,6 +135,7 @@ proc_ethercat_control(void* apRobot)
 	double adViewQ[CViewStream::MAX_DOF] = {0.0};
 	BOOL   bBusUp = FALSE;        // the working counters were complete once
 	BOOL   bOpSeen = FALSE;       // the bus was OP once (printed)
+	long   nR5RestartsSeen = 0;   // S1: restarts of the R5 that OP was told for
 	BOOL   bBusAlarm = FALSE;     // -b: a drive of the bus was found enabled (printed once)
 	BOOL   bStaleTold = FALSE;    // no fresh torque while OP (printed once)
 	int    nCleanUp = 0;
@@ -223,6 +224,12 @@ proc_ethercat_control(void* apRobot)
 			bOp = (bNewState && (stR5.flags & IPC_STATE_OP) && !(stR5.flags & (IPC_STATE_WKC_ERR | IPC_STATE_STOP))) ?
 			      TRUE : FALSE;
 			st.nWkc = (long)stR5.n_wkc;
+			// the R5 started again: its bus comes to OP anew, and that is told again
+			if (pLink->GetCounts().nR5Restarts != nR5RestartsSeen)
+			{
+				nR5RestartsSeen = pLink->GetCounts().nR5Restarts;
+				bOpSeen = FALSE;
+			}
 		}
 		if (pMaster != NULL)
 		{
@@ -536,7 +543,7 @@ proc_ethercat_control(void* apRobot)
 			const BOOL bDynFresh = (bNewState && stTorque.uPeriod == uPerBefore) ? TRUE : FALSE;
 			const int32_t nDyn = (bDynFresh && stTorque.bValid) ? stTorque.nDynNs : -1;
 			const int32_t nHl = (bTrajFresh && stRef.eMode != eRefNone) ? stRef.nHlNs : -1;
-			const BOOL bTrack = (bTrajFresh && stRef.eMode == eRefTrack) ? TRUE : FALSE;
+			const BOOL bTrack = (bTrajFresh && stRef.eMode == eRefTrack && !stRef.bSettling) ? TRUE : FALSE;
 			const BOOL bTest = (bTrajFresh && stRef.bTest) || (bDynFresh && stTorque.bJtRunning);
 			TL::Record stR;
 			stR.uPeriod = uPer;

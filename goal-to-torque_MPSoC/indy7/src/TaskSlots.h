@@ -83,6 +83,8 @@ namespace task_slots
 		BOOL		bFrictionFF;	// the friction feedforward acts in this motion
 		BOOL		bTest;			// a high-level test or an operator motion is running (timing log)
 		int			nHlTest;		// the test (1..8 of the menu), 0: none
+		BOOL		bSettling;		// the reference check has ended and its motion comes to rest: TRACK still,
+								// outside the TRACK window of the timing log
 		double		adQRef[MAX_DOF], adQdRef[MAX_DOF], adQddRef[MAX_DOF];
 		int32_t		nHlNs;			// time of the high-level step [ns] (-1: it did not run)
 		int32_t		nW, nE;			// t_w, t_e of the Trajectory task's cycle [ns]

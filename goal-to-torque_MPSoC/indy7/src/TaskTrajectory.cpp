@@ -772,6 +772,22 @@ CRobotIndy7::HighLevelTestAfterUpdate(const task_slots::ST_STATE_SLOT& astState,
 		return;
 	typedef CTrajectoryRT T;
 	const T::eState eSt = m_cTraj.GetState();
+	if (m_eHlTest == eHlTestSettling)
+	{
+		/* the reference check is over: its motion comes to rest at the accepted goal, then the Dynamics task
+		 * holds in gravity compensation, as after HOME. A stop ('x', 'j', 'e') ends it at once */
+		const double dPeriod = m_stHlMeta.dPeriod > 0.0 ? m_stHlMeta.dPeriod : 1e-3;
+		const bool bAtRest = m_cTraj.HasSample() && (m_cTraj.GetSample().uFlags & T::HL_AT_REST) != 0;
+		const bool bTooLong = ++m_nHlSettleCycles >= (long)std::lround(20.0 / dPeriod);
+		if (eSt == T::eRunning && !bAtRest && !bTooLong)
+			return;
+		if (eSt == T::eRunning)
+			m_cTraj.End(bAtRest ? T::eDoneAtRest : T::eAborted);
+		printf("[HL] %s - gravity compensation\n", eSt != T::eRunning ? "stopped before the arm was at rest" :
+		       bAtRest ? "at rest at the accepted goal" : "not at rest after 20 s");
+		m_eHlTest = eHlTestIdle;
+		return;
+	}
 	if (m_eHlTest == eHlTestHoming)
 	{
 		if (m_bHlTrackPending)
@@ -918,15 +934,20 @@ CRobotIndy7::EndHighLevelTest(int anState, const task_slots::ST_FAULTS& astFault
 			stO.anWriter[w] = m_obsWriter.Count((CObsWriter::eResult)w) - m_anObsWriter0[w];
 		m_cObsLog.Close(anState, stO);
 	}
-	m_eHlTest = eHlTestIdle;
+	// the reference check ends at its duration, in motion, and gravity compensation does not brake a moving
+	// arm: its goals end here, and the motion runs on to rest at the accepted goal (HighLevelTestAfterUpdate)
+	const bool bSettle = (anState == eTestCompleted && m_nHlSel == 5 && m_cTraj.IsRunning());
+	m_eHlTest = bSettle ? eHlTestSettling : eHlTestIdle;
+	m_nHlSettleCycles = 0;
 	m_bHlTrackPending = false;
-	// the motion ends with the test: the Reference slot of this period carries
+	// otherwise the motion ends with the test: the Reference slot of this period carries
 	// no reference, and the Dynamics task returns to gravity compensation
-	if (m_cTraj.IsRunning())
+	if (!bSettle && m_cTraj.IsRunning())
 		m_cTraj.End(CTrajectoryRT::eAborted);
-	DBG_LOG_INFO("[HL] %s %s - gravity compensation", s_apcHlName[m_nHlSel],
+	DBG_LOG_INFO("[HL] %s %s - %s", s_apcHlName[m_nHlSel],
 	             anState == eTestCompleted ? "done" : anState == eTestTimeout ? "ended: not at rest after 20 s" :
-	             anState == eTestGenError ? "ended: trajectory generator error" : "stopped");
+	             anState == eTestGenError ? "ended: trajectory generator error" : "stopped",
+	             bSettle ? "coming to rest at the accepted goal" : "gravity compensation");
 	/* the random goals of test 1 or the jumps of test 2: a completed run, or
 	 * one that did not come to rest (a result), leads to the next; a stop or
 	 * an error ends them */
@@ -1190,6 +1211,7 @@ trajectory_cycle(CRobotIndy7* pRobot, RTTIME tRelease, RTTIME tStart)
 	const bool bHlTest = (pRobot->m_eHlTest != CRobotIndy7::eHlTestIdle);
 	stRef.bTest = (bHlTest || pRobot->m_eUserMove != CRobotIndy7::eUserNone) ? TRUE : FALSE;
 	stRef.nHlTest = bHlTest ? pRobot->m_nHlSel : 0;
+	stRef.bSettling = (pRobot->m_eHlTest == CRobotIndy7::eHlTestSettling) ? TRUE : FALSE;
 	stRef.nW = Sat32(tStart - tRelease);
 	stRef.nE = Sat32(tEnd0 - tStart);
 	pRobot->m_refSlot.Write(stRef);
@@ -1215,7 +1237,7 @@ trajectory_end(CRobotIndy7* pRobot)
 {
 	using namespace task_slots;
 	// a test still open at the end: its log closes as stopped
-	if (pRobot->m_eHlTest != CRobotIndy7::eHlTestIdle)
+	if (pRobot->m_eHlTest != CRobotIndy7::eHlTestIdle && pRobot->m_eHlTest != CRobotIndy7::eHlTestSettling)
 		pRobot->EndHighLevelTest(eTestAborted, g_stTraj.stState.stFaults, g_stTraj.stTorque.uAllocUpdate);
 	DBG_LOG_INFO("(trajectory_end) trajectory part ended");
 	pRobot->m_bTrajDone.store(true, std::memory_order_release);
