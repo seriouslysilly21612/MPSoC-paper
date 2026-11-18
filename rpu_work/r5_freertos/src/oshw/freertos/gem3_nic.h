@@ -15,6 +15,14 @@
 
 #include <stdint.h>
 
+/* Where the memory of the GEM DMA is (the BD rings and the frame buffers), a choice of the build:
+ *   1 (default)  the on-chip memory, OCM bank 0, 0xFFFC4000..0xFFFCDFFF: the GEM DMA never touches the DDR
+ *   0            rev 5 as it was: the BD rings in the top 64 KB of the DDR carveout, the frame buffers in .bss
+ * Here and not in gem3_nic.c: the record ring tells Linux which build wrote it (cycle_record.c). */
+#ifndef GEM3_BUF_IN_OCM
+#define GEM3_BUF_IN_OCM        1
+#endif
+
 #ifdef __cplusplus
 extern "C" {
 #endif

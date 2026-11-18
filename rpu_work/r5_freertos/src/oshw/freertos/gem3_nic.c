@@ -65,12 +65,29 @@
  *   - The link wait needs link UP *and* auto-negotiation complete (BMSR bit 5): after the loopback test the
  *     link bit can still read "up" for a moment.
  *
+ * REV 5-ocm1.  Where the DMA memory lives is a build-time choice now (GEM3_BUF_IN_OCM):
+ *   - 1 (default): the BD rings, the terminate BDs and all frame buffers are in the on-chip memory
+ *     (OCM bank 0, 0xFFFC4000..0xFFFCDFFF, 40 KB) -- the GEM DMA then never touches the DDR.
+ *     The addresses are fixed numbers, NOT linker sections: an ELF section at an OCM address would make Linux
+ *     remoteproc try to load a segment into memory it has no mapping for.  lscript.ld is not touched.
+ *     Cache handling is the same as in rev 5: BD window strongly ordered (4 KB instead of 64 KB), frame buffers
+ *     cacheable with the same flush / invalidate calls (the BSP maps the whole OCM as normal cacheable memory).
+ *     New checks, all printed:  (a) the R5 reads back what it writes to both OCM areas (ocm_probe),
+ *     (b) the four queue base registers after the rings exist,  (c) the PHY-loopback self-test, which now also
+ *     proves that the GEM DMA reaches the OCM; a DMA bus error (TXSR bit 8 / RXSR bit 3) is said in words and
+ *     makes gem3_init() fail with -8.
+ *   - 0: rev 5 as it was (BD window = top 64 KB of the DDR carveout, frame buffers in .bss).  No statement of
+ *     that code path changed, so this build is the reference for the DDR-versus-OCM comparison.
+ *   Not changed in either build: ring sizes, buffer size, the order of operations, r5log.c (it still owns
+ *   0x363FC000..0x363FFFFF, so requirement 2 below stays).
+ *
  * REQUIREMENTS (see [[CHECK]] tags):
  *   1) emacps driver must be available: either from the BSP (GEM3 enabled in the XSA)
  *      or by copying its sources into the app (see "Two ways" below) -- both work.
  *   2) lscript.ld:  psu_r5_ddr_0_MEM_0  LENGTH = 0x3F0000   (NOT 0x400000)
  *      -> the top 64 KB of the 4 MB carveout (0x363F0000..0x363FFFFF) is the
- *         GEM DMA window and must never be used by the linker.
+ *         GEM DMA window (GEM3_BUF_IN_OCM = 0) and the r5log ring (always), and must
+ *         never be used by the linker.
  *   3) Linux must NOT own GEM3 while this runs (DT status="disabled" for
  *      ethernet@ff0e0000, or at least the interface never brought up AND
  *      clocks/power left on) -- see the hand-over notes.
@@ -152,6 +169,30 @@
 
 #define GEM3_BASEADDR          0xFF0E0000U
 
+/* GEM3_BUF_IN_OCM (gem3_nic.h): 1 = BD rings + frame buffers in the OCM, 0 = rev 5 as it was */
+#if GEM3_BUF_IN_OCM
+/* ---------------------------------------------------------------------- */
+/* DMA memory = on-chip memory, OCM bank 0 (0xFFFC0000..0xFFFCFFFF)       */
+/*   0xFFFC4000  RX BD ring   (RXBD_CNT * 8 bytes)    \                   */
+/*   0xFFFC4400  TX BD ring   (TXBD_CNT * 8 bytes)     | BD window: 4 KB, */
+/*   0xFFFC4800  RX terminate BD                       | strongly ordered */
+/*   0xFFFC4840  TX terminate BD                      /                   */
+/*   0xFFFC5000  RX frame buffers (16 * 1536 B = 24 KB) \ cacheable (BSP  */
+/*   0xFFFCB000  TX frame buffers ( 8 * 1536 B = 12 KB) / default for     */
+/*               ... last byte 0xFFFCDFFF                 OCM), explicit  */
+/*                                                        flush/invalidate */
+/* Left alone: 0xFFFC0000..0xFFFC3FFF (APU<->RPU slots) and everything    */
+/* from 0xFFFCE000 up (TF-A normally sits at 0xFFFEA000..0xFFFFFFFF).     */
+/* ---------------------------------------------------------------------- */
+#define GEM3_DMA_BASE          0xFFFC4000UL      /* BD window */
+#define GEM3_DMA_SIZE          0x00001000UL      /* 4 KB, naturally aligned (MPU) */
+#define RXBD_OFFSET            0x0000UL
+#define TXBD_OFFSET            0x0400UL
+#define RXTERM_OFFSET          0x0800UL
+#define TXTERM_OFFSET          0x0840UL
+#define GEM3_BUF_BASE          0xFFFC5000UL      /* 4 KB aligned: every 1536 B buffer starts on a cache line */
+#define GEM3_BUF_LIMIT         0xFFFCE000UL      /* first address this driver must not use */
+#else
 /* ---------------------------------------------------------------------- */
 /* DMA window = top 64 KB of the R5 carveout                              */
 /*   0x363F0000  RX BD ring   (RXBD_CNT * 8  bytes)                       */
@@ -166,15 +207,34 @@
 #define TXBD_OFFSET            0x1000UL
 #define RXTERM_OFFSET          0x2000UL
 #define TXTERM_OFFSET          0x2040UL
+#endif
 
 #define RXBD_CNT               16U
 #define TXBD_CNT               8U
 #define GEM_BUF                1536U             /* multiple of 64; == XEMACPS_RX_BUF_SIZE */
 
 static XEmacPs emac;
+#if GEM3_BUF_IN_OCM
+#define GEM3_BUF_BYTES         ((RXBD_CNT + TXBD_CNT) * GEM_BUF)                        /* 36 KB */
+#define RXBUF(i)               ((u8 *)(UINTPTR)(GEM3_BUF_BASE + ((u32)(i) * GEM_BUF)))
+#define TXBUF(i)               ((u8 *)(UINTPTR)(GEM3_BUF_BASE + ((RXBD_CNT + (u32)(i)) * GEM_BUF)))
+#if (GEM3_BUF_BASE + GEM3_BUF_BYTES) > GEM3_BUF_LIMIT
+#error "GEM3 frame buffers run past GEM3_BUF_LIMIT"
+#endif
+#if ((RXBD_CNT * 8U) > (TXBD_OFFSET - RXBD_OFFSET)) || ((TXBD_CNT * 8U) > (RXTERM_OFFSET - TXBD_OFFSET)) || \
+    ((TXTERM_OFFSET + 8U) > GEM3_DMA_SIZE) || ((GEM3_DMA_BASE + GEM3_DMA_SIZE) > GEM3_BUF_BASE)
+#error "GEM3 BD rings do not fit the BD window"
+#endif
+#else
 static u8      RxBuf[RXBD_CNT][GEM_BUF] __attribute__((aligned(64)));
 static u8      TxBuf[TXBD_CNT][GEM_BUF] __attribute__((aligned(64)));
+#define RXBUF(i)               (RxBuf[i])
+#define TXBUF(i)               (TxBuf[i])
+#endif
 static int     g_mpu_done;
+#if GEM3_BUF_IN_OCM
+static u32     g_dma_buserr;          /* 1 if the self-test saw TXSR/RXSR "hresp not OK": the GEM DMA cannot reach the OCM */
+#endif
 static u32     g_phy;
 static u32     g_tx_full_warned;      /* "TX ring full" warning is printed once per gem3_init() */
 static u32     g_link_up;             /* 1 once phy_link() saw link up + auto-negotiation complete */
@@ -635,8 +695,8 @@ static void rx_arm(XEmacPs_BdRing *r, XEmacPs_Bd *bd)
     w[1] = 0U;
     w[0] = (idx == (RXBD_CNT - 1U)) ? (u32)XEMACPS_RXBUF_WRAP_MASK : 0U;   /* NEW=0 */
     dsb();
-    Xil_DCacheInvalidateRange((INTPTR)RxBuf[idx], GEM_BUF);
-    XEmacPs_BdSetAddressRx(bd, (UINTPTR)RxBuf[idx]);    /* RMW: keeps WRAP, NEW stays 0 -> MAC owns it */
+    Xil_DCacheInvalidateRange((INTPTR)RXBUF(idx), GEM_BUF);
+    XEmacPs_BdSetAddressRx(bd, (UINTPTR)RXBUF(idx));    /* RMW: keeps WRAP, NEW stays 0 -> MAC owns it */
     dsb();
 }
 
@@ -856,6 +916,19 @@ static void gem3_selftest(void)
                (unsigned)G3_S(G3_TXCNT), (unsigned)G3_S(G3_RXCNT), (unsigned)G3_S(G3_RXRESERR),
                (unsigned)G3_S(G3_RXFCS), (unsigned)Xil_In32((u32)emac.Config.BaseAddress + XEMACPS_RXSR_OFFSET),
                (good == ST_FRAMES && sent == ST_FRAMES && bad == 0U) ? "PASS" : "FAIL");
+#if GEM3_BUF_IN_OCM
+    {   /* rev 5-ocm1: the BDs and the buffers are in the OCM now -- did the GEM DMA get a bus error reaching them? */
+        u32 txsr = Xil_In32((u32)emac.Config.BaseAddress + XEMACPS_TXSR_OFFSET);
+        u32 rxsr = Xil_In32((u32)emac.Config.BaseAddress + XEMACPS_RXSR_OFFSET);
+
+        if (((txsr & XEMACPS_TXSR_HRESPNOK_MASK) != 0U) || ((rxsr & XEMACPS_RXSR_HRESPNOK_MASK) != 0U)) {
+            g_dma_buserr = 1U;
+            xil_printf("[gem3]   -> DMA BUS ERROR (TXSR=%08x bit 8, RXSR=%08x bit 3): the GEM cannot read or write the OCM"
+                       " at 0x%08x..0x%08x.  Rebuild with GEM3_BUF_IN_OCM 0 to return to the DDR buffers.\r\n",
+                       (unsigned)txsr, (unsigned)rxsr, (unsigned)GEM3_DMA_BASE, (unsigned)(GEM3_BUF_LIMIT - 1U));
+        }
+    }
+#endif
     if (good != ST_FRAMES || sent != ST_FRAMES || bad != 0U) {
         if (sent < ST_FRAMES) {
             xil_printf("[gem3]   -> the TX ring refused frames: the MAC does not complete transmissions (see TXSR/NWSR)\r\n");
@@ -902,6 +975,66 @@ static void gem3_listen(u32 ms)
 }
 #endif
 
+#if GEM3_BUF_IN_OCM
+/* ---------------------------------------------------------------------- */
+/* ocm_probe (rev 5-ocm1): can the R5 use the two OCM areas the way this   */
+/* driver does?                                                            */
+/*   BD window     : plain word access (the window is strongly ordered,    */
+/*                   i.e. uncached, when this runs)                        */
+/*   frame buffers : write -> flush (to the OCM, cached copy dropped) ->   */
+/*                   read back from the OCM                                */
+/* The GEM DMA's own access is proven afterwards by the PHY-loopback       */
+/* self-test.  If the OCM does not answer at all, the R5 takes a data      */
+/* abort and stops right after the first line printed here.                */
+/*   0 = OK ; -7 = read back something else                                */
+/* ---------------------------------------------------------------------- */
+static int ocm_probe(void)
+{
+    static const u32 pat[2] = { 0xA55A3CC3U, 0x5AA5C33CU };
+    volatile u32 *w = (volatile u32 *)(UINTPTR)(GEM3_DMA_BASE + GEM3_DMA_SIZE - 4U);   /* last word of the BD window: no BD there */
+    u32 i, k, want, got;
+
+    xil_printf("[gem3] checking that the R5 can use the OCM (a freeze after this line = the OCM does not answer)...\r\n");
+
+    for (k = 0U; k < 2U; k++) {
+        *w = pat[k];
+        dsb();
+        got = *w;
+        if (got != pat[k]) {
+            xil_printf("[gem3] OCM check FAILED: BD window word 0x%08x wrote %08x read %08x\r\n",
+                       (unsigned)(UINTPTR)w, (unsigned)pat[k], (unsigned)got);
+            return -7;
+        }
+    }
+    *w = 0U;
+
+    for (i = 0U; i < (RXBD_CNT + TXBD_CNT); i++) {                 /* first and last word of every frame buffer */
+        for (k = 0U; k < 4U; k++) {
+            w = (volatile u32 *)(UINTPTR)(GEM3_BUF_BASE + (i * GEM_BUF) + (((k & 1U) != 0U) ? (GEM_BUF - 4U) : 0U));
+            want = pat[k >> 1] ^ i;
+            *w = want;
+            Xil_DCacheFlushRange((INTPTR)(UINTPTR)w, 4U);          /* written to the OCM, cached copy dropped */
+            got = *w;                                               /* comes from the OCM */
+            if (got != want) {
+                xil_printf("[gem3] OCM check FAILED: frame buffer word 0x%08x wrote %08x read %08x\r\n",
+                           (unsigned)(UINTPTR)w, (unsigned)want, (unsigned)got);
+                return -7;
+            }
+        }
+    }
+
+    /* start from zeroed buffers, as the .bss buffers of rev 5 did; nothing stays in the cache.
+     * One buffer per flush call: the BSP masks interrupts for the length of a flush.            */
+    for (i = 0U; i < (RXBD_CNT + TXBD_CNT); i++) {
+        memset((void *)(UINTPTR)(GEM3_BUF_BASE + (i * GEM_BUF)), 0, (size_t)GEM_BUF);
+        Xil_DCacheFlushRange((INTPTR)(GEM3_BUF_BASE + (i * GEM_BUF)), GEM_BUF);
+    }
+
+    xil_printf("[gem3] OCM check passed (R5 side): BD window + %u frame buffers\r\n", (unsigned)(RXBD_CNT + TXBD_CNT));
+    return 0;
+}
+#endif
+
 /* ---------------------------------------------------------------------- */
 /* gem3_init: bring GEM3 up for raw EtherCAT traffic.                      */
 /*   0 = OK ; <0 = error (see code)                                        */
@@ -920,6 +1053,12 @@ int gem3_init(const uint8_t *mac)
     g_link_up = 0U;
     xil_printf("[gem3] rev5 init: GEM3 @0x%08x, config from %s\r\n", (unsigned)GEM3_BASEADDR,
                GEM3_CFG_FROM_BSP ? "BSP/XSA" : "built-in (driver copied into app)");
+#if GEM3_BUF_IN_OCM
+    g_dma_buserr = 0U;
+    xil_printf("[gem3] rev5-ocm1: DMA memory in the OCM -- BD window 0x%08x (4 KB, uncached), frame buffers"
+               " 0x%08x..0x%08x (cached, flush/invalidate)\r\n",
+               (unsigned)GEM3_DMA_BASE, (unsigned)GEM3_BUF_BASE, (unsigned)(GEM3_BUF_BASE + GEM3_BUF_BYTES - 1U));
+#endif
 
 #if GEM3_PREPARE_CLK
     gem3_clk_prepare(cfg);
@@ -966,12 +1105,24 @@ int gem3_init(const uint8_t *mac)
         }
         g_mpu_done = 1;
     }
+#if GEM3_BUF_IN_OCM
+    rc = ocm_probe();                               /* the MAC is still off (reset above): nothing else uses the buffers */
+    if (rc != 0) { return rc; }
+#endif
 
     /* ---- BD rings + queue pointers, all BEFORE the MAC can receive or transmit ---- */
     rc = gem3_tx_ring_setup();
     if (rc != 0) { xil_printf("[gem3] TX BD ring set-up failed (%d)\r\n", rc); return rc; }
     rc = gem3_rx_ring_setup();
     if (rc != 0) { xil_printf("[gem3] RX BD ring set-up failed (%d)\r\n", rc); return rc; }
+#if GEM3_BUF_IN_OCM
+    xil_printf("[gem3] queue base registers: RXQ0=%08x (want %08x) RXQ1=%08x (want %08x) TXQ0=%08x (want %08x)"
+               " TXQ1=%08x (want %08x)\r\n",
+               (unsigned)Xil_In32(base + XEMACPS_RXQBASE_OFFSET),  (unsigned)(GEM3_DMA_BASE + RXBD_OFFSET),
+               (unsigned)Xil_In32(base + XEMACPS_RXQ1BASE_OFFSET), (unsigned)(GEM3_DMA_BASE + RXTERM_OFFSET),
+               (unsigned)Xil_In32(base + XEMACPS_TXQBASE_OFFSET),  (unsigned)(GEM3_DMA_BASE + TXTERM_OFFSET),
+               (unsigned)Xil_In32(base + XEMACPS_TXQ1BASE_OFFSET), (unsigned)(GEM3_DMA_BASE + TXBD_OFFSET));
+#endif
 
     if (phy_open() < 0) {
         xil_printf("[gem3] init failed: no PHY\r\n");
@@ -996,6 +1147,12 @@ int gem3_init(const uint8_t *mac)
 #endif
 
     phy_link();                                     /* auto-negotiation + link wait (also leaves the loopback mode) */
+#if GEM3_BUF_IN_OCM
+    if (g_dma_buserr != 0U) {                       /* said in words by the self-test; no point in going on */
+        xil_printf("[gem3] init failed: the GEM DMA cannot use the OCM (see the selftest lines)\r\n");
+        return -8;
+    }
+#endif
 
     rc = gem3_rx_restart(1U);                       /* whatever arrived while we waited: start on a clean ring */
     if (rc != 0) { xil_printf("[gem3] RX ring restart failed (%d)\r\n", rc); return rc; }
@@ -1057,10 +1214,10 @@ int gem3_send(const void *frame, int len)
     }
     idx = BD_INDEX(tx, bd);
 
-    memcpy(TxBuf[idx], frame, (size_t)len);
-    Xil_DCacheFlushRange((INTPTR)TxBuf[idx], (u32)len);
+    memcpy(TXBUF(idx), frame, (size_t)len);
+    Xil_DCacheFlushRange((INTPTR)TXBUF(idx), (u32)len);
 
-    XEmacPs_BdSetAddressTx(bd, (UINTPTR)TxBuf[idx]);
+    XEmacPs_BdSetAddressTx(bd, (UINTPTR)TXBUF(idx));
     XEmacPs_BdSetLength(bd, (u32)len);
     XEmacPs_BdSetLast(bd);
     dsb();
@@ -1103,8 +1260,8 @@ int gem3_recv(void *frame, int maxlen)
     if (len > maxlen)          { len = maxlen; }
     if ((u32)len > GEM_BUF)    { len = (int)GEM_BUF; }
 
-    Xil_DCacheInvalidateRange((INTPTR)RxBuf[idx], (u32)len);
-    memcpy(frame, RxBuf[idx], (size_t)len);
+    Xil_DCacheInvalidateRange((INTPTR)RXBUF(idx), (u32)len);
+    memcpy(frame, RXBUF(idx), (size_t)len);
     rxlog_note((const u8 *)frame, (u32)len);                         /* bring-up statistics (a few instructions) */
 
     /* recycle: Free -> Alloc (gives the same BD back) -> ToHw -> clear NEW + set buffer */
