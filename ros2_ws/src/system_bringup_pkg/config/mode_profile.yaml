@@ -1,0 +1,41 @@
+# mode_profile.yaml: what the camera side knows of its inference modes before
+# one runs. Read by vitis_ai_detector_pkg/admission.py for the methods M2, A2
+# (the score) and A3, FULL (the admission rule, eq. (8)). Not a ROS parameter
+# file. The measurement error of a mode is not here: it is a constant of the
+# contract ([CONTRACT] EPS_M_MM of the control application).
+#
+# FIRST VALUES (2026-11-18), not a characterization. One run of the camera
+# application with YOLOv3-tiny 416 beside the control application gave, from
+# the capture to the result in the mailbox, a median of 176 ms and a p90 of
+# 227 ms (cut off at 250 ms). The mode characterization replaces every number
+# below; until then the energy and the DDR traffic of a mode are unknown (0).
+
+# time between two images of the camera
+frame_period_ms: 33.35
+# capture -> the detector has the image
+acquisition_ms: 60.0
+# a status of the control task older than this is not trusted: no inference
+# by the admission rule
+status_max_age_ms: 100.0
+# M2, A2: the tool speed that turns the latency of a mode into an error
+reference_speed_mps: 0.2
+# admission rule, check 3: margin on the measured response of the control task
+response_margin_us: 0.0
+# the cost of a candidate: error * bound^2 [1/m^2] + energy * E [1/J] + ddr * bytes [1/byte]
+weights:
+  error: 1.0
+  energy: 0.0
+  ddr: 0.0
+# by the mode number of the mailbox: 0 = input 416, 1 = input 320
+modes:
+  0:
+    name: "416"
+    # start of the inference -> result in the mailbox
+    release_to_publication_ms: 180.0
+    energy_j: 0.0
+    ddr_bytes: 0.0
+  1:
+    name: "320"
+    release_to_publication_ms: 170.0
+    energy_j: 0.0
+    ddr_bytes: 0.0

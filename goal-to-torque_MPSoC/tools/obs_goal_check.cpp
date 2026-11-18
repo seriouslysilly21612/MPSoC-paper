@@ -26,11 +26,14 @@
 *	5. The target is lost after dLossS without a folded result, and back
 *	   with the next one.
 *	6. Settings that cannot be used are refused.
+*	7. The status of a period, for the camera side (obs_status.h): the
+*	   tolerance, the result used last with its deadline and its error bound,
+*	   whether this period had a result to use, and the lost target.
 *	The camera side, on the clock of the machine:
-*	7. What a result becomes in the mailbox, the results that are not
+*	8. What a result becomes in the mailbox, the results that are not
 *	   written, the counts, and a stamp of the system clock on the clock of
 *	   the tasks.
-*	8. Both ends: a result of the camera side is the object in the goal slot.
+*	9. Both ends: a result of the camera side is the object in the goal slot.
 *	The test passes if no check failed.
 *****************************************************************************/
 #include <cmath>
@@ -414,6 +417,13 @@ void Lost()
 	Put(cT, Task::Release(cT.uK) - 50 * T, adObj, OBS_Z_BASE);
 	cT.Period();
 	Expect(!cT.cGoal.Lost(), "the next result: the target again");
+	Expect(cT.cGoal.OutsideWorkspace() == 0, "no result outside the workspace so far");
+	const double adFar[3] = { 2.00, 0.20, 0.10 };			// beyond the box of the test
+	Put(cT, Task::Release(cT.uK) - 50 * T, adFar, OBS_Z_BASE);
+	cT.Period();
+	cT.Periods(801);
+	Expect(cT.cGoal.Lost() && cT.cGoal.OutsideWorkspace() == 1,
+	       "a result outside the workspace does not keep the target, and is counted");
 }
 
 /* 6 */
@@ -458,9 +468,42 @@ void Refused()
 }
 
 /* 7 */
+void Status()
+{
+	printf("7. the status of a period\n");
+	const double adObj[3] = { 0.60, 0.20, 0.10 };
+	Task cT;
+	Expect(cT.Start(Config(OBS_CONTRACT, 2), 2), "the settings are accepted");
+	cT.Period();
+	const obs_status_t& stS = cT.cGoal.Status();
+	Expect(stS.t_release == Task::Release(cT.uK) && stS.tolerance == 0.010f && stS.control_period == 0.001f,
+	       "the release and the tolerance of the period, and the period of the task");
+	Expect(stS.flags == 0 && stS.result_n == 0 && stS.result_t_e == 0, "no result so far: none in use, not lost");
+
+	const uint64_t tCapture = Task::Release(cT.uK) - 50 * T;
+	const uint32_t uN = Put(cT, tCapture, adObj, OBS_Z_BASE, 0.002f, 7);
+	cT.Period();
+	Expect(stS.flags == OBS_STATUS_RESULT_IN_USE && stS.result_n == uN && stS.target_seq == 7,
+	       "the period that used the result: in use, its number and its target");
+	Expect(stS.result_t_e == tCapture && stS.result_t_valid_until == tCapture + 250 * T, "its capture and its deadline");
+	Expect(std::fabs(stS.result_error_bound - 0.005f) < 1e-7f && stS.result_mode == 0,
+	       "its error bound, e0 + g (sigma + eps_cal) = 5 mm, and its mode");
+
+	cT.Periods(199);			// the release of the last of them is the deadline: still in use
+	Expect(stS.flags == OBS_STATUS_RESULT_IN_USE && stS.t_release == stS.result_t_valid_until, "at its deadline: in use");
+	cT.Period();
+	Expect(stS.flags == 0 && stS.result_n == uN && stS.result_t_valid_until == tCapture + 250 * T,
+	       "a period later: none in use, and the fields of the last result stay");
+	cT.Periods(601);
+	Expect(stS.flags == OBS_STATUS_TARGET_LOST, "0.8 s after the period that used it first: lost");
+	Expect(cT.Start(Config(OBS_CONTRACT, 2), 2) && stS.flags == 0 && stS.result_n == 0 && stS.result_t_valid_until == 0,
+	       "a control task that starts again starts with an empty status");
+}
+
+/* 8 */
 void CameraSide()
 {
-	printf("7. the camera side\n");
+	printf("8. the camera side\n");
 	memset(&g_stMb, 0, sizeof(g_stMb));
 	CObsWriter cW;
 	const CObsWriter::Config stCfg = { 0.250, { 0.002f, 0.003f } };
@@ -514,12 +557,15 @@ void CameraSide()
 	}
 	printf("   a stamp of the system clock, 50 ms old, on the clock of the tasks: off by %lld ns\n", (long long)tBest);
 	Expect(tBest < 200000, "the stamp is within 0.2 ms of its time on the clock of the tasks");
+	const int64_t tStamp = 1700000000123456789LL;
+	const int64_t tBack = CObsWriter::RealOfMono(CObsWriter::MonoOfReal(tStamp)) - tStamp;
+	Expect((tBack < 0 ? -tBack : tBack) < 200000, "and back on the system clock: within 0.2 ms of the stamp");
 }
 
-/* 8 */
+/* 9 */
 void BothEnds()
 {
-	printf("8. both ends\n");
+	printf("9. both ends\n");
 	memset(&g_stMb, 0, sizeof(g_stMb));
 	CObsWriter cW;
 	const CObsWriter::Config stCfg = { 0.250, { 0.002f, 0.003f } };
@@ -554,6 +600,7 @@ int main()
 	Entries();
 	Lost();
 	Refused();
+	Status();
 	CameraSide();
 	BothEnds();
 	printf("%s: %d check(s) failed\n", g_nFailed == 0 ? "PASS" : "FAIL", g_nFailed);

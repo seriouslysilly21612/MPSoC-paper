@@ -5,6 +5,7 @@
 #include "Indy7Ctrl.h"
 #include "base/MallocCount.h"
 #include "CallTiming.h"
+#include "obs/ObsContract.h"
 
 #include <cmath>
 #include <cstring>
@@ -469,6 +470,9 @@ CRobotIndy7::InitObs()
 	}
 	const CObsWriter::Config stW = { stC.dAgeCapS, { (float)stC.vEpsM[0], (float)stC.vEpsM[1] } };
 	m_obsWriter.Init(&m_obsBox, stW);
+	m_uContractCrc = ObsContractCrc(stC);
+	obs_recent_max_start(&m_stObsResponse, (uint32_t)(1000000000LL / m_pConfig->Tasks()[1].nPeriod));		// 1 s of periods
+	obs_status_start(&m_obsStatus);
 
 	CObsLog::Meta& stM = m_stObsMeta;
 	snprintf(stM.acMethod, sizeof(stM.acMethod), "%s", pcMethod);
@@ -552,6 +556,7 @@ CRobotIndy7::InitBridge()
 	stCfg.stFilter = AppFilter();
 	stCfg.dLossS = stSys.dAppLossS;
 	stCfg.pObs = obs_method::UsesMailbox(m_nMethod) ? &m_obsWriter : NULL;      // InitObs()
+	stCfg.pStatus = obs_method::UsesMailbox(m_nMethod) ? &m_obsStatus : NULL;
 	m_pBridge = new CROS2PickBridge();
 	if (FALSE == m_pBridge->Init(stCfg, &m_appGoalSlot))
 	{

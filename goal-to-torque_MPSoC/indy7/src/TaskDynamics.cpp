@@ -313,6 +313,9 @@ dynamics_cycle(CRobotIndy7* pRobot, RTTIME tRelease, RTTIME tStart)
 		stTorque.nE = Sat32(tEnd0 - tStart);
 		stTorque.uAllocUpdate = pRobot->m_uAllocUpdate;
 		pRobot->m_torqueSlot.Write(stTorque);
+		// the response of this period, for the status of the next (obs_status.h): same thread as ObsStep()
+		if (obs_method::UsesMailbox(pRobot->m_nMethod))
+			obs_recent_max_add(&pRobot->m_stObsResponse, (float)((double)(tEnd0 - tRelease) * 1e-9));
 	}
 
 	/* then: the operator commands, after the torque is out */

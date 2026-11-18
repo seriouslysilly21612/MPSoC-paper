@@ -132,6 +132,21 @@ def launch_setup(context, *args, **kwargs):
         'models',
         'yolov3_tiny_7class.xmodel',
     ])
+    # The method of the run (paper, Table III): the same value as --method of
+    # the control application. M1 needs none of the three files below.
+    method_params = {
+        'method': LaunchConfiguration('method').perform(context).strip(),
+        'contract_cfg_path': os.path.abspath(os.path.expanduser(
+            LaunchConfiguration('contract_cfg').perform(context).strip())),
+        'mode_profile_path': PathJoinSubstitution([
+            FindPackageShare('system_bringup_pkg'), 'config', 'mode_profile.yaml']),
+        'response_table_path': LaunchConfiguration('response_table').perform(context).strip(),
+        'decision_log_path': LaunchConfiguration('decision_log').perform(context).strip(),
+    }
+    for key in ('response_table_path', 'decision_log_path'):
+        if method_params[key]:
+            method_params[key] = os.path.abspath(os.path.expanduser(method_params[key]))
+
     model_override = LaunchConfiguration('model_path').perform(context).strip()
     if model_override:
         # `model_path:=~/...` reaches us unexpanded (the shell expands ~ only
@@ -228,7 +243,7 @@ def launch_setup(context, *args, **kwargs):
             name='vitis_ai_detector_node',
             # model_path comes last so it overrides the YAML: it is a resolved
             # path, not a tunable, and must not be edited per machine.
-            parameters=[vitis_ai_detector_config, {'model_path': model_path}]
+            parameters=[vitis_ai_detector_config, {'model_path': model_path}, method_params]
             + metrics_params('detector'),
             output='screen',
         ),
@@ -349,5 +364,24 @@ def generate_launch_description():
             description='xmodel to run instead of the packaged YOLOv3-tiny '
                         '(empty = packaged); its decode_meta.json must be in '
                         'the same directory'),
+        DeclareLaunchArgument(
+            'method', default_value='M1',
+            description='M1, M2, A2, A3 or FULL: what the detector does with an '
+                        'image before the inference. Start the control '
+                        'application with the same --method'),
+        DeclareLaunchArgument(
+            'contract_cfg',
+            default_value='~/goal-to-torque_MPSoC/indy7/INDY7.cfg',
+            description='configuration of the control application: its section '
+                        '[CONTRACT] holds the constants both sides compute with '
+                        '(methods other than M1)'),
+        DeclareLaunchArgument(
+            'response_table', default_value='',
+            description='A3, FULL: CSV mode,level,response_us of the measured '
+                        'responses of the control task (empty = that check is off)'),
+        DeclareLaunchArgument(
+            'decision_log', default_value='',
+            description='A3, FULL: CSV file for the decision on every image, '
+                        'written when the detector stops (empty = not written)'),
         OpaqueFunction(function=launch_setup),
     ])

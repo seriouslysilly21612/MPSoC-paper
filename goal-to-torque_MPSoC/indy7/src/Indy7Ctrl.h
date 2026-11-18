@@ -253,10 +253,14 @@ private:
 	obs_mailbox_t m_obsBox{};
 	CObsWriter    m_obsWriter;
 	CObsGoal      m_obsGoal;              // Trajectory task
+	obs_status_region_t m_obsStatus{};    // control task -> bridge: what every period tells the camera side
+	obs_recent_max_t    m_stObsResponse{}; // control task: its response, release to torque, of the last 1 to 2 s [s]
+	uint32_t      m_uContractCrc{0};      // ObsContractCrc of [CONTRACT]
 	CObsLog       m_cObsLog;
 	CObsLog::Meta m_stObsMeta{};          // the fields that do not change at run time
 	double        m_adTagOffset[3]{};     // the tool tag in the frame of the tool [m]
 	bool          m_bObsLost{false};      // Trajectory task: the target is lost (printed)
+	long          m_nObsOutsideSeen{0};   // Trajectory task: CObsGoal::OutsideWorkspace() when m_bObsLost last changed
 	CObsGoal::Counts m_stObsAt0{};        // the counts at the start of the run, for its log
 	long          m_anObsWriter0[CObsWriter::eResults]{};
 	BOOL          InitObs                 (	);

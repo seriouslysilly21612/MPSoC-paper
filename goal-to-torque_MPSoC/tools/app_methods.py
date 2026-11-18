@@ -9,7 +9,8 @@ for a method with the mailbox, the log of the camera results of the same run (ob
               bridge writes the goal)
   goals       the goals that the high-level controller accepted (a goal counts when it is more than delta from
               the accepted one)
-  rest        the time at which the arm came to rest [s]
+  first       the time of the first goal [s]: how long the arm waited for the camera
+  rest        the time at which the arm came to rest after its last goal [s]
 and, when the place of the object is known (--object, or --cfg with SIM_CAM_OBJECT_M: the camera of the
 simulation), against that place
   object      the error of the object of the results used: largest, mean [mm]
@@ -43,6 +44,26 @@ import jt_predict as jp  # noqa: E402
 DEFAULT_DIR = os.path.join(HERE, '..', 'indy7', 'jt_logs')
 STAMP = re.compile(r'_r(\d+)_(\d{8})_(\d{6})\.csv$')
 VERDICTS = ['accepted', 'superseded', 'expired', 'state_unrecoverable', 'seq_fail', 'error_exceeded', 'evicted']
+HL_AT_REST, HL_HAS_GOAL = 32, 64        # flags of the high-level log (TrajectoryRT.h)
+# why the camera side did not write a result (ObsWriter.h), why the workspace check refused one (GoalFilter.h)
+NOT_WRITTEN = [('invalid', 'invalid'), ('not_finite', 'not finite'), ('age', 'older than the cap or from the future'),
+               ('full', 'with no free slot'), ('expired', 'past their deadline')]
+OUTSIDE = [('invalid', 'invalid'), ('not_finite', 'not finite'), ('below_floor', 'below the floor'),
+           ('outside_box', 'outside the box or the radius')]
+
+
+def goal_times(rows):
+    """(the time of the first goal, the time the arm came to rest after its last accepted goal) [s]; None: never"""
+    first = next((num(r['t']) for r in rows if r['goal_x'] != ''), None)
+    last_goal, accepted = None, None
+    for r in rows:
+        goal = (r['acc_x'], r['acc_y'], r['acc_z'])
+        if int(num(r['flags'])) & HL_HAS_GOAL and goal != accepted:
+            last_goal, accepted = num(r['t']), goal
+    if last_goal is None:
+        return first, None
+    return first, next((num(r['t']) for r in rows if num(r['t']) > last_goal and int(num(r['flags'])) & HL_AT_REST),
+                       None)
 
 
 def num(v):
@@ -93,8 +114,8 @@ def quantile(vals, q):
 def analyze(hl_path, obj):
     meta, rows = load(hl_path)
     out = {'log': os.path.basename(hl_path), 'method': meta.get('method', 'M1'), 'run': meta.get('run'),
-           'goals': meta.get('accepted'), 'rest': meta.get('rest_time'), 'result': meta.get('result'),
-           'faults': meta.get('timing_faults', 0)}
+           'goals': meta.get('accepted'), 'result': meta.get('result'), 'faults': meta.get('timing_faults', 0)}
+    out['first'], out['rest'] = goal_times(rows)
     hover = (meta.get('goal_offset') or [0.0, 0.0, 0.0])[2]
     tool = [xyz(r, 'tool') for r in rows]
     if obj and rows:
@@ -110,6 +131,7 @@ def analyze(hl_path, obj):
     out['taken'] = ometa.get('taken')
     out['verdicts'] = [(v, ometa.get(v, 0)) for v in VERDICTS if ometa.get(v, 0)]
     out['camera'] = ometa.get('camera_side', {})
+    out['workspace'] = ometa.get('workspace', {})
     out['policy'] = ometa.get('policy')
     used = [r for r in orows if r['verdict'] == 'accepted']
     out['used'] = len(used)
@@ -159,14 +181,14 @@ def main():
     runs = [analyze(p, obj) for p in paths]
 
     mm = lambda v: '%8.3f' % (v * 1e3) if v is not None and v == v else '       -'
-    print('%-6s %-34s %9s %5s %7s %s' % ('method', 'log', 'used', 'goals', 'rest', 'object max     mean     goal     '
-                                         'tool [mm]' if obj else ''))
+    sec = lambda v: '%.3f' % v if v is not None else 'never'
+    print('%-6s %-34s %9s %5s %7s %7s %s' % ('method', 'log', 'used', 'goals', 'first', 'rest',
+                                             'object max     mean     goal     tool [mm]' if obj else ''))
     failed = 0
     for r in runs:
         used = '%d/%d' % (r['used'], r['taken']) if 'used' in r else '-'
-        line = '%-6s %-34s %9s %5s %7s' % (r['method'], r['log'][:34], used, r['goals'],
-                                          '%.3f' % r['rest'] if isinstance(r['rest'], (int, float)) and r['rest'] >= 0
-                                          else 'never')
+        line = '%-6s %-34s %9s %5s %7s %7s' % (r['method'], r['log'][:34], used, r['goals'], sec(r['first']),
+                                              sec(r['rest']))
         if obj:
             oe = r.get('obj_err')
             line += ' %s %s %s %s' % (mm(max(oe)) if oe else mm(None), mm(sum(oe) / len(oe)) if oe else mm(None),
@@ -186,9 +208,12 @@ def main():
             continue
         cam = r['camera']
         print('\n%s %s (%s)' % (r['method'], r['obs'], r['policy']))
-        print('  verdicts: %s; camera side: %s written, %s not written' % (
-            ', '.join('%d %s' % (n, v) for v, n in r['verdicts']) or 'none', cam.get('written', '?'),
-            sum(n for k, n in cam.items() if k != 'written')))
+        some = lambda counts, names: ', '.join('%d %s' % (counts[k], what) for k, what in names if counts.get(k))
+        print('  verdicts: %s' % (', '.join('%d %s' % (n, v) for v, n in r['verdicts']) or 'none'))
+        print('  camera side: %s written; not written: %s' % (cam.get('written', '?'), some(cam, NOT_WRITTEN) or 'none'))
+        if some(r['workspace'], OUTSIDE):
+            print('  workspace check of the results used: %s accepted; refused: %s' % (
+                r['workspace'].get('accepted', '?'), some(r['workspace'], OUTSIDE)))
         if r['age']:
             print('  age of a result when it was used: mean %.1f ms, largest %.1f ms' % (
                 sum(r['age']) / len(r['age']) * 1e3, max(r['age']) * 1e3))

@@ -182,8 +182,17 @@ camera result becomes the goal of the arm; the section `[CONTRACT]` of the cfg h
 | M1 | the bridge checks and averages the object and writes the goal slot (as before) | as it comes |
 | M2 | every result goes into the mailbox as it is | until `AGE_CAP_MS` after its capture, with the joint angles of its arrival |
 | A2 | the same | by the contract: the joint angles of its capture, and its error bound (eq. (7)) within `DELTA_MM` |
-| A3 | as M2 | as M2 (the admission on the camera side is not written yet) |
-| FULL | as A2 | as A2 (the same) |
+| A3 | as M2 | as M2 |
+| FULL | as A2 | as A2 |
+
+The camera pipeline is started with the same method (`method:=` of `pick_place_vitis_ai.launch.py`), and its
+detector decides before an inference what to do with an image:
+
+| Method | The detector |
+|---|---|
+| M1 | its fixed 30 ms gate (as before) |
+| M2, A2 | every image it can take; the mode by its score, the measurement error plus the way of the tool at a reference speed during the latency |
+| A3, FULL | the admission rule (eq. (8)): run a mode, skip the image, or reject it, from the status of the control task |
 
 - The camera side is `indy7/src/obs/ObsWriter.h`: the capture stamp of the camera, moved from the system clock to
   the clock of the tasks, the deadline (capture plus `AGE_CAP_MS`) and the error of the mode (`EPS_M_MM`). A result
@@ -207,11 +216,38 @@ camera result becomes the goal of the arm; the section `[CONTRACT]` of the cfg h
   error of the calibration (`SIM_CAM_BIAS_MM`), through the checks and the average of the bridge; the others get
   it relative to the tag or in the base frame (`SIM_CAM_FORMAT`). `y`, `8` starts the application on it.
 
+- The status (`indy7/src/obs/obs_status.h`): with a method other than M1 the control task writes in every period
+  what the camera side needs for its decision, into a sequence-number slot: the tolerance of the period, the
+  result it used last with its deadline, its mode and its error bound, whether this period had a result to use,
+  the lost target, its own response (release to torque in the slot, the largest of the last one to two seconds),
+  its period, its method, and the check value of the contract (`obs/ObsContract.h`: the CRC-32 of the nine
+  constants of `[CONTRACT]` that both sides compute with). The bridge publishes it every 20 ms as
+  `/contract_status` (`my_interfaces/msg/ContractStatus.msg`), its times on the clock of the image stamps.
+- The admission rule (`ros2_ws/src/vitis_ai_detector_pkg/vitis_ai_detector_pkg/`): `contract.py` reads
+  `[CONTRACT]` from the cfg of the controller and has eq. (7) and the check value; `admission.py` is the rule; and
+  `frame_gate.py` puts it at the place of the detector's gate. For every mode that can run: the result reaches the
+  control task before its deadline (capture plus `AGE_CAP_MS`), its error bound at the age of its first use is
+  within the tolerance, and the control task keeps its deadline while the inference runs (a table of measured
+  responses; without one this check is off). Skipping is a candidate while the result in use stays good until the
+  next image could replace it. The cheapest candidate wins; with equal cost no inference runs. There is no
+  decision without a status to trust: none, one older than 100 ms, one of other contract constants, or one of
+  another method. The control task checks every result again when it arrives.
+- `ros2_ws/src/system_bringup_pkg/config/mode_profile.yaml` holds the numbers of the camera side. They are first
+  values from one run, not a characterization: the latency of a mode to the mailbox is set to 180 ms (416) and
+  170 ms (320), and the energy and the DDR traffic of a mode to 0. With them and `AGE_CAP_MS=250` an image passes
+  the time check only when the detector has it within 69 ms of its capture, and skipping never passes. One model is
+  loaded, so one mode can run: the choice between 416 and 320 is a tested function and waits for the second runner.
+
+`bin/obs_status_check`: no copy of the status mixes two periods and no read goes back (2,000,000 writes against
+a reader in another thread); a control task that starts again is not read before its first write; the largest of
+the newest values; the check value against zlib; and eq. (7) against five values that the test of the camera side
+has too. All 59 broken versions of `admission.py` and `contract.py` fail their tests.
+
 `bin/obs_goal_check`: with results in the base frame the goal slot holds, bit for bit, what the bridge of M1
 writes for the same 600 samples (rejections and restarts included); with results relative to a tag that moves at
 0.2 m/s and angles that are two periods old, the object is right by the contract, 23.7 mm off with the angles of
 the arrival, and 0.4 mm off when the age of the angles is ignored; another target, the entries of a period, the
-lost target, settings that are refused, and the camera side on the clock of the machine. All 91 broken versions
+lost target, settings that are refused, the status of a period, and the camera side on the clock of the machine. All 91 broken versions
 of `ObsGoal.h` and `ObsWriter.h` fail it.
 
 ## Repository layout
@@ -245,7 +281,8 @@ of `ObsGoal.h` and `ObsWriter.h` fail it.
     make                       # bin/indy7_ctrl; prints [indy7] MUJOCO=.. ROS=.. MALLOC_COUNT=..
     make tools                 # bin/hl_check, bin/goal_filter_check, bin/slot_check, bin/ipc_slot_check,
                                # bin/obs_mailbox_check, bin/obs_receiver_check, bin/obs_estimate_check,
-                               # bin/obs_goal_check, bin/fw_cfg_header, bin/model_check (MuJoCo)
+                               # bin/obs_goal_check, bin/obs_status_check, bin/fw_cfg_header,
+                               # bin/model_check (MuJoCo)
 
 `make MUJOCO=0` builds without the simulation, `make ROS=0` without the bridge (the default is ROS=1 when ROS 2
 and the messages of `ros2/` are found: build `ros2/` first and source both environments, `ros2/README.md`).
@@ -340,6 +377,7 @@ Logs: the joint and high-level tests write a CSV and a JSON per run into `JOINT_
     ./bin/obs_receiver_check                              # the control task's side of them, PASS
     ./bin/obs_estimate_check                              # the object estimate from them, PASS
     ./bin/obs_goal_check                                  # the two ends of the mailbox in the application, PASS
+    ./bin/obs_status_check                                # the status for the camera side, the contract check value, PASS
     ./bin/hl_check models/indy7.urdf                      # the reference contract, PASS
     ./bin/goal_filter_check                               # the goal checks of the bridge, PASS
     ./bin/model_check models/indy7.urdf models/indy7_mujoco.xml B=6.07917,6.68933,1.99649,0.87306,0.86394,0.84747  # B as in INDY7.cfg
@@ -419,8 +457,26 @@ The methods (`--method`) in the simulation, on the camera of the simulation inst
     for m in M1 M2 A2; do python3 tools/hl_run_sim.py --tests hl-app --cfg indy7/sim_app.cfg --method $m; done
     python3 tools/app_methods.py --cfg indy7/sim_app.cfg --check 0.5     # one line per run; PASS for the contract
 
+The admission rule and its two ends are tested without ROS, in the workspace of the camera pipeline (sourced) and
+here:
+
+    cd ~/ros2_ws && python3 -m pytest src/vitis_ai_detector_pkg/test/test_contract.py \
+        src/vitis_ai_detector_pkg/test/test_admission.py src/vitis_ai_detector_pkg/test/test_frame_gate.py
+    python3 -m pytest tools/test_admission_log.py
+
+With the camera pipeline, both sides get the method, and the detector writes its decisions when it stops:
+
+    ros2 launch system_bringup_pkg pick_place_vitis_ai.launch.py method:=FULL decision_log:=~/decisions_full.csv
+    ./run.sh -s --method FULL                              # keys r, g, h, p and the digit of an object; x, j, q
+    python3 tools/admission_log.py ~/decisions_full.csv indy7/jt_logs/obs_FULL_sim_r01_<stamp>.csv
+
+`tools/admission_log.py` counts the images run, skipped and rejected, the rejections by their reason and the
+check that failed, and with the log of the controller joins the images that were run to their results by the
+capture time: how many reached the control task, their verdicts, and the period that took a result against the
+first use that the rule predicted.
+
 `tools/app_methods.py` puts the runs side by side: the results used, the goals that the high-level controller
-accepted, the time at rest and, against the place of the object, the error of the objects, of the goal and of the
+accepted, the time of the first goal, the time at rest after the last one and, against the place of the object, the error of the objects, of the goal and of the
 tool at the end. On a PC (x86-64, no real-time kernel; the object 0.55 m in front of the base, a result 120 ms
 after its capture, no noise; two runs of each method): with M1 and with A2 the arm takes one goal, rests after
 1.6 s and ends 0.01 mm from the hover point. With M2 the object is up to 61 mm off while the arm moves (1.05
@@ -431,6 +487,16 @@ and A2 on results in the base frame end 5.7 mm off, A2 on results relative to th
 real-time system: the control task misses the state of some periods, and A2 then refuses the result whose
 capture falls there (state_unrecoverable, 1 of 181 in each run with the tag). `bin/obs_goal_check` also ran as
 aarch64 and 32-bit ARM builds under QEMU.
+
+On the KV260 (2026-11-18, one run of each method, `-s`): M1 and A2 take one goal and end 0.009 mm from the hover
+point, M2 takes 25 goals with the object up to 61.6 mm off and ends 5.5 mm away; A2 accepts all 180 results
+(no state_unrecoverable); no late release and no overrun. With the camera pipeline in place of the camera of the
+simulation (YOLOv3-tiny 416, A2, 82 s): 904 of 909 results accepted. A result was 176 ms old when it was used
+(median; 9 of 10 below 227 ms), and the camera side did not write 164 of 1,079 because they were older than
+`AGE_CAP_MS` (250 ms). Those come in runs: 24 gaps of more than 0.25 s between two results, the longest 0.95 s.
+The first object of that session was reached after 6.9 s without a result, because a node of the pipeline loaded
+a library on its first valid target (`pick_target_3d_node`, since moved to its start); with a pipeline that had
+had a target before, the first result came after 0.03 s.
 
 ### Humanoid (Sec. VI)
 
