@@ -54,6 +54,9 @@
 #include "GoalSlot.h"
 #include "TrajectoryRT.h"
 #include "base/Config.h"
+#include <rbdl/addons/urdfreader/urdfreader.h>
+
+#include "shadow/ModelCode.h"
 #include "shadow/ShadowControl.h"
 #include "shadow/ShadowParams.h"
 #include "shadow/ShadowTask.h"
@@ -519,6 +522,31 @@ void ByHand(const char* astrURDF, const double* adNumbers)
 				nSame++;
 		}
 	Expect(nSame == 0, "the check value changes with every byte of every number");
+
+	/* the check value of the model takes its numbers on a grid of 2^-40. The reader of the board (aarch64) gives
+	 * E(1,1) and E(2,0) of the joint frames of bodies 2 and 5 as below, the reader of a PC (x86) 1.6e-23 away
+	 * (2026-11-19): the same model. A frame 1e-11 m away is another. */
+	{
+		RigidBodyDynamics::Model cModel;
+		model_code::ModelCode stPc, stBoard, stOther;
+		bool bOk = RigidBodyDynamics::Addons::URDFReadFromFile(astrURDF, &cModel, false, false) &&
+		           model_code::ModelCodeOf(cModel, &stPc);
+		const double dBoard = -0x1.a7939a720126dp-53;
+		double dApart = 0.0;
+		for (unsigned uBody = 2; bOk && uBody <= 5; uBody += 3)
+		{
+			dApart = std::fmax(dApart, std::fabs(cModel.X_T[uBody].E(1, 1) - dBoard));
+			cModel.X_T[uBody].E(1, 1) = dBoard;
+			cModel.X_T[uBody].E(2, 0) = dBoard;
+		}
+		bOk = bOk && model_code::ModelCodeOf(cModel, &stBoard);
+		if (bOk)
+			cModel.X_T[2].r[2] += 1e-11;
+		bOk = bOk && model_code::ModelCodeOf(cModel, &stOther);
+		Expect(bOk && dApart > 0.0 && dApart < 1e-20 && stBoard.strBodies != stPc.strBodies && stBoard.uCrc == stPc.uCrc &&
+		       stOther.uCrc != stPc.uCrc,
+		       "the check value of the model: the same for the numbers of the board's reader, another for a frame 1e-11 m away");
+	}
 }
 
 /* ShadowNumbers() of the configuration astrCfg with the line of apcKey replaced by apcLine: is it refused? */

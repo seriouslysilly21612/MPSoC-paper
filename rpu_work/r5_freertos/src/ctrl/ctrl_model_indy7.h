@@ -6,7 +6,7 @@
 
 #include "ctrl_model.h"
 
-#define CTRL_MODEL_CRC    0xCA717063u	/* of the numbers and names below */
+#define CTRL_MODEL_CRC    0x573BA374u	/* of the names below and of the numbers, each on a grid of 2^-40 */
 #define CTRL_MODEL_BODIES 6
 #define CTRL_MODEL_FIXED  3
 

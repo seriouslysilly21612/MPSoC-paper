@@ -11,10 +11,18 @@
 *	moving body its parent, joint frame, joint axis and inertia (the fixed
 *	bodies merged into it included), of every fixed body its moving parent
 *	and its frame.
+*
+*	The header has every number as the reader of the PC gave it. The check
+*	value takes each on a grid of 2^-40 (9.1e-13): the reader of the board
+*	(aarch64) gives four numbers of this arm, entries of joint frames that
+*	would be 0 in exact arithmetic, 1.6e-23 away from those of the PC (x86),
+*	and with the exact numbers the application on the board took every
+*	firmware for one of another arm (2026-11-19).
 *****************************************************************************/
 #ifndef G2T_MODEL_CODE_H
 #define G2T_MODEL_CODE_H
 
+#include <cmath>
 #include <cstdio>
 #include <cstring>
 #include <map>
@@ -46,9 +54,7 @@ public:
 		m_str += "{ ";
 		for (int i = 0; i < anCount; i++)
 		{
-			uint64_t u;
-			memcpy(&u, &ad[i], sizeof(u));
-			Bytes8(u);
+			Bytes8(Grid(ad[i]));
 			char ac[40];
 			snprintf(ac, sizeof(ac), "%a%s", ad[i], i + 1 < anCount ? ", " : "");
 			m_str += ac;
@@ -62,6 +68,8 @@ public:
 	}
 	void Text(const std::string& astr) { m_str += astr; }
 	uint32_t Crc() const { return m_uCrc; }
+	/* the grid point of a number, as the check value takes it */
+	static uint64_t Grid(double ad) { return (uint64_t)std::llround(std::ldexp(ad, 40)); }
 	const std::string& Str() const { return m_str; }
 
 private:
