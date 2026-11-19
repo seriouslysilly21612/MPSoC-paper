@@ -63,7 +63,7 @@ public:
 
 	CControlClient() : m_pLink(NULL), m_dTs(1e-3), m_nQueued(0), m_uSent(0), m_uSentCmd(IPC_CMD_NONE), m_uAnswered(0),
 	                   m_bAnswer(false), m_bReport(false), m_bSample(false), m_uMotion(0), m_uStates(0), m_bStates(false),
-	                   m_bStatesSim(false), m_uFaults0(0), m_uStops0(0),
+	                   m_bStatesSim(false), m_uStatePeriod(0), m_uFaults0(0), m_uStops0(0),
 	                   m_pGoalSlot(NULL), m_uGoalSeen(0)
 	{
 		memset(&m_stReport, 0, sizeof(m_stReport));
@@ -93,7 +93,12 @@ public:
 			const bool bSimArm = (r.state & IPC_CTL_SIM_ARM) != 0;
 			const uint32_t uStates = bSimArm ? r.sim_step : r.in.period - r.n_no_state;
 			if (m_bStates && bSimArm == m_bStatesSim && uStates - m_uStates - 1u < 0x80000000u)	// not after a restart
+			{
 				m_stCounts.nStateMissed += (long)(uStates - m_uStates - 1u);
+				m_uStatePeriod += uStates - m_uStates;
+			}
+			else
+				m_uStatePeriod += 2u;		// the first, another arm, or numbers that begin again: not the next one
 			m_uStates = uStates;
 			m_bStates = true;
 			m_bStatesSim = bSimArm;
@@ -169,6 +174,9 @@ public:
 		m_bReport = true;
 	}
 	bool HasReport() const { return m_bReport; }
+	/* a number for the period of the last report with a state: one more than that of the report with a state before
+	 * it when no such report is missing between the two, more otherwise */
+	uint32_t StatePeriod() const { return m_uStatePeriod; }
 	const ipc_report_t& Report() const { return m_stReport; }
 	/* the report taken last was of a period of a motion: its sample */
 	CTrajectoryRT::Sample* Sample() { return m_bSample ? &m_stSample : NULL; }
@@ -304,6 +312,7 @@ private:
 	uint32_t		m_uStates;			// the periods with a state at the last report of one ...
 	bool			m_bStates;
 	bool			m_bStatesSim;		// ... counted as steps of the arm simulated here
+	uint32_t		m_uStatePeriod;		// StatePeriod()
 	uint32_t		m_uFaults0, m_uStops0;		// what the R5 had counted at the first report
 	const CGoalSlot* m_pGoalSlot;
 	unsigned int	m_uGoalSeen;

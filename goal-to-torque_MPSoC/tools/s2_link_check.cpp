@@ -43,7 +43,11 @@
 *	TRACK whose start still waits behind another command waits with it; the
 *	controller faults and the stops of the drives that the R5 counts are
 *	counted per run; reports that did not arrive are counted from the
-*	numbers of those that did.
+*	numbers of those that did. Of the second controller on the reports
+*	(r5link/ControlFollower.h, --shadow with S2): the bounds beyond which a
+*	torque or a reference counts as different; apart from the R5's while
+*	the run has had no start, and after a report that did not arrive, until
+*	the next start.
 *
 *	Exit code 0 when no check failed.
 *****************************************************************************/
@@ -60,6 +64,7 @@
 #include "ipc/FwCfg.h"
 #include "GoalSlot.h"
 #include "r5link/ControlClient.h"
+#include "r5link/ControlFollower.h"
 #include "r5link/R5Link.h"
 #include "shadow/ControlCycle.h"
 #include "shadow/ShadowControl.h"
@@ -89,7 +94,9 @@ struct Apu
 {
 	CR5Link			cLink;
 	CControlClient	cClient;
-	CShadowControl	cFollow;
+	CControlFollower cFollow;			// the control of the R5 a second time, on the reports (--shadow with S2)
+	CControlFollower cFollowOff;		// the same on reports whose torque and reference are off by dTauOff, dRefOff
+	double			dTauOff = 0.0, dRefOff = 0.0;
 	CGoalSlot		cGoal;				// the slot that TRACK reads
 	bool			bArm = true;		// this run simulates an arm
 	double			adQ[N], adQd[N];
@@ -103,12 +110,15 @@ struct Apu
 	ipc_report_t	stStateRep;			// ... of a period with a state
 	bool			bStateRep = false;
 	uint32_t		uLastCmd = 0, uLastResult = 0;		// the answer told last
-	long	nAnswers = 0, nSteps = 0, nLaw = 0, nTraj = 0, nDiff = 0, nApart = 0, nLost = 0;
+	long	nAnswers = 0, nSteps = 0, nLost = 0;
 	long	nOtherState = 0;			// reports of a step that had not the state written for it
 
 	long Reports() const { return cClient.GetCounts().nReports; }
 	long StateReports() const { return cClient.GetCounts().nStateReports; }
 	long Commands() const { return cClient.GetCounts().nCommands; }
+	const CControlFollower::Counts& F() const { return cFollow.GetCounts(); }
+	/* every torque and every reference that the second controller compared were the bits of the report */
+	bool SameBits() const { return F().nTauDiff == 0 && F().nRefDiff == 0 && F().dTauDiffMax == 0.0 && F().dRefDiffMax == 0.0; }
 	void WriteState()
 	{
 		ipc_sim_state_t stSim;
@@ -147,27 +157,13 @@ struct Apu
 			{
 				stStateRep = r;
 				bStateRep = true;
-				ipc_shadow_in_t stIn = r.in;
-				stIn.period = r.sim_step;		// the periods with a state, in a row
-				ipc_shadow_out_t f;
-				cFollow.Step(stIn, &f);
-				while (cFollow.ServePlanner())
-					;
-				if (f.flags & IPC_SHADOW_OUT_APART)
-					nApart++;
-				if (f.flags & IPC_SHADOW_OUT_CTRL)
-				{
-					nLaw++;
-					if (f.tau_diff != 0.0 || memcmp(f.tau, r.in.tau, sizeof(f.tau)) != 0)
-						nDiff++;
-				}
-				if (f.flags & IPC_SHADOW_OUT_TRAJ)
-				{
-					nTraj++;
-					if (memcmp(f.q_ref, r.q_ref, sizeof(f.q_ref)) != 0)
-						nDiff++;
-				}
 			}
+			cFollow.Take(r, cClient.StatePeriod());
+			static ipc_report_t s_stOff;
+			s_stOff = r;
+			s_stOff.in.tau[2] += dTauOff;
+			s_stOff.q_ref[4] += dRefOff;
+			cFollowOff.Take(s_stOff, cClient.StatePeriod());
 		}
 		/* ... and the arm, one step per answer */
 		bool bState = false;
@@ -292,7 +288,7 @@ int main(int argc, char** argv)
 	static Apu a;
 	CHighLevelRT cHl;		// for the tool position of a posture
 	if (!ShadowNumbers(cConfig, adNumbers) || !b.cControl.Init(pcURDF, adNumbers, 0xC0DE0002u) ||
-	    !a.cFollow.Init(pcURDF, adNumbers, 0xC0DE0002u) ||
+	    !a.cFollow.Init(pcURDF, adNumbers, 0xC0DE0002u) || !a.cFollowOff.Init(pcURDF, adNumbers, 0xC0DE0002u) ||
 	    !cHl.Init(pcURDF, adNumbers[SHADOW_N_TS], CShadowControl::HlParams(adNumbers)))
 	{
 		fprintf(stderr, "%s: the controller cannot be built from it\n", strCfg.c_str());
@@ -392,7 +388,7 @@ int main(int argc, char** argv)
 	       a.nSteps == nSteps + 1 && a.nLost == 0,
 	       "the application then finds the report of the period that had its state (the periods without one reported nothing), and steps once");
 	b.Periods(a, 20);
-	Expect(a.nSteps == nSteps + 21 && a.nLost == 0 && a.nApart == 0 && a.cClient.GetCounts().nStateMissed == 0,
+	Expect(a.nSteps == nSteps + 21 && a.nLost == 0 && a.F().nApart == 0 && a.cClient.GetCounts().nStateMissed == 0,
 	       "and the two go on step by step");
 	/* a command while the arm is not stepped: taken in a period without a state, which reports nothing; the report
 	 * of the next period with a state has the answer */
@@ -413,7 +409,7 @@ int main(int argc, char** argv)
 	       (a.stRep.state & IPC_CTL_STATE) && a.nSteps == nStepsBefore + 2 && a.Commands() == nCommandsBefore + 1,
 	       "the report of the next period with a state has the answer, and the next command leaves");
 	b.Periods(a, 18);
-	Expect(a.nLost == 0 && a.nApart == 0 && a.nSteps == nStepsBefore + 20 && (a.stRep.in.flags & IPC_SHADOW_HOLD) &&
+	Expect(a.nLost == 0 && a.F().nApart == 0 && a.nSteps == nStepsBefore + 20 && (a.stRep.in.flags & IPC_SHADOW_HOLD) &&
 	       a.cClient.IsSettled(), "nothing was lost");
 	/* more commands than the queue has room for */
 	{
@@ -513,7 +509,26 @@ int main(int argc, char** argv)
 		Expect(strstr(acWhy, "goal threshold") != NULL && a.stRep.traj_state == (uint32_t)CTrajectoryRT::eRunning,
 		       "... for that, and TRACK goes on");
 	}
-	b.Periods(a, 5000);
+	a.dTauOff = 5e-7;			// inside the bounds: no difference
+	a.dRefOff = 5e-10;
+	b.Periods(a, 1000);
+	{
+		const CControlFollower::Counts& o = a.cFollowOff.GetCounts();
+		Expect(o.nTauDiff == 0 && o.nRefDiff == 0 && o.dTauDiffMax > 4e-7 && o.dTauDiffMax < 6e-7 && o.dRefDiffMax > 4e-10 &&
+		       o.dRefDiffMax < 6e-10, "a torque 5e-7 N m off and a reference 5e-10 rad off are not differences, and the largest is kept");
+	}
+	a.dTauOff = 2e-6;			// outside: 200 torques ...
+	b.Periods(a, 200);
+	a.dTauOff = 0.0;
+	a.dRefOff = 2e-9;			// ... and 150 references
+	b.Periods(a, 150);
+	a.dRefOff = 0.0;
+	a.dTauOff = std::numeric_limits<double>::quiet_NaN();		// and one of each that is no number
+	a.dRefOff = std::numeric_limits<double>::quiet_NaN();
+	b.Period(a);
+	a.dTauOff = 0.0;
+	a.dRefOff = 0.0;
+	b.Periods(a, 3649);
 	double adTool[3], dFar = 0.0;
 	cHl.ToolPosition(a.adQ, adTool);
 	for (int k = 0; k < 3; k++)
@@ -619,11 +634,23 @@ int main(int argc, char** argv)
 	printf("%u periods of the R5, %ld steps of the arm, %ld reports (%ld of periods with a state), %ld commands: a second "
 	       "controller on the reports had the law in %ld and the reference in %ld of them, %ld differences, apart in "
 	       "%ld; %ld reports of a period with a state not read, %ld with another state than the one written\n",
-	       (unsigned)b.uPeriod, a.nSteps, a.Reports(), a.StateReports(), a.Commands(), a.nLaw, a.nTraj, a.nDiff, a.nApart,
-	       a.nLost + a.cClient.GetCounts().nStateMissed, a.nOtherState);
-	Expect(a.nLaw > 5000 && a.nTraj > 5000 && a.nDiff == 0 && a.nApart == 0 && a.nLost == 0 &&
-	       a.cClient.GetCounts().nStateMissed == 0 && a.nOtherState == 0,
-	       "the second controller on the reports gives the torque and the reference of every period with a state, bit for bit");
+	       (unsigned)b.uPeriod, a.nSteps, a.Reports(), a.StateReports(), a.Commands(), a.F().nLaw, a.F().nTraj,
+	       a.F().nTauDiff + a.F().nRefDiff, a.F().nApart, a.nLost + a.cClient.GetCounts().nStateMissed, a.nOtherState);
+	Expect(a.F().nPeriods == a.StateReports() && a.F().nLaw > 5000 && a.F().nTraj > 5000 && a.SameBits() && a.F().nApart == 0 &&
+	       a.nLost == 0 && a.cClient.GetCounts().nStateMissed == 0 && a.nOtherState == 0 && a.F().dLawNsSum > 0.0 &&
+	       a.F().dTrajNsSum > 0.0 && (double)a.F().uLawNsMax >= a.F().dLawNsSum / (double)a.F().nLaw &&
+	       (double)a.F().uTrajNsMax >= a.F().dTrajNsSum / (double)a.F().nTraj,
+	       "the second controller on the reports (r5link/ControlFollower.h) gives the torque and the reference of every "
+	       "period with a state, bit for bit, and has the time of its two parts");
+	{
+		// the same on reports that are off: 5e-7 N m and 5e-10 rad are inside what two CPUs may differ by, 2e-6 N m
+		// and 2e-9 rad are not, and a number that is none is a difference
+		const CControlFollower::Counts& o = a.cFollowOff.GetCounts();
+		Expect(o.nLaw == a.F().nLaw && o.nTraj == a.F().nTraj && o.nApart == 0 && o.nTauDiff == 201 && o.nRefDiff == 151 &&
+		       o.dTauDiffMax > 1.9e-6 && o.dTauDiffMax < 2.1e-6 && o.dRefDiffMax > 1.9e-9 && o.dRefDiffMax < 2.1e-9,
+		       "a torque that is off by more than 1e-6 N m, a reference by more than 1e-9 rad, or one that is no number, "
+		       "is counted as a difference; inside those bounds it is not");
+	}
 
 	/* --- another run of the application --- */
 	static Apu a2, a3, a4;
@@ -632,7 +659,7 @@ int main(int argc, char** argv)
 		memset(a2.adQd, 0, sizeof(a2.adQd));
 		a2.bServoOn = a.bServoOn;
 		const uint32_t uStepOfFirst = a.uSimStep;
-		Expect(b.StartApu(a2), "a second run of the application starts on the region");
+		Expect(a2.cFollow.Init(pcURDF, adNumbers, 0xC0DE0002u) && b.StartApu(a2), "a second run of the application starts on the region");
 		bool bBeingWritten = true;
 		const unsigned auSlots[5] = { IPC_OFF_TORQUE, IPC_OFF_COMMAND, IPC_OFF_SHADOW_IN, IPC_OFF_GOAL, IPC_OFF_SIM_STATE };
 		for (int k = 0; k < 5; k++)
@@ -678,9 +705,19 @@ int main(int argc, char** argv)
 		Expect(b.UntilAnswered(a2) && a2.stRep.cmd_result == IPC_DONE_OK, "servo on once more");
 		b.Periods(a2, 5);
 		Expect(a2.bServoOn && (a2.stRep.state & IPC_CTL_SERVO_ON), "... and on");
+		/* the second controller of this run: the R5 had starts before it, which no report told it */
+		Expect(a2.F().nPeriods == a2.StateReports() && a2.F().nApart == a2.F().nPeriods && a2.F().nLaw == 0 && a2.F().nTraj == 0,
+		       "the second controller of a run that finds the R5 with motions before it: apart, nothing compared");
+		a2.cClient.Queue(IPC_CMD_START, IPC_START_HOME, &stStart);
+		Expect(b.UntilAnswered(a2) && a2.stRep.start_result == IPC_DONE_OK, "HOME starts in this run");
+		const long nApartAtStart = a2.F().nApart;
+		b.Periods(a2, 300);
+		Expect(a2.F().nApart == nApartAtStart && a2.F().nLaw >= 300 && a2.F().nTraj > 100 && a2.SameBits(),
+		       "from the first start of the run on it follows: the torque and the reference of the report, bit for bit");
 		/* a report of a period with a state that the control task here does not get is counted */
 		b.Period(a2);
 		const long nMissedBefore = a2.cClient.GetCounts().nStateMissed, nLostBefore = a2.nLost;
+		const long nLawAtGap = a2.F().nLaw, nPeriodsAtGap = a2.F().nPeriods;
 		b.R5Period();
 		{
 			ipc_report_t stUnread;
@@ -690,6 +727,17 @@ int main(int argc, char** argv)
 		b.Period(a2);
 		Expect(a2.cClient.GetCounts().nStateMissed == nMissedBefore + 1 && a2.nLost == nLostBefore + 1,
 		       "a report of a period with a state that did not arrive is counted, from the numbers of the steps");
+		b.Periods(a2, 20);
+		Expect(a2.F().nPeriods == nPeriodsAtGap + 21 && a2.F().nApart == nApartAtStart + 21 && a2.F().nLaw == nLawAtGap && a2.SameBits(),
+		       "... and leaves the second controller apart: its periods are counted, not compared");
+		a2.cClient.Queue(IPC_CMD_MOTION_STOP);
+		a2.cClient.Queue(IPC_CMD_START, IPC_START_HOME, &stStart);
+		Expect(b.UntilAnswered(a2) && a2.stRep.start_result == IPC_DONE_OK, "the next start");
+		const long nApartAtStart2 = a2.F().nApart, nLawAtStart2 = a2.F().nLaw;
+		b.Periods(a2, 100);
+		Expect(a2.F().nApart == nApartAtStart2 && a2.F().nLaw == nLawAtStart2 + 100 && a2.SameBits(), "... brings the two together again");
+		a2.cClient.Queue(IPC_CMD_MOTION_STOP);
+		Expect(b.UntilAnswered(a2), "stopped");
 	}
 	/* --- a run without an arm: the control task has no state --- */
 	uint32_t uNumberOfThird = 0;
@@ -720,43 +768,61 @@ int main(int argc, char** argv)
 		       "it is answered in its turn; the first command of a run has not the number of the first of the run before");
 	}
 
+	/* --- a run with a new arm while the R5 still asks the servo on, for the arm of a run before --- */
+	{
+		static Apu a6;
+		memcpy(a6.adQ, adQr, sizeof(a6.adQ));
+		memset(a6.adQd, 0, sizeof(a6.adQd));
+		const uint32_t uStopsBefore = b.cR5.LastReport().n_drive_stops;
+		Expect((b.cR5.LastReport().state & IPC_CTL_SERVO_ASKED) && b.StartApu(a6),
+		       "a run with a new arm starts; the R5 still asks the servo on, as the run with the arm before left it");
+		b.Periods(a6, 6);
+		Expect(!(a6.stRep.state & IPC_CTL_SERVO_ASKED) && a6.stRep.n_drive_stops == uStopsBefore + 1 &&
+		       a6.cClient.GetCounts().nDriveStops == 1 && !a6.bServoOn && (a6.stRep.state & IPC_CTL_STATE),
+		       "the drives of the new arm are off: the R5 withdraws its request, a stop of the drives that this run is told");
+	}
+
 	/* --- the reports that did not arrive, counted from the numbers in those that did --- */
 	{
 		CControlClient cCount;
 		cCount.Init(&a4.cLink, 1e-3);
 		ipc_report_t r;
 		memset(&r, 0, sizeof(r));
-		struct { uint32_t uState, uPeriod, uNoState, uStep; long nMissed; } const ast[] = {
+		// nMissed: reports counted as not arrived so far; uOn: how far the number of the period with a state goes on
+		// (1: the next one; 2: one is missing between, or nothing is known of what was between)
+		struct { uint32_t uState, uPeriod, uNoState, uStep; long nMissed; uint32_t uOn; } const ast[] = {
 			// the arm of the bus: the periods of the R5 less those without a state
-			{ IPC_CTL_STATE, 10, 2, 7, 0 },		// the first report says nothing of those before it
-			{ IPC_CTL_STATE, 11, 2, 7, 0 },
-			{ IPC_CTL_STATE, 13, 2, 7, 1 },		// that of period 12 did not arrive
-			{ IPC_CTL_STATE, 15, 3, 7, 1 },		// period 14 had no state: nothing to miss
-			{ IPC_CTL_STATE, 16, 3, 7, 1 },
+			{ IPC_CTL_STATE, 10, 2, 7, 0, 2 },		// the first report says nothing of those before it
+			{ IPC_CTL_STATE, 11, 2, 7, 0, 1 },
+			{ IPC_CTL_STATE, 13, 2, 7, 1, 2 },		// that of period 12 did not arrive
+			{ IPC_CTL_STATE, 15, 3, 7, 1, 1 },		// period 14 had no state: nothing to miss
+			{ IPC_CTL_STATE, 16, 3, 7, 1, 1 },
 			// then an arm simulated here: its steps, whatever period numbers the R5 leaves out
-			{ IPC_CTL_STATE | IPC_CTL_SIM_ARM, 30, 3, 20, 1 },		// the first of another arm
-			{ IPC_CTL_STATE | IPC_CTL_SIM_ARM, 32, 3, 21, 1 },
-			{ IPC_CTL_STATE | IPC_CTL_SIM_ARM, 33, 3, 23, 2 },		// that of step 22 did not arrive
-			{ IPC_CTL_SIM_ARM, 34, 4, 23, 2 },							// a period without a state: not counted
-			{ IPC_CTL_STATE | IPC_CTL_SIM_ARM, 35, 4, 1, 2 },			// the numbers begin again: nothing is known
-			{ IPC_CTL_STATE | IPC_CTL_SIM_ARM, 36, 4, 2, 2 },
+			{ IPC_CTL_STATE | IPC_CTL_SIM_ARM, 30, 3, 20, 1, 2 },		// the first of another arm
+			{ IPC_CTL_STATE | IPC_CTL_SIM_ARM, 32, 3, 21, 1, 1 },
+			{ IPC_CTL_STATE | IPC_CTL_SIM_ARM, 33, 3, 23, 2, 2 },		// that of step 22 did not arrive
+			{ IPC_CTL_SIM_ARM, 34, 4, 23, 2, 0 },						// a period without a state: not counted
+			{ IPC_CTL_STATE | IPC_CTL_SIM_ARM, 35, 4, 1, 2, 2 },		// the numbers begin again: nothing is known
+			{ IPC_CTL_STATE | IPC_CTL_SIM_ARM, 36, 4, 2, 2, 1 },
+			{ IPC_CTL_STATE | IPC_CTL_SIM_ARM, 37, 4, 5, 4, 3 },		// two did not arrive
 		};
 		bool bCounted = true;
 		for (size_t k = 0; k < sizeof(ast) / sizeof(ast[0]); k++)
 		{
+			const uint32_t uBefore = cCount.StatePeriod();
 			r.state = ast[k].uState;
 			r.in.period = ast[k].uPeriod;
 			r.n_no_state = ast[k].uNoState;
 			r.sim_step = ast[k].uStep;
 			cCount.Take(r);
-			if (cCount.GetCounts().nStateMissed != ast[k].nMissed)
+			if (cCount.GetCounts().nStateMissed != ast[k].nMissed || cCount.StatePeriod() - uBefore != ast[k].uOn)
 			{
 				bCounted = false;
-				printf("  report %u: %ld counted as not arrived, not %ld\n", (unsigned)k, cCount.GetCounts().nStateMissed,
-				       ast[k].nMissed);
+				printf("  report %u: %ld counted as not arrived, not %ld; the period number goes on by %u, not %u\n", (unsigned)k,
+				       cCount.GetCounts().nStateMissed, ast[k].nMissed, (unsigned)(cCount.StatePeriod() - uBefore), (unsigned)ast[k].uOn);
 			}
 		}
-		Expect(bCounted && cCount.GetCounts().nReports == 11 && cCount.GetCounts().nStateReports == 10,
+		Expect(bCounted && cCount.GetCounts().nReports == 12 && cCount.GetCounts().nStateReports == 11,
 		       "the reports of periods with a state that did not arrive: by the periods of the R5 with the arm of its bus, by "
 		       "the steps with an arm simulated here; not across a change of the arm or numbers that begin again");
 	}

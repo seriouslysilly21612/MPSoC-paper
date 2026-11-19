@@ -327,6 +327,7 @@ and the affinity of every task at its start and refuses to run otherwise.
     ./run.sh -s --arch S1      # the EtherCAT task on the R5 (below); with -s the R5 is simulated as well
     ./run.sh -s --arch S1 --shadow   # and the R5 runs the control computation beside this one (below)
     ./run.sh -s --arch S2      # the control task on the R5 as well (below)
+    ./run.sh -s --arch S2 --shadow   # and a controller here repeats every period that the R5 reports (below)
 
 The keys of the operator are printed at the start and with `?`:
 
@@ -423,9 +424,26 @@ longer leaves the drives without a new torque. What stays here (`indy7/src/TaskC
 - The rules of the drives are the R5's: a joint that leaves Operation enabled during servo on, a servo on that does
   not complete in its time, a law that fails. The lines and the counts of the summary are those of P0.
 
-Not with S2: the JOINT TEST (`u`), the tool pose and the hand-eye capture (`s`, `w`), `--shadow`, a method other
-than M1 (the part of those methods that runs in the control task is still here; refused at the start), and the
-fault test `SIM_FAULT_WHAT=torque`.
+Not with S2: the JOINT TEST (`u`), the tool pose and the hand-eye capture (`s`, `w`), a method other than M1 (the
+part of those methods that runs in the control task is still here; refused at the start), and the fault test
+`SIM_FAULT_WHAT=torque`.
+
+The R5 goes on when the application ends (with `q` it asks the servo off first) or is killed. A new run takes up
+what it finds: the first report tells whether the controller of the R5 is on, whether it asks the servo on and
+whether a motion runs there (`x` stops it); the controller faults and the stops of the drives are counted from
+that report on; and with an arm simulated here the R5 finds the drives of the new arm off and withdraws a servo
+request that it still had (told as a stop of the drives).
+
+**`--shadow` with `--arch S2`: the control of the R5 a second time, here.** The roles of `--shadow` with S1 the other
+way round. A report begins with the description of its period in the form of the Shadow in slot (the measured
+state, the goal, the start, the mode of the law, the IK that the update took), and a controller of the application
+(`r5link/ControlFollower.h`, with the class that the R5 runs beside the control task of S1) repeats the period from
+it; its torque and its reference are compared with those of the report. The run ends with two more `[S2]` lines:
+the periods repeated, the torques that differ from the R5's by more than 1e-6 N m and the references by more than
+1e-9 rad, the largest difference of each, the periods in which the two were apart and not compared (after a report
+that did not arrive, while the run has had no start of its own, or when a plan came into use in another period:
+until the next start), and the time of the two parts here. In the simulation the two are the same code on one CPU:
+no difference at all. On the board they are the same code on two CPUs.
 
 With `-s` the R5 is simulated as well (`sim/SimR5Control.h`, with the class that the firmware runs), and the arm
 stays the application's: its state goes to the R5 in the Sim state slot, the control task of the R5 runs one period
@@ -484,7 +502,7 @@ the target of its IK). Not run with the real R5 yet (2026-11-20).
     ./bin/control_check                                   # the control task that the R5 has with CONTROL_TASK (shadow/ControlCycle.h): its commands, its rules for the drives, its report, PASS
     ./bin/s2_link_check                                   # the exchange with such an R5: commands, the goal, the report, an arm simulated here, another run of the application, PASS
     python3 ../tools/s2_keys_sim.py                       # --arch S2 in the simulation: the keys of the operator, a dropout, the E-stop, a servo on that runs out, a controller fault, PASS
-    python3 ../tools/hl_run_sim.py --arch S2 --analyze    # the high-level tests with the control task on the simulated R5
+    python3 ../tools/hl_run_sim.py --arch S2 --shadow --analyze   # the high-level tests with the control task on the simulated R5; the [S2] lines of the console: no report missed, no torque differs
     ./bin/hl_check models/indy7.urdf                      # the reference contract, PASS
     ./bin/goal_filter_check                               # the goal checks of the bridge, PASS
     ./bin/model_check models/indy7.urdf models/indy7_mujoco.xml B=6.07917,6.68933,1.99649,0.87306,0.86394,0.84747  # B as in INDY7.cfg

@@ -535,6 +535,8 @@ itself (one controller in a build). The APU sends commands and goals and gets a 
 of the APU that comes late no longer leaves the drives without a torque. The application's side is `--arch S2`
 (`../../goal-to-torque_MPSoC/README.md`); the shared region is layout 6 with it (2026-11-20: the report also has
 the counts of the high-level controller in the motion and the target of its IK, for the logs of the application).
+With `--shadow` the application repeats every period from its report with a controller of its own and compares
+the torque and the reference: what this firmware computes on the R5 against the same code on the APU.
 
 | File | What it does |
 |---|---|

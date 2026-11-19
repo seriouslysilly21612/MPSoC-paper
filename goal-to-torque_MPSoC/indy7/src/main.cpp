@@ -30,7 +30,10 @@
 *	           what it did with its controller, and the R5 computes the same
 *	           with a controller of its own (shadow/ShadowTask.h). Its torque
 *	           is compared, not used: plan stage 3, whether the control
-*	           computation fits the period of the R5
+*	           computation fits the period of the R5. With --arch S2 the
+*	           roles are the other way round: a controller here repeats
+*	           every period of the R5's control task from its report
+*	           (r5link/ControlFollower.h)
 *
 *	The keys of the operator are listed at the start and with '?'
 *	(Indy7Ctrl.cpp, PrintHelp). 'q', SIGINT or SIGTERM end the controller:
@@ -75,7 +78,8 @@ void Usage(const char* apcProg)
 	        "  --arch NAME (-a)  where the EtherCAT task and the control task run (Arch.h): P0 both here (default),\n"
 	        "                    S1 the EtherCAT task on the R5, S2 the control task on the R5 as well\n"
 	        "  --shadow          with --arch S1: the R5 computes the control of every period as well (its torque is\n"
-	        "                    compared, not used), to tell whether the control computation fits its period\n", apcProg);
+	        "                    compared, not used), to tell whether the control computation fits its period;\n"
+	        "                    with --arch S2: a controller here repeats every period of the R5 from its report\n", apcProg);
 }
 
 } // namespace
@@ -129,9 +133,9 @@ int main(int argc, char** argv)
 		}
 	}
 
-	if (bShadow && nArch != arch::eS1)
+	if (bShadow && nArch == arch::eP0)
 	{
-		fprintf(stderr, "--shadow: only with --arch S1 (the second controller is on the R5)\n");
+		fprintf(stderr, "--shadow: with --arch S1 (the second controller is on the R5) or S2 (it is here)\n");
 		Usage(argv[0]);
 		return 1;
 	}

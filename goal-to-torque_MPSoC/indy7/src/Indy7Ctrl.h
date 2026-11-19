@@ -56,6 +56,7 @@
 #include "ecat/R5Joint.h"
 #include "r5link/R5Link.h"
 #include "r5link/ControlClient.h"
+#include "r5link/ControlFollower.h"
 #include "sim/SimArm.h"
 #include "sim/SimJoint.h"
 #include "sim/SimCamera.h"
@@ -149,6 +150,7 @@ private:
 	// writes it for the R5 after its command and its goal (TaskControlS2.cpp); with -s the control task that the
 	// simulated R5 runs
 	CControlClient*				m_pS2{NULL};
+	CControlFollower*			m_pFollow{NULL};	// --shadow with S2: the control of the R5 a second time, here
 	CAtomicSlot<ipc_report_t>	m_reportSlot;
 	CAtomicSlot<ipc_sim_state_t>	m_simOutSlot;
 	CControlCycle*				m_pSimControl{NULL};

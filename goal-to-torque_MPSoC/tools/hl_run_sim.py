@@ -53,7 +53,7 @@ def main():
     ap.add_argument('--analyze', action='store_true', help='run tools/hl_analyze.py on the new logs')
     ap.add_argument('--method', help='--method of the controller (M1, M2, A2, A3, FULL; default: its own, M1)')
     ap.add_argument('--arch', help='--arch of the controller (P0, S1, S2; default: its own, P0)')
-    ap.add_argument('--shadow', action='store_true', help='--shadow of the controller (with --arch S1)')
+    ap.add_argument('--shadow', action='store_true', help='--shadow of the controller (with --arch S1 or S2)')
     a = ap.parse_args()
 
     cfg = os.path.abspath(a.cfg)

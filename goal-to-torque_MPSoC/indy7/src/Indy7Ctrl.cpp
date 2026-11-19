@@ -70,6 +70,8 @@ CRobotIndy7::~CRobotIndy7()
 	m_pSimControl = NULL;
 	delete m_pS2;
 	m_pS2 = NULL;
+	delete m_pFollow;
+	m_pFollow = NULL;
 	delete m_pShadow;
 	m_pShadow = NULL;
 	for (CR5Joint* p : m_vR5Joints)
@@ -1013,6 +1015,21 @@ CRobotIndy7::PrintRtSummary() const
 			       (unsigned)r.n_plans, (unsigned)r.plan_max_us, (unsigned)r.n_iks, (unsigned)r.ik_max_us,
 			       (unsigned)r.n_plan_late);
 	}
+	// ... and its control a second time, here (--shadow)
+	if (m_pFollow != NULL)
+	{
+		const CControlFollower::Counts& f = m_pFollow->GetCounts();
+		printf("[S2] the control of the R5 a second time here: %ld periods with a state; torque of the law in %ld of "
+		       "them, %ld differ from the R5's by more than %g N m, largest difference %g N m; reference in %ld, %ld "
+		       "differ by more than %g rad, largest difference %g rad; apart in %ld (a report that did not arrive, a "
+		       "start before this run, a plan that one planner had late: until the next start; not compared)\n",
+		       f.nPeriods, f.nLaw, f.nTauDiff, CControlFollower::TAU_TOL, f.dTauDiffMax, f.nTraj, f.nRefDiff,
+		       CControlFollower::REF_TOL, f.dRefDiffMax, f.nApart);
+		printf("[S2] time of the two parts here, in the periods compared: high-level controller mean %.1f us, max "
+		       "%.1f us; control law mean %.1f us, max %.1f us\n",
+		       f.nTraj > 0 ? f.dTrajNsSum / (double)f.nTraj * 1e-3 : 0.0, (double)f.uTrajNsMax * 1e-3,
+		       f.nLaw > 0 ? f.dLawNsSum / (double)f.nLaw * 1e-3 : 0.0, (double)f.uLawNsMax * 1e-3);
+	}
 	// the two parts of the control task (t_w of the dynamics part counts from the release)
 	const task_slots::ST_TASK_TIMING* apT[2] = { &m_stTrajTiming, &m_stDynTiming };
 	const char* apcName[2] = { "Control task, trajectory part", "Control task, dynamics part" };
@@ -1410,7 +1427,7 @@ CRobotIndy7::InitR5Link()
 		stSpec.nPriority = (int)vTasks[0].nPriority;
 		stSpec.nCpu = CpuBesideTheTasks(vTasks);
 		m_pSimR5 = new CSimR5();
-		if (m_bShadow)
+		if (m_bShadow && !bS2)
 		{
 			// the simulated R5 has the controller that the firmware has: built from the same numbers
 			m_pSimShadow = new CShadowControl();
@@ -1446,7 +1463,16 @@ CRobotIndy7::InitR5Link()
 		printf("[S2] the control task runs on the R5: commands and goals go there, its report comes back; check value "
 		       "of the controller of this configuration 0x%08X\n", (unsigned)uShadowCheck);
 	}
-	if (m_bShadow)
+	if (m_bShadow && bS2)
+	{
+		// the controller of this configuration, to repeat every period that the R5 reports (heap: now)
+		m_pFollow = new CControlFollower();
+		if (FALSE == m_pFollow->Init(m_pConfig->System().strURDFPath.c_str(), adNumbers, uShadowCheck))
+			return FALSE;
+		printf("[S2] --shadow: a controller here repeats every period of the R5's control task from its report, and "
+		       "its torque and its reference are compared with those of the report\n");
+	}
+	else if (m_bShadow)
 	{
 		m_pShadow = new CShadowTask(m_pLink, uShadowCheck);
 		printf("[SHADOW] the control task tells the R5 every period; check value of this controller 0x%08X (its "

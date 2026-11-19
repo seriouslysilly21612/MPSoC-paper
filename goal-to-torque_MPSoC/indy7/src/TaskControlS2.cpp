@@ -116,6 +116,8 @@ s2_take_report(CRobotIndy7* pRobot)
 		return false;
 	g_stS2.uReportCount = uCount;
 	c.Take(g_stS2.stReport);
+	if (pRobot->m_pFollow != NULL)		// --shadow: the period of this report a second time
+		pRobot->m_pFollow->Take(g_stS2.stReport, c.StatePeriod());
 	const ipc_report_t& r = c.Report();
 
 	/* the answer of the R5 to a command */
@@ -155,8 +157,11 @@ s2_take_report(CRobotIndy7* pRobot)
 			              "from this cfg (bin/ctrl_numbers_header, bin/rbdl_model_code)", (unsigned)r.ctrl_crc,
 			              (unsigned)pRobot->m_uS2Check);
 		else
-			printf("[R5] the control task of the R5 reports (its period %u): controller %s, %s; its check value 0x%08X "
-			       "is that of this configuration\n", (unsigned)r.in.period, (r.state & IPC_CTL_ENABLED) ? "on" : "off",
+			// the R5 goes on when the application starts again: what a run before left is told
+			printf("[R5] the control task of the R5 reports (its period %u): controller %s, %s, %s; its check value "
+			       "0x%08X is that of this configuration\n", (unsigned)r.in.period,
+			       (r.state & IPC_CTL_ENABLED) ? "on" : "off",
+			       (r.state & IPC_CTL_SERVO_ASKED) ? "the servo asked on" : "the servo not asked",
 			       r.traj_state == (uint32_t)T::eRunning ? "a motion runs there ('x' stops it)" : "no motion",
 			       (unsigned)r.ctrl_crc);
 	}
