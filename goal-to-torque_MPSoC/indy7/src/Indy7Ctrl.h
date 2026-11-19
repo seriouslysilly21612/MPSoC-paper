@@ -10,13 +10,15 @@
 *	  TASK0  EtherCAT task    TaskEtherCAT.cpp    receive -> State slot; Torque slot -> send;
 *	                                              the drives, the LED, the timing log
 *	  TASK1  control task     TaskTrajectory.cpp  the trajectory part: goal slot -> high-level
-*	                                              controller (IK, Ruckig) -> Reference slot;
+*	                                              controller -> Reference slot;
 *	                                              the high-level tests, the operator motions;
 *	                          TaskDynamics.cpp    then the dynamics part: State + Reference
 *	                                              slot -> control law (gravity compensation,
 *	                                              CTC, JOINT TEST) -> Torque slot; the
 *	                                              operator commands
 *	  TASK2  keyboard task    Indy7Ctrl.cpp       the keys and the lines of the tools
+*	and, not in the cfg, the planner task (TaskPlanner.cpp): the IK and the plans that the
+*	high-level controller asks for, on the CPU of TASK1 with the priority below it.
 *	The torque sent in a period was computed in the period before from the
 *	state received in the period before (send before compute, Fig. 2).
 *
@@ -134,8 +136,10 @@ private:
 	CShadowControl*				m_pSimShadow{NULL};
 	CViewStream					m_cView;		// newest joint angles for an external viewer
 
-	/* the tasks, in the order of the cfg ([TASK0]..[TASK2]) */
-	enum { N_TASKS = 3 };	// EtherCAT, control (trajectory and dynamics part), keyboard
+	/* the tasks: those of the cfg in its order ([TASK0]..[TASK2]: EtherCAT, control (trajectory and dynamics
+	 * part), keyboard), then the planner task, which has the CPU and the grid of the control task and the
+	 * priority below it (TaskPlanner.cpp) */
+	enum { N_CFG_TASKS = 3, N_TASKS = 4 };
 	CRtTask						m_aTask[N_TASKS];
 	BOOL						m_bTasksStarted{FALSE};
 	std::atomic<bool>			m_bStopTask{false};
@@ -159,6 +163,7 @@ private:
 	friend void	dynamics_cycle(CRobotIndy7*, RTTIME, RTTIME);
 	friend void	dynamics_end(CRobotIndy7*);
 	friend void	proc_keyboard_control(void*);
+	friend void	proc_planner_task(void*);
 
 	/* the slots between the tasks (TaskSlots.h), one writer each */
 	CAtomicSlot<task_slots::ST_STATE_SLOT>	m_stateSlot;	// EtherCAT task

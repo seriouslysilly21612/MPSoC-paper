@@ -633,31 +633,6 @@ CHlPlannerN<N>::Plan(const typename HL::PlanRequest& astRequest, typename HL::Pl
 	apResult->dCalcUs = (double)(t1 - t0) * 1e-3;
 }
 
-/* ------------------------------------------------------------------------ */
-/* the planner in the task of its caller: CHlInlineN                        */
-/* ------------------------------------------------------------------------ */
-template <int N>
-void
-CHlInlineN<N>::After(HL& acHl)
-{
-	const typename HL::IkRequest& stIkReq = acHl.GetIkRequest();
-	if (stIkReq.uSeq != m_uIkSeq)
-	{
-		m_uIkSeq = stIkReq.uSeq;
-		m_cPlanner.IkBegin(stIkReq);
-	}
-	const typename HL::PlanRequest& stPlanReq = acHl.GetPlanRequest();
-	if (stPlanReq.uSeq != m_uPlanSeq)			// a plan first: it has a period to be back in
-	{
-		m_uPlanSeq = stPlanReq.uSeq;
-		m_cPlanner.Plan(stPlanReq, &m_stPlan);
-		acHl.TakePlan(m_stPlan);
-	}
-	for (int n = 0; n < IK_STEPS && m_cPlanner.IkActive(); n++)
-		if (m_cPlanner.IkStep(&m_stIk))
-			acHl.TakeIk(m_stIk);
-}
-
 /* the instances: the arm (6) and a hand of the humanoid (7) */
 template struct CHlIkN<6>;
 template struct CHlIkN<7>;
@@ -665,5 +640,3 @@ template class CHighLevelRTN<6>;
 template class CHighLevelRTN<7>;
 template class CHlPlannerN<6>;
 template class CHlPlannerN<7>;
-template class CHlInlineN<6>;
-template class CHlInlineN<7>;

@@ -18,16 +18,20 @@
 *	with a joint at its limit margin, an arm held fast (the lead bound and
 *	the torque limit act), a stop, a new ready posture, a joint move, TRACK
 *	with the goal threshold 0, starts before and after the update of a
-*	period and in a period without one, and periods with two measured
-*	states. Each period goes the way of --shadow: through CShadowTask and
+*	period and in a period without one, periods with two measured states,
+*	and a planner task that has no time for some periods: once for the IK
+*	of a goal, once for a plan until it is late. Each period goes the way of
+*	--shadow: through CShadowTask and
 *	the Shadow in slot of a link (CR5Link) to the R5's side of the slots
 *	(CSimR5Slots), there into a second controller built from the numbers of
 *	shadow/ShadowParams.h, and its answer back through the Shadow out slot.
 *
 *	Checked: the torque and the reference of the second controller are those
-*	of the first, bit for bit, in every period it follows; it is apart
-*	exactly in the periods after a payload that did not arrive or was not
-*	given and in the period whose start is not told, until the next start;
+*	of the first, bit for bit, in every period it follows, also when the
+*	IK of a goal is back periods later; it is apart exactly in the periods
+*	after a payload that did not arrive or was not given, in the period whose
+*	start is not told, and from the period in which its plan comes into use
+*	and the first controller's does not, until the next start;
 *	the payloads it does not follow (a JOINT TEST, a period number that went
 *	back, a torque that is no number); the numbers and their check value;
 *	what the control task counts of the answers.
@@ -196,6 +200,12 @@ public:
 		if (bTrajOp && m_cTraj.IsRunning())
 		{
 			const BOOL bOk = m_cTraj.Update(adTq, adTqd, m_adQr, m_adQdr, m_adQddr);
+			// the planner task, here: what the period asked for is back for the next, unless it has no time
+			if (m_nStall > 0)
+				m_nStall--;
+			else
+				while (m_cTraj.ServePlanner())
+					;
 			m_pTask->TrajUpdated(m_cTraj);
 			m_bUpdated = true;
 			bRef = (bOk != FALSE);
@@ -282,6 +292,7 @@ public:
 	double			m_adQr[N] = {}, m_adQdr[N] = {}, m_adQddr[N] = {};	// 0 until the first reference: they go into the vectors
 	bool			m_bEnded = false;		// the motion ended by itself in this period (HOME at rest, or an error)
 	bool			m_bUpdated = false;		// the high-level controller was updated in this period
+	int				m_nStall = 0;			// updates from now after which the planner is not served
 	unsigned int	m_uClamp = 0;			// bit i: the torque limit acted on joint i in this period
 
 private:
@@ -395,6 +406,56 @@ void ByHand(const char* astrURDF, const double* adNumbers)
 	CShadowControl cNone;
 	cNone.Step(stIn, &stOut);
 	Expect(stOut.flags == IPC_SHADOW_OUT_FAULT && stOut.period == 12, "not built: every answer is a fault");
+
+	/* the planner: TRACK with a goal from period 0; the IK of the goal comes with the payload of period 10, and
+	 * the plan to it is this controller's own, in use H periods later */
+	const int H = (int)adNumbers[SHADOW_N_PLAN_AHEAD];
+	for (int nCase = 0; nCase < 3; nCase++)
+	{
+		CShadowControl cK;
+		ipc_shadow_in_t stK;
+		ipc_shadow_out_t stA;
+		memset(&stK, 0, sizeof(stK));
+		stK.delta = adNumbers[SHADOW_N_DELTA];
+		stK.starts = 1;
+		stK.goal[0] = 0.4;
+		stK.goal[2] = 0.5;
+		double adStart[N], dToIk = 0.0;
+		for (int i = 0; i < N; i++)
+		{
+			adStart[i] = stK.q[i] = stK.q_ready[i] = adNumbers[SHADOW_N_READY + i];
+			stK.ik_q[i] = adStart[i] + 0.05;		// below the lead bound: the measured state stays where it is
+		}
+		int nFirstApart = -1, nFirstMoved = -1;
+		bool bBuilt = (FALSE != cK.Init(astrURDF, adNumbers, 1u));
+		for (int k = 0; k < 3000 && bBuilt; k++)
+		{
+			stK.period = 100u + (uint32_t)k;
+			stK.flags = IPC_SHADOW_TRAJ | IPC_SHADOW_GOAL | (k == 0 ? (uint32_t)IPC_SHADOW_START : 0u);
+			if (k == 10)
+				stK.flags |= IPC_SHADOW_IK;
+			if ((nCase == 0 && k == 10 + H) || (nCase == 2 && k == 12))
+				stK.flags |= IPC_SHADOW_PLAN;
+			cK.Step(stK, &stA);
+			if ((stA.flags & IPC_SHADOW_OUT_APART) && nFirstApart < 0)
+				nFirstApart = k;
+			dToIk = 0.0;
+			for (int i = 0; i < N; i++)
+			{
+				if (stA.q_ref[i] != adStart[i] && nFirstMoved < 0)
+					nFirstMoved = k;
+				dToIk = std::fmax(dToIk, std::fabs(stA.q_ref[i] - stK.ik_q[i]));
+			}
+		}
+		if (nCase == 0)
+			Expect(bBuilt && nFirstApart < 0 && nFirstMoved == 10 + H + 1 && dToIk < 1e-9,
+			       "the IK that the APU's update took is the target: the reference leaves H periods later, for it, and "
+			       "not before (the second controller does not solve the goal itself)");
+		else if (nCase == 1)
+			Expect(bBuilt && nFirstApart == 10 + H, "a plan that comes into use in a period in which the APU's did not: apart");
+		else
+			Expect(bBuilt && nFirstApart == 12, "a plan of the APU in a period in which none comes into use here: apart");
+	}
 
 	/* what the control task counts of the answers (CShadowTask::Take): another check value is not compared; a
 	 * difference above the limit or no number differs; apart is not compared; the times of the parts that ran */
@@ -521,6 +582,8 @@ int main(int argc, char** argv)
 	          P_READY = P_STOP + 50, P_MOVE = P_STOP + 100, P_BOTH = P_MOVE + 2500, P_DROP = P_BOTH + 300,
 	          P_STOP2 = P_DROP + 300, P_TRACK2 = P_STOP2 + 50, P_SPLIT = P_TRACK2 + 420, P_STOP3 = P_SPLIT + 30,
 	          P_TRACK3 = P_STOP3 + 20, P_END = P_TRACK3 + 40, FIRST = 1000;
+	/* the last goal before P_STOP: its plan is late on the APU; the goal before it: its IK is back three periods later */
+	const int P_PLAN_LATE = ((P_STOP - 38) / 400) * 400 + 37, P_IK_LATER = P_PLAN_LATE - 400, H = cApu.m_cTraj.HighLevel().GetParams().nPlanAhead;
 	const int HARD_GOAL = 3, HELD_FROM = 150, HELD_TO = 750;	// the goal number; the arm held fast, periods after it
 	const double adHard[3] = { -0.9, 0.2, -0.5 };	// from the tool position of the ready posture: behind the arm
 	const CHighLevelRT::Params stP = cApu.m_cTraj.HighLevel().GetParams();
@@ -537,7 +600,9 @@ int main(int argc, char** argv)
 	std::vector<shadow_vector_t> vVectors;
 	std::set<int> setApart, setExpected;
 	long nLaw = 0, nLawDiff = 0, nTraj = 0, nTrajDiff = 0, nStartsTold = 0, nAfter = 0, nLost = 0, nGoals = 0, nFault = 0,
-	     nNone = 0, nCount = 0, nState = 0, nTimes = 0, nLead = 0, nClamp = 0, nNearIgnored = 0, nNearTaken0 = 0;
+	     nNone = 0, nCount = 0, nState = 0, nTimes = 0, nLead = 0, nClamp = 0, nNearIgnored = 0, nNearTaken0 = 0,
+	     nIkLater = 0;
+	int nAccepted = -1;			// the period of the last goal that was accepted
 	uint32_t uMissed = 0;
 	bool bScenario = true, bRefBefore = false, bHardSolved = false;
 	int nHomeEnd = -1, nHardAt = -1;
@@ -612,6 +677,13 @@ int main(int argc, char** argv)
 			}
 		}
 
+		/* the planner task has no time: for three periods from the goal, so that its IK is back later; and for
+		 * H + 1 periods from the request of a plan, so that the plan is late and asked for again */
+		if (k == P_IK_LATER)
+			cApu.m_nStall = 3;
+		if (k == P_PLAN_LATE + 1)
+			cApu.m_nStall = H + 1;
+
 		/* what the Trajectory part has: the state of the period, or with A_SPLIT that of the period before; at
 		 * P_SPLIT only its angles, at P_TRACK3 only its speeds (either alone makes two states) */
 		const bool bSplit = (uAsk & A_SPLIT) != 0;
@@ -629,6 +701,10 @@ int main(int argc, char** argv)
 			const CTrajectoryRT::Sample& s = cApu.m_cTraj.GetSample();
 			if (s.uLeadReset != 0)
 				nLead++;
+			if (s.uFlags & CTrajectoryRT::HL_GOAL_ACCEPTED)
+				nAccepted = k;
+			if ((s.uFlags & CTrajectoryRT::HL_IK_CONVERGED) && k > nAccepted + 1)
+				nIkLater++;
 			if (bNear && (uAsk & A_GOAL) && !(s.uFlags & CTrajectoryRT::HL_GOAL_ACCEPTED))
 				nNearIgnored++;
 			if (bNear && (uAsk & A_GOAL) && k > P_TRACK2 && (s.uFlags & CTrajectoryRT::HL_GOAL_ACCEPTED))
@@ -667,7 +743,7 @@ int main(int argc, char** argv)
 		const bool bApart = (stOut.flags & IPC_SHADOW_OUT_APART) != 0;
 		if (bApart)
 			setApart.insert(k);
-		if ((k == P_BOTH) || (k > P_DROP && k < P_TRACK2) || k > P_SPLIT)
+		if ((k == P_BOTH) || (k > P_DROP && k < P_TRACK2) || k > P_SPLIT || (k >= P_PLAN_LATE + 1 + H && k < P_MOVE))
 			setExpected.insert(k);
 		if (stOut.flags & IPC_SHADOW_OUT_FAULT)
 			nFault++;
@@ -703,11 +779,14 @@ int main(int argc, char** argv)
 	       "and reached what it is for: ten goals or more, one solved in more than half the iterations allowed with "
 	       "a joint at its margin, the lead bound and the torque limit acted, a goal within the threshold ignored and, "
 	       "with the threshold 0, taken");
+	Expect(nIkLater == 1 && cApu.m_cTraj.PlansLate() == 1,
+	       "and the planner without time: the IK of one goal back more than a period after it, one plan late");
 	Expect(nLaw > 10000 && nLawDiff == 0, "the torque of the second controller is the torque of the first, in every period it follows");
 	Expect(nTraj > 6000 && nTrajDiff == 0, "and so is its reference");
 	Expect(nTimes == 0, "a time of the high-level controller and of the law in the periods in which they ran, and only there");
 	Expect(nNone == 2, "no payload for the two periods with two measured states");
-	Expect(setApart == setExpected, "apart in the period whose start is not told, and after a period without a payload until the next start");
+	Expect(setApart == setExpected, "apart in the period whose start is not told, after a period without a payload, and from the "
+	       "period of a plan that only the second controller has in time, until the next start");
 	Expect(uMissed == 3, "three payloads missed");
 	Expect(stC.nPayloads == (long)vVectors.size() + 1 && stC.nWithheld == 2 && stC.nAnswers == (long)vVectors.size() &&
 	       stC.nOtherCheck == 0 && stC.uMissed == 3 && stC.nApart == (long)setApart.size() && stC.nFault == 0 &&
@@ -739,8 +818,8 @@ int main(int argc, char** argv)
 		       "a new State for the Dynamics part only: its period and the state of the law are told");
 	}
 	printf("  %ld periods with the law followed (%ld differ), %ld with the reference (%ld differ); apart in %zu periods; "
-	       "%ld goals; the lead bound acted in %ld periods, the torque limit in %ld\n",
-	       nLaw, nLawDiff, nTraj, nTrajDiff, setApart.size(), nGoals, nLead, nClamp);
+	       "%ld goals; the lead bound acted in %ld periods, the torque limit in %ld; an IK back later for %ld goal, %ld plan late\n",
+	       nLaw, nLawDiff, nTraj, nTrajDiff, setApart.size(), nGoals, nLead, nClamp, nIkLater, cApu.m_cTraj.PlansLate());
 
 	if (!strOut.empty())
 	{

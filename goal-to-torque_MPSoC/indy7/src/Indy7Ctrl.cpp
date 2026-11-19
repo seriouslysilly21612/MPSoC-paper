@@ -26,6 +26,7 @@
 void proc_ethercat_control(void* apRobot);
 void proc_control_task(void* apRobot);
 void proc_keyboard_control(void* apRobot);
+void proc_planner_task(void* apRobot);
 
 namespace {
 /* the first releases come this long after the tasks are created */
@@ -164,11 +165,17 @@ CRobotIndy7::CheckConfig()
 			bOk = FALSE;
 		}
 	}
-	if ((int)vT.size() != N_TASKS)
+	if ((int)vT.size() != N_CFG_TASKS)
 	{
 		DBG_LOG_ERROR("(CRobotIndy7) [RT_TASKS] NO_OF_TASKS=%d: the controller has %d tasks (EtherCAT, "
-		              "control, keyboard)", (int)vT.size(), (int)N_TASKS);
+		              "control, keyboard)", (int)vT.size(), (int)N_CFG_TASKS);
 		return FALSE;
+	}
+	if (vT[1].nPriority < 2)
+	{
+		DBG_LOG_ERROR("(CRobotIndy7) [TASK1] PRIORITY=%d: at least 2, the planner task takes the priority below it",
+		              (int)vT[1].nPriority);
+		bOk = FALSE;
 	}
 	for (int n = 0; n < 2; n++)
 	{
@@ -326,22 +333,26 @@ CRobotIndy7::Init()
 	return TRUE;
 }
 
-// the two periodic tasks (EtherCAT, control) on one grid and the keyboard task; the policy,
-// priority and affinity of every task are read back by the task itself
+// the two periodic tasks (EtherCAT, control) on one grid, the keyboard task, and the planner task, which is
+// the control task once more with the priority below it: within a period it runs when the two have ended.
+// The policy, priority and affinity of every task are read back by the task itself
 BOOL
 CRobotIndy7::InitRTTasks()
 {
 	const VEC_TASK_CONF& vT = m_pConfig->Tasks();
-	const PTASKFCN apFcn[N_TASKS] = { &proc_ethercat_control, &proc_control_task, &proc_keyboard_control };
+	const PTASKFCN apFcn[N_TASKS] = { &proc_ethercat_control, &proc_control_task, &proc_keyboard_control,
+	                                  &proc_planner_task };
 	const RTTIME tOrigin = CRtTask::GridOrigin(GRID_LEAD_NS);
 	for (int n = 0; n < N_TASKS; n++)
 	{
+		const bool bPlanner = (n >= N_CFG_TASKS);
+		const ST_CONFIG_TASK& stT = vT[bPlanner ? 1 : n];
 		CRtTask::Spec stS;
-		stS.strName = vT[n].strName;
-		stS.nPriority = vT[n].nPriority;
-		stS.nCpu = vT[n].nCpu;
-		stS.tPeriod = (RTTIME)(vT[n].nPeriod > 0 ? vT[n].nPeriod : 0);
-		stS.tStartDelay = (RTTIME)(vT[n].nStartDelay > 0 ? vT[n].nStartDelay : 0);
+		stS.strName = bPlanner ? TSTRING("Planner Task") : stT.strName;
+		stS.nPriority = stT.nPriority - (bPlanner ? 1 : 0);
+		stS.nCpu = stT.nCpu;
+		stS.tPeriod = (RTTIME)(stT.nPeriod > 0 ? stT.nPeriod : 0);
+		stS.tStartDelay = (RTTIME)(stT.nStartDelay > 0 ? stT.nStartDelay : 0);
 		if (FALSE == m_aTask[n].Create(stS, tOrigin))
 			return FALSE;
 	}
@@ -381,7 +392,7 @@ CRobotIndy7::InitRTTasks()
 		if (m_aTask[n].GetCheck() != CRtTask::eCheckOk)
 		{
 			DBG_LOG_ERROR("(CRobotIndy7) task '%s' does not run as requested - the controller ends",
-			              vT[n].strName.c_str());
+			              m_aTask[n].GetSpec().strName.c_str());
 			StopTasks();
 			return FALSE;
 		}
@@ -987,6 +998,14 @@ CRobotIndy7::PrintRtSummary() const
 		       t.dWSum / dM * 1e-3, (double)t.tWMax * 1e-3, t.dESum / dM * 1e-3, (double)t.tEMax * 1e-3, t.nLate,
 		       t.nOverruns);
 	}
+	// the planner task (TaskPlanner.cpp)
+	CHlLink::Stats stPl;
+	if (m_cTraj.GetPlannerStats(stPl))
+		printf("[RT] planner task: %u plans, the longest calculation %.1f us; %u IK, the longest %.1f us from its "
+		       "request to its result; %ld plans not back in their period (asked for again)\n", (unsigned)stPl.uPlans,
+		       stPl.dPlanMaxUs, (unsigned)stPl.uIks, stPl.dIkMaxUs, m_cTraj.PlansLate());
+	else
+		printf("[RT] planner task: nothing was asked of it\n");
 	printf("[RT] pipeline: %ld periods without a fresh torque while OP (the last target stayed), %ld periods with a "
 	       "reference too old to follow, %ld references refused during a JOINT TEST\n",
 	       m_nTorqueStale, m_nRefStale, m_nRefRefused);

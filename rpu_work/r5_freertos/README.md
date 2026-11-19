@@ -372,7 +372,7 @@ written again (`cd goal-to-torque_MPSoC/indy7 && make tools`, then `./bin/ctrl_n
 ../../rpu_work/r5_freertos/src/ctrl/ctrl_model_indy7.h`) and the firmware is built again.
 
 **In the cycle** (`shadow_link.c`, called from `ecat_cycle()`): after the send returns, one look at the Shadow in
-slot (`ipc/ipc_layout.h`, layout 2). A payload that is new goes through the controller, and the answer (the torque,
+slot (`ipc/ipc_layout.h`, layout 3). A payload that is new goes through the controller, and the answer (the torque,
 its largest difference to the APU's, the reference, the time of the two parts) into the Shadow out slot. The
 payload a cycle finds is that of the period before: the control task is not through with the State of this cycle
 when the send returns. Without a new payload nothing runs, so the firmware is as before while the APU runs without
@@ -413,7 +413,12 @@ sources go into the project next to `src/ctrl`:
 
 Compiled here at `-O2`, the controller and the two libraries are about 550 KB of code next to the 115 KB of the C
 files, and the C++ library comes on top; the 3 MB that `lscript.ld` links hold it. A firmware of this layout needs
-the application and `r5cmd.py` of the same commit: `IPC_LAYOUT` is 2, and each side refuses the other's 1.
+the application and `r5cmd.py` of the same commit: `IPC_LAYOUT` is 3, and each side refuses another number
+(`test/test_r5cmd.py` compares the number of `r5cmd.py` with the header's).
+
+Since layout 3 (2026-11-19) the controller does not solve the inverse kinematics: the IK of a goal comes with the
+payload of the period in which the APU's controller took it (the APU has a planner task for it). The plan to it
+is calculated here, in the cycle in which it is asked for. Both are to move into a task below the EtherCAT task.
 
 **Checked on a PC**, from this directory (the application built first: `make` and `make tools` in
 `goal-to-torque_MPSoC/indy7`):

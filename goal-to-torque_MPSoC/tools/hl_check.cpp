@@ -11,7 +11,7 @@
 *	Scenarios:
 *	  A  HOME from another posture
 *	  B  fixed goal 0.3 m away (the fixed-target task-space test); the same
-*	     with the planner in the task of the controller (CHlInline)
+*	     with the planner behind the link (HighLevelLink.h)
 *	  C  goal moved 0.15 m sideways when the tool is 0.15 m from it
 *	  D  goal with noise (1 mm, every 67 periods), with delta and with delta = 0
 *	  E  goal out of reach (rejected), then a goal within reach
@@ -27,6 +27,9 @@
 *	  L  TRACK without a goal; a second start
 *	  M  the step baseline
 *	  N  the iterations of the IK: the step, its bound, the joint limits
+*	  O  the planner behind the link when it is slow: three pieces of work
+*	     per period; a plan asked for while a long IK runs; served every
+*	     eighth period only; and a plan and an IK asked for in one period
 *	In every period it checks the reference contract: q_d is the integral of
 *	qd_d (C2), the limits on velocity, acceleration and jerk except where the
 *	lead bound reset a joint, and the joint limits (C3), the lead (C4); and
@@ -39,6 +42,7 @@
 *	(make tools; make MALLOC_COUNT=1 tools to count the allocations)
 *****************************************************************************/
 #include "HighLevelRT.h"
+#include "HighLevelLink.h"
 #include "CallTiming.h"
 #include "base/MallocCount.h"
 
@@ -122,14 +126,16 @@ struct Planner
 struct Loop
 {
 	CHighLevelRT& hl;
-	Planner* pPlanner = NULL;			// one of the two carries the requests
-	CHlInline* pInline = NULL;
+	Planner* pPlanner = NULL;			// one of the two carries the requests: the planner beside the loop, or the
+	CHlLink* pLink = NULL;				// link, whose planner is served after every nServeEvery-th period, nServe
+	CHlPlanner* pLinkPlanner = NULL;	// pieces of work at most (0: until it has nothing to do)
+	int nServe = 0, nServeEvery = 1;
 	std::deque<std::vector<double>> qHist, qdHist;
 	double q[N], qd[N], qr[N], qdr[N], qddr[N], qrPrev[N], qdrPrev[N], qddrPrev[N];
 	bool bFirst;
 	/* contract */
 	double dMaxVel, dMaxAcc, dMaxJerk, dMaxInteg, dMaxLead, dMinMargin;
-	long nCycles, nAllocs, nResets;
+	long nCycles, nAllocs, nResets, nServeAllocs = 0;
 	double dMaxUs;
 	unsigned uBlocked;		// joints whose measurement is frozen
 	double adBlockedQ[N], adBlockedQd[N];
@@ -150,11 +156,20 @@ struct Loop
 		if (pPlanner) pPlanner->Before(hl, nCycles);
 		const unsigned long uA0 = malloc_count::Count();
 		malloc_count::Arm(true);
+		if (pLink) pLink->Before(hl);
 		const BOOL bOk = hl.Update(adGoal, q, qd, qr, qdr, qddr);
+		if (pLink) pLink->After(hl);
 		malloc_count::Arm(false);
 		if (nCycles > 0) nAllocs += (long)(malloc_count::Count() - uA0);
 		if (pPlanner) pPlanner->After(hl, nCycles);
-		if (pInline) pInline->After(hl);
+		if (pLink && nCycles % nServeEvery == 0)
+		{
+			const unsigned long uA1 = malloc_count::Count();
+			malloc_count::Arm(true);
+			for (int n = 0; (nServe == 0 || n < nServe) && pLink->Serve(*pLinkPlanner); n++) { }
+			malloc_count::Arm(false);
+			nServeAllocs += (long)(malloc_count::Count() - uA1);
+		}
 		const CHighLevelRT::Status& st = hl.GetStatus();
 		if (st.dUs > dMaxUs && nCycles > 0) dMaxUs = st.dUs;
 		const CHighLevelRT::Params& p = hl.GetParams();
@@ -208,6 +223,14 @@ void ReportContract(const Loop& l, const CHighLevelRT::Params& p)
 		snprintf(ac, sizeof(ac), "planner: %ld allocations in %ld IK and %ld plans; a plan at most %.1f us",
 		         l.pPlanner->nAllocs, l.pPlanner->nIks, l.pPlanner->nPlans, l.pPlanner->dMaxPlanUs);
 		Check(l.pPlanner->nAllocs == 0, "C5 no allocation in the planner", ac);
+	}
+	if (l.pLink != NULL)
+	{
+		CHlLink::Stats stS = CHlLink::Stats();
+		l.pLink->GetStats(stS);
+		snprintf(ac, sizeof(ac), "planner behind the link: %ld allocations in %u IK and %u plans; a plan at most %.1f us, an IK %.1f us",
+		         l.nServeAllocs, (unsigned)stS.uIks, (unsigned)stS.uPlans, stS.dPlanMaxUs, stS.dIkMaxUs);
+		Check(l.nServeAllocs == 0, "C5 no allocation in the planner", ac);
 	}
 }
 
@@ -275,15 +298,16 @@ int main(int argc, char** argv)
 
 	/* ---------------------------------------------------------------- B, C */
 	int nRestB = -1;
+	int nKd = -1;			// the period in which J2, blocked at q_r, comes to its lead bound on the way to the goal of B (scenario J)
 	for (int nCase = 0; nCase < 3; nCase++)
 	{
-		printf(nCase == 0 ? "B  fixed goal 0.3 m away\n" : nCase == 1 ? "B  the same, the planner in the task of the controller (CHlInline)\n"
+		printf(nCase == 0 ? "B  fixed goal 0.3 m away\n" : nCase == 1 ? "B  the same, the planner behind the link (HighLevelLink.h)\n"
 		       : "C  goal moved 0.15 m sideways when the tool is 0.15 m from it\n");
 		Pair c;
-		CHlInline cInline;
-		if (!c.Init(argv[1], p) || !cInline.Init(argv[1], TS, p)) return 2;
+		CHlLink cLink;
+		if (!c.Init(argv[1], p)) return 2;
 		Loop l(c.hl, p.adQr);
-		if (nCase == 1) l.pInline = &cInline; else l.pPlanner = &c.pl;
+		if (nCase == 1) { l.pLink = &cLink; l.pLinkPlanner = &c.pl.pl; } else l.pPlanner = &c.pl;
 		CHighLevelRT& hl = c.hl;
 		hl.StartTrack(p.adQr, l.qd);
 		double p0[3], goal[3], tool[3];
@@ -293,7 +317,7 @@ int main(int argc, char** argv)
 		int nAccept = -1, nConv = -1, nNew = -1, nRest = -1, nJump = -1;
 		double dPlanned = 0, dMinSpeedAfterJump = 1e9;
 		for (int e = 0; e < call_timing::eN; e++) call_timing::g_aStat[e] = call_timing::Stat();
-		call_timing::g_bOn = (nCase == 1);					// the calls of the planner in the task are counted
+		call_timing::g_bOn = (nCase == 1);					// the calls of the planner behind the link are counted
 		for (int k = 0; k < 20000; k++)
 		{
 			l.Step(goal);
@@ -352,12 +376,15 @@ int main(int argc, char** argv)
 			else
 			{
 				snprintf(ac, sizeof(ac), "at rest in period %d, beside the loop in period %d", nRest, nRestB);
-				Check(nRest == nRestB, "the planner in the task gives the same motion", ac);
+				Check(nRest == nRestB, "the planner behind the link gives the same motion", ac);
 				const unsigned long uPlans = (unsigned long)call_timing::g_aStat[call_timing::eOtg].uN,
 					uIter = (unsigned long)call_timing::g_aStat[call_timing::eIkIter].uN;
-				snprintf(ac, sizeof(ac), "in %d periods: %lu plan(s) calculated, the IK called %lu times for %d iterations", nRest + 1, uPlans,
-				         uIter, st.nIkIter);
-				Check(uPlans == 1 && uIter == (unsigned long)st.nIkIter + 1, "it calculates each request once", ac);
+				CHlLink::Stats stS = CHlLink::Stats();
+				const bool bStats = cLink.GetStats(stS);
+				snprintf(ac, sizeof(ac), "in %d periods: %lu plan(s) calculated, the IK called %lu times for %d iterations; its counts: "
+				         "%u plan(s), %u IK", nRest + 1, uPlans, uIter, st.nIkIter, (unsigned)stS.uPlans, (unsigned)stS.uIks);
+				Check(uPlans == 1 && uIter == (unsigned long)st.nIkIter + 1 && bStats && stS.uPlans == 1 && stS.uIks == 1 &&
+				      stS.dPlanMaxUs > 0.0 && stS.dIkMaxUs > 0.0, "it calculates each request once", ac);
 			}
 		}
 		else
@@ -791,8 +818,7 @@ int main(int argc, char** argv)
 	{
 		printf("J  TRACK started again while a plan is out and a target and a joint at its bound wait for the next\n");
 		const double dOff = p.dLead + 1e-9;
-		double dRef3 = 0;				// the reference of J3 one period after J2 came to its bound ...
-		int nKd = -1;					// ... in this period
+		double dRef3 = 0;				// the reference of J3 one period after J2 came to its bound, in period nKd
 		for (int nRun = 0; nRun < 2; nRun++)
 		{
 			Pair c;
@@ -1005,6 +1031,35 @@ int main(int argc, char** argv)
 			         "from it", vDamped.norm(), dDiff, (vDamped - vPlain).norm());
 			Check(dDiff < 1e-12 && (vDamped - vPlain).norm() > 1e-6, "a step of the IK is the damped least-squares step", ac);
 		}
+		/* the IK of a goal starts at q_r: the planner gives the same solution after another goal as at first, and
+		 * the solution of SolveIk(), which draws and checks goals outside a cycle */
+		{
+			CHighLevelRT hl;
+			CHlPlanner aPl[2];
+			if (!hl.Init(argv[1], TS, p) || !aPl[0].Init(argv[1], TS, p) || !aPl[1].Init(argv[1], TS, p)) return 2;
+			CHighLevelRT::IkRequest stReq;
+			CHighLevelRT::IkResult aRes[2];
+			memset(&stReq, 0, sizeof(stReq));
+			for (int i = 0; i < N; i++) stReq.adQr[i] = p.adQr[i];
+			for (int k = 0; k < 3; k++) stReq.adGoal[k] = goal[1][k];		// out of reach: the planner of case 1 ends at N_max first
+			aPl[1].IkBegin(stReq);
+			while (!aPl[1].IkStep(&aRes[1])) { }
+			const bool bRejected = !aRes[1].bConverged;
+			for (int k = 0; k < 3; k++) stReq.adGoal[k] = goal[0][k];
+			for (int n = 0; n < 2; n++)
+			{
+				aPl[n].IkBegin(stReq);
+				while (!aPl[n].IkStep(&aRes[n])) { }
+			}
+			double adSolved[N], dErr = 0;
+			int nIter = 0;
+			const BOOL bSolved = hl.SolveIk(goal[0], adSolved, &nIter, &dErr);
+			snprintf(ac, sizeof(ac), "%d, %d and %d iterations; converged %d, %d and %d; the goal before it rejected: %d", aRes[0].nIter,
+			         aRes[1].nIter, nIter, (int)aRes[0].bConverged, (int)aRes[1].bConverged, (int)bSolved, (int)bRejected);
+			Check(bRejected && aRes[0].bConverged && aRes[1].bConverged && bSolved && aRes[0].nIter == aRes[1].nIter && aRes[0].nIter == nIter &&
+			      memcmp(aRes[0].adQ, aRes[1].adQ, sizeof(aRes[0].adQ)) == 0 && memcmp(aRes[0].adQ, adSolved, sizeof(adSolved)) == 0 &&
+			      aRes[0].dErr == dErr, "the solution of a goal does not depend on the goal before it, and is that of SolveIk()", ac);
+		}
 		double dMaxStep = 0, dMinInside = 1e9;
 		int nAtBound = 0, nClipped = 0, anIter[3] = { 0, 0, 0 };
 		for (int g = 0; g < 3; g++)
@@ -1036,6 +1091,155 @@ int main(int argc, char** argv)
 		snprintf(ac, sizeof(ac), "every iterate at least %.1e rad inside the limits minus the margin; %d times a joint on that border", dMinInside,
 		         nClipped);
 		Check(dMinInside >= 0.0 && nClipped > 0, "the iterates stay inside the joint limits minus the margin", ac);
+	}
+
+	/* ---------------------------------------------------------------- O */
+	{
+		printf("O  the planner behind the link does three pieces of work per period\n");
+		Pair c;
+		CHlLink cLink;
+		if (!c.Init(argv[1], p)) return 2;
+		CHighLevelRT& hl = c.hl;
+		Loop l(hl, p.adQr);
+		l.pLink = &cLink;
+		l.pLinkPlanner = &c.pl.pl;
+		l.nServe = 3;
+		hl.StartTrack(p.adQr, l.qd);
+		double p0[3], goal[3], tool[3];
+		hl.ToolPosition(p.adQr, p0);
+		for (int k = 0; k < 3; k++) goal[k] = p0[k] + d1[k];
+		int nConv = -1, nNew = -1, nRest = -1;
+		for (int k = 0; k < 20000 && nRest < 0; k++)
+		{
+			l.Step(goal);
+			if (hl.GetStatus().bIkConverged && nConv < 0) nConv = k;
+			if (hl.GetStatus().bOtgNewCalc && nNew < 0) nNew = k;
+			if (hl.GetStatus().bAtRest) nRest = k;
+		}
+		hl.ToolPosition(l.q, tool);
+		/* the IK: its request in period 0, n iterations and the call that finds it converged: back for the period
+		 * after the one in which the last of these calls is */
+		const int nIkBack = 1 + hl.GetStatus().nIkIter / 3;
+		snprintf(ac, sizeof(ac), "the IK (%d iterations) is back in period %d (expected %d), the plan in use from period %d; %ld plans "
+		         "late; %.4f mm from the goal", hl.GetStatus().nIkIter, nConv, nIkBack, nNew, hl.GetStatus().nPlanLate, Norm3(tool, goal) * 1e3);
+		Check(hl.GetStatus().nIkIter >= 3 && nConv == nIkBack && nNew == nConv + H && hl.GetStatus().nPlanLate == 0 && nRest > 0 &&
+		      Norm3(tool, goal) < p.dTol, "an IK that takes more than a period is back later; the plan is on time", ac);
+		ReportContract(l, p);
+	}
+	{
+		printf("O  one piece of work per period; J2 comes to its lead bound while the IK of a goal out of reach runs\n");
+		Pair c;
+		CHlLink cLink;
+		if (!c.Init(argv[1], p)) return 2;
+		CHighLevelRT& hl = c.hl;
+		Loop l(hl, p.adQr);
+		l.pLink = &cLink;
+		l.pLinkPlanner = &c.pl.pl;
+		l.nServe = 1;
+		hl.StartTrack(p.adQr, l.qd);
+		double p0[3], goal[3], far[3];
+		hl.ToolPosition(p.adQr, p0);
+		for (int k = 0; k < 3; k++) { goal[k] = p0[k] + d1[k]; far[k] = p0[k]; }
+		far[0] += 2.0;
+		l.uBlocked = 1u << 1;
+		l.adBlockedQ[1] = p.adQr[1];
+		int nRej = -1, nFlag = -1, nNewAfter = -1;
+		for (int k = 0; k < nKd + 200; k++)
+		{
+			l.Step(k < nKd - 20 ? goal : far);				// the IK of the far goal: N_max iterations, one per period
+			if (hl.GetStatus().bIkRejected && nRej < 0) nRej = k;
+			if ((hl.GetStatus().uLeadReset & 2u) && nFlag < 0) nFlag = k;
+			if (nFlag >= 0 && hl.GetStatus().bOtgNewCalc && nNewAfter < 0) nNewAfter = k;
+		}
+		snprintf(ac, sizeof(ac), "the far goal from period %d, rejected in period %d; J2 at its bound in period %d, its plan in use "
+		         "from period %d (H = %d); %ld plans late", nKd - 20, nRej, nFlag, nNewAfter, H, hl.GetStatus().nPlanLate);
+		Check(nKd > 20 && nFlag > nKd - 20 && nRej > nFlag + H && nNewAfter == nFlag + H && hl.GetStatus().nPlanLate == 0,
+		      "a plan is calculated before the IK goes on", ac);
+	}
+	{
+		printf("O  a second goal in the period in which J2 comes to its lead bound: a plan and an IK are asked for together\n");
+		Pair c;
+		CHlLink cLink;
+		if (!c.Init(argv[1], p)) return 2;
+		CHighLevelRT& hl = c.hl;
+		Loop l(hl, p.adQr);
+		l.pLink = &cLink;
+		l.pLinkPlanner = &c.pl.pl;
+		hl.StartTrack(p.adQr, l.qd);
+		double p0[3], goal1[3], goal2[3];
+		hl.ToolPosition(p.adQr, p0);
+		for (int k = 0; k < 3; k++) { goal1[k] = p0[k] + d1[k]; goal2[k] = goal1[k]; }
+		goal2[1] += 0.10;
+		l.uBlocked = 1u << 1;
+		l.adBlockedQ[1] = p.adQr[1];
+		int nFlag = -1, nAccept2 = -1, nConv2 = -1, nNewAfter = -1;
+		for (int k = 0; k < nKd + 20; k++)
+		{
+			l.Step(k < nKd ? goal1 : goal2);
+			const CHighLevelRT::Status& st = hl.GetStatus();
+			if ((st.uLeadReset & 2u) && nFlag < 0) nFlag = k;
+			if (st.bGoalAccepted && k > 0) nAccept2 = k;
+			if (st.bIkConverged && k > 1 && nConv2 < 0) nConv2 = k;
+			if (nFlag >= 0 && st.bOtgNewCalc && nNewAfter < 0) nNewAfter = k;
+		}
+		snprintf(ac, sizeof(ac), "J2 at its bound and the second goal accepted in periods %d and %d; the IK back in period %d, the "
+		         "plan in use from period %d (H = %d); %ld plans late", nFlag, nAccept2, nConv2, nNewAfter, H, hl.GetStatus().nPlanLate);
+		Check(nFlag == nKd && nAccept2 == nKd && nConv2 == nKd + 1 && nNewAfter == nKd + H && hl.GetStatus().nPlanLate == 0,
+		      "after the plan the planner goes on with the IK in the same period", ac);
+	}
+	{
+		printf("O  a goal out of reach: its IK is the last that the planner does\n");
+		Pair c;
+		CHlLink cLink;
+		if (!c.Init(argv[1], p)) return 2;
+		CHighLevelRT& hl = c.hl;
+		Loop l(hl, p.adQr);
+		l.pLink = &cLink;
+		l.pLinkPlanner = &c.pl.pl;
+		hl.StartTrack(p.adQr, l.qd);
+		double far[3];
+		hl.ToolPosition(p.adQr, far);
+		far[0] += 2.0;
+		int nRej = -1;
+		for (int k = 0; k < 20; k++) { l.Step(far); if (hl.GetStatus().bIkRejected && nRej < 0) nRej = k; }
+		CHlLink::Stats stS = CHlLink::Stats();
+		const bool bStats = cLink.GetStats(stS);
+		snprintf(ac, sizeof(ac), "rejected in period %d; the counts of the planner: %u IK (the longest %.1f us), %u plans", nRej,
+		         (unsigned)stS.uIks, stS.dIkMaxUs, (unsigned)stS.uPlans);
+		Check(nRej == 1 && bStats && stS.uIks == 1 && stS.dIkMaxUs > 0.0 && stS.uPlans == 0, "an IK without a plan after it is in the counts", ac);
+	}
+	{
+		printf("O  the planner is served after every eighth period only\n");
+		Pair c;
+		CHlLink cLink;
+		if (!c.Init(argv[1], p)) return 2;
+		CHighLevelRT& hl = c.hl;
+		Loop l(hl, p.adQr);
+		l.pLink = &cLink;
+		l.pLinkPlanner = &c.pl.pl;
+		l.nServeEvery = 8;
+		hl.StartTrack(p.adQr, l.qd);
+		double p0[3], goal[3], tool[3];
+		hl.ToolPosition(p.adQr, p0);
+		for (int k = 0; k < 3; k++) goal[k] = p0[k] + d1[k];
+		int nConv = -1, nNew = -1, nRest = -1;
+		for (int k = 0; k < 20000 && nRest < 0; k++)
+		{
+			l.Step(goal);
+			if (hl.GetStatus().bIkConverged && nConv < 0) nConv = k;
+			if (hl.GetStatus().bOtgNewCalc && nNew < 0) nNew = k;
+			if (hl.GetStatus().bAtRest) nRest = k;
+		}
+		hl.ToolPosition(l.q, tool);
+		CHlLink::Stats stS = CHlLink::Stats();
+		cLink.GetStats(stS);
+		/* the IK: asked in period 0 and served after it, back in period 1. The plan: asked in period 1, served after
+		 * period 8, late for period 6; asked again in 6, served after 8, in use from 11 */
+		snprintf(ac, sizeof(ac), "the IK is back in period %d, the plan in use from period %d; %ld plan late, %u calculated; %.4f mm from "
+		         "the goal", nConv, nNew, hl.GetStatus().nPlanLate, (unsigned)stS.uPlans, Norm3(tool, goal) * 1e3);
+		Check(nConv == 1 && nNew == 1 + 2 * H && hl.GetStatus().nPlanLate == 1 && stS.uPlans == 1 && nRest > 0 && Norm3(tool, goal) < p.dTol,
+		      "a plan that the planner had no time for is asked for again; the newest request is the one it calculates", ac);
+		ReportContract(l, p);
 	}
 
 	printf("\n%s: %d check(s) failed\n", g_nFail ? "FAIL" : "PASS", g_nFail);

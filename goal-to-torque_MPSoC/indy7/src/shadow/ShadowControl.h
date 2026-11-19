@@ -15,6 +15,10 @@
 *	            after the update of the period as on the APU; every update
 *	            gets the measured state, the goal, the goal threshold and
 *	            the ready posture of the APU's update
+*	  planner   the IK of a goal is the APU's: an update takes it when the
+*	            APU's did, so the two do not depend on how long each
+*	            planner needs for it. The plans are this controller's own,
+*	            from the requests of its own high-level controller
 *	  law       the mode, the hold switch and whether the reference is
 *	            followed are those of the APU's period; the reference is
 *	            this controller's own
@@ -22,7 +26,9 @@
 *	            gave none: shadow/ShadowWriter.h), or a start that is not
 *	            told, leaves this controller's motion behind the APU's: the
 *	            answers say so (IPC_SHADOW_OUT_APART) until the next start,
-*	            which sets both to the same state again
+*	            which sets both to the same state again. So does a plan
+*	            that comes into use in one of the two only (the planner of
+*	            the other was late with it)
 *	  not followed: a JOINT TEST (it starts with arguments of its own), a
 *	            gain changed at the console, a torque fault injected there
 *
@@ -88,7 +94,9 @@ private:
 
 	CControllerFullDynamicsRT*	m_pCtl;
 	CHighLevelRT				m_cHl;
-	CHlInline					m_cPlan;
+	CHlPlanner					m_cPlanner;		// of the plans; in this task
+	CHighLevelRT::PlanResult	m_stPlan;
+	uint32_t					m_uPlanSeq;		// the number of the last request it calculated
 	std::vector<double>			m_vQ, m_vQd, m_vTor, m_vTau;
 	CControllerFullDynamicsRT::Reference m_stRef;	// of the last update of the high-level controller
 	uint32_t	m_uCrc;

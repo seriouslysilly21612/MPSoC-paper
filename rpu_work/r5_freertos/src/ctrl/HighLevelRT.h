@@ -26,8 +26,7 @@
 *	     the request to its target, within the limits on velocity,
 *	     acceleration, and jerk.
 *	The two exchange requests and results (IkRequest .. PlanResult). Who
-*	carries them is not decided here: CHlInline below does it in the calling
-*	task, one period later, for the checks and until the planner has a task.
+*	carries them is not decided here: between two tasks, HighLevelLink.h.
 *
 *	Every motion starts its reference at the measured position, at rest, and
 *	holds it there: TRACK until the plan of its first goal is in use, HOME
@@ -263,36 +262,8 @@ private:
 	ruckig::InputParameter<N>	m_in;
 };
 
-/* The planner in the task of its caller, until it has a task of its own: after every Update() of the high-level
- * controller, After() gives the planner its new requests, lets it work, and hands the results back for the next
- * Update(). A plan is back one period after it was asked for (H - 1 periods before it is needed); the IK does
- * IK_STEPS iterations per period, as many as the cycle did while the IK ran in it. */
-template <int N>
-class CHlInlineN
-{
-public:
-	typedef CHighLevelRTN<N> HL;
-
-	BOOL	Init			(const char* astrURDF, double adTs, const typename HL::Params& astParams)
-	{
-		m_uIkSeq = 0;
-		m_uPlanSeq = 0;
-		return m_cPlanner.Init(astrURDF, adTs, astParams);
-	}
-	enum { IK_STEPS = 10 };
-	void	After			(HL& acHl);
-	CHlPlannerN<N>&	Planner	(	) { return m_cPlanner; }
-
-private:
-	CHlPlannerN<N>			m_cPlanner;
-	uint32_t				m_uIkSeq, m_uPlanSeq;	// the requests it has taken
-	typename HL::IkResult	m_stIk;
-	typename HL::PlanResult	m_stPlan;
-};
-
 /* the arm (paper, Sec. IV-C); CHighLevelRTN<7>: a hand of the humanoid (Sec. VI) */
 typedef CHighLevelRTN<6> CHighLevelRT;
 typedef CHlPlannerN<6> CHlPlanner;
-typedef CHlInlineN<6> CHlInline;
 
 #endif // G2T_HIGH_LEVEL_RT_H

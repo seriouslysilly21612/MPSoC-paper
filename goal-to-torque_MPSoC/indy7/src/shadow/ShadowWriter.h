@@ -7,7 +7,10 @@
 *
 *	    TrajUpdated   right after CTrajectoryRT::Update(), in a period
 *	                  with one: the goal and the parameters of that update,
-*	                  and whether a motion had started before it
+*	                  whether a motion had started before it, and what it
+*	                  had from its planner: the IK it took, if it converged,
+*	                  and whether a plan came into use (the planner of the
+*	                  R5 is another and has its own times)
 *	    Finish        at the end of the period: the measured state, the
 *	                  starts after the update, the mode and the torque of
 *	                  the control law
@@ -35,7 +38,7 @@
 class CShadowWriter
 {
 public:
-	CShadowWriter() : m_uStartsEnd(0), m_uStartsAtUpdate(0), m_bUpdated(false), m_bGoal(false)
+	CShadowWriter() : m_uStartsEnd(0), m_uStartsAtUpdate(0), m_uPlanner(0), m_bUpdated(false), m_bGoal(false)
 	{
 		memset(&m_stIn, 0, sizeof(m_stIn));
 	}
@@ -50,8 +53,13 @@ public:
 		for (int k = 0; k < 3; k++)
 			m_stIn.goal[k] = m_bGoal ? s.adGoal[k] : 0.0;
 		m_stIn.delta = p.dDelta;
+		m_uPlanner = ((s.uFlags & CTrajectoryRT::HL_IK_CONVERGED) ? (uint32_t)IPC_SHADOW_IK : 0u) |
+		             ((s.uFlags & CTrajectoryRT::HL_OTG_NEW) ? (uint32_t)IPC_SHADOW_PLAN : 0u);
 		for (int i = 0; i < IPC_CTRL_DOF; i++)
+		{
 			m_stIn.q_ready[i] = p.adQr[i];
+			m_stIn.ik_q[i] = s.adTarget[i];			// the solution of the IK that this update took, if it took one
+		}
 	}
 
 	/* adTrajQ, adTrajQd: the measured state that the Trajectory part has (its starts and its update of this period
@@ -74,7 +82,7 @@ public:
 		                       (memcmp(adTrajQ, adLawQ, uBytes) == 0 && memcmp(adTrajQd, adLawQd, uBytes) == 0);
 		uint32_t uFlags = 0;
 		if (m_bUpdated)
-			uFlags |= IPC_SHADOW_TRAJ | (m_bGoal ? (uint32_t)IPC_SHADOW_GOAL : 0u);
+			uFlags |= IPC_SHADOW_TRAJ | (m_bGoal ? (uint32_t)IPC_SHADOW_GOAL : 0u) | m_uPlanner;
 		if (bStart)
 		{
 			// one start is told, the last: an earlier one of the same period matters only if the update was its own
@@ -108,6 +116,7 @@ private:
 	ipc_shadow_in_t	m_stIn;
 	unsigned int	m_uStartsEnd;			// starts at the end of the period before
 	unsigned int	m_uStartsAtUpdate;
+	uint32_t		m_uPlanner;				// IPC_SHADOW_IK, IPC_SHADOW_PLAN of the update
 	bool			m_bUpdated, m_bGoal;
 };
 

@@ -9,7 +9,8 @@
 #include <cstring>
 
 CShadowControl::CShadowControl()
-	: m_pCtl(NULL), m_uCrc(0), m_uPeriod(0), m_uStarts(0), m_uMissed(0), m_bFirst(true), m_bApart(false)
+	: m_pCtl(NULL), m_stPlan(), m_uPlanSeq(0), m_uCrc(0), m_uPeriod(0), m_uStarts(0), m_uMissed(0), m_bFirst(true),
+	  m_bApart(false)
 {
 	memset(&m_stRef, 0, sizeof(m_stRef));
 }
@@ -42,7 +43,7 @@ CShadowControl::Init(const char* astrURDF, const double* adNumbers, uint32_t auC
 	stP.bStepRef   = (n[SHADOW_N_STEP_REF] != 0.0);
 	for (int i = 0; i < DOF; i++)
 		stP.adQr[i] = n[SHADOW_N_READY + i];
-	if (FALSE == m_cHl.Init(astrURDF, n[SHADOW_N_TS], stP) || FALSE == m_cPlan.Init(astrURDF, n[SHADOW_N_TS], stP))
+	if (FALSE == m_cHl.Init(astrURDF, n[SHADOW_N_TS], stP) || FALSE == m_cPlanner.Init(astrURDF, n[SHADOW_N_TS], stP))
 		return FALSE;
 
 	/* the control law, as CRobotIndy7::InitController; enabled for good: whether it runs in a period is the APU's */
@@ -120,9 +121,28 @@ CShadowControl::Step(const ipc_shadow_in_t& astIn, ipc_shadow_out_t* apOut)
 		m_cHl.SetDelta(astIn.delta);
 		m_cHl.SetReady(astIn.q_ready);
 		const RTTIME t0 = read_timer();
+		if (astIn.flags & IPC_SHADOW_IK)
+		{
+			/* the IK that the APU's update took, as the answer to the request of this controller */
+			CHighLevelRT::IkResult stIk;
+			stIk.uSeq = m_cHl.GetIkRequest().uSeq;
+			stIk.bConverged = 1u;
+			stIk.nIter = 0;
+			stIk.dErr = 0.0;
+			for (int i = 0; i < DOF; i++)
+				stIk.adQ[i] = astIn.ik_q[i];
+			m_cHl.TakeIk(stIk);
+		}
 		const BOOL bOk = m_cHl.Update((astIn.flags & IPC_SHADOW_GOAL) ? astIn.goal : NULL, astIn.q, astIn.qd,
 		                              m_stRef.adQ, m_stRef.adQd, adQdd);
-		m_cPlan.After(m_cHl);		// its planner, in this task as the control task's is (CTrajectoryRT::Update)
+		if ((m_cHl.GetStatus().bOtgNewCalc ? 1 : 0) != ((astIn.flags & IPC_SHADOW_PLAN) ? 1 : 0))
+			m_bApart = bApart = true;	// a plan in use from another period than the APU's
+		if (m_cHl.GetPlanRequest().uSeq != m_uPlanSeq)
+		{
+			m_uPlanSeq = m_cHl.GetPlanRequest().uSeq;
+			m_cPlanner.Plan(m_cHl.GetPlanRequest(), &m_stPlan);
+			m_cHl.TakePlan(m_stPlan);
+		}
 		// the tool position of the measurement, which the control task takes in every period of a motion for
 		// its log (CTrajectoryRT::Update): part of what the period costs
 		m_cHl.ToolPosition(astIn.q, adTool);

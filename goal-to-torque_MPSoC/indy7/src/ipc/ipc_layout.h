@@ -37,7 +37,7 @@
 #endif
 
 #define IPC_MAGIC	0x31435049u		/* "IPC1" */
-#define IPC_LAYOUT	2u				/* + 1 with every change of this file */
+#define IPC_LAYOUT	3u				/* + 1 with every change of this file */
 enum { IPC_MAX_DOF = 8 };			/* MAX_DOF of TaskSlots.h */
 enum { IPC_CTRL_DOF = 6 };			/* the joints of the controller (CHighLevelRT::DOF) */
 
@@ -109,7 +109,10 @@ enum
 	IPC_SHADOW_CTRL        = 1u << 6,	/* the control law was updated ... */
 	IPC_SHADOW_REF         = 1u << 7,	/* ... on the reference of the high-level controller of this period */
 	IPC_SHADOW_FRICTION_FF = 1u << 8,	/* ... with the friction feedforward of the motion */
-	IPC_SHADOW_HOLD        = 1u << 9	/* the hold of gravity compensation is switched on */
+	IPC_SHADOW_HOLD        = 1u << 9,	/* the hold of gravity compensation is switched on */
+	IPC_SHADOW_IK          = 1u << 10,	/* the update took the IK of its goal, converged to ik_q (one that ended at
+										 * N_max changes no reference and is not told) */
+	IPC_SHADOW_PLAN        = 1u << 11	/* a plan came into use in the update */
 };
 typedef struct
 {
@@ -124,6 +127,7 @@ typedef struct
 	double		q_ready[IPC_CTRL_DOF];		/* its ready posture at the update [rad] */
 	double		start_target[IPC_CTRL_DOF];	/* IPC_SHADOW_START_HOME */
 	double		tau[IPC_CTRL_DOF];	/* IPC_SHADOW_CTRL: the torque of the APU's control law, after the limit [N m] */
+	double		ik_q[IPC_CTRL_DOF];	/* IPC_SHADOW_IK: the solution of the APU's planner [rad] */
 } ipc_shadow_in_t;
 
 /* R5 -> APU: the answer to the Shadow in payload of `period` */
@@ -154,10 +158,10 @@ typedef struct
 #define IPC_OFF_TORQUE		0x1C0u
 #define IPC_OFF_COMMAND		0x240u
 #define IPC_OFF_SHADOW_IN	0x280u
-#define IPC_OFF_SHADOW_OUT	0x3C0u
-#define IPC_OFF_END			0x480u
+#define IPC_OFF_SHADOW_OUT	0x400u
+#define IPC_OFF_END			0x4C0u
 
-enum { IPC_SLOT_HEAD_WORDS = 2, IPC_WORDS_MAX = sizeof(ipc_state_t) / 4 };
+enum { IPC_SLOT_HEAD_WORDS = 2, IPC_WORDS_MAX = sizeof(ipc_shadow_in_t) / 4 };	/* the largest payload */
 
 IPC_ASSERT(sizeof(ipc_side_t) == 32 && sizeof(ipc_head_t) == 64, "ipc_head_t");
 IPC_ASSERT(sizeof(ipc_state_t) == 328 && offsetof(ipc_state_t, period) == 8 && offsetof(ipc_state_t, status) == 40 &&
@@ -165,12 +169,13 @@ IPC_ASSERT(sizeof(ipc_state_t) == 328 && offsetof(ipc_state_t, period) == 8 && o
            offsetof(ipc_state_t, n_late) == 312, "ipc_state_t");
 IPC_ASSERT(sizeof(ipc_torque_t) == 72 && offsetof(ipc_torque_t, tau) == 8, "ipc_torque_t");
 IPC_ASSERT(sizeof(ipc_command_t) == 8, "ipc_command_t");
-IPC_ASSERT(sizeof(ipc_shadow_in_t) == 288 && offsetof(ipc_shadow_in_t, q) == 16 && offsetof(ipc_shadow_in_t, goal) == 112 &&
-           offsetof(ipc_shadow_in_t, start_target) == 192 && offsetof(ipc_shadow_in_t, tau) == 240, "ipc_shadow_in_t");
+IPC_ASSERT(sizeof(ipc_shadow_in_t) == 336 && offsetof(ipc_shadow_in_t, q) == 16 && offsetof(ipc_shadow_in_t, goal) == 112 &&
+           offsetof(ipc_shadow_in_t, start_target) == 192 && offsetof(ipc_shadow_in_t, tau) == 240 &&
+           offsetof(ipc_shadow_in_t, ik_q) == 288, "ipc_shadow_in_t");
 IPC_ASSERT(sizeof(ipc_shadow_out_t) == 128 && offsetof(ipc_shadow_out_t, q_ref) == 24 &&
            offsetof(ipc_shadow_out_t, tau_diff) == 120, "ipc_shadow_out_t");
-IPC_ASSERT(sizeof(ipc_torque_t) / 4 <= IPC_WORDS_MAX && sizeof(ipc_command_t) / 4 <= IPC_WORDS_MAX &&
-           sizeof(ipc_shadow_in_t) / 4 <= IPC_WORDS_MAX && sizeof(ipc_shadow_out_t) / 4 <= IPC_WORDS_MAX, "IPC_WORDS_MAX");
+IPC_ASSERT(sizeof(ipc_state_t) / 4 <= IPC_WORDS_MAX && sizeof(ipc_torque_t) / 4 <= IPC_WORDS_MAX &&
+           sizeof(ipc_command_t) / 4 <= IPC_WORDS_MAX && sizeof(ipc_shadow_out_t) / 4 <= IPC_WORDS_MAX, "IPC_WORDS_MAX");
 IPC_ASSERT(IPC_OFF_HEAD + sizeof(ipc_head_t) <= IPC_OFF_STATE &&
            IPC_OFF_STATE + 4 * IPC_SLOT_HEAD_WORDS + sizeof(ipc_state_t) <= IPC_OFF_TORQUE &&
            IPC_OFF_TORQUE + 4 * IPC_SLOT_HEAD_WORDS + sizeof(ipc_torque_t) <= IPC_OFF_COMMAND &&
