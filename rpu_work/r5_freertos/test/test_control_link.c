@@ -119,18 +119,23 @@ int main(void)
     report.state = IPC_CTL_SIM_ARM; report.in.flags = 0; report.traj_ns = 0; report.ctrl_ns = 0;
     answer.torque = 0; answer.servo = 0;
     CHECK(control_link_step(101, 1, &traj_ns, &ctrl_ns) == 1 && steps == 2 && traj_ns == -1 && ctrl_ns == -1);
-    CHECK(stepped.state == 0 && stepped.sim_arm == 1 && !had_command && !had_goal && sim_torques == 1 && reports == 2);
+    CHECK(stepped.state == 0 && stepped.sim_arm == 1 && !had_command && !had_goal && sim_torques == 1);
+    CHECK(reports == 1);                    /* nothing to report: the report of the period with a state stays to be read */
+    command.seq = 20; command.cmd = IPC_CMD_HOLD_ON; have_command = 1;
+    CHECK(control_link_step(101, 1, &traj_ns, &ctrl_ns) == 1 && stepped.state == 0 && had_command && sim_torques == 1);
+    CHECK(reports == 2 && published.in.period == 101);         /* ... but for a command that the period took */
     /* a torque that is not usable and no request: said so */
     sim_result = 1; sim.step = 42;
     report.state = IPC_CTL_STATE | IPC_CTL_SIM_ARM;
     CHECK(control_link_step(102, 1, &traj_ns, &ctrl_ns) == 1 && sim_torques == 2 && sim_torque.step == 42 && sim_torque.flags == 0u);
+    CHECK(reports == 3);
     control_link_drives();
     CHECK(servo_calls == 1 && input_usable == 0);
 
-    /* the report: 3 periods, 1 without a state, 1 command (none refused), the longest 240 us, the planner, the arm */
+    /* the report: 4 periods, 2 without a state, 2 commands (none refused), the longest 240 us, the planner, the arm */
     control_link_report();
-    CHECK(events == 1 && an_event.id == EVENT_CONTROL_REPORT && an_event.value[0] == 1 && an_event.value[1] == 3 &&
-          an_event.value[2] == 1 && an_event.value[3] == 1 && an_event.value[4] == 0 && an_event.value[5] == 240 &&
+    CHECK(events == 1 && an_event.id == EVENT_CONTROL_REPORT && an_event.value[0] == 1 && an_event.value[1] == 4 &&
+          an_event.value[2] == 2 && an_event.value[3] == 2 && an_event.value[4] == 0 && an_event.value[5] == 240 &&
           an_event.value[6] == 2);
     CHECK(an_event.value[7] == 1 && an_event.value[8] == 900 && an_event.value[9] == 1 && an_event.value[10] == 7000 &&
           an_event.value[11] == 0 && an_event.value[12] == 1 && an_event.value[15] == 1);
@@ -153,6 +158,7 @@ int main(void)
     control_link_drives();                  /* a cycle without a step between (the firmware stopping) */
     CHECK(servo_calls == 2 && input_fresh == 0 && input_usable == 1 && input_tau[5] == 15.0);
     CHECK(control_link_step(104, 0, &traj_ns, &ctrl_ns) == 1 && stepped.state == 0);      /* the frame did not come back */
+    CHECK(reports == 5);                    /* ... and the period reports all the same: no simulated arm waits for a report */
     answer.servo = IPC_CMD_SERVO_OFF; answer.torque = 0;
     CHECK(control_link_step(105, 1, &traj_ns, &ctrl_ns) == 1 && stepped.state == 1);
     control_link_drives();
@@ -172,7 +178,9 @@ int main(void)
     sim_result = -1;
     answer.torque = 1; answer.servo = IPC_CMD_SERVO_ON;
     servo_calls = 0; servo_last = -1;
+    i = reports;
     CHECK(control_link_step(110, 1, &traj_ns, &ctrl_ns) == 1);
+    CHECK(reports == i + 1);                /* without a simulated arm every period reports, the bench's (no state) too */
     sim_result = 1; sim.step = 50;
     CHECK(control_link_step(111, 1, &traj_ns, &ctrl_ns) == 1 && servo_calls == 1 && servo_last == 0);
     control_link_drives();

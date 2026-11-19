@@ -17,6 +17,9 @@
 *	  PublishState  the State slot of the period: the status and the
 *	                measurement of the receive, and what TakeApuSlots left
 *	  TakeShadow, PublishShadow  the two slots of --shadow
+*	  TakeCommand, TakeGoal, TakeSimState, PublishSimTorque, PublishReport
+*	                the slots of the control task on the R5 (S2;
+*	                control_link.c of the firmware, sim/SimR5Control.h)
 *****************************************************************************/
 #ifndef G2T_SIM_R5_SLOTS_H
 #define G2T_SIM_R5_SLOTS_H
@@ -42,6 +45,8 @@ public:
 	{
 		m_auTorqueStamp[0] = m_auTorqueStamp[1] = 0;
 		m_auShadowStamp[0] = m_auShadowStamp[1] = 0;
+		m_auGoalStamp[0] = m_auGoalStamp[1] = 0;
+		m_auSimStamp[0] = m_auSimStamp[1] = 0;
 		memset(m_adTorque, 0, sizeof(m_adTorque));
 	}
 
@@ -54,9 +59,11 @@ public:
 		m_pRegion = apRegion;
 		m_uCfgCrc = auCfgCrc;
 		m_nStaleLimit = anStaleLimit;
-		volatile uint32_t* apSlots[2] = { Slot(IPC_OFF_STATE), Slot(IPC_OFF_SHADOW_OUT) };
-		m_uEpoch = ipc_side_start(&Head()->r5, apSlots, 2);
-		(void)TakeCommand();
+		volatile uint32_t* apSlots[4] = { Slot(IPC_OFF_STATE), Slot(IPC_OFF_SHADOW_OUT), Slot(IPC_OFF_SIM_TORQUE),
+		                                  Slot(IPC_OFF_REPORT) };
+		m_uEpoch = ipc_side_start(&Head()->r5, apSlots, 4);
+		ipc_command_t stOld;
+		(void)TakeCommand(&stOld);
 		m_uCommandDone = 0;
 		return m_uEpoch;
 	}
@@ -64,11 +71,10 @@ public:
 	/* true: the stale-torque rule switched the servo off in this period */
 	bool TakeApuSlots(const Drives& astDrives)
 	{
-		const uint32_t uCommand = TakeCommand();
-		if (uCommand == IPC_CMD_SERVO_ON)
-			m_bServoAsked = true;
-		else if (uCommand != IPC_CMD_NONE)
-			m_bServoAsked = false;
+		// every other command is a servo off, one for the control task too (ecat_task.c without CONTROL_TASK)
+		ipc_command_t stCommand;
+		if (TakeCommand(&stCommand))
+			m_bServoAsked = (stCommand.cmd == IPC_CMD_SERVO_ON);
 		const bool bFresh = TakeTorque(astDrives.uDof);
 
 		bool bAllEnabled = true;
@@ -94,16 +100,18 @@ public:
 	const double*	Torque			(	) const { return m_adTorque; }
 	int				StaleRun		(	) const { return m_nStaleRun; }
 
-	/* abStopping: the firmware in its stop (r5log.py -f, Ctrl-C), which takes no slot of the APU */
+	/* abStopping: the firmware in its stop (r5log.py -f, Ctrl-C), which takes no slot of the APU; abControl: a
+	 * firmware with the control task */
 	void PublishState(uint64_t auReleaseTicks, uint32_t auPeriod, const Drives& astDrives, uint32_t auOverruns,
-	                  bool abStopping = false)
+	                  bool abStopping = false, bool abControl = false)
 	{
 		ipc_state_t& s = m_stState;
 		memset(&s, 0, sizeof(s));
 		s.t_release = auReleaseTicks;
 		s.period = auPeriod;
 		s.dof = astDrives.uDof;
-		s.flags = IPC_STATE_OP | IPC_STATE_SERVO_ON | (abStopping ? (uint32_t)IPC_STATE_STOP : 0u);
+		s.flags = IPC_STATE_OP | IPC_STATE_SERVO_ON | (abStopping ? (uint32_t)IPC_STATE_STOP : 0u) |
+		          (abControl ? (uint32_t)IPC_STATE_CONTROL : 0u);
 		for (unsigned i = 0; i < astDrives.uDof; i++)
 		{
 			const uint16_t usStatus = astDrives.ausStatus[i];
@@ -139,24 +147,58 @@ public:
 	}
 	void PublishShadow(const ipc_shadow_out_t& astOut) { IPC_WRITE(Slot(IPC_OFF_SHADOW_OUT), m_uEpoch, &astOut); }
 
-private:
-	volatile ipc_head_t*	Head	(	) const { return (volatile ipc_head_t*)m_pRegion; }
-	volatile uint32_t*		Slot	(unsigned auOffset) const { return m_pRegion + auOffset / 4u; }
-
-	// ocm_link_take_command of the firmware
-	uint32_t TakeCommand()
+	/* ocm_link_take_command of the firmware: true and *apCommand when the slot holds a command that is new */
+	bool TakeCommand(ipc_command_t* apCommand)
 	{
 		ipc_command_t stCommand;
 		uint32_t auStamp[2];
 		if (IPC_READ(Slot(IPC_OFF_COMMAND), &Head()->apu, &stCommand, auStamp) != IPC_OK)
-			return IPC_CMD_NONE;
+			return false;
 		if (auStamp[0] == m_uCommandEpoch && stCommand.seq == m_uCommandSeq)
-			return IPC_CMD_NONE;
+			return false;
 		m_uCommandEpoch = auStamp[0];
 		m_uCommandSeq = stCommand.seq;
 		m_uCommandDone = stCommand.seq;
-		return stCommand.cmd;
+		*apCommand = stCommand;
+		return true;
 	}
+	/* ocm_link_take_goal: true and *apGoal when the slot holds a goal that is new */
+	bool TakeGoal(ipc_goal_t* apGoal)
+	{
+		ipc_goal_t stGoal;
+		uint32_t auStamp[2];
+		if (IPC_READ(Slot(IPC_OFF_GOAL), &Head()->apu, &stGoal, auStamp) != IPC_OK ||
+		    (auStamp[0] == m_auGoalStamp[0] && auStamp[1] == m_auGoalStamp[1]))
+			return false;
+		m_auGoalStamp[0] = auStamp[0];
+		m_auGoalStamp[1] = auStamp[1];
+		*apGoal = stGoal;
+		return true;
+	}
+	/* ocm_link_take_sim_state: 1 and *apSim: a state of the simulated arm that is new; 0: none that is new, the arm
+	 * is the simulated one; -1: the run of the APU that is up has written none */
+	int TakeSimState(ipc_sim_state_t* apSim)
+	{
+		ipc_sim_state_t stSim;
+		uint32_t auStamp[2];
+		if (IPC_READ(Slot(IPC_OFF_SIM_STATE), &Head()->apu, &stSim, auStamp) == IPC_OK)
+		{
+			if (auStamp[0] == m_auSimStamp[0] && auStamp[1] == m_auSimStamp[1])
+				return 0;
+			m_auSimStamp[0] = auStamp[0];
+			m_auSimStamp[1] = auStamp[1];
+			*apSim = stSim;
+			return 1;
+		}
+		return (ipc_load32(&Head()->apu.magic) == IPC_MAGIC && ipc_load32(&Head()->apu.epoch) == m_auSimStamp[0]) ? 0 : -1;
+	}
+	void PublishSimTorque(const ipc_sim_torque_t& astTorque) { IPC_WRITE(Slot(IPC_OFF_SIM_TORQUE), m_uEpoch, &astTorque); }
+	void PublishReport(const ipc_report_t& astReport) { IPC_WRITE(Slot(IPC_OFF_REPORT), m_uEpoch, &astReport); }
+
+private:
+	volatile ipc_head_t*	Head	(	) const { return (volatile ipc_head_t*)m_pRegion; }
+	volatile uint32_t*		Slot	(unsigned auOffset) const { return m_pRegion + auOffset / 4u; }
+
 	// ocm_link_take_torque of the firmware
 	bool TakeTorque(unsigned auDof)
 	{
@@ -181,6 +223,7 @@ private:
 	uint32_t	m_uCommandEpoch, m_uCommandSeq, m_uCommandDone;
 	uint32_t	m_auTorqueStamp[2];
 	uint32_t	m_auShadowStamp[2];
+	uint32_t	m_auGoalStamp[2], m_auSimStamp[2];
 	uint32_t	m_uTorquePeriod;
 	bool		m_bTorqueUsable;
 	double		m_adTorque[IPC_MAX_DOF];

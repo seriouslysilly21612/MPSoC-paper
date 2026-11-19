@@ -668,6 +668,13 @@ void CommandSlot()
 		(void)a.ApuReceive(s_cSecondRun);
 		Expect(a.cR5.IsServoAsked() && s_cSecondRun.State().cmd_done == 1 &&
 		       s_cSecondRun.State().torque_period == a.uPeriod - 1, "the R5 carries it out: servo on");
+		// every command but a servo on is a servo off for this firmware, one for a control task too
+		ipc_command_t stOther;
+		memset(&stOther, 0, sizeof(stOther));
+		stOther.cmd = IPC_CMD_CTRL_ON;
+		(void)s_cSecondRun.SendControlCommand(stOther);
+		(void)a.R5Period();
+		Expect(!a.cR5.IsServoAsked(), "a command for a control task, which this firmware has not: servo off");
 	}
 }
 

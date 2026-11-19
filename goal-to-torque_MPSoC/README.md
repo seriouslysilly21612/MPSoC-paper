@@ -290,6 +290,7 @@ of `ObsGoal.h` and `ObsWriter.h` fail it.
     make tools                 # bin/hl_check, bin/goal_filter_check, bin/slot_check, bin/ipc_slot_check,
                                # bin/obs_mailbox_check, bin/obs_receiver_check, bin/obs_estimate_check,
                                # bin/obs_goal_check, bin/obs_status_check, bin/r5_link_check, bin/shadow_check,
+                               # bin/control_check, bin/s2_link_check,
                                # bin/fw_cfg_header, bin/rbdl_model_code, bin/ctrl_numbers_header (the three write
                                # the headers of the R5 firmware), bin/model_check (MuJoCo)
 
@@ -432,6 +433,8 @@ compared. The run ends with two more lines, counted from the first answer of the
     ./bin/obs_status_check                                # the status for the camera side, the contract check value, PASS
     ./bin/r5_link_check                                   # --arch S1: the exchange with the R5 and following its period, PASS
     ./bin/shadow_check                                    # --shadow: a second controller, told through the slots what the control task did, gives its torque and reference, PASS
+    ./bin/control_check                                   # the control task that the R5 has with CONTROL_TASK (shadow/ControlCycle.h): its commands, its rules for the drives, its report, PASS
+    ./bin/s2_link_check                                   # the exchange with such an R5: commands, the goal, the report, an arm simulated here, another run of the application, PASS
     ./bin/hl_check models/indy7.urdf                      # the reference contract, PASS
     ./bin/goal_filter_check                               # the goal checks of the bridge, PASS
     ./bin/model_check models/indy7.urdf models/indy7_mujoco.xml B=6.07917,6.68933,1.99649,0.87306,0.86394,0.84747  # B as in INDY7.cfg

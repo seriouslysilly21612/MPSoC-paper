@@ -149,7 +149,7 @@ tools: $(BIN_DIR)/hl_check $(BIN_DIR)/goal_filter_check $(BIN_DIR)/slot_check $(
        $(BIN_DIR)/obs_mailbox_check $(BIN_DIR)/obs_receiver_check $(BIN_DIR)/obs_estimate_check \
        $(BIN_DIR)/obs_goal_check $(BIN_DIR)/obs_status_check $(BIN_DIR)/r5_link_check \
        $(BIN_DIR)/fw_cfg_header $(BIN_DIR)/rbdl_model_code $(BIN_DIR)/ctrl_numbers_header $(BIN_DIR)/shadow_check \
-       $(BIN_DIR)/control_check \
+       $(BIN_DIR)/control_check $(BIN_DIR)/s2_link_check \
        $(BIN_DIR)/console_check \
        $(if $(filter 1,$(MUJOCO)),$(BIN_DIR)/model_check)
 
@@ -251,6 +251,12 @@ $(BIN_DIR)/control_check: $(TOOLS_DIR)/control_check.cpp $(TOOL_OBJS) $(CONTROL_
                           $(SRC_DIR)/shadow/ShadowParams.h $(SRC_DIR)/shadow/control_vectors.h $(SRC_DIR)/ipc/ipc_layout.h
 	@mkdir -p $(BIN_DIR)
 	$(CXX) $(CXXFLAGS) $(INCLUDES) -o $@ $< $(TOOL_OBJS) $(CONTROL_OBJS) $(LDLIBS)
+
+# the exchange with an R5 that has the control task (--arch S2): R5Link.h against sim/SimR5Control.h, one period at a time
+$(BIN_DIR)/s2_link_check: $(TOOLS_DIR)/s2_link_check.cpp $(TOOL_OBJS) $(CONTROL_OBJS) $(OBJ_DIR)/r5link/R5Link.o \
+                          $(SRC_DIR)/sim/SimR5Control.h $(SRC_DIR)/sim/SimR5Slots.h $(SRC_DIR)/r5link/R5Link.h
+	@mkdir -p $(BIN_DIR)
+	$(CXX) $(CXXFLAGS) $(INCLUDES) -o $@ $< $(TOOL_OBJS) $(CONTROL_OBJS) $(OBJ_DIR)/r5link/R5Link.o $(LDLIBS)
 
 # the console of the real-time tasks (base/RtConsole.h), with the stdio wrappers of indy7_ctrl
 $(BIN_DIR)/console_check: $(TOOLS_DIR)/console_check.cpp $(OBJ_DIR)/base/RtConsole.o

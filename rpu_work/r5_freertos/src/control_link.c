@@ -128,7 +128,9 @@ int control_link_step(uint32_t period, int bus_state, int32_t *traj_ns, int32_t 
         held = out;
         held_fresh = 1;
     }
-    ocm_link_publish_report(&report);
+    /* with a simulated arm, a period without a new state reports only a command that it took: the APU, which steps
+       that arm, then finds the report of every period that had a state, however late it looks */
+    if (!in.sim_arm || in.state || in.command != NULL) ocm_link_publish_report(&report);
 
     *traj_ns = (report.state & IPC_CTL_SAMPLE) ? (int32_t)report.traj_ns : -1;
     *ctrl_ns = (report.in.flags & IPC_SHADOW_CTRL) ? (int32_t)report.ctrl_ns : -1;

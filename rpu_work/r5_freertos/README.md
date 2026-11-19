@@ -563,7 +563,9 @@ application has no `--arch S2` yet, so nothing sends such a firmware a command.*
   When the run of the APU that is up writes the Sim state slot, the arm is one that the APU simulates: a period
   of the control task runs on each new state of it, the torque goes back in the Sim torque slot with the number
   of that state, the APU steps its arm with it, and the drives of the bus stay off. The L7N bench has no other
-  arm, so there the control task has a state only with the APU's simulation.
+  arm, so there the control task has a state only with the APU's simulation. With a simulated arm a period
+  without a new state reports only a command that it took: the report of a period with a state then stays in its
+  slot until the next such period, and the APU finds the report of every state it wrote, however late it looks.
 - **Lines.** `[control] the control task runs here ...` at the start, and in every status report
   `[control] periods N (without a state M), longest L us | commands C (refused R), goals G | arm: ... | so far:
   controller faults F, drive stops D, ...` with the `[control] planner task:` line of the second controller.
@@ -599,7 +601,7 @@ application has no `--arch S2` yet, so nothing sends such a firmware a command.*
   simulated one from the first state that the APU's run writes, also while the APU writes or has stopped, the
   bus again with another run of the APU. `test_ecat_cycle` once more with `-DCONTROL_TASK=1`.
 - Wrong versions on a copy: of `ControlCycle.cpp` 127, 1 passes (the torque of a law that failed is set to 0 a
-  second time: the law zeroes it itself); of `control_link.c` and the new parts of `ocm_link.c` 81, none passes.
+  second time: the law zeroes it itself); of `control_link.c` and the new parts of `ocm_link.c` 85, none passes.
   They found one fault: the code for the arm of the bus stood under `#if AXIS_COUNT == IPC_CTRL_DOF`, and the
   preprocessor takes an enumerator for 0, so it was never compiled. It is an `if` now, and the test for the Indy7
   runs it.

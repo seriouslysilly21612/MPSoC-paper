@@ -39,6 +39,8 @@ CR5Link::CR5Link()
 	memset(&m_stState, 0, sizeof(m_stState));
 	memset(&m_stCounts, 0, sizeof(m_stCounts));
 	m_auShadowStamp[0] = m_auShadowStamp[1] = 0;
+	m_auReportStamp[0] = m_auReportStamp[1] = 0;
+	m_auSimStamp[0] = m_auSimStamp[1] = 0;
 	m_stFollow.Start(1, 0);
 }
 
@@ -122,11 +124,17 @@ CR5Link::Start(uint32_t auDof, uint32_t auCfgCrc, RTTIME atPeriod, RTTIME atWake
 	m_tPeriod = atPeriod;
 	m_tWakeDelay = atWakeDelay;
 	m_stFollow.Start((int64_t)atPeriod, (int64_t)atWakeDelay);
-	volatile uint32_t* apSlots[3] = { Slot(IPC_OFF_TORQUE), Slot(IPC_OFF_COMMAND), Slot(IPC_OFF_SHADOW_IN) };
-	m_uApuEpoch = ipc_side_start(&Head()->apu, apSlots, 3);
-	// what the Shadow out slot holds now answers a run of this side before this one: not taken (no read: nothing there)
+	volatile uint32_t* apSlots[5] = { Slot(IPC_OFF_TORQUE), Slot(IPC_OFF_COMMAND), Slot(IPC_OFF_SHADOW_IN), Slot(IPC_OFF_GOAL),
+	                                  Slot(IPC_OFF_SIM_STATE) };
+	m_uApuEpoch = ipc_side_start(&Head()->apu, apSlots, 5);
+	// what the Shadow out slot holds now answers a run of this side before this one: not taken (no read: nothing
+	// there). The same for the report and the torque of a simulated arm
 	ipc_shadow_out_t stOld;
 	(void)IPC_READ(Slot(IPC_OFF_SHADOW_OUT), &Head()->r5, &stOld, m_auShadowStamp);
+	ipc_report_t stOldReport;
+	(void)IPC_READ(Slot(IPC_OFF_REPORT), &Head()->r5, &stOldReport, m_auReportStamp);
+	ipc_sim_torque_t stOldTorque;
+	(void)IPC_READ(Slot(IPC_OFF_SIM_TORQUE), &Head()->r5, &stOldTorque, m_auSimStamp);
 	// a first offset of the counter while nothing is timed yet: a cycle whose pair of reads is refused keeps the last one
 	for (int nTry = 0; nTry < 100 && !m_cClock.Sample(); nTry++)
 		;
@@ -319,6 +327,62 @@ CR5Link::TakeShadow(ipc_shadow_out_t* apOut)
 	return TRUE;
 }
 
+uint32_t
+CR5Link::SendControlCommand(const ipc_command_t& astCommand)
+{
+	ipc_command_t stCommand = astCommand;
+	// the run of this side goes into the number: the report can still have the answer to a command of the run
+	// before this one, which counted from 1 too (two numbers meet after 65536 commands of a run or 65536 runs)
+	stCommand.seq = (m_uApuEpoch << 16) + ++m_uCommandSeq;
+	stCommand.reserved = 0;
+	IPC_WRITE(Slot(IPC_OFF_COMMAND), m_uApuEpoch, &stCommand);
+	m_stCounts.nCommands++;
+	return stCommand.seq;
+}
+
+void
+CR5Link::SendGoal(const double* adP)
+{
+	ipc_goal_t stGoal;
+	for (int k = 0; k < 3; k++)
+		stGoal.p[k] = adP[k];
+	IPC_WRITE(Slot(IPC_OFF_GOAL), m_uApuEpoch, &stGoal);
+}
+
+BOOL
+CR5Link::TakeReport(ipc_report_t* apReport)
+{
+	ipc_report_t stReport;
+	uint32_t auStamp[2];
+	if (IPC_READ(Slot(IPC_OFF_REPORT), &Head()->r5, &stReport, auStamp) != IPC_OK ||
+	    (auStamp[0] == m_auReportStamp[0] && auStamp[1] == m_auReportStamp[1]))
+		return FALSE;
+	m_auReportStamp[0] = auStamp[0];
+	m_auReportStamp[1] = auStamp[1];
+	*apReport = stReport;
+	return TRUE;
+}
+
+void
+CR5Link::SendSimState(const ipc_sim_state_t& astSim)
+{
+	IPC_WRITE(Slot(IPC_OFF_SIM_STATE), m_uApuEpoch, &astSim);
+}
+
+BOOL
+CR5Link::TakeSimTorque(ipc_sim_torque_t* apTorque)
+{
+	ipc_sim_torque_t stTorque;
+	uint32_t auStamp[2];
+	if (IPC_READ(Slot(IPC_OFF_SIM_TORQUE), &Head()->r5, &stTorque, auStamp) != IPC_OK ||
+	    (auStamp[0] == m_auSimStamp[0] && auStamp[1] == m_auSimStamp[1]))
+		return FALSE;
+	m_auSimStamp[0] = auStamp[0];
+	m_auSimStamp[1] = auStamp[1];
+	*apTorque = stTorque;
+	return TRUE;
+}
+
 void
 CR5Link::PrintSummary() const
 {
@@ -349,9 +413,12 @@ CR5Link::PrintSummary() const
 	       "State taken before it); the R5 counts %u periods without a new torque while its drives were on\n",
 	       c.nTorquesWritten,
 	       c.nTorqueLate, m_bHaveState ? (unsigned)m_stState.n_torque_stale : 0u);
+	uint32_t uDone = m_bHaveState ? m_stState.cmd_done : 0u;
+	if (HasControlTask())		// the number of its commands has the run in it (SendControlCommand); 0: none of this run
+		uDone = (uDone - (m_uApuEpoch << 16) <= m_uCommandSeq) ? uDone - (m_uApuEpoch << 16) : 0u;
 	printf("[R5] Command slot: %ld written, the R5 carried out number %u of %u; %ld servo on refused (check value of "
 	       "the firmware 0x%08X, of this configuration 0x%08X)\n", c.nCommands,
-	       m_bHaveState ? (unsigned)m_stState.cmd_done : 0u, (unsigned)m_uCommandSeq, c.nServoOnRefused,
+	       (unsigned)uDone, (unsigned)m_uCommandSeq, c.nServoOnRefused,
 	       m_bHaveState ? (unsigned)m_stState.cfg_crc : 0u, (unsigned)m_uCfgCrc);
 	if (m_bHaveState)
 		printf("[R5] faults the R5 reports: %u late releases, %u overruns, %u missed send deadlines, %u incomplete "

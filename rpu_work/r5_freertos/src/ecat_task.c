@@ -231,10 +231,10 @@ static void take_apu_slots(uint64_t now)
 
     if (ocm_link_take_command(&command)) {
         event_post(EVENT_COMMAND, 1, (int)command.cmd, 0, 0);
-        /* shortcut: IPC_CMD_STOP is a servo off here; the clean stop to PRE-OP is still r5log.py -f.  A command
-           for the control task (S2) is none of this build's */
+        /* shortcut: IPC_CMD_STOP is a servo off here; the clean stop to PRE-OP is still r5log.py -f.  So is a
+           command for the control task (S2), which this build has not */
         if (command.cmd == IPC_CMD_SERVO_ON) axis_control_servo(1);
-        else if (command.cmd == IPC_CMD_SERVO_OFF || command.cmd == IPC_CMD_STOP) axis_control_servo(0);
+        else                                 axis_control_servo(0);
     }
     link_torque_t torque;
     int fresh = ocm_link_take_torque(&torque);
