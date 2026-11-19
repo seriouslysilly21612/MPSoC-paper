@@ -54,7 +54,7 @@ enum
 	SHADOW_N_TAU_MAX = SHADOW_N_ROTOR + IPC_CTRL_DOF,
 	SHADOW_N_READY = SHADOW_N_TAU_MAX + IPC_CTRL_DOF,
 	SHADOW_N_FF_GATE = SHADOW_N_READY + IPC_CTRL_DOF,
-	SHADOW_N_DELTA, SHADOW_N_LAMBDA, SHADOW_N_STEP_MAX, SHADOW_N_TOL, SHADOW_N_ITER_CYCLE, SHADOW_N_ITER_MAX,
+	SHADOW_N_DELTA, SHADOW_N_LAMBDA, SHADOW_N_STEP_MAX, SHADOW_N_TOL, SHADOW_N_PLAN_AHEAD, SHADOW_N_ITER_MAX,
 	SHADOW_N_VEL_MAX, SHADOW_N_ACC_MAX, SHADOW_N_JERK_MAX, SHADOW_N_MARGIN, SHADOW_N_LEAD, SHADOW_N_STEP_REF,
 	SHADOW_NUMBERS
 };
@@ -88,6 +88,7 @@ private:
 
 	CControllerFullDynamicsRT*	m_pCtl;
 	CHighLevelRT				m_cHl;
+	CHlInline					m_cPlan;
 	std::vector<double>			m_vQ, m_vQd, m_vTor, m_vTau;
 	CControllerFullDynamicsRT::Reference m_stRef;	// of the last update of the high-level controller
 	uint32_t	m_uCrc;

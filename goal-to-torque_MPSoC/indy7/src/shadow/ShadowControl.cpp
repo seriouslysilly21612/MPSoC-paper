@@ -32,7 +32,7 @@ CShadowControl::Init(const char* astrURDF, const double* adNumbers, uint32_t auC
 	stP.dLambda    = n[SHADOW_N_LAMBDA];
 	stP.dStepMax   = n[SHADOW_N_STEP_MAX];
 	stP.dTol       = n[SHADOW_N_TOL];
-	stP.nIterCycle = (int)n[SHADOW_N_ITER_CYCLE];
+	stP.nPlanAhead = (int)n[SHADOW_N_PLAN_AHEAD];
 	stP.nIterMax   = (int)n[SHADOW_N_ITER_MAX];
 	stP.dVelMax    = n[SHADOW_N_VEL_MAX];
 	stP.dAccMax    = n[SHADOW_N_ACC_MAX];
@@ -42,7 +42,7 @@ CShadowControl::Init(const char* astrURDF, const double* adNumbers, uint32_t auC
 	stP.bStepRef   = (n[SHADOW_N_STEP_REF] != 0.0);
 	for (int i = 0; i < DOF; i++)
 		stP.adQr[i] = n[SHADOW_N_READY + i];
-	if (FALSE == m_cHl.Init(astrURDF, n[SHADOW_N_TS], stP))
+	if (FALSE == m_cHl.Init(astrURDF, n[SHADOW_N_TS], stP) || FALSE == m_cPlan.Init(astrURDF, n[SHADOW_N_TS], stP))
 		return FALSE;
 
 	/* the control law, as CRobotIndy7::InitController; enabled for good: whether it runs in a period is the APU's */
@@ -122,6 +122,7 @@ CShadowControl::Step(const ipc_shadow_in_t& astIn, ipc_shadow_out_t* apOut)
 		const RTTIME t0 = read_timer();
 		const BOOL bOk = m_cHl.Update((astIn.flags & IPC_SHADOW_GOAL) ? astIn.goal : NULL, astIn.q, astIn.qd,
 		                              m_stRef.adQ, m_stRef.adQd, adQdd);
+		m_cPlan.After(m_cHl);		// its planner, in this task as the control task's is (CTrajectoryRT::Update)
 		// the tool position of the measurement, which the control task takes in every period of a motion for
 		// its log (CTrajectoryRT::Update): part of what the period costs
 		m_cHl.ToolPosition(astIn.q, adTool);

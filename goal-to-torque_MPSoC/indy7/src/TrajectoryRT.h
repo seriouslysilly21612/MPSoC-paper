@@ -122,6 +122,7 @@ public:
 
 private:
 	CHighLevelRT		m_hl;
+	CHlInline			m_plan;			// the planner of m_hl, in this task for now (HighLevelRT.h)
 	const CGoalSlot*	m_pGoalSlot;
 	double				m_adGoalOffset[3];
 	eState				m_eState;

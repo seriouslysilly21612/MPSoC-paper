@@ -126,7 +126,7 @@ public:
 		stP.dLambda    = stS.dHlLambda;
 		stP.dStepMax   = stS.dHlStepMax;
 		stP.dTol       = stS.dHlTol;
-		stP.nIterCycle = stS.nHlIterCycle;
+		stP.nPlanAhead = stS.nHlPlanAhead;
 		stP.nIterMax   = stS.nHlIterGoal;
 		stP.dVelMax    = stS.dHlVelMax;
 		stP.dAccMax    = stS.dHlAccMax;

@@ -10,7 +10,7 @@
 
 namespace call_timing
 {
-enum eSlot { eIkKin = 0, eIkFk, eIkJac, eIkSolve, eIkIter, eOtg, eCtcKin, eCtcCrba, eCtcNle, eControl, eN };
+enum eSlot { eIkKin = 0, eIkFk, eIkJac, eIkSolve, eIkIter, eOtg, eOtgAt, eCtcKin, eCtcCrba, eCtcNle, eControl, eN };
 inline RTTIME Now() { return 0; }
 inline RTTIME Lap(eSlot, RTTIME) { return 0; }
 } // namespace call_timing

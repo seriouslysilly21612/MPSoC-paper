@@ -44,7 +44,7 @@ inline bool ShadowNumbers(const CConfig& acConfig, double* adNumbers)
 	n[SHADOW_N_LAMBDA]     = stS.dHlLambda;
 	n[SHADOW_N_STEP_MAX]   = stS.dHlStepMax;
 	n[SHADOW_N_TOL]        = stS.dHlTol;
-	n[SHADOW_N_ITER_CYCLE] = (double)stS.nHlIterCycle;
+	n[SHADOW_N_PLAN_AHEAD] = (double)stS.nHlPlanAhead;
 	n[SHADOW_N_ITER_MAX]   = (double)stS.nHlIterGoal;
 	n[SHADOW_N_VEL_MAX]    = stS.dHlVelMax;
 	n[SHADOW_N_ACC_MAX]    = stS.dHlAccMax;

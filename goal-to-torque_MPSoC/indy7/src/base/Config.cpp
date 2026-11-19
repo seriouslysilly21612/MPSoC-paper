@@ -50,7 +50,7 @@ stConfigSystem::stConfigSystem()
 	dHlLambda = 0.01;
 	dHlStepMax = 0.2;
 	dHlTol = 1e-4;
-	nHlIterCycle = 10;
+	nHlPlanAhead = 5;
 	nHlIterGoal = 100;
 	dHlVelMax = 0.6;
 	dHlAccMax = 2.0;
@@ -501,8 +501,8 @@ CConfig::Parse()
 	cF.Double(S, "HL_IK_LAMBDA", s.dHlLambda);
 	cF.Double(S, "HL_IK_STEP_MAX", s.dHlStepMax);
 	cF.Double(S, "HL_IK_TOL_MM", s.dHlTol, 1e-3);
-	cF.Int(S, "HL_IK_ITER_CYCLE", s.nHlIterCycle);
 	cF.Int(S, "HL_IK_ITER_GOAL", s.nHlIterGoal);
+	cF.Int(S, "HL_PLAN_AHEAD", s.nHlPlanAhead);
 	cF.Double(S, "HL_VEL_MAX", s.dHlVelMax);
 	cF.Double(S, "HL_ACC_MAX", s.dHlAccMax);
 	cF.Double(S, "HL_JERK_MAX", s.dHlJerkMax);

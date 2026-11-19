@@ -33,7 +33,7 @@ BOOL
 CTrajectoryRT::Init(const char* astrURDF, double adTs, const CHighLevelRT::Params& astParams)
 {
     m_dTs = adTs;
-    return m_hl.Init(astrURDF, adTs, astParams);
+    return m_hl.Init(astrURDF, adTs, astParams) && m_plan.Init(astrURDF, adTs, astParams);
 }
 
 BOOL
@@ -136,6 +136,7 @@ CTrajectoryRT::Update(const double* adQ, const double* adQd,
         pGoal = adGoal;
 
     const BOOL bOk = m_hl.Update(pGoal, adQ, adQd, adQRef, adQdRef, adQddRef);
+    m_plan.After(m_hl);         // what it asked of the planner is back for the next period
 
     // the cycle for the log
     const CHighLevelRT::Status& st = m_hl.GetStatus();

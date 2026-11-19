@@ -1156,8 +1156,8 @@ CRobotIndy7::InitTrajectory()
 	stP.dLambda    = stS.dHlLambda;
 	stP.dStepMax   = stS.dHlStepMax;
 	stP.dTol       = stS.dHlTol;
-	stP.nIterCycle = stS.nHlIterCycle;
 	stP.nIterMax   = stS.nHlIterGoal;
+	stP.nPlanAhead = stS.nHlPlanAhead;
 	stP.dVelMax    = stS.dHlVelMax;
 	stP.dAccMax    = stS.dHlAccMax;
 	stP.dJerkMax   = stS.dHlJerkMax;
