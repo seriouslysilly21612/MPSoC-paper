@@ -105,6 +105,10 @@ public:
 	 * of the firmware; on a PC whoever calls Step(), after it. Only once Init() has returned TRUE. TRUE: it did
 	 * something, call again. No allocation. */
 	BOOL	ServePlanner(	) { return m_cLink.Serve(m_cPlanner) ? TRUE : FALSE; }
+	/* for a test that compares more than the answer has: the state of its high-level controller and the
+	 * reference of its last update */
+	const CHighLevelRT::Status&					HlStatus	(	) const { return m_cHl.GetStatus(); }
+	const CControllerFullDynamicsRT::Reference&	Reference	(	) const { return m_stRef; }
 
 private:
 	void	StartMotion	(const ipc_shadow_in_t& astIn);

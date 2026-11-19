@@ -22,7 +22,9 @@ CSimJoint::ServoOn()
 	 * without power nothing is enabled, and the request waits */
 	const BOOL bEdge = m_bRequest ? FALSE : TRUE;
 	m_bRequest = TRUE;
-	if (m_bPowerCut)
+	/* a drive that left Operation enabled by itself stays out while the request stays: its way back begins with
+	 * Shutdown (CiA 402). With --arch S2 the request of the R5 is still on for a period after the dropout */
+	if (m_bPowerCut || m_bDropped)
 		return TRUE;
 	if (m_bFault)
 	{
@@ -39,6 +41,7 @@ CSimJoint::ServoOff()
 {
 	/* the last target torque stays, as in the process image of the bus */
 	m_bRequest = FALSE;
+	m_bDropped = FALSE;
 	m_bServoOn = FALSE;
 	return TRUE;
 }

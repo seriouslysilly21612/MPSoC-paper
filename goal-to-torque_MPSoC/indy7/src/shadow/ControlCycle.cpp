@@ -244,6 +244,11 @@ CControlCycle::Step(const Input& astIn, Output* apOut, ipc_report_t* apReport)
 		apReport->ik_iter = s.nIkIter;
 		apReport->goal_age = (int32_t)s.nGoalAge;
 		apReport->n_cycle = m_uMotionPeriods++;
+		const CHighLevelRT::Status& stHl = m_cTraj.HighLevel().GetStatus();
+		apReport->n_accepted = (uint32_t)stHl.nAccepted;
+		apReport->n_converged = (uint32_t)stHl.nConverged;
+		apReport->n_rejected = (uint32_t)stHl.nRejected;
+		apReport->n_lead_resets = (uint32_t)stHl.nLeadResets;
 		apReport->ik_err = s.dIkErr;
 		apReport->otg_duration = s.dOtgDuration;
 		for (int k = 0; k < 3; k++)
@@ -253,6 +258,7 @@ CControlCycle::Step(const Input& astIn, Output* apOut, ipc_report_t* apReport)
 		}
 		for (int i = 0; i < DOF; i++)
 		{
+			apReport->target[i] = s.adTarget[i];
 			apReport->q_ref[i] = s.adQRef[i];
 			apReport->qd_ref[i] = s.adQdRef[i];
 			apReport->qdd_ref[i] = s.adQddRef[i];

@@ -17,10 +17,15 @@
 *	  --method NAME (-m)  M1, M2, A2, A3 or FULL: what the camera application
 *	           does with the results of the camera (obs/ObsMethod.h; paper,
 *	           Table III). Default M1: the goal slot, as before
-*	  --arch NAME (-a)  P0 or S1: where the EtherCAT task runs (Arch.h).
-*	           Default P0: here, with the IgH master, as before. S1: on the
-*	           R5; with -s the R5 is simulated too, with -b it runs its bus
-*	           with the drives off beside the arm simulated here
+*	  --arch NAME (-a)  P0, S1 or S2: where the EtherCAT task and the
+*	           control task run (Arch.h). Default P0: here, with the IgH
+*	           master, as before. S1: the EtherCAT task on the R5; with -s
+*	           the R5 is simulated too, with -b it runs its bus with the
+*	           drives off beside the arm simulated here. S2: the control
+*	           task on the R5 as well (TaskControlS2.cpp); the arm of -s
+*	           and -b stays here, and the R5 computes its torque. With
+*	           --method M1 only: the part of the other methods that runs in
+*	           the control task is still here
 *	  --shadow  with --arch S1: the control task tells the R5 every period
 *	           what it did with its controller, and the R5 computes the same
 *	           with a controller of its own (shadow/ShadowTask.h). Its torque
@@ -59,7 +64,7 @@ void SignalHandler(int)
 
 void Usage(const char* apcProg)
 {
-	fprintf(stderr, "usage: %s [-f FILE] [-s | -b [-B FILE]] [-t DIR] [--method M1|M2|A2|A3|FULL] [--arch P0|S1] [--shadow]\n"
+	fprintf(stderr, "usage: %s [-f FILE] [-s | -b [-B FILE]] [-t DIR] [--method M1|M2|A2|A3|FULL] [--arch P0|S1|S2] [--shadow]\n"
 	        "  -f FILE  configuration (default: ./INDY7.cfg, then <program dir>/../INDY7.cfg)\n"
 	        "  -s       simulation: MuJoCo in place of the bus\n"
 	        "  -b       the bus of the robot, drives off, beside the simulated arm (host-timing test)\n"
@@ -67,7 +72,8 @@ void Usage(const char* apcProg)
 	        "  -t DIR   timing of every period into DIR\n"
 	        "  --method NAME (-m)  what the camera application does with the results of the camera (obs/ObsMethod.h);\n"
 	        "           default M1, the goal slot as before\n"
-	        "  --arch NAME (-a)  where the EtherCAT task runs (Arch.h): P0 here (default), S1 on the R5\n"
+	        "  --arch NAME (-a)  where the EtherCAT task and the control task run (Arch.h): P0 both here (default),\n"
+	        "                    S1 the EtherCAT task on the R5, S2 the control task on the R5 as well\n"
 	        "  --shadow          with --arch S1: the R5 computes the control of every period as well (its torque is\n"
 	        "                    compared, not used), to tell whether the control computation fits its period\n", apcProg);
 }
@@ -127,6 +133,12 @@ int main(int argc, char** argv)
 	{
 		fprintf(stderr, "--shadow: only with --arch S1 (the second controller is on the R5)\n");
 		Usage(argv[0]);
+		return 1;
+	}
+	if (nArch == arch::eS2 && obs_method::UsesMailbox(nMethod))
+	{
+		fprintf(stderr, "--arch S2: with --method M1 only so far (the part of the other methods that runs in the control "
+		                "task is not on the R5)\n");
 		return 1;
 	}
 

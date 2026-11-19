@@ -532,8 +532,9 @@ With `-DCONTROL_TASK=1` in the symbols of the C++ project above, the control tas
 computation after the send of every cycle, on the measured state of that cycle, and its torque goes to the drives
 with the send of the next cycle, as the torque of the APU's control task does. `SHADOW_CONTROL` is then off by
 itself (one controller in a build). The APU sends commands and goals and gets a report of every period; a period
-of the APU that comes late no longer leaves the drives without a torque. **This commit has the R5's side; the
-application has no `--arch S2` yet, so nothing sends such a firmware a command.**
+of the APU that comes late no longer leaves the drives without a torque. The application's side is `--arch S2`
+(`../../goal-to-torque_MPSoC/README.md`); the shared region is layout 6 with it (2026-11-20: the report also has
+the counts of the high-level controller in the motion and the target of its IK, for the logs of the application).
 
 | File | What it does |
 |---|---|
@@ -543,10 +544,16 @@ application has no `--arch S2` yet, so nothing sends such a firmware a command.*
 
 - **The cycle.** Where the cycle without the control task takes the Command and the Torque slot, it gives the
   drives what the step of the cycle before decided (`control_link_drives()`): its torque, and a servo on or off.
-  After the send (`control_link_step()`): the command and the goal of the APU that are new, the measured state,
+  After the send (`control_link_step()`): the measured state, the goal and the command of the APU that are new,
   one period of the control task, its report. The planner task serves its planner as it serves the second
   controller's. The State slot has `IPC_STATE_CONTROL`, by which the APU tells this firmware from one that wants
   its torque; `r5cmd.py run` refuses it.
+- **The order of the three slots of the APU.** The APU writes a command, then a goal, then the state of a simulated
+  arm, from one task; this side reads the state, then the goal, then the command. So a state that is here has every
+  command and goal that the APU wrote before it (a run with a simulated arm does not depend on when the APU
+  writes), and a goal that is here has the start of its TRACK, which counts the goals that arrive from its start
+  on. Read the other way round, a start written between two reads would come a period after its goal, and TRACK
+  would have no goal.
 - **Commands** (`IPC_CMD_*`, one per period at most; the next when `cmd_done` has the last): controller on and
   off, the stop of the motion, the hold, a start of TRACK or HOME with its goal threshold, ready posture and
   target, servo on and off. The conditions that the application checks at its console are checked here, where the
@@ -563,9 +570,10 @@ application has no `--arch S2` yet, so nothing sends such a firmware a command.*
   When the run of the APU that is up writes the Sim state slot, the arm is one that the APU simulates: a period
   of the control task runs on each new state of it, the torque goes back in the Sim torque slot with the number
   of that state, the APU steps its arm with it, and the drives of the bus stay off. The L7N bench has no other
-  arm, so there the control task has a state only with the APU's simulation. With a simulated arm a period
-  without a new state reports only a command that it took: the report of a period with a state then stays in its
-  slot until the next such period, and the APU finds the report of every state it wrote, however late it looks.
+  arm, so there the control task has a state only with the APU's simulation. The report of a period is written
+  before its torque, and with a simulated arm a period without a new state reports nothing (a command taken in it
+  is answered by the report of the next period with a state): whoever finds the torque of its state finds the
+  report of that period, and it stays in its slot until the next state is written, however late the APU looks.
 - **Lines.** `[control] the control task runs here ...` at the start, and in every status report
   `[control] periods N (without a state M), longest L us | commands C (refused R), goals G | arm: ... | so far:
   controller faults F, drive stops D, ...` with the `[control] planner task:` line of the second controller.
@@ -580,28 +588,30 @@ application has no `--arch S2` yet, so nothing sends such a firmware a command.*
 
 - `control_check` (the application's): the control cycle on an arm that follows its reference, through commands
   and goals as the APU gives them: every command with what it does and every reason for which one is refused, a
-  servo on that runs out, a dropout, HOME to its end, a joint move, TRACK with goals, a period without a state,
-  a law that fails. In each of its 12,566 periods a second controller fed with the report gives the torque
-  (12,245 periods) and the reference (10,948) of the control cycle bit for bit: what the report says was done is
-  what was done.
+  servo on that runs out, a dropout, HOME to its end, a joint move, TRACK with goals (one out of reach, an arm
+  that does not follow), a period without a state, a law that fails. In each of its 16,393 periods a second
+  controller fed with the report gives the torque (16,072 periods) and the reference (14,775) of the control cycle
+  bit for bit, and the sample of the report (the counts, the target, the numbers of the IK and of the plan) is that
+  of its high-level controller: what the report says was done is what was done.
 - `control_replay.sh`: the control task as this firmware builds it replays those periods through the calls of
   `control_link.c`. Built for the PC: the torque and the report of every period are the file's, 0 difference.
   Built for the R5 (`qemu-arm`): the largest difference of a number is 1.0e-12, no count or flag differs, and
   neither a period nor the planner takes memory. Between the two, with the step of the next period in the middle
-  of the planner's work at each of the 957 places of its slots (23,261 such steps): the IK of a goal is then back
+  of the planner's work at each of the 957 places of its slots (42,623 such steps): the IK of a goal is then back
   a period later, so the motion is another than the file's, and in every replay the second controller on the
   reports still agrees bit for bit, every command ends as in the file, no count goes back and no plan is late.
 - The instructions of a period on the emulated R5 (`COUNT=N`): median 34,706, 99 % at most 35,513, the largest
-  44,378. The second controller of `--shadow` had 33,900, 34,100 and 43,300: the control task costs 2.5 % more
-  (the report and the description of the period), so the times of the board with the second controller above
-  are those to expect, about 10 us more.
+  44,378 (counted with layout 5; layout 6 added ten numbers to the report). The second controller of `--shadow`
+  had 33,900, 34,100 and 43,300: the control task costs 2.5 % more (the report and the description of the
+  period), so the times of the board with the second controller above are those to expect, about 10 us more.
 - `test_control_link` (for the bench and with `-DROBOT_TARGET=1`): the state of the step from the simulated arm
   or from the State of the cycle, the torque and the servo request for the drives one cycle later and once, the
-  drives of the bus off with a simulated arm. `test_ocm_link`: the slots of this side, and which arm it is: the
+  drives of the bus off with a simulated arm, the three slots of the APU read in the reverse of its order, the
+  report written before the torque. `test_ocm_link`: the slots of this side, and which arm it is: the
   simulated one from the first state that the APU's run writes, also while the APU writes or has stopped, the
   bus again with another run of the APU. `test_ecat_cycle` once more with `-DCONTROL_TASK=1`.
-- Wrong versions on a copy: of `ControlCycle.cpp` 127, 1 passes (the torque of a law that failed is set to 0 a
-  second time: the law zeroes it itself); of `control_link.c` and the new parts of `ocm_link.c` 85, none passes.
+- Wrong versions on a copy: of `ControlCycle.cpp` 142, 1 passes (the torque of a law that failed is set to 0 a
+  second time: the law zeroes it itself); of `control_link.c` and the new parts of `ocm_link.c` 88, none passes.
   They found one fault: the code for the arm of the bus stood under `#if AXIS_COUNT == IPC_CTRL_DOF`, and the
   preprocessor takes an enumerator for 0, so it was never compiled. It is an `if` now, and the test for the Indy7
   runs it.
@@ -609,7 +619,8 @@ application has no `--arch S2` yet, so nothing sends such a firmware a command.*
   controller and the libraries nothing of this firmware stays undefined.
 
 Not checked: in Vitis and on the board. A generator error in a motion (the reference is then not followed) has
-no test: no input here produces one. The arm of the bus has run in `test_control_link` only.
+no test: no input here produces one. The arm of the bus has run in `test_control_link` only. The application's
+side (`--arch S2`) has run against the simulated R5 only, which runs `ControlCycle` and not `control_link.c`.
 
 ## The split into modules (2026-11-15)
 

@@ -67,12 +67,16 @@ struct Bench
 	bool		bState = true;			// the next period has a measured state
 	bool		bServoOn = false;
 	bool		bDrivesCome = true;		// the drives reach Operation enabled when asked
+	bool		bFrozen = false;		// the arm does not follow its reference
 	uint32_t	uNotReady = 0;
 	int			nServoIn = 0;			// periods until the drives are on; 0: no request under way
 	uint32_t	uPeriod = 0, uSeq = 0;
 	CControlCycle::Output	stOut;
 	ipc_report_t			stRep;
 	long		nPeriods = 0, nLaw = 0, nTraj = 0, nDiff = 0, nApart = 0, nFollowerFault = 0, nNoPayload = 0, nGoals = 0;
+	long		nSampleDiff = 0;		// samples of the report that are not what the high-level controllers say
+	long		nHlNs = 0;				// the time of the high-level step, summed
+	uint32_t	uAccepted = 0, uConverged = 0, uRejected = 0;	// the flags of the samples of the motion, counted here
 	std::vector<control_vector_t>	vVectors;	// every period, for -o
 
 	/* one period with a command and a goal, or without */
@@ -130,6 +134,19 @@ struct Bench
 		for (int i = 0; i < N; i++)
 			if (!stOut.bTorque && stOut.adTau[i] != 0.0)
 				nDiff++;
+		// the counts of the motion are those of the flags of its samples
+		typedef CTrajectoryRT T;
+		if (stRep.state & IPC_CTL_SAMPLE)
+		{
+			if (stRep.n_cycle == 0)
+				uAccepted = uConverged = uRejected = 0;
+			uAccepted += (stRep.hl_flags & T::HL_GOAL_ACCEPTED) ? 1u : 0u;
+			uConverged += (stRep.hl_flags & T::HL_IK_CONVERGED) ? 1u : 0u;
+			uRejected += (stRep.hl_flags & T::HL_IK_REJECTED) ? 1u : 0u;
+			if (stRep.n_accepted != uAccepted || stRep.n_converged != uConverged || stRep.n_rejected != uRejected)
+				nSampleDiff++;
+			nHlNs += (long)stRep.hl_ns;
+		}
 
 		/* the second controller, on what the report says of the period */
 		if (!(stRep.state & IPC_CTL_PAYLOAD))
@@ -158,6 +175,25 @@ struct Bench
 					nTraj++;
 					if (memcmp(stFollow.q_ref, stRep.q_ref, sizeof(stFollow.q_ref)) != 0)
 						nDiff++;
+					// the sample of the report against the high-level controller of the second controller, in what
+					// the two have alike: its IK is the first's (taken without its iterations, and a goal that is
+					// given up is not told: it goes on waiting for that one), so not the iterations, the error, the
+					// goals given up, and at rest
+					const CHighLevelRT::Status& st = cShadow.HlStatus();
+					const CControllerFullDynamicsRT::Reference& stRef = cShadow.Reference();
+					const uint32_t uAlike = T::HL_GOAL_ACCEPTED | T::HL_IK_CONVERGED | T::HL_OTG_NEW | T::HL_HAS_GOAL;
+					const uint32_t uHis = (st.bGoalAccepted ? (uint32_t)T::HL_GOAL_ACCEPTED : 0u) |
+					                      (st.bIkConverged ? (uint32_t)T::HL_IK_CONVERGED : 0u) |
+					                      (st.bOtgNewCalc ? (uint32_t)T::HL_OTG_NEW : 0u) | (st.bHasGoal ? (uint32_t)T::HL_HAS_GOAL : 0u);
+					if (!(stFollow.flags & IPC_SHADOW_OUT_APART) &&
+					    ((stRep.hl_flags & uAlike) != uHis || stRep.otg != st.nOtg || stRep.lead_reset != st.uLeadReset ||
+					     stRep.otg_duration != st.dOtgDuration || memcmp(stRep.accepted, st.adGoal, sizeof(stRep.accepted)) != 0 ||
+					     memcmp(stRep.target, st.adTarget, sizeof(stRep.target)) != 0 ||
+					     memcmp(stRep.qd_ref, stRef.adQd, sizeof(stRep.qd_ref)) != 0 ||
+					     memcmp(stRep.qdd_ref, stRef.adQdd, sizeof(stRep.qdd_ref)) != 0 ||
+					     stRep.n_accepted != (uint32_t)st.nAccepted || stRep.n_converged != (uint32_t)st.nConverged ||
+					     stRep.n_lead_resets != (uint32_t)st.nLeadResets))
+						nSampleDiff++;
 				}
 			}
 			// the two say the same of what ran
@@ -176,7 +212,7 @@ struct Bench
 		}
 		if (nServoIn > 0 && --nServoIn == 0 && bDrivesCome)
 			bServoOn = true;
-		const bool bFollowed = (stRep.in.flags & IPC_SHADOW_REF) != 0;
+		const bool bFollowed = (stRep.in.flags & IPC_SHADOW_REF) != 0 && !bFrozen;
 		for (int i = 0; i < N; i++)
 		{
 			if (bFollowed)
@@ -478,6 +514,30 @@ int main(int argc, char** argv)
 	       (b.stRep.hl_flags & CTrajectoryRT::HL_AT_REST) && std::fabs(b.stRep.accepted[0] - adGoal[0]) < 1e-12 &&
 	       std::fabs(b.stRep.tool[0] - adTool[0]) < 1e-3 && b.stRep.n_plan_late == 0,
 	       "TRACK brings the tool to the goal and stays, with the IK and the plans of its planner");
+	double adAtTarget[3], dTargetOff = 0.0;
+	cHl.ToolPosition(b.stRep.target, adAtTarget);
+	for (int k = 0; k < 3; k++)
+		dTargetOff = std::fmax(dTargetOff, std::fabs(adAtTarget[k] - adGoal[k]));
+	Expect(b.stRep.n_accepted == 1 && b.stRep.n_converged == 1 && b.stRep.n_rejected == 0 && b.stRep.n_lead_resets == 0 &&
+	       b.stRep.ik_iter >= 1 && b.stRep.ik_iter <= stP.nIterMax && b.stRep.ik_err > 0.0 && b.stRep.ik_err <= stP.dTol &&
+	       dTargetOff <= stP.dTol &&
+	       b.stRep.otg == 1 && b.stRep.otg_duration > 0.1 && b.nHlNs > 0,
+	       "the report has the goal taken once and its IK: the iterations, the error, and as the target of the plan a posture with the tool at the goal; the plan is at its end");
+	/* a goal out of reach: its IK gives up, and the motion keeps the target it had */
+	{
+		const double adOut[3] = { adP0[0] + 1.5, adP0[1], adP0[2] };
+		double adTargetBefore[N];
+		memcpy(adTargetBefore, b.stRep.target, sizeof(adTargetBefore));
+		b.Period(NULL, adOut);
+		b.Periods(300);
+		cHl.ToolPosition(b.adQ, adTool);
+		dFar = 0.0;
+		for (int k = 0; k < 3; k++)
+			dFar = std::fmax(dFar, std::fabs(adTool[k] - adGoal[k]));
+		Expect(b.Moving() && b.stRep.n_rejected == 1 && b.stRep.n_converged == 1 && dFar < 2e-3 &&
+		       memcmp(b.stRep.target, adTargetBefore, sizeof(adTargetBefore)) == 0 && (b.stRep.hl_flags & CTrajectoryRT::HL_AT_REST),
+		       "a goal out of reach is given up, counted, and the tool stays at rest where the last goal put it");
+	}
 	b.Period(NULL, adGoal2);
 	b.Periods(300);
 	Expect(b.Moving() && (b.stRep.in.flags & IPC_SHADOW_REF) && b.stRep.in.ctrl_mode == (uint32_t)C::eTrack, "a second goal: on the way");
@@ -486,6 +546,24 @@ int main(int argc, char** argv)
 	       b.Has(IPC_CTL_SERVO_ASKED) && b.stOut.nServo == 0,
 	       "the stop ends the motion in its period: gravity compensation, the servo stays on");
 	b.Periods(300);
+
+	/* --- an arm that does not follow: the lead bound restarts the reference of a joint at its measurement --- */
+	Expect(b.Command(IPC_CMD_START, HOME | IPC_START_TARGET, &stStart) == IPC_DONE_OK && b.Moving(), "a joint move");
+	b.bFrozen = true;
+	int nAtBound = 0;
+	for (int k = 0; k < 1500; k++)
+	{
+		b.Period();
+		if (b.stRep.lead_reset != 0)
+			nAtBound++;
+	}
+	Expect(b.Moving() && nAtBound > 0 && b.stRep.n_lead_resets >= 1 && b.stRep.otg == 0,
+	       "while the arm stands still the reference reaches the lead bound, and the report counts the restarts");
+	b.bFrozen = false;
+	const uint32_t uResets = b.stRep.n_lead_resets;
+	Expect(b.UntilEnd(20000) > 200 && b.stRep.traj_state == (uint32_t)CTrajectoryRT::eDoneAtRest && b.stRep.n_lead_resets <= uResets + (uint32_t)N,
+	       "... and the move ends at its target when the arm follows again");
+	Expect(b.Command(IPC_CMD_START, HOME, &stStart) == IPC_DONE_OK && b.UntilEnd(20000) > 200, "HOME to the ready posture");
 	Expect(b.Command(IPC_CMD_START, 0, &stStart) == IPC_DONE_OK && b.Moving(), "TRACK");
 	b.Period(NULL, adGoal);
 	b.Periods(100);
@@ -563,10 +641,13 @@ int main(int argc, char** argv)
 	/* --- the second controller on the reports --- */
 	printf("%ld periods, %ld goals: a second controller on the reports had the law in %ld and the reference in %ld of "
 	       "them, %ld differences; apart in %ld; %ld without a report for it; it failed in %ld (the measured angle that "
-	       "was no number)\n", b.nPeriods, b.nGoals, b.nLaw, b.nTraj, b.nDiff, b.nApart, b.nNoPayload, b.nFollowerFault);
+	       "was no number); %ld samples of a report differ from the high-level controllers\n", b.nPeriods, b.nGoals, b.nLaw,
+	       b.nTraj, b.nDiff, b.nApart, b.nNoPayload, b.nFollowerFault, b.nSampleDiff);
 	Expect(b.nLaw > 9000 && b.nTraj > 8000 && b.nDiff == 0 && b.nApart == 0 && b.nNoPayload == 0 &&
 	       b.nFollowerFault == nFaultBefore + 3,
 	       "a second controller fed with the reports gives the torque and the reference of every period, bit for bit");
+	Expect(b.nSampleDiff == 0,
+	       "the sample of every report is what the high-level controller of the second controller has, and its counts are those of its flags");
 
 	if (!strOut.empty())
 	{

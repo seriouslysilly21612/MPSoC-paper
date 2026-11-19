@@ -109,7 +109,7 @@ SOURCES := base/Config.cpp base/RtTask.cpp base/ViewStream.cpp base/MallocCount.
            Controller.cpp FullDynControllerRT.cpp HighLevelRT.cpp TrajectoryRT.cpp shadow/ShadowControl.cpp \
            shadow/ControlCycle.cpp \
            JointTestLog.cpp HighLevelLog.cpp obs/ObsLog.cpp TimingLog.cpp CalibCapture.cpp $(BRIDGE_SOURCE) \
-           Indy7Ctrl.cpp TaskEtherCAT.cpp TaskTrajectory.cpp TaskDynamics.cpp TaskPlanner.cpp main.cpp
+           Indy7Ctrl.cpp TaskEtherCAT.cpp TaskTrajectory.cpp TaskDynamics.cpp TaskControlS2.cpp TaskPlanner.cpp main.cpp
 RTPOSIX_SOURCES := posix_rt.c commons.c
 
 OBJECTS := $(addprefix $(OBJ_DIR)/,$(SOURCES:.cpp=.o)) \

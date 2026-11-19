@@ -45,12 +45,21 @@
 *	           period, for the logs and the tests of the application
 *	  Sim state, Sim torque   with an arm simulated here: its state for the
 *	           R5, and the torque the R5 computed from it (SendSimState,
-*	           TakeSimTorque)
+*	           TakeSimTorque). The R5 writes the report of a period before
+*	           that torque and no other report until the next state: who
+*	           takes the torque of its state, then the report, then writes
+*	           the next state, has the report of every period with a state
+*	The three that go to the R5 are written by one task in the order
+*	command, goal, state, and the R5 reads them in the reverse order: with a
+*	state it has every command and goal written before it, and with a goal
+*	the start of its TRACK.
 *
-*	One thread per slot: Receive, RequestCommand, SendCommand and the two of
-*	the simulated arm belong to the EtherCAT task of the application,
-*	SendTorque and the three of the control task on the R5 to the control
-*	task. Nothing here allocates, locks or waits after Start().
+*	One thread per slot: Receive, RequestCommand, SendCommand, the report and
+*	the torque of the simulated arm belong to the EtherCAT task of the
+*	application; SendTorque, SendShadow, TakeShadow, and with the control
+*	task on the R5 the command, the goal and the state of the simulated arm,
+*	to the control task. Nothing here allocates, locks or waits after
+*	Start().
 *****************************************************************************/
 #ifndef G2T_R5_LINK_H
 #define G2T_R5_LINK_H
@@ -132,11 +141,13 @@ public:
 	 * another run of this side has */
 	uint32_t SendControlCommand	(const ipc_command_t& astCommand);
 	void	SendGoal		(const double* adP);
+	/* the state of the arm simulated here, after the command and the goal of the cycle */
+	void	SendSimState	(const ipc_sim_state_t& astSim);
+	/* --- with the control task on the R5, the EtherCAT task of the application --- */
 	/* its report, one attempt. TRUE: *apReport is a report that is new since the last call */
 	BOOL	TakeReport		(ipc_report_t* apReport);
-	/* the arm simulated here (the EtherCAT task of the application): its state, and the torque for its next step,
-	 * one attempt. TRUE: *apTorque is one that is new since the last call */
-	void	SendSimState	(const ipc_sim_state_t& astSim);
+	/* the arm simulated here: the torque for its next step, one attempt. TRUE: *apTorque is one that is new since
+	 * the last call */
 	BOOL	TakeSimTorque	(ipc_sim_torque_t* apTorque);
 
 	/* after the tasks */

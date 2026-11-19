@@ -76,9 +76,13 @@ int control_link_step(uint32_t period, int bus_state, int32_t *traj_ns, int32_t 
     if (!built) return 0;
     memset(&in, 0, sizeof(in));
     in.period  = period;
-    in.command = ocm_link_take_command(&command) ? &command : NULL;
-    in.goal    = ocm_link_take_goal(&goal) ? &goal : NULL;
+    /* The state of a simulated arm, the goal, the command: the reverse of the order in which the APU writes them
+       (command, goal, state, from one task).  So a state that is here has every command and goal that the APU wrote
+       before it, and a run with a simulated arm does not depend on when the APU writes; and a goal that is here has
+       the start of its TRACK, which counts the goals that arrive from its start on. */
     sim_new = ocm_link_take_sim_state(&sim);
+    in.goal    = ocm_link_take_goal(&goal) ? &goal : NULL;
+    in.command = ocm_link_take_command(&command) ? &command : NULL;
     if (sim_new >= 0) {
         if (!sim_arm) {                              /* the arm is no longer that of the bus: its drives off, and */
             axis_control_servo(0);                   /* nothing of the controller for them */
@@ -114,6 +118,11 @@ int control_link_step(uint32_t period, int bus_state, int32_t *traj_ns, int32_t 
 
     control_ctrl_step(&in, &out, &report);
 
+    /* The report before the torque of a simulated arm: an APU that finds the torque of its state then finds the
+       report of that period, and nothing overwrites it before the APU has written its next state.  So with a
+       simulated arm a period without a new state reports nothing; what it did with a command is in the report of
+       the next period that has one. */
+    if (!in.sim_arm || in.state) ocm_link_publish_report(&report);
     if (in.sim_arm) {
         if (in.state) {
             static ipc_sim_torque_t torque;
@@ -128,9 +137,6 @@ int control_link_step(uint32_t period, int bus_state, int32_t *traj_ns, int32_t 
         held = out;
         held_fresh = 1;
     }
-    /* with a simulated arm, a period without a new state reports only a command that it took: the APU, which steps
-       that arm, then finds the report of every period that had a state, however late it looks */
-    if (!in.sim_arm || in.state || in.command != NULL) ocm_link_publish_report(&report);
 
     *traj_ns = (report.state & IPC_CTL_SAMPLE) ? (int32_t)report.traj_ns : -1;
     *ctrl_ns = (report.in.flags & IPC_SHADOW_CTRL) ? (int32_t)report.ctrl_ns : -1;

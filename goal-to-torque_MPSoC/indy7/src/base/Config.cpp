@@ -635,6 +635,15 @@ CConfig::Parse()
 			return FALSE;
 		}
 		m_stR5Link.nWakeDelayNs = (INT32)(dDelayUs * 1e3 + 0.5);
+		// --arch S2: the tasks come after the control task of the R5, whose report must be written
+		double dDelayS2Us = (double)m_stR5Link.nWakeDelayS2Ns * 1e-3;
+		cF.Double("R5_LINK", "WAKE_DELAY_S2_US", dDelayS2Us);
+		if (!(dDelayS2Us >= 1.0 && dDelayS2Us * 1e3 <= 0.9 * (double)m.nCycleTime))
+		{
+			DBG_LOG_ERROR("(CConfig) [R5_LINK] WAKE_DELAY_S2_US=%g: between 1 us and 0.9 of CYCLE_TIME", dDelayS2Us);
+			return FALSE;
+		}
+		m_stR5Link.nWakeDelayS2Ns = (INT32)(dDelayS2Us * 1e3 + 0.5);
 	}
 	cF.Int("R5_LINK", "SIM_STALE_LIMIT", m_stR5Link.nSimStaleLimit);
 	if (m_stR5Link.nSimStaleLimit < 1)

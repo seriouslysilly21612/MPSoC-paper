@@ -22,7 +22,8 @@ Usage (in the repository):
   python3 tools/hl_run_sim.py [-n N] [--tests hl-fixed,hl-jump,...] [--analyze]
   --cfg FILE, --direct: as for jt_run_sim.py
   --method M: passed to the controller (only hl-app uses the camera: the other results must not depend on it)
-  --arch A: passed to the controller (P0, S1: where the EtherCAT task runs; with S1 the R5 is simulated as well)
+  --arch A: passed to the controller (P0, S1, S2: where the EtherCAT task and the control task run; with S1 and
+            S2 the R5 is simulated as well)
 """
 import argparse
 import os
@@ -51,7 +52,7 @@ def main():
     ap.add_argument('--settle', type=float, default=0.3, help='[s] between servo on and the test')
     ap.add_argument('--analyze', action='store_true', help='run tools/hl_analyze.py on the new logs')
     ap.add_argument('--method', help='--method of the controller (M1, M2, A2, A3, FULL; default: its own, M1)')
-    ap.add_argument('--arch', help='--arch of the controller (P0, S1; default: its own, P0)')
+    ap.add_argument('--arch', help='--arch of the controller (P0, S1, S2; default: its own, P0)')
     ap.add_argument('--shadow', action='store_true', help='--shadow of the controller (with --arch S1)')
     a = ap.parse_args()
 

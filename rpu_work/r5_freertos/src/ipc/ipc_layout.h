@@ -48,7 +48,7 @@
 #endif
 
 #define IPC_MAGIC	0x31435049u		/* "IPC1" */
-#define IPC_LAYOUT	5u				/* + 1 with every change of this file */
+#define IPC_LAYOUT	6u				/* + 1 with every change of this file */
 enum { IPC_MAX_DOF = 8 };			/* MAX_DOF of TaskSlots.h */
 enum { IPC_CTRL_DOF = 6 };			/* the joints of the controller (CHighLevelRT::DOF) */
 
@@ -278,10 +278,12 @@ typedef struct
 	int32_t		ik_iter;
 	int32_t		goal_age;			/* periods since the goal changed */
 	uint32_t	n_cycle;			/* periods of the motion before this one */
+	uint32_t	n_accepted, n_converged, n_rejected, n_lead_resets;	/* CHighLevelRT::Status: so far in the motion */
 	double		ik_err;				/* [m] */
 	double		otg_duration;		/* [s] */
 	double		accepted[3];		/* the accepted goal [m] */
 	double		tool[3];			/* the tool position of the measurement [m] */
+	double		target[IPC_CTRL_DOF];	/* the target of the newest plan asked for or in use [rad] */
 	double		q_ref[IPC_CTRL_DOF], qd_ref[IPC_CTRL_DOF], qdd_ref[IPC_CTRL_DOF];
 } ipc_report_t;
 
@@ -299,7 +301,7 @@ typedef struct
 #define IPC_OFF_SIM_STATE	0x8C0u
 #define IPC_OFF_SIM_TORQUE	0x980u
 #define IPC_OFF_REPORT		0x9C0u
-#define IPC_OFF_END2		0xC80u
+#define IPC_OFF_END2		0xCC0u
 
 enum { IPC_SLOT_HEAD_WORDS = 2, IPC_WORDS_MAX = sizeof(ipc_report_t) / 4 };	/* the largest payload */
 
@@ -320,11 +322,12 @@ IPC_ASSERT(sizeof(ipc_goal_t) == 24, "ipc_goal_t");
 IPC_ASSERT(sizeof(ipc_sim_state_t) == 160 && offsetof(ipc_sim_state_t, q) == 16 && offsetof(ipc_sim_state_t, tau) == 112,
            "ipc_sim_state_t");
 IPC_ASSERT(sizeof(ipc_sim_torque_t) == 56 && offsetof(ipc_sim_torque_t, tau) == 8, "ipc_sim_torque_t");
-IPC_ASSERT(sizeof(ipc_report_t) == 696 && offsetof(ipc_report_t, state) == 336 && offsetof(ipc_report_t, cmd_done) == 368 &&
+IPC_ASSERT(sizeof(ipc_report_t) == 760 && offsetof(ipc_report_t, state) == 336 && offsetof(ipc_report_t, cmd_done) == 368 &&
            offsetof(ipc_report_t, refusal_value) == 392 && offsetof(ipc_report_t, n_no_state) == 416 &&
            offsetof(ipc_report_t, n_plans) == 432 && offsetof(ipc_report_t, hl_ns) == 460 &&
-           offsetof(ipc_report_t, ik_err) == 488 && offsetof(ipc_report_t, accepted) == 504 &&
-           offsetof(ipc_report_t, q_ref) == 552, "ipc_report_t");
+           offsetof(ipc_report_t, n_accepted) == 488 && offsetof(ipc_report_t, ik_err) == 504 &&
+           offsetof(ipc_report_t, accepted) == 520 && offsetof(ipc_report_t, target) == 568 &&
+           offsetof(ipc_report_t, q_ref) == 616, "ipc_report_t");
 IPC_ASSERT(sizeof(ipc_state_t) / 4 <= IPC_WORDS_MAX && sizeof(ipc_torque_t) / 4 <= IPC_WORDS_MAX &&
            sizeof(ipc_command_t) / 4 <= IPC_WORDS_MAX && sizeof(ipc_shadow_in_t) / 4 <= IPC_WORDS_MAX &&
            sizeof(ipc_shadow_out_t) / 4 <= IPC_WORDS_MAX && sizeof(ipc_sim_state_t) / 4 <= IPC_WORDS_MAX,

@@ -15,9 +15,10 @@
  * The arm is that of the bus (the State slot of this cycle), when the bus has the joints of the controller
  * (AXIS_COUNT == IPC_CTRL_DOF: the Indy7).  When the APU of this run writes the Sim state slot, the arm is the
  * one that the APU simulates: a period of the control task then runs on each new state of it, its torque goes back
- * in the Sim torque slot, and the drives of the bus stay off.  On the L7N bench there is no other arm.  A period
- * without a new state of that arm changes nothing and is not reported, unless it took a command: the APU steps the
- * arm from what it reads, so it reads the report of every period that had a state.
+ * in the Sim torque slot, and the drives of the bus stay off.  On the L7N bench there is no other arm.  The
+ * report of such a period is written before its torque, and a period without a new state of that arm writes
+ * none (a command that it took is answered in the next report): the APU steps the arm when it has the torque of
+ * its last state, so the report of every period that had a state is there for it until it has stepped.
  */
 #ifndef CONTROL_LINK_H
 #define CONTROL_LINK_H

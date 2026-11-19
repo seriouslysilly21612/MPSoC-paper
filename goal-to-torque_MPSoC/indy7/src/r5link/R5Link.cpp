@@ -202,8 +202,8 @@ CR5Link::Receive(RTTIME atPlannedRelease)
 		{
 			m_stCounts.nPeriodsMissed += (long)(uPeriods - 1u);
 			// the torque computed from the State taken before has that period's number; an R5 that stops
-			// takes no torque
-			if (stRead.torque_period != m_stState.period && !(stRead.flags & IPC_STATE_STOP))
+			// takes no torque, nor does one that has the control task
+			if (stRead.torque_period != m_stState.period && !(stRead.flags & (IPC_STATE_STOP | IPC_STATE_CONTROL)))
 				m_stCounts.nTorqueLate++;
 		}
 	}

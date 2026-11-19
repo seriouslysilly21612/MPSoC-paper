@@ -8,6 +8,7 @@
 #include "CallTiming.h"
 #include "ipc/FwCfg.h"
 #include "obs/ObsContract.h"
+#include "shadow/ControlCycle.h"
 #include "shadow/ModelCode.h"
 #include "shadow/ShadowControl.h"
 #include "shadow/ShadowParams.h"
@@ -65,6 +66,10 @@ CRobotIndy7::~CRobotIndy7()
 	m_pSimR5 = NULL;
 	delete m_pSimShadow;		// after the thread that ran it
 	m_pSimShadow = NULL;
+	delete m_pSimControl;
+	m_pSimControl = NULL;
+	delete m_pS2;
+	m_pS2 = NULL;
 	delete m_pShadow;
 	m_pShadow = NULL;
 	for (CR5Joint* p : m_vR5Joints)
@@ -313,11 +318,11 @@ CRobotIndy7::Init()
 	if (stSys.nViewPort > 0)
 		m_cView.Start(stSys.nViewPort, stSys.dViewRateHz, (int)stSys.nRobotAxis);
 
-	// the bus, or the simulated arm (with -b also the bus); --arch S1: the R5 has the bus
-	const BOOL bS1 = (m_nArch == arch::eS1) ? TRUE : FALSE;
-	if (FALSE == (bSim ? InitSimulation() : (bS1 ? TRUE : InitEtherCAT())))
+	// the bus, or the simulated arm (with -b also the bus); --arch S1, S2: the R5 has the bus
+	const BOOL bR5 = arch::OnR5(m_nArch) ? TRUE : FALSE;
+	if (FALSE == (bSim ? InitSimulation() : (bR5 ? TRUE : InitEtherCAT())))
 		return FALSE;
-	if (bS1 && FALSE == InitR5Link())
+	if (bR5 && FALSE == InitR5Link())
 		return FALSE;
 
 	// -t: the log takes the first period of the EtherCAT task
@@ -329,7 +334,8 @@ CRobotIndy7::Init()
 	DBG_LOG_INFO("(CRobotIndy7) %s: %s%s", m_strName.c_str(),
 	             m_bHybridBus ? "the bus of the robot (drives off) beside the simulated arm (-b)" :
 	             bSim ? "simulation (MuJoCo in place of the bus)" : "the robot on the EtherCAT bus",
-	             bS1 ? "; the EtherCAT task on the R5 (--arch S1)" : "");
+	             m_nArch == arch::eS2 ? "; the EtherCAT task and the control task on the R5 (--arch S2)" :
+	             bR5 ? "; the EtherCAT task on the R5 (--arch S1)" : "");
 	return TRUE;
 }
 
@@ -976,15 +982,36 @@ CRobotIndy7::PrintRtSummary() const
 	}
 	else
 	{
-		// --arch S1: the exchange, its send and its faults are those of the R5 (the lines of the link below)
-		printf("[RT] EtherCAT task (--arch S1: here it takes the State slot of the R5): %ld cycles of %.3f ms: t_w "
+		// --arch S1, S2: the exchange, its send and its faults are those of the R5 (the lines of the link below)
+		printf("[RT] EtherCAT task (--arch %s: here it takes the State slot of the R5): %ld cycles of %.3f ms: t_w "
 		       "(release to start) mean %.1f us, max %.1f us; t_e (start to end) mean %.1f us, max %.1f us; %ld late "
-		       "releases (more than a period late), %ld overruns\n", st.nCycles, (double)st.tPeriod * 1e-6,
-		       st.dWSum / dN * 1e-3, (double)st.tWMax * 1e-3, st.dESum / dN * 1e-3, (double)st.tEMax * 1e-3, st.nLate,
-		       st.nOverruns);
+		       "releases (more than a period late), %ld overruns\n", arch::Name(m_nArch), st.nCycles,
+		       (double)st.tPeriod * 1e-6, st.dWSum / dN * 1e-3, (double)st.tWMax * 1e-3, st.dESum / dN * 1e-3,
+		       (double)st.tEMax * 1e-3, st.nLate, st.nOverruns);
 		m_pLink->PrintSummary();
 		if (m_pShadow != NULL)
 			m_pShadow->PrintSummary();
+	}
+	// --arch S2: the control task of the R5, as its reports tell it
+	if (m_pS2 != NULL)
+	{
+		const CControlClient::Counts& c = m_pS2->GetCounts();
+		const ipc_report_t& r = m_pS2->Report();
+		printf("[S2] reports of the R5's control task: %ld taken, %ld of a period with a state of the arm; %ld of such "
+		       "a period not taken (the tasks here came late: periods that the logs miss)\n", c.nReports,
+		       c.nStateReports, c.nStateMissed);
+		printf("[S2] commands: %ld written, %ld refused by the R5, %ld dropped here (it did not answer); goals "
+		       "written: %ld, taken by the R5 so far: %u\n", c.nCommands, c.nRefused, c.nQueueFull, c.nGoals,
+		       m_pS2->HasReport() ? (unsigned)r.n_goals : 0u);
+		printf("[S2] time on the R5, in the reports taken: high-level controller mean %.1f us, max %.1f us (%ld "
+		       "periods); control law mean %.1f us, max %.1f us (%ld periods)\n",
+		       c.nTraj > 0 ? c.dTrajNsSum / (double)c.nTraj * 1e-3 : 0.0, (double)c.uTrajNsMax * 1e-3, c.nTraj,
+		       c.nLaw > 0 ? c.dLawNsSum / (double)c.nLaw * 1e-3 : 0.0, (double)c.uLawNsMax * 1e-3, c.nLaw);
+		if (m_pS2->HasReport())
+			printf("[S2] the R5 so far: %u periods without a state of the arm; its planner: %u plans, the longest %u "
+			       "us; %u IK, the longest %u us; %u plans not back in their period\n", (unsigned)r.n_no_state,
+			       (unsigned)r.n_plans, (unsigned)r.plan_max_us, (unsigned)r.n_iks, (unsigned)r.ik_max_us,
+			       (unsigned)r.n_plan_late);
 	}
 	// the two parts of the control task (t_w of the dynamics part counts from the release)
 	const task_slots::ST_TASK_TIMING* apT[2] = { &m_stTrajTiming, &m_stDynTiming };
@@ -1020,7 +1047,11 @@ CRobotIndy7::PrintRtSummary() const
 	// the controller faults (TaskDynamics.cpp): latches, and the cycles in
 	// which the law failed (zero torque)
 	const long nCtrlFaults = m_nCtrlFaults.load(std::memory_order_acquire);
-	if (nCtrlFaults > 0)
+	if (nCtrlFaults > 0 && m_pS2 != NULL)
+		printf("[RT] controller faults: %ld of the law on the R5 (first at its period %u, last at its period %u; "
+		       "non-finite state or torque: zero torque, the drives off)\n", nCtrlFaults, (unsigned)m_uCtrlFaultFirst,
+		       (unsigned)m_uCtrlFaultLast);
+	else if (nCtrlFaults > 0)
 		printf("[RT] controller faults: %ld (first at period %u, last at period %u); the law failed in %ld cycle%s "
 		       "(non-finite state or torque: zero torque, the drives off)\n", nCtrlFaults,
 		       (unsigned)m_uCtrlFaultFirst, (unsigned)m_uCtrlFaultLast, m_nCtrlFaultCycles,
@@ -1283,7 +1314,7 @@ CRobotIndy7::InitSimulation()
 			CSimJoint* p = new CSimJoint(vSl[n].strName, vSl[n].nDriveMode);
 			m_vSimJoints.push_back(p);
 			// S1 with -s: these are the drives of the simulated R5, and the joints of the arm are those of
-			// its State slot (InitR5Link)
+			// its State slot (InitR5Link). S2: the arm stays here, also with -s
 			if (m_nArch != arch::eS1 || m_bHybridBus)
 				m_vJoints.push_back(p);
 		}
@@ -1308,8 +1339,8 @@ CRobotIndy7::InitSimulation()
 	for (int i = 0; i < nDof; i++)
 		m_vSimJoints[i]->SetSimState(adQ[i], adQd[i], adTau[i]);
 
-	// -b: the bus of the robot beside the simulated arm (S1: the R5 has it)
-	if (TRUE == m_bHybridBus && m_nArch != arch::eS1 && FALSE == InitEtherCAT())
+	// -b: the bus of the robot beside the simulated arm (S1, S2: the R5 has it)
+	if (TRUE == m_bHybridBus && !arch::OnR5(m_nArch) && FALSE == InitEtherCAT())
 		return FALSE;
 	return TRUE;
 }
@@ -1332,6 +1363,8 @@ int CpuBesideTheTasks(const VEC_TASK_CONF& avTasks)
 // --arch S1: the exchange with the R5 in place of the EtherCAT master (r5link/R5Link.h). With -s the R5 is
 // simulated as well and takes the arm (sim/SimR5.h); with -b the R5 runs its bus, whose drives stay off, beside
 // the arm simulated here; otherwise it runs the bus of the robot, and the joints of the arm are its drives.
+// --arch S2: the R5 has the control task too. With -s the simulated R5 runs it (sim/SimR5Control.h) and has no
+// arm: the arm stays here, as with -b, and the R5 computes its torque from the state that this side sends.
 BOOL
 CRobotIndy7::InitR5Link()
 {
@@ -1345,10 +1378,13 @@ CRobotIndy7::InitR5Link()
 			uDrives++;
 	const uint32_t uCfgCrc = FwCfgCrc(m_pConfig->Master(), m_pConfig->BusSlaves());
 
-	// --shadow: the check value of this controller, of its constants and of the model that the URDF reader built
+	// --shadow, and S2: the check value of this controller, of its constants and of the model that the URDF
+	// reader built
+	const BOOL bS2 = (m_nArch == arch::eS2) ? TRUE : FALSE;
+	const BOOL bSimR5 = (m_pConfig->System().bSim && !m_bHybridBus) ? TRUE : FALSE;
 	double adNumbers[SHADOW_NUMBERS];
 	uint32_t uShadowCheck = 0;
-	if (m_bShadow)
+	if (m_bShadow || bS2)
 	{
 		RigidBodyDynamics::Model cModel;
 		model_code::ModelCode stCode;
@@ -1357,15 +1393,15 @@ CRobotIndy7::InitR5Link()
 		    !RigidBodyDynamics::Addons::URDFReadFromFile(pcURDF, &cModel, false, false) ||
 		    !model_code::ModelCodeOf(cModel, &stCode))
 		{
-			DBG_LOG_ERROR("--shadow: the constants and the model of the controller cannot be told (not the arm of %d joints?)",
-			              IPC_CTRL_DOF);
+			DBG_LOG_ERROR("%s: the constants and the model of the controller cannot be told (not the arm of %d joints?)",
+			              bS2 ? "--arch S2" : "--shadow", IPC_CTRL_DOF);
 			return FALSE;
 		}
 		uShadowCheck = ShadowCheckValue(ShadowNumbersCrc(adNumbers), stCode.uCrc);
 	}
 
 	m_pLink = new CR5Link();
-	if (m_pConfig->System().bSim && !m_bHybridBus)
+	if (bSimR5)
 	{
 		CSimR5::Spec stSpec;
 		stSpec.tPeriod = tPeriod;
@@ -1382,21 +1418,42 @@ CRobotIndy7::InitR5Link()
 				return FALSE;
 			m_pSimR5->SetShadow(m_pSimShadow);
 		}
-		if (FALSE == m_pSimR5->Start(stSpec, m_pSim, m_vSimJoints))
+		if (bS2)
+		{
+			// the simulated R5 has the control task that the firmware has, built from the same numbers; its bus has
+			// the drives of the configuration, which are not the arm for it
+			m_pSimControl = new CControlCycle();
+			if (FALSE == m_pSimControl->Init(m_pConfig->System().strURDFPath.c_str(), adNumbers, uShadowCheck))
+				return FALSE;
+			m_pSimR5->SetControl(m_pSimControl);
+			stSpec.uDrives = (unsigned)uDrives;
+		}
+		if (FALSE == m_pSimR5->Start(stSpec, bS2 ? NULL : m_pSim, bS2 ? std::vector<CSimJoint*>() : m_vSimJoints))
 			return FALSE;
 		m_pLink->UseRegion(m_pSimR5->Region(), "the simulated R5");
 	}
 	else if (FALSE == m_pLink->OpenDevice())
 		return FALSE;
-	if (FALSE == m_pLink->Start(uDrives, uCfgCrc, tPeriod, (RTTIME)stLink.nWakeDelayNs))
+	if (FALSE == m_pLink->Start(uDrives, uCfgCrc, tPeriod, (RTTIME)(bS2 ? stLink.nWakeDelayS2Ns : stLink.nWakeDelayNs)))
 		return FALSE;
+	if (bS2)
+	{
+		const double adNone[3] = { 0.0, 0.0, 0.0 };
+		m_uS2Check = uShadowCheck;
+		m_pS2 = new CControlClient();
+		m_pS2->Init(m_pLink, (double)vTasks[1].nPeriod * 1e-9);
+		m_pS2->UseGoalSlot(&m_goalSlot, adNone);
+		printf("[S2] the control task runs on the R5: commands and goals go there, its report comes back; check value "
+		       "of the controller of this configuration 0x%08X\n", (unsigned)uShadowCheck);
+	}
 	if (m_bShadow)
 	{
 		m_pShadow = new CShadowTask(m_pLink, uShadowCheck);
 		printf("[SHADOW] the control task tells the R5 every period; check value of this controller 0x%08X (its "
 		       "constants 0x%08X)\n", (unsigned)uShadowCheck, (unsigned)ShadowNumbersCrc(adNumbers));
 	}
-	if (!m_bHybridBus)
+	// the joints of the arm are the drives on the bus of the R5, unless the arm is simulated here (-b; S2 also -s)
+	if (!m_bHybridBus && !(bS2 && bSimR5))
 	{
 		const VEC_ECAT_SLAVE_CONF& vSl = m_pConfig->Slaves();
 		for (size_t n = 0; n < vSl.size(); n++)
@@ -1407,9 +1464,10 @@ CRobotIndy7::InitR5Link()
 				m_vJoints.push_back(p);
 			}
 	}
-	else
-		DBG_LOG_INFO("(CRobotIndy7) -b with --arch S1: the R5 runs the bus of %s (%u joint drives); they stay off",
-		             m_pConfig->BusPath().empty() ? "the robot" : m_pConfig->BusPath().c_str(), (unsigned)uDrives);
+	else if (m_bHybridBus)
+		DBG_LOG_INFO("(CRobotIndy7) -b with --arch %s: the R5 runs the bus of %s (%u joint drives); they stay off",
+		             arch::Name(m_nArch), m_pConfig->BusPath().empty() ? "the robot" : m_pConfig->BusPath().c_str(),
+		             (unsigned)uDrives);
 	// the two periodic tasks follow the period of the R5 from their first release on
 	CRtTask::FollowGrid();
 	return TRUE;
@@ -1545,6 +1603,13 @@ CRobotIndy7::DoInput()
 				printf("[ARM] refused - press 'r' (controller) then 'g' (grav-comp) first\n");
 				break;
 			}
+			// --arch S2: the controller that would hold the arm is the R5's, with the constants of its firmware
+			if (m_pS2 != NULL && !m_bS2SameController)
+			{
+				printf("[ARM] refused - the controller of the R5 is not the one of this configuration (its check "
+				       "value 0x%08X, here 0x%08X)\n", (unsigned)m_pS2->Report().ctrl_crc, (unsigned)m_uS2Check);
+				break;
+			}
 			DBG_LOG_WARN(">>> SERVO ON (all joints, CST) - brakes release, grav-comp holds");
 			m_nServoCmd.store(eServoCmdOn, std::memory_order_release);
 			break;
@@ -1582,6 +1647,8 @@ CRobotIndy7::DoInput()
 		case 'R':
 			DBG_LOG_INFO(">>> controller: %s", m_bRTControllerEnabled ? "DISABLED" : "ENABLED");
 			EnableController(!m_bRTControllerEnabled);   // off: clears a controller fault
+			if (m_pS2 != NULL)                           // the controller is the R5's
+				QueueControl(m_bRTControllerEnabled ? IPC_CMD_CTRL_ON : IPC_CMD_CTRL_OFF);
 			break;
 		// fault injection (cfg SIM_FAULT_*, simulation only, refused at Init
 		// elsewhere): the next cycle of the law, or every one until 'r'
@@ -1624,6 +1691,12 @@ CRobotIndy7::DoInput()
 				printf("[FAULT] refused - the controller is off ('r')\n");
 				break;
 			}
+			if (m_pS2 != NULL && m_nSimFaultWhat != 1)
+			{
+				printf("[FAULT] not with --arch S2: the torque of the law is on the R5 (SIM_FAULT_WHAT=state, dropout "
+				       "and estop are)\n");
+				break;
+			}
 			if (m_nSimFaultWhat == 1)
 				m_nStateInject = m_bSimFaultPersist ? 2 : 1;
 			else
@@ -1657,6 +1730,12 @@ CRobotIndy7::DoInput()
 		// the keyboard task handles 'q', 'm', 't' and '?' itself
 		case 's':
 		case 'S':
+			if (m_pS2 != NULL)
+			{
+				// the pose is that of the law's last update, and the law here does not run
+				printf("[TCP Pose] not with --arch S2: the control law is on the R5 (P0 or S1 for the hand-eye capture)\n");
+				break;
+			}
 			m_pController->GetCurrentPose(m_Pose);
 			// armed ('w'): the only two writers of the dataset
 			if (m_bCalibMode)
@@ -1682,6 +1761,8 @@ CRobotIndy7::DoInput()
 				m_pController->m_bStickyEnable = bEn;
 				DBG_LOG_INFO("[HOLD] grav-comp hold %s (dead-band %.0f mrad)", bEn ? "ON" : "OFF - pure float",
 				             CControllerFullDynamicsRT::HOLD_DB_RAD * 1e3);
+				if (m_pS2 != NULL)
+					QueueControl(bEn ? IPC_CMD_HOLD_ON : IPC_CMD_HOLD_OFF);
 			}
 			break;
 		// the object menu of the camera application (paper, Sec. V-C): the
@@ -1699,6 +1780,11 @@ CRobotIndy7::DoInput()
 		// JOINT TEST menu (paper, Sec. IV-A and V-A)
 		case 'u':
 		case 'U':
+			if (m_pS2 != NULL)
+			{
+				printf("[JT] not with --arch S2: the JOINT TEST is a mode of the law, which is on the R5 (P0 or S1)\n");
+				break;
+			}
 			printf("[JT] JOINT TEST - press 1-%d, any other key closes:\n"
 			       "     1 fast, PD + g   2 fast, CTC   3 slow, CTC   4 slow, CTC + FF\n"
 			       "     5 torque step (delay test)   6 breakaway (tau_s, sign test)   7 sine (rotor inertia)\n"

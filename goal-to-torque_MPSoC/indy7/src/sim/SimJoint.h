@@ -28,7 +28,7 @@ public:
 	enum eEstopReport { eReportSod = 0, eReportReady = 1, eReportFault = 2 };
 
 	CSimJoint(const TSTRING& astrName, int anDriveMode)
-		: m_bServoOn(FALSE), m_bRequest(FALSE), m_bPowerCut(FALSE), m_bFault(FALSE), m_nReport(eReportSod),
+		: m_bServoOn(FALSE), m_bRequest(FALSE), m_bDropped(FALSE), m_bPowerCut(FALSE), m_bFault(FALSE), m_nReport(eReportSod),
 		  m_dCmdTorque(0.0), m_nDriveMode(anDriveMode), m_dPos(0.0), m_dVel(0.0), m_dTor(0.0)
 	{
 		m_strName = astrName;
@@ -61,12 +61,13 @@ public:
 	double	GetCommandTorque	(	) const { return m_bServoOn ? m_dCmdTorque : 0.0; }
 	BOOL	IsBrakeReleased		(	) const { return m_bServoOn; }
 	void	SetSimState			(double adPos, double adVel, double adTor) { m_dPos = adPos; m_dVel = adVel; m_dTor = adTor; }
-	void	SimDropout			(	) { m_bServoOn = FALSE; }
+	void	SimDropout			(	) { m_bServoOn = FALSE; m_bDropped = TRUE; }
 	void	SetPowerCut			(BOOL abCut, int anReport);
 
 private:
 	BOOL	m_bServoOn;			// Operation enabled
 	BOOL	m_bRequest;			// servo on requested (ServoOn .. ServoOff)
+	BOOL	m_bDropped;			// left Operation enabled by itself (SimDropout .. ServoOff)
 	BOOL	m_bPowerCut;
 	BOOL	m_bFault;
 	int		m_nReport;

@@ -47,17 +47,19 @@ uint32_t ctrl_port_lines_held(void) { return 2u; }
 
 /* ---- the slots ---- */
 static int have_command, have_goal, sim_result = -1, sim_torques, reports;
+static int writes, report_at, sim_torque_at;        /* the order in which the two slots were written */
 static ipc_command_t    command;
 static ipc_goal_t       goal;
 static ipc_sim_state_t  sim;
 static ipc_sim_torque_t sim_torque;
 static ipc_report_t     published;
 static ipc_state_t      bus;
-int  ocm_link_take_command(ipc_command_t *c) { if (!have_command) return 0; have_command = 0; *c = command; return 1; }
-int  ocm_link_take_goal(ipc_goal_t *g) { if (!have_goal) return 0; have_goal = 0; *g = goal; return 1; }
-int  ocm_link_take_sim_state(ipc_sim_state_t *s) { if (sim_result == 1) *s = sim; return sim_result; }
-void ocm_link_publish_sim_torque(const ipc_sim_torque_t *t) { sim_torques++; sim_torque = *t; }
-void ocm_link_publish_report(const ipc_report_t *r) { reports++; published = *r; }
+static int reads, command_read_at, goal_read_at, sim_read_at;   /* the order in which the three slots were read */
+int  ocm_link_take_command(ipc_command_t *c) { command_read_at = ++reads; if (!have_command) return 0; have_command = 0; *c = command; return 1; }
+int  ocm_link_take_goal(ipc_goal_t *g) { goal_read_at = ++reads; if (!have_goal) return 0; have_goal = 0; *g = goal; return 1; }
+int  ocm_link_take_sim_state(ipc_sim_state_t *s) { sim_read_at = ++reads; if (sim_result == 1) *s = sim; return sim_result; }
+void ocm_link_publish_sim_torque(const ipc_sim_torque_t *t) { sim_torques++; sim_torque = *t; sim_torque_at = ++writes; }
+void ocm_link_publish_report(const ipc_report_t *r) { reports++; published = *r; report_at = ++writes; }
 const ipc_state_t *ocm_link_state(void) { return &bus; }
 
 /* ---- the axes ---- */
@@ -110,6 +112,10 @@ int main(void)
     CHECK(sim_torques == 1 && sim_torque.step == 41 && sim_torque.flags == (IPC_SIM_TORQUE_USABLE | IPC_SIM_SERVO_ASKED) &&
           sim_torque.tau[0] == 10.0 && sim_torque.tau[5] == 15.0);
     CHECK(reports == 1 && published.in.period == 100 && published.state == report.state);
+    CHECK(report_at == 1 && sim_torque_at == 2);    /* the report first: whoever finds this torque finds its report */
+    /* read in the reverse of the APU's order of writing: with a state every command and goal before it, with a goal
+       the start of its TRACK */
+    CHECK(sim_read_at == 1 && goal_read_at == 2 && command_read_at == 3);
     /* ... and the drives of the bus stay off: no torque for them, nothing asked but off, once */
     control_link_drives();
     CHECK(inputs == 2 && input_usable == 0 && input_tau[0] == 0.0 && servo_calls == 1 && servo_last == 0);
@@ -123,12 +129,12 @@ int main(void)
     CHECK(reports == 1);                    /* nothing to report: the report of the period with a state stays to be read */
     command.seq = 20; command.cmd = IPC_CMD_HOLD_ON; have_command = 1;
     CHECK(control_link_step(101, 1, &traj_ns, &ctrl_ns) == 1 && stepped.state == 0 && had_command && sim_torques == 1);
-    CHECK(reports == 2 && published.in.period == 101);         /* ... but for a command that the period took */
+    CHECK(reports == 1);                    /* nor with a command that the period took: the next report answers it */
     /* a torque that is not usable and no request: said so */
     sim_result = 1; sim.step = 42;
     report.state = IPC_CTL_STATE | IPC_CTL_SIM_ARM;
     CHECK(control_link_step(102, 1, &traj_ns, &ctrl_ns) == 1 && sim_torques == 2 && sim_torque.step == 42 && sim_torque.flags == 0u);
-    CHECK(reports == 3);
+    CHECK(reports == 2 && published.in.period == 102 && report_at < sim_torque_at);
     control_link_drives();
     CHECK(servo_calls == 1 && input_usable == 0);
 
@@ -158,7 +164,7 @@ int main(void)
     control_link_drives();                  /* a cycle without a step between (the firmware stopping) */
     CHECK(servo_calls == 2 && input_fresh == 0 && input_usable == 1 && input_tau[5] == 15.0);
     CHECK(control_link_step(104, 0, &traj_ns, &ctrl_ns) == 1 && stepped.state == 0);      /* the frame did not come back */
-    CHECK(reports == 5);                    /* ... and the period reports all the same: no simulated arm waits for a report */
+    CHECK(reports == 4);                    /* ... and the period reports all the same: no simulated arm waits for a report */
     answer.servo = IPC_CMD_SERVO_OFF; answer.torque = 0;
     CHECK(control_link_step(105, 1, &traj_ns, &ctrl_ns) == 1 && stepped.state == 1);
     control_link_drives();

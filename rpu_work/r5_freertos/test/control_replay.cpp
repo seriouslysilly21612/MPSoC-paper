@@ -159,7 +159,9 @@ static void step(void)
             r.traj_state != m.traj_state || r.motion != m.motion || r.clamp != m.clamp || r.sim_step != m.sim_step ||
             r.n_plans != m.n_plans || r.n_iks != m.n_iks || r.n_plan_late != m.n_plan_late || r.hl_flags != m.hl_flags ||
             r.otg != m.otg || r.lead_reset != m.lead_reset || r.ik_iter != m.ik_iter || r.goal_age != m.goal_age ||
-            r.n_cycle != m.n_cycle || (r.traj_ns != 0) != (m.traj_ns != 0) || (r.ctrl_ns != 0) != (m.ctrl_ns != 0))
+            r.n_cycle != m.n_cycle || r.n_accepted != m.n_accepted || r.n_converged != m.n_converged ||
+            r.n_rejected != m.n_rejected || r.n_lead_resets != m.n_lead_resets ||
+            (r.traj_ns != 0) != (m.traj_ns != 0) || (r.ctrl_ns != 0) != (m.ctrl_ns != 0))
             tally.report_differs++;
         numbers(r.in.q, m.in.q, IPC_CTRL_DOF, v.period);
         numbers(r.in.qd, m.in.qd, IPC_CTRL_DOF, v.period);
@@ -176,6 +178,7 @@ static void step(void)
         number(r.otg_duration, m.otg_duration, v.period);
         numbers(r.accepted, m.accepted, 3, v.period);
         numbers(r.tool, m.tool, 3, v.period);
+        numbers(r.target, m.target, IPC_CTRL_DOF, v.period);
         numbers(r.q_ref, m.q_ref, IPC_CTRL_DOF, v.period);
         numbers(r.qd_ref, m.qd_ref, IPC_CTRL_DOF, v.period);
         numbers(r.qdd_ref, m.qdd_ref, IPC_CTRL_DOF, v.period);

@@ -13,8 +13,9 @@
 *	           new, and the state of the arm that the APU simulates when it
 *	           is new (Sim state slot); one period of the control task
 *	           (shadow/ControlCycle.h, the class the firmware has); its
-*	           torque back with the number of that state (Sim torque slot)
-*	           and its report; then its planner, which the planner task of
+*	           report, then its torque back with the number of that state
+*	           (Sim torque slot); a period without a new state of that arm
+*	           reports nothing; then its planner, which the planner task of
 *	           the firmware runs until the next period
 *
 *	The control task is the firmware's; what is modelled here is the cycle
@@ -58,9 +59,11 @@ public:
 		stIn.uPeriod = auPeriod;
 		ipc_command_t stCommand;
 		ipc_goal_t stGoal;
-		stIn.pCommand = m_cSlots.TakeCommand(&stCommand) ? &stCommand : NULL;
-		stIn.pGoal = m_cSlots.TakeGoal(&stGoal) ? stGoal.p : NULL;
+		// the state, the goal, the command, as the firmware reads them (control_link.c): the reverse of the order
+		// in which the APU writes them
 		const int nSim = m_cSlots.TakeSimState(&m_stSim);
+		stIn.pGoal = m_cSlots.TakeGoal(&stGoal) ? stGoal.p : NULL;
+		stIn.pCommand = m_cSlots.TakeCommand(&stCommand) ? &stCommand : NULL;
 		if (nSim >= 0)
 		{
 			stIn.bSimArm = true;
@@ -77,6 +80,9 @@ public:
 		}
 		CControlCycle::Output stOut;
 		m_pControl->Step(stIn, &stOut, &m_stReport);
+		// the report before the torque, and none without a new state of the simulated arm (control_link.c)
+		if (!stIn.bSimArm || stIn.bState)
+			m_cSlots.PublishReport(m_stReport);
 		if (stIn.bState)				// of the simulated arm: this R5 has no other
 		{
 			ipc_sim_torque_t stTorque;
@@ -89,9 +95,6 @@ public:
 		}
 		else
 			m_nNoState++;
-		// a period without a new state of the simulated arm reports only a command that it took (control_link.c)
-		if (!stIn.bSimArm || stIn.bState || stIn.pCommand != NULL)
-			m_cSlots.PublishReport(m_stReport);
 		while (m_pControl->ServePlanner())
 			;
 	}
