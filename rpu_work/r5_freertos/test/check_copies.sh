@@ -30,7 +30,7 @@ for f in ipc/ipc_layout.h ipc/ipc_slot.h obs/obs_mailbox.h; do
     same "$f" "$f"
 done
 for f in Controller.h Controller.cpp FullDynControllerRT.h FullDynControllerRT.cpp HighLevelRT.h HighLevelRT.cpp \
-         shadow/ShadowControl.h shadow/ShadowControl.cpp; do
+         HighLevelLink.h shadow/ShadowControl.h shadow/ShadowControl.cpp; do
     same "$f" "ctrl/$(basename "$f")"
 done
 if [ ! -x "$APP/bin/fw_cfg_header" ]; then

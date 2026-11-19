@@ -33,8 +33,8 @@ public:
 	struct Stats
 	{
 		uint32_t	uPlans, uIks;
-		double		dPlanMaxUs;		// the longest calculation of a plan
-		double		dIkMaxUs;		// the longest IK, from its request to its result
+		double		dPlanUs, dPlanMaxUs;	// the calculation of a plan: the last, the longest
+		double		dIkUs, dIkMaxUs;		// an IK from its request to its result: the last, the longest
 	};
 
 	CHlLinkN() : m_uIkSent(0), m_uPlanSent(0), m_uIkGot(0), m_uPlanGot(0), m_stIkIn(), m_stPlanIn(),
@@ -42,14 +42,19 @@ public:
 	             m_tIkBegin(0) { }
 
 	/* --- the task of the 1 ms part --- */
-	/* before Update(): the results that came since the last call */
-	void Before(HL& acHl)
+	/* before Update(): the results that came since the last call. With apIk the result of an IK goes there and
+	 * not to the high-level controller (the second controller of --shadow has the IK of a goal from the
+	 * controller it follows, and compares what its own planner found with it) */
+	void Before(HL& acHl, typename HL::IkResult* apIk = NULL)
 	{
 		uint32_t uCount = 0;
 		if (m_cIkRes.Count() != m_uIkGot && m_cIkRes.Read(m_stIkIn, &uCount))
 		{
 			m_uIkGot = uCount;
-			acHl.TakeIk(m_stIkIn);
+			if (apIk == NULL)
+				acHl.TakeIk(m_stIkIn);
+			else
+				*apIk = m_stIkIn;
 		}
 		if (m_cPlanRes.Count() != m_uPlanGot && m_cPlanRes.Read(m_stPlanIn, &uCount))
 		{
@@ -83,6 +88,7 @@ public:
 			acPlanner.Plan(m_stPlanReq, &m_stPlanOut);
 			m_cPlanRes.Write(m_stPlanOut);
 			m_stStats.uPlans++;
+			m_stStats.dPlanUs = m_stPlanOut.dCalcUs;
 			if (m_stPlanOut.dCalcUs > m_stStats.dPlanMaxUs)
 				m_stStats.dPlanMaxUs = m_stPlanOut.dCalcUs;
 			m_cStats.Write(m_stStats);
@@ -101,6 +107,7 @@ public:
 			m_cIkRes.Write(m_stIkOut);
 			const double dUs = (double)(read_timer() - m_tIkBegin) * 1e-3;
 			m_stStats.uIks++;
+			m_stStats.dIkUs = dUs;
 			if (dUs > m_stStats.dIkMaxUs)
 				m_stStats.dIkMaxUs = dUs;
 			m_cStats.Write(m_stStats);
@@ -109,7 +116,8 @@ public:
 	}
 
 	/* --- any task --- */
-	/* false: the planner has done nothing yet */
+	/* false, and astStats as it was: the planner has done nothing yet, or its task is in the middle of writing them
+	 * and cannot go on while the caller runs (the two on one core, as on the R5) */
 	bool GetStats(Stats& astStats) const { return m_cStats.Read(astStats); }
 
 private:

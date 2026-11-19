@@ -389,6 +389,15 @@ takes that IK in the same period, so the two do not depend on how long each plan
 its own, and a plan that comes into use in one of the two only (a planner was late) leaves them apart until the
 next start.
 
+Layout 4 (2026-11-19): the planner of the second controller has a task of its own on the R5, and an answer has
+what it did so far (plans, the goals it solved beside the APU's planner, the time of the last of each, plans not
+back in their period). Its solution of a goal is not used, so the second controller compares it with the IK that
+came from the APU, once per goal and while it follows, and an answer has the largest difference of the last goal
+compared. The run ends with two more lines, counted from the first answer of the run:
+
+    [SHADOW] the planner of the R5: <n> plans, the longest <t> us from start to end; <n> IK, the longest <t> us from its request to its result; <n> plans not back in their period (asked for again)
+    [SHADOW] the IK of the R5's planner against this one's: <n> goals compared, <n> differ by more than 1e-09 rad, largest difference <d> rad
+
 ## The paper and the code
 
 | Paper | Code | Reproduction |

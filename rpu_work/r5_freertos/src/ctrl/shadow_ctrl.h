@@ -27,6 +27,12 @@ uint32_t shadow_ctrl_check_value(void);
  * memory is taken.  Should a class throw, the answer is a fault (IPC_SHADOW_OUT_FAULT) and the cycle goes on. */
 void     shadow_ctrl_step(const ipc_shadow_in_t *in, ipc_shadow_out_t *out);
 
+/* The planner of the controller: one piece of what its high-level controller asked for, a plan or one iteration of
+ * the inverse kinematics of a goal (HighLevelLink.h).  From one task only, another than that of
+ * shadow_ctrl_step() (planner_task.c), at any time: 0 while the controller is not built.  1 = it did something,
+ * call again; 0 = nothing is asked for.  No memory is taken. */
+int      shadow_ctrl_serve(void);
+
 #ifdef __cplusplus
 }
 #endif

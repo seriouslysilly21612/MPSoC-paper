@@ -37,7 +37,7 @@
 #endif
 
 #define IPC_MAGIC	0x31435049u		/* "IPC1" */
-#define IPC_LAYOUT	3u				/* + 1 with every change of this file */
+#define IPC_LAYOUT	4u				/* + 1 with every change of this file */
 enum { IPC_MAX_DOF = 8 };			/* MAX_DOF of TaskSlots.h */
 enum { IPC_CTRL_DOF = 6 };			/* the joints of the controller (CHighLevelRT::DOF) */
 
@@ -147,9 +147,16 @@ typedef struct
 	uint32_t	n_missed;			/* periods of the control task whose payload the R5 did not get, so far */
 	uint32_t	traj_ns;			/* time of the high-level controller in this period */
 	uint32_t	ctrl_ns;			/* time of the control law in this period */
+	uint32_t	n_plans;			/* the planner of this controller, so far: the plans it calculated ... */
+	uint32_t	plan_us;			/* ... the last of them in this time, from start to end [us] */
+	uint32_t	n_iks;				/* ... the IK it ran to their end ... */
+	uint32_t	ik_us;				/* ... the last of them in this time, from its request to its result [us] */
+	uint32_t	n_plan_late;		/* plans of this controller that were not back in their period, so far */
+	uint32_t	n_ik_compared;		/* goals whose IK of this planner was compared with the APU's (ik_q), so far */
 	double		q_ref[IPC_CTRL_DOF];	/* the reference of the R5's high-level controller */
 	double		tau[IPC_CTRL_DOF];	/* the torque of the R5's control law [N m] */
 	double		tau_diff;			/* largest |tau - tau of the APU| over the joints [N m] */
+	double		ik_diff;			/* the last goal compared: largest |solution - that of the APU| over the joints [rad] */
 } ipc_shadow_out_t;
 
 /* the region: 64 bytes per writer at least, so no cache line has two writers but that of the head */
@@ -172,8 +179,9 @@ IPC_ASSERT(sizeof(ipc_command_t) == 8, "ipc_command_t");
 IPC_ASSERT(sizeof(ipc_shadow_in_t) == 336 && offsetof(ipc_shadow_in_t, q) == 16 && offsetof(ipc_shadow_in_t, goal) == 112 &&
            offsetof(ipc_shadow_in_t, start_target) == 192 && offsetof(ipc_shadow_in_t, tau) == 240 &&
            offsetof(ipc_shadow_in_t, ik_q) == 288, "ipc_shadow_in_t");
-IPC_ASSERT(sizeof(ipc_shadow_out_t) == 128 && offsetof(ipc_shadow_out_t, q_ref) == 24 &&
-           offsetof(ipc_shadow_out_t, tau_diff) == 120, "ipc_shadow_out_t");
+IPC_ASSERT(sizeof(ipc_shadow_out_t) == 160 && offsetof(ipc_shadow_out_t, n_plans) == 24 &&
+           offsetof(ipc_shadow_out_t, q_ref) == 48 && offsetof(ipc_shadow_out_t, tau_diff) == 144 &&
+           offsetof(ipc_shadow_out_t, ik_diff) == 152, "ipc_shadow_out_t");
 IPC_ASSERT(sizeof(ipc_state_t) / 4 <= IPC_WORDS_MAX && sizeof(ipc_torque_t) / 4 <= IPC_WORDS_MAX &&
            sizeof(ipc_command_t) / 4 <= IPC_WORDS_MAX && sizeof(ipc_shadow_out_t) / 4 <= IPC_WORDS_MAX, "IPC_WORDS_MAX");
 IPC_ASSERT(IPC_OFF_HEAD + sizeof(ipc_head_t) <= IPC_OFF_STATE &&

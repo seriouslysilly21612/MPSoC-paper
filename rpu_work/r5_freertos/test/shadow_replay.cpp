@@ -12,13 +12,16 @@
  *
  * The numbers of the firmware (src/ctrl/ctrl_numbers_indy7.h) must be those the file was written with.  Every
  * answer must have the flags of the file and the check value of the firmware; in the periods followed, the torque
- * and the reference must be within LIMIT of the file's.  On a PC with the application's compiler the difference is 0; the R5 has no fused
- * multiply-add and another library, so there it is small and not 0.  No period may allocate memory: the 1 kHz
- * loop of the firmware must not (the build puts counting wrappers in front of malloc, calloc and realloc:
+ * and the reference must be within LIMIT of the file's, and so must the IK of every goal that the planner of
+ * this controller solved as the file's did (ik_diff of the answer).  After every period the planner is served as
+ * the planner task of the firmware serves it, unless the file says that it had no time then.  On a PC with the
+ * application's compiler the difference is 0; the R5 has no fused multiply-add and another library, so there it
+ * is small and not 0.  Neither a period nor the planner may allocate memory: the firmware must not after its
+ * start (the build puts counting wrappers in front of malloc, calloc and realloc:
  * -Wl,--wrap=malloc,--wrap=calloc,--wrap=realloc).  Exit 0 if no check failed.
  *
- * mark() is called before and after every period: a trace of the instructions executed (qemu-arm -d exec) is
- * counted between the two (test/count_periods.py).
+ * mark() is called before and after the step of every period: a trace of the instructions executed (qemu-arm
+ * -d exec) is counted between the two (test/count_periods.py).  The planner's work is not in that count.
  */
 #include <cmath>
 #include <cstdarg>
@@ -93,15 +96,20 @@ int main(int argc, char **argv)
                "(bin/ctrl_numbers_header of the application), or the file\n", argv[1]);
         return 1;
     }
+    if (shadow_ctrl_serve() != 0)       // the planner task may run before the controller is built
+    {
+        printf("FAIL: the planner has work before the controller is built\n");
+        return 1;
+    }
     if (!shadow_ctrl_build())
     {
         fprintf(stderr, "the controller cannot be built\n");
         return 2;
     }
 
-    long flags_differ = 0, law = 0, traj = 0, over = 0;
-    double tau_max = 0.0, ref_max = 0.0;
-    uint32_t tau_at = 0, ref_at = 0;
+    long flags_differ = 0, law = 0, traj = 0, goals = 0, over = 0;
+    double tau_max = 0.0, ref_max = 0.0, ik_max = 0.0;
+    uint32_t tau_at = 0, ref_at = 0, ik_compared = 0;
     const long allocations_before = allocations;
     for (uint32_t k = 0; k < periods; k++)
     {
@@ -110,8 +118,20 @@ int main(int argc, char **argv)
         mark();
         shadow_ctrl_step(&v.in, &out);
         mark();
+        while (!v.planner_stalled && shadow_ctrl_serve())   // the planner task of the firmware, here: back for the
+        {                                                   // next period, unless the file says it had no time
+        }
         if (out.flags != v.out_flags || out.ctrl_crc != shadow_ctrl_check_value())
             flags_differ++;
+        if (out.n_ik_compared != ik_compared)       // a goal that its planner solved as well: against the file's IK
+        {
+            ik_compared = out.n_ik_compared;
+            goals++;
+            if (!(out.ik_diff <= limit))
+                over++;
+            if (!(out.ik_diff <= ik_max))
+                ik_max = out.ik_diff;
+        }
         if (out.flags & IPC_SHADOW_OUT_APART)
             continue;
         if (out.flags & IPC_SHADOW_OUT_CTRL)
@@ -143,11 +163,12 @@ int main(int argc, char **argv)
     }
     const long allocated = allocations - allocations_before;
     printf("%u periods: %ld with other flags than the file; the law followed in %ld, largest torque difference %.3g N m "
-           "(period %u); the reference in %ld, largest difference %.3g rad (period %u); %ld above the limit %.3g; "
-           "%ld allocations (%ld while the controller was built)\n",
-           (unsigned)periods, flags_differ, law, tau_max, (unsigned)tau_at, traj, ref_max, (unsigned)ref_at, over, limit,
-           allocated, allocations_before);
-    const bool pass = flags_differ == 0 && over == 0 && law > 0 && traj > 0 && allocated == 0 && allocations_before > 0;
+           "(period %u); the reference in %ld, largest difference %.3g rad (period %u); the IK of %ld goals, largest "
+           "difference %.3g rad; %ld above the limit %.3g; %ld allocations (%ld while the controller was built)\n",
+           (unsigned)periods, flags_differ, law, tau_max, (unsigned)tau_at, traj, ref_max, (unsigned)ref_at, goals, ik_max,
+           over, limit, allocated, allocations_before);
+    const bool pass = flags_differ == 0 && over == 0 && law > 0 && traj > 0 && goals > 0 && allocated == 0 &&
+                      allocations_before > 0;
     printf("%s\n", pass ? "PASS" : "FAIL");
     return pass ? 0 : 1;
 }

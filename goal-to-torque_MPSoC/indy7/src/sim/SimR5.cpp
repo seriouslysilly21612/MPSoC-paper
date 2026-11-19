@@ -201,6 +201,8 @@ CSimR5::Cycle(uint64_t auReleaseTicks, uint32_t auPeriod)
 		ipc_shadow_out_t stOut;
 		m_pShadow->Step(stIn, &stOut);
 		m_cSlots.PublishShadow(stOut);
+		while (m_pShadow->ServePlanner())		// the planner task of the firmware, here: back for the next period
+			;
 	}
 }
 
