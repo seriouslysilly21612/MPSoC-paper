@@ -30,6 +30,10 @@
  * the torque and the reference of every period and is never apart (the reports say what was done, whenever the
  * planner's results came); the commands end as in the file; the counts of the report never go back and end at the
  * file's; no plan is late; no memory is taken.
+ *
+ * With and without that step: the planner is served to its end before a period, so the high-level controller waits
+ * for an IK in a period only if it asked for it in that period (or the period is the step in the middle of the
+ * planner's work).  An IK that stays asked for is one whose request or whose result was lost between the two.
  */
 #include <cmath>
 #include <cstdarg>
@@ -38,6 +42,7 @@
 #include <cstring>
 
 #include "ShadowControl.h"
+#include "TrajectoryRT.h"
 #include "control_ctrl.h"
 #include "ctrl_numbers_indy7.h"
 #include "shadow_ctrl.h"
@@ -81,7 +86,7 @@ void *__wrap_realloc(void *block, size_t bytes) { allocations++; return __real_r
 struct tally_t
 {
     long report_differs, results_differ, over, back, law, traj, follower_differs, apart, follower_failed, interruptions,
-         allocated;
+         allocated, ik_owed;
     double largest;                 /* difference of a number to the file's */
     uint32_t largest_at;
 };
@@ -92,6 +97,7 @@ static double limit;
 static bool with_file;                      /* the torque and the report must be the file's (not with a step in the middle) */
 static tally_t tally;
 static ipc_report_t last;                   /* the report of the period before */
+static bool in_the_middle;                  /* this step runs in the middle of the planner's work (SLOT_PREEMPT_TEST) */
 
 /* two numbers: within the limit, or both no number */
 static void number(double is, double must, uint32_t period)
@@ -150,6 +156,10 @@ static void step(void)
     if (r.n_plans < last.n_plans || r.n_iks < last.n_iks || r.n_plan_late < last.n_plan_late || r.n_goals < last.n_goals ||
         r.n_no_state < last.n_no_state)
         tally.back++;
+    /* an IK asked for before this period is back, the planner having been served to its end since */
+    if (!in_the_middle && (r.state & IPC_CTL_SAMPLE) && (r.hl_flags & CTrajectoryRT::HL_IK_ACTIVE) &&
+        !(r.hl_flags & CTrajectoryRT::HL_GOAL_ACCEPTED))
+        tally.ik_owed++;
     last = r;
 
     if (with_file)
@@ -225,7 +235,11 @@ static void step(void)
 extern "C" void slot_preempt_point(void)
 {
     if (next_period < periods && at_place())
+    {
+        in_the_middle = true;
         step();
+        in_the_middle = false;
+    }
 }
 #endif
 
@@ -263,7 +277,7 @@ static bool passed(void)
     const long failed_in_file = vectors[periods - 1].report.n_ctrl_faults > 0 ? 1 : 0;      /* the follower fails with it */
     return tally.report_differs == 0 && tally.results_differ == 0 && tally.over == 0 &&
            tally.back == 0 && tally.follower_differs == 0 && tally.apart == 0 && tally.follower_failed >= failed_in_file &&
-           tally.law > 0 && tally.traj > 0 && tally.allocated == 0 && ends_as_file();
+           tally.law > 0 && tally.traj > 0 && tally.allocated == 0 && tally.ik_owed == 0 && ends_as_file();
 }
 
 static void print(long allocations_before)
@@ -271,11 +285,12 @@ static void print(long allocations_before)
     printf("%u periods: %ld with another report than the file, %ld with another end of a command or another count, "
            "largest difference of a number %.3g (period %u), %ld above the limit %.3g; a second controller on the "
            "reports had the law in %ld and the reference in %ld: %ld differences, apart in %ld, failed in %ld; %ld with "
-           "a count below that of the period before; plans %u, IK %u, late %u; %ld allocations (%ld while the "
-           "controllers were built)\n",
+           "a count below that of the period before; plans %u, IK %u, late %u; %ld periods that still waited for an IK "
+           "asked for before them; %ld allocations (%ld while the controllers were built)\n",
            (unsigned)periods, tally.report_differs, tally.results_differ, tally.largest, (unsigned)tally.largest_at,
            tally.over, limit, tally.law, tally.traj, tally.follower_differs, tally.apart, tally.follower_failed, tally.back,
-           (unsigned)last.n_plans, (unsigned)last.n_iks, (unsigned)last.n_plan_late, tally.allocated, allocations_before);
+           (unsigned)last.n_plans, (unsigned)last.n_iks, (unsigned)last.n_plan_late, tally.ik_owed, tally.allocated,
+           allocations_before);
 }
 
 /* the two controllers, once in a process; 0: built */

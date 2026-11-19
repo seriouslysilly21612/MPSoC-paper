@@ -603,6 +603,10 @@ the torque and the reference: what this firmware computes on the R5 against the 
   of the planner's work at each of the 957 places of its slots (42,623 such steps): the IK of a goal is then back
   a period later, so the motion is another than the file's, and in every replay the second controller on the
   reports still agrees bit for bit, every command ends as in the file, no count goes back and no plan is late.
+  And no period still waits for an IK that was asked for before it (the planner is served to its end before every
+  period but the one in the middle of its work): without this check a link that never wrote the result of an IK
+  passed all 957 replays, because the commands, the counts and the second controller do not depend on a goal
+  being reached.
 - The instructions of a period on the emulated R5 (`COUNT=N`): median 34,706, 99 % at most 35,513, the largest
   44,378 (counted with layout 5; layout 6 added ten numbers to the report). The second controller of `--shadow`
   had 33,900, 34,100 and 43,300: the control task costs 2.5 % more (the report and the description of the
@@ -622,8 +626,12 @@ the torque and the reference: what this firmware computes on the R5 against the 
   controller and the libraries nothing of this firmware stays undefined.
 
 Not checked: in Vitis and on the board. A generator error in a motion (the reference is then not followed) has
-no test: no input here produces one. The arm of the bus has run in `test_control_link` only. The application's
-side (`--arch S2`) has run against the simulated R5 only, which runs `ControlCycle` and not `control_link.c`.
+no test: no input here produces one. Four wrong versions of `HighLevelLink.h` pass the replays: in `Before()` and
+in `Serve()`, the count of a result or of a request taken again after its read. They lose something only when a
+second one comes between the read and the count, which takes two requests in consecutive periods and the planner
+interrupted twice; the replays interrupt it once in a call, and in their file two goals are at least 52 periods
+apart and two plans at least 5. The arm of the bus has run in `test_control_link` only. The application's side
+(`--arch S2`) has run against the simulated R5 only, which runs `ControlCycle` and not `control_link.c`.
 
 On the board, with this firmware running and its bus in OP (the application's README has the rest):
 
