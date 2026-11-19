@@ -13,6 +13,8 @@
 # The PC run must agree with the file exactly.  The R5 run (arm-none-eabi-g++, qemu-arm; skipped with a line if
 # one is missing) within 1e-9 N m and rad: it has no fused multiply-add, the PC that wrote the file may.
 # Neither may allocate memory in a period.
+# Between the two, on the PC: the replay once for every place at which the planner touches a slot, with the step
+# of the next period in the middle of it there (SLOT_PREEMPT_TEST, see shadow_replay.cpp); about 1000 replays.
 # Then, with COUNT=N, the instructions of the first N periods on the R5 are counted (test/count_periods.py).
 # Exit 1 if a run failed, 2 if the R5 run was not made.
 set -e
@@ -47,6 +49,14 @@ build "$B/pc" g++ ""
 g++ $WRAP "$B"/pc/*.o -o "$B/pc/shadow_replay"
 echo "PC:"
 "$B/pc/shadow_replay" "$FILE" 0 || bad=1
+
+mkdir -p "$B/pre"
+for f in $OURS; do
+    g++ -O2 -std=gnu++17 -DNDEBUG -Wall -DSLOT_PREEMPT_TEST $INC -c "$f" -o "$B/pre/ours_$(basename "$f" .cpp).o"
+done
+g++ $WRAP "$B"/pre/*.o "$B"/pc/rbdl_*.o "$B"/pc/ruckig_*.o -o "$B/pre/shadow_replay"
+echo "PC, the step of a period in the middle of the planner's work:"
+"$B/pre/shadow_replay" "$FILE" 0 || bad=1
 
 if command -v arm-none-eabi-g++ > /dev/null && command -v qemu-arm > /dev/null; then
     build "$B/r5" arm-none-eabi-g++ "$R5 -ffunction-sections -fdata-sections"

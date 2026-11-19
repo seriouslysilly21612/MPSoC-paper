@@ -457,6 +457,7 @@ in the time that a period leaves, and every cycle interrupts it.
     RBDL_SRC=<rbdl-orb> RUCKIG_SRC=<ruckig> sh test/shadow_replay.sh /tmp/shadow_vectors.bin
     gcc -std=gnu11 -Wall -DHOST_TEST -Itest/stub -Isrc -Isrc/ctrl test/test_ctrl_port.c src/ctrl/ctrl_port.c -o /tmp/t_port && /tmp/t_port
     gcc -std=gnu11 -Wall -DHOST_TEST -Itest/stub -Isrc test/test_shadow_link.c src/shadow_link.c -o /tmp/t_shadow && /tmp/t_shadow
+    g++ -std=gnu++17 -Wall -DSLOT_PREEMPT_TEST -Isrc/ctrl/port test/test_port_slot.cpp -o /tmp/t_slot && /tmp/t_slot
     sh test/check_copies.sh
 
 - `check_model`: the model from numbers is the model of the URDF reader, body by body, and gives the same gravity
@@ -471,6 +472,18 @@ in the time that a period leaves, and every cycle interrupts it.
   Built for the PC: 0 difference. Built for the R5 (`arm-none-eabi-g++` 13.2, run by `qemu-arm`): the largest
   torque difference is 2.5e-13 N m, the largest reference difference 2.2e-16 rad, the largest difference of an IK
   solution 4.4e-16 rad (the R5 has no fused multiply-add), and neither a period nor the planner takes memory.
+- The same script, between the two: on the R5 the cycle interrupts the planner task at any instruction, and what
+  the two share are the slots of `HighLevelLink.h`. Built with `SLOT_PREEMPT_TEST`, the slot calls
+  `slot_preempt_point()` before every access, and the replay runs once for each of the 957 places at which the
+  planner touches a slot after a period, with the step of the next period in the middle of the planner's work
+  there (and the steps after it, where the file leaves the planner no time): 33,608 such steps in all, and every
+  replay agrees with the file as the plain one does, every goal is solved and compared, and no count of an answer
+  goes back. A step that cannot read the planner's counts keeps the last it read (without that line of
+  `ShadowControl.cpp` 48 of the replays fail).
+- `test_port_slot`: the slot alone (`port/base/AtomicSlot.h`), every word of a payload its number. A reader that
+  interrupts a write at any place after its start gets nothing and its destination and the count stay; a reader
+  that a write interrupts at any place gets the new payload whole; one interrupted in each of its 4 attempts gets
+  nothing.
 - The instructions that the R5 executes in the cycle per period, counted in that run (`COUNT=N` of
   `shadow_replay.sh`, `test/count_periods.py`; what the planner task does is not in the count): 9,200 without a
   motion (the control law alone), 33,900 with one (median; 99 % of the periods at most 34,100), 35,800 in a period
@@ -492,8 +505,26 @@ is why the planner left the cycle. The torques were not compared in that run: th
 four numbers of the model 1.6e-23 away from those of a PC, and the check value of the model took the numbers as
 they were. It takes them on a grid of 2^-40 since.
 
-Not checked: the build with the planner task, in Vitis and on the board. That a cycle interrupts the planner at
-any instruction is true there for the first time: the tests on a PC serve the planner between two periods.
+On the board with the planner task (2026-11-19 evening; Vitis 2022.1, text 1,251,725 bytes; three L7N drives,
+`--arch S1 --shadow`), mean / 99.9 % / largest in us:
+
+| | idle, 60 s | APU under load (100 %), 600 s |
+|---|---|---|
+| `t_w + t_s` (the send) | 48.1 / 58.5 / 71.5 | 55.1 / 82.9 / 156.8 |
+| high-level controller in the cycle | 63.5 / 73.8 / 145.5 | 68.1 / 94.0 / 219.6 |
+| control law | 177.6 / 186.3 / 203.1 | 186.6 / 215.6 / 274.2 |
+| `t_w + t_e` (the cycle) | 303.7 / 332.8 / 436.7 | 326.1 / 404.5 / 649.9 |
+| torque against the APU's | 61,814 periods, 0 differ (1.5e-12 N m) | 600,875 periods, 0 differ (5.6e-12 N m) |
+| IK against the APU's | 34 goals, 0 differ (4.4e-16 rad) | 363 goals, 0 differ (6.8e-16 rad) |
+| a plan from start to end, an IK | at most 1097 us, 10.5 ms | at most 1348 us, 13.3 ms |
+
+No overrun and no late plan in either run. The load on the APU makes the R5 slower (it shares the DDR memory):
+the mean of the cycle by 7 %, the largest by 49 %. The longest cycle is one that takes a plan.
+With the R5 pair in lock-step (`xlnx,cluster-mode` 0 in the boot tree; the same ELF) the firmware starts and the
+idle run is the same within noise (`t_w + t_e` 304.2 / 335.2 / 455.2 us).
+
+Not checked: a plan request in each of two periods in a row while a cycle interrupts the planner twice (the four
+lines of `HighLevelLink.h` that keep a count when a read fails or a newer request arrives are read, not tested).
 
 ## The split into modules (2026-11-15)
 

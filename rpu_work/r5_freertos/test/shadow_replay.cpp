@@ -22,6 +22,14 @@
  *
  * mark() is called before and after the step of every period: a trace of the instructions executed (qemu-arm
  * -d exec) is counted between the two (test/count_periods.py).  The planner's work is not in that count.
+ *
+ * Built with SLOT_PREEMPT_TEST (a PC only) it replays the file once for every place at which the planner touches
+ * a slot after a period (slot_preempt_point() of port/base/AtomicSlot.h): the step of the next period runs
+ * there, in the middle of what the planner does, as the EtherCAT task of the firmware interrupts the planner
+ * task on the core they share, and the planner goes on after it.  Every such replay must pass as the plain one:
+ * a plan has more periods to be back in than the one it loses, and a result that the step finds half written
+ * is taken a period later.  Guards the slots and their readers against a reader that takes a half-written
+ * payload, loses one, or (the counts of the answer) puts nothing where it could not read.
  */
 #include <cmath>
 #include <cstdarg>
@@ -33,6 +41,11 @@
 #include "ctrl_numbers_indy7.h"
 #include "shadow_ctrl.h"
 #include "shadow/shadow_vectors.h"
+
+#ifdef SLOT_PREEMPT_TEST
+#include <sys/wait.h>
+#include <unistd.h>
+#endif
 
 extern "C" {
 /* the clock of the classes: here a count of its readings, so that a run is the same every time */
@@ -64,38 +77,139 @@ void *__wrap_calloc(size_t count, size_t bytes) { allocations++; return __real_c
 void *__wrap_realloc(void *block, size_t bytes) { allocations++; return __real_realloc(block, bytes); }
 }
 
-int main(int argc, char **argv)
+/* what a replay found */
+struct tally_t
 {
-    if (argc < 2)
-    {
-        fprintf(stderr, "usage: %s FILE [LIMIT [PERIODS]]\n", argv[0]);
-        return 2;
-    }
-    const double limit = argc > 2 ? atof(argv[2]) : 0.0;
-    FILE *const fp = fopen(argv[1], "rb");
-    shadow_vectors_head_t head;
-    if (fp == NULL || fread(&head, sizeof(head), 1, fp) != 1 || head.magic != SHADOW_VECTORS_MAGIC)
-    {
-        fprintf(stderr, "%s: not a file of shadow_check -o\n", argv[1]);
-        return 2;
-    }
-    uint32_t periods = head.periods;
-    if (argc > 3 && (uint32_t)atoi(argv[3]) < periods)
-        periods = (uint32_t)atoi(argv[3]);
-    shadow_vector_t *const vectors = (shadow_vector_t *)malloc((size_t)periods * sizeof(shadow_vector_t));
-    if (vectors == NULL || fread(vectors, sizeof(shadow_vector_t), periods, fp) != periods)
-    {
-        fprintf(stderr, "%s: %u periods cannot be read\n", argv[1], (unsigned)periods);
-        return 2;
-    }
-    fclose(fp);
+    long flags_differ, law, traj, told, goals, over, back, interruptions, allocated;
+    double tau_max, ref_max, ik_max;
+    uint32_t tau_at, ref_at;
+};
 
-    if (CTRL_NUMBERS_CRC != head.crc || memcmp(CTRL_NUMBERS, head.numbers, sizeof(head.numbers)) != 0)
+/* a replay: the periods of the file in turn, each checked against the file when its step has run */
+static const shadow_vector_t *vectors;
+static uint32_t periods, next_period;       /* next_period: the first whose step has not run */
+static double limit;
+static tally_t tally;
+static ipc_shadow_out_t last;               /* the answer of the period before */
+
+/* the step of the next period; true: the planner has no time after it */
+static bool step(void)
+{
+    const shadow_vector_t &v = vectors[next_period++];
+    ipc_shadow_out_t out;
+    mark();
+    shadow_ctrl_step(&v.in, &out);
+    mark();
+    if (out.flags != v.out_flags || out.ctrl_crc != shadow_ctrl_check_value())
+        tally.flags_differ++;
+    /* what the answer counts "so far" never goes back: a period that cannot read the planner's counts keeps the
+     * last it read */
+    if (out.n_missed < last.n_missed || out.n_plans < last.n_plans || out.n_iks < last.n_iks ||
+        out.n_plan_late < last.n_plan_late || out.n_ik_compared < last.n_ik_compared)
+        tally.back++;
+    if ((v.in.flags & IPC_SHADOW_IK) && !(v.out_flags & IPC_SHADOW_OUT_APART))
+        tally.told++;           /* a goal whose IK the file has, in a period that is followed */
+    if (out.n_ik_compared != last.n_ik_compared)    /* a goal that its planner solved as well: against the file's IK */
     {
-        printf("FAIL: the numbers of src/ctrl/ctrl_numbers_indy7.h are not those of %s: write the header again "
-               "(bin/ctrl_numbers_header of the application), or the file\n", argv[1]);
-        return 1;
+        tally.goals++;
+        if (!(out.ik_diff <= limit))
+            tally.over++;
+        if (!(out.ik_diff <= tally.ik_max))
+            tally.ik_max = out.ik_diff;
     }
+    last = out;
+    if (!(out.flags & IPC_SHADOW_OUT_APART) && (out.flags & IPC_SHADOW_OUT_CTRL))
+    {
+        tally.law++;
+        if (!(out.tau_diff <= limit))
+            tally.over++;
+        if (!(out.tau_diff <= tally.tau_max))
+        {
+            tally.tau_max = out.tau_diff;
+            tally.tau_at = v.in.period;
+        }
+    }
+    if (!(out.flags & IPC_SHADOW_OUT_APART) && (out.flags & IPC_SHADOW_OUT_TRAJ))
+    {
+        tally.traj++;
+        for (int i = 0; i < IPC_CTRL_DOF; i++)
+        {
+            const double d = std::fabs(out.q_ref[i] - v.q_ref[i]);
+            if (!(d <= limit))
+                tally.over++;
+            if (!(d <= tally.ref_max))
+            {
+                tally.ref_max = d;
+                tally.ref_at = v.in.period;
+            }
+        }
+    }
+    return v.planner_stalled != 0;
+}
+
+#ifdef SLOT_PREEMPT_TEST
+/* while the planner is served: at its interrupt_at-th access of a slot the EtherCAT task of the firmware, which
+ * is the step of the next period, and of those after it as long as the planner has no time after them */
+static long interrupt_at, place;
+static bool serving, interrupted;
+
+extern "C" void slot_preempt_point(void)
+{
+    if (!serving || interrupted || next_period >= periods || place++ != interrupt_at)
+        return;
+    interrupted = true;         /* before the steps: they touch slots as well */
+    while (next_period < periods && step())
+    {
+    }
+}
+#endif
+
+static void replay(void)
+{
+    memset(&tally, 0, sizeof(tally));
+    memset(&last, 0, sizeof(last));
+    next_period = 0;
+    const long allocations_before = allocations;
+    while (next_period < periods)
+    {
+        if (step())
+            continue;
+        /* the planner task of the firmware, here: back for the next period */
+#ifdef SLOT_PREEMPT_TEST
+        serving = true;
+        place = 0;
+        interrupted = false;
+#endif
+        while (shadow_ctrl_serve())
+        {
+        }
+#ifdef SLOT_PREEMPT_TEST
+        serving = false;
+        tally.interruptions += interrupted ? 1 : 0;
+#endif
+    }
+    tally.allocated = allocations - allocations_before;
+}
+
+static bool passed(const tally_t &t)
+{
+    return t.flags_differ == 0 && t.over == 0 && t.back == 0 && t.law > 0 && t.traj > 0 && t.goals > 0 &&
+           t.goals == t.told && t.allocated == 0;
+}
+
+static void print(const tally_t &t, long allocations_before)
+{
+    printf("%u periods: %ld with other flags than the file; the law followed in %ld, largest torque difference %.3g N m "
+           "(period %u); the reference in %ld, largest difference %.3g rad (period %u); the IK of %ld of the %ld goals "
+           "followed, largest difference %.3g rad; %ld above the limit %.3g; %ld with a count below that of the period "
+           "before; %ld allocations (%ld while the controller was built)\n",
+           (unsigned)periods, t.flags_differ, t.law, t.tau_max, (unsigned)t.tau_at, t.traj, t.ref_max, (unsigned)t.ref_at,
+           t.goals, t.told, t.ik_max, t.over, limit, t.back, t.allocated, allocations_before);
+}
+
+/* the controller, once in a process; 0: built */
+static int build(void)
+{
     if (shadow_ctrl_serve() != 0)       // the planner task may run before the controller is built
     {
         printf("FAIL: the planner has work before the controller is built\n");
@@ -106,69 +220,145 @@ int main(int argc, char **argv)
         fprintf(stderr, "the controller cannot be built\n");
         return 2;
     }
+    return 0;
+}
 
-    long flags_differ = 0, law = 0, traj = 0, goals = 0, over = 0;
-    double tau_max = 0.0, ref_max = 0.0, ik_max = 0.0;
-    uint32_t tau_at = 0, ref_at = 0, ik_compared = 0;
-    const long allocations_before = allocations;
-    for (uint32_t k = 0; k < periods; k++)
+#ifdef SLOT_PREEMPT_TEST
+/* a replay for every place, each in a process of its own (the controller is built once in a process), as many
+ * at a time as there are processors, until one has no place left to put the step.  Exit code as main(). */
+static int every_place(void)
+{
+    enum { CODE_PASS = 0, CODE_FAIL = 1 };
+    int counts[2];              /* every replay that got to its end writes how often the step ran in the middle */
+    if (pipe(counts) != 0)
     {
-        const shadow_vector_t &v = vectors[k];
-        ipc_shadow_out_t out;
-        mark();
-        shadow_ctrl_step(&v.in, &out);
-        mark();
-        while (!v.planner_stalled && shadow_ctrl_serve())   // the planner task of the firmware, here: back for the
-        {                                                   // next period, unless the file says it had no time
-        }
-        if (out.flags != v.out_flags || out.ctrl_crc != shadow_ctrl_check_value())
-            flags_differ++;
-        if (out.n_ik_compared != ik_compared)       // a goal that its planner solved as well: against the file's IK
+        perror("pipe");
+        return 2;
+    }
+    const long processors = sysconf(_SC_NPROCESSORS_ONLN) > 0 ? sysconf(_SC_NPROCESSORS_ONLN) : 1;
+    long started = 0, running = 0, places = 0, failed = 0, interruptions = 0;
+    bool ended = false;         /* a replay had no place for the step: nor have those after it */
+    while (!ended || running > 0)
+    {
+        while (!ended && running < processors)
         {
-            ik_compared = out.n_ik_compared;
-            goals++;
-            if (!(out.ik_diff <= limit))
-                over++;
-            if (!(out.ik_diff <= ik_max))
-                ik_max = out.ik_diff;
-        }
-        if (out.flags & IPC_SHADOW_OUT_APART)
-            continue;
-        if (out.flags & IPC_SHADOW_OUT_CTRL)
-        {
-            law++;
-            if (!(out.tau_diff <= limit))
-                over++;
-            if (!(out.tau_diff <= tau_max))
+            fflush(stdout);
+            const pid_t pid = fork();
+            if (pid < 0)
             {
-                tau_max = out.tau_diff;
-                tau_at = v.in.period;
+                perror("fork");
+                return 2;
             }
-        }
-        if (out.flags & IPC_SHADOW_OUT_TRAJ)
-        {
-            traj++;
-            for (int i = 0; i < IPC_CTRL_DOF; i++)
+            if (pid == 0)
             {
-                const double d = std::fabs(out.q_ref[i] - v.q_ref[i]);
-                if (!(d <= limit))
-                    over++;
-                if (!(d <= ref_max))
+                interrupt_at = started;
+                memset(&tally, 0, sizeof(tally));
+                int code = build();
+                if (code == 0)
                 {
-                    ref_max = d;
-                    ref_at = v.in.period;
+                    const long allocations_before = allocations;
+                    replay();
+                    code = passed(tally) ? CODE_PASS : CODE_FAIL;
+                    if (code == CODE_FAIL)
+                    {
+                        printf("FAIL with the step of the next period at place %ld of the planner's work (%ld times): ",
+                               started, tally.interruptions);
+                        print(tally, allocations_before);
+                        fflush(stdout);
+                    }
                 }
+                if ((code == CODE_PASS || code == CODE_FAIL) &&
+                    write(counts[1], &tally.interruptions, sizeof(tally.interruptions)) != (ssize_t)sizeof(tally.interruptions))
+                    code = 2;
+                _exit(code);
             }
+            started++;
+            running++;
+        }
+        int status = 0;
+        if (wait(&status) < 0)
+        {
+            perror("wait");
+            return 2;
+        }
+        running--;
+        const int code = WIFEXITED(status) ? WEXITSTATUS(status) : -1;
+        long n = 0;
+        if (code != CODE_PASS && code != CODE_FAIL)     /* it did not get to its count */
+        {
+            printf("FAIL: a replay ended with status %d\n", status);
+            failed++;
+            ended = true;
+            continue;
+        }
+        if (read(counts[0], &n, sizeof(n)) != (ssize_t)sizeof(n))
+        {
+            perror("read");
+            return 2;
+        }
+        if (code == CODE_FAIL)
+            failed++;
+        if (n == 0)
+            ended = true;
+        else
+        {
+            places++;
+            interruptions += n;
         }
     }
-    const long allocated = allocations - allocations_before;
-    printf("%u periods: %ld with other flags than the file; the law followed in %ld, largest torque difference %.3g N m "
-           "(period %u); the reference in %ld, largest difference %.3g rad (period %u); the IK of %ld goals, largest "
-           "difference %.3g rad; %ld above the limit %.3g; %ld allocations (%ld while the controller was built)\n",
-           (unsigned)periods, flags_differ, law, tau_max, (unsigned)tau_at, traj, ref_max, (unsigned)ref_at, goals, ik_max,
-           over, limit, allocated, allocations_before);
-    const bool pass = flags_differ == 0 && over == 0 && law > 0 && traj > 0 && goals > 0 && allocated == 0 &&
-                      allocations_before > 0;
+    printf("the step of the next period in the middle of the planner's work, at each of the %ld places where the "
+           "planner touches a slot after a period: %ld steps in the middle in all, %ld replays failed\n",
+           places, interruptions, failed);
+    const bool pass = failed == 0 && places > 0;
     printf("%s\n", pass ? "PASS" : "FAIL");
     return pass ? 0 : 1;
+}
+#endif
+
+int main(int argc, char **argv)
+{
+    if (argc < 2)
+    {
+        fprintf(stderr, "usage: %s FILE [LIMIT [PERIODS]]\n", argv[0]);
+        return 2;
+    }
+    limit = argc > 2 ? atof(argv[2]) : 0.0;
+    FILE *const fp = fopen(argv[1], "rb");
+    shadow_vectors_head_t head;
+    if (fp == NULL || fread(&head, sizeof(head), 1, fp) != 1 || head.magic != SHADOW_VECTORS_MAGIC)
+    {
+        fprintf(stderr, "%s: not a file of shadow_check -o\n", argv[1]);
+        return 2;
+    }
+    periods = head.periods;
+    if (argc > 3 && (uint32_t)atoi(argv[3]) < periods)
+        periods = (uint32_t)atoi(argv[3]);
+    shadow_vector_t *const read = (shadow_vector_t *)malloc((size_t)periods * sizeof(shadow_vector_t));
+    if (read == NULL || fread(read, sizeof(shadow_vector_t), periods, fp) != periods)
+    {
+        fprintf(stderr, "%s: %u periods cannot be read\n", argv[1], (unsigned)periods);
+        return 2;
+    }
+    fclose(fp);
+    vectors = read;
+
+    if (CTRL_NUMBERS_CRC != head.crc || memcmp(CTRL_NUMBERS, head.numbers, sizeof(head.numbers)) != 0)
+    {
+        printf("FAIL: the numbers of src/ctrl/ctrl_numbers_indy7.h are not those of %s: write the header again "
+               "(bin/ctrl_numbers_header of the application), or the file\n", argv[1]);
+        return 1;
+    }
+#ifdef SLOT_PREEMPT_TEST
+    return every_place();
+#else
+    const int code = build();
+    if (code != 0)
+        return code;
+    const long allocations_before = allocations;
+    replay();
+    print(tally, allocations_before);
+    const bool pass = passed(tally) && allocations_before > 0;
+    printf("%s\n", pass ? "PASS" : "FAIL");
+    return pass ? 0 : 1;
+#endif
 }
