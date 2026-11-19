@@ -218,7 +218,7 @@ void Counter()
 /* the two sides on one region, one period at a time */
 struct Bench
 {
-	alignas(64) volatile uint32_t auRegion[IPC_OFF_END / 4];
+	alignas(64) volatile uint32_t auRegion[IPC_OFF_END2 / 4];
 	CSimR5Slots cR5;
 	CSimR5Slots::Drives stDrives;
 	CR5Link cApu;

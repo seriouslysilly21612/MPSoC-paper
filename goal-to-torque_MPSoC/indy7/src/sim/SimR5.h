@@ -86,7 +86,7 @@ private:
 	void	Run				(	);
 	void	Cycle			(uint64_t auReleaseTicks, uint32_t auPeriod);
 
-	alignas(64) volatile uint32_t m_auRegion[IPC_OFF_END / 4];
+	alignas(64) volatile uint32_t m_auRegion[IPC_OFF_END2 / 4];
 	Spec					m_stSpec;
 	CShadowControl*			m_pShadow{NULL};
 	CSimArm*				m_pArm;

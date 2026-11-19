@@ -107,6 +107,7 @@ SOURCES := base/Config.cpp base/RtTask.cpp base/ViewStream.cpp base/MallocCount.
            ecat/EcatMaster.cpp ecat/Indy7Joint.cpp ecat/Indy7EndTool.cpp \
            sim/SimArm.cpp sim/SimJoint.cpp sim/SimCamera.cpp sim/SimR5.cpp r5link/R5Link.cpp \
            Controller.cpp FullDynControllerRT.cpp HighLevelRT.cpp TrajectoryRT.cpp shadow/ShadowControl.cpp \
+           shadow/ControlCycle.cpp \
            JointTestLog.cpp HighLevelLog.cpp obs/ObsLog.cpp TimingLog.cpp CalibCapture.cpp $(BRIDGE_SOURCE) \
            Indy7Ctrl.cpp TaskEtherCAT.cpp TaskTrajectory.cpp TaskDynamics.cpp TaskPlanner.cpp main.cpp
 RTPOSIX_SOURCES := posix_rt.c commons.c
@@ -148,6 +149,7 @@ tools: $(BIN_DIR)/hl_check $(BIN_DIR)/goal_filter_check $(BIN_DIR)/slot_check $(
        $(BIN_DIR)/obs_mailbox_check $(BIN_DIR)/obs_receiver_check $(BIN_DIR)/obs_estimate_check \
        $(BIN_DIR)/obs_goal_check $(BIN_DIR)/obs_status_check $(BIN_DIR)/r5_link_check \
        $(BIN_DIR)/fw_cfg_header $(BIN_DIR)/rbdl_model_code $(BIN_DIR)/ctrl_numbers_header $(BIN_DIR)/shadow_check \
+       $(BIN_DIR)/control_check \
        $(BIN_DIR)/console_check \
        $(if $(filter 1,$(MUJOCO)),$(BIN_DIR)/model_check)
 
@@ -242,6 +244,13 @@ $(BIN_DIR)/shadow_check: $(TOOLS_DIR)/shadow_check.cpp $(TOOL_OBJS) $(SHADOW_OBJ
                          $(SRC_DIR)/shadow/shadow_vectors.h $(SRC_DIR)/sim/SimR5Slots.h
 	@mkdir -p $(BIN_DIR)
 	$(CXX) $(CXXFLAGS) $(INCLUDES) -o $@ $< $(TOOL_OBJS) $(SHADOW_OBJS) $(LDLIBS)
+
+# the control task without its operating system (src/shadow/ControlCycle.h; S2), with a second controller on its reports
+CONTROL_OBJS := $(OBJ_DIR)/shadow/ControlCycle.o $(OBJ_DIR)/shadow/ShadowControl.o $(OBJ_DIR)/TrajectoryRT.o $(OBJ_DIR)/base/Config.o
+$(BIN_DIR)/control_check: $(TOOLS_DIR)/control_check.cpp $(TOOL_OBJS) $(CONTROL_OBJS) $(SRC_DIR)/shadow/ShadowWriter.h \
+                          $(SRC_DIR)/shadow/ShadowParams.h $(SRC_DIR)/shadow/control_vectors.h $(SRC_DIR)/ipc/ipc_layout.h
+	@mkdir -p $(BIN_DIR)
+	$(CXX) $(CXXFLAGS) $(INCLUDES) -o $@ $< $(TOOL_OBJS) $(CONTROL_OBJS) $(LDLIBS)
 
 # the console of the real-time tasks (base/RtConsole.h), with the stdio wrappers of indy7_ctrl
 $(BIN_DIR)/console_check: $(TOOLS_DIR)/console_check.cpp $(OBJ_DIR)/base/RtConsole.o

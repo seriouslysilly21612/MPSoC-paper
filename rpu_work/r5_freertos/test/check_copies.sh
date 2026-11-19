@@ -10,8 +10,8 @@
 #      tool and build the firmware again; the header is not edited.
 #   3. the record of a cycle (src/cycle_record.h) is the record of the application's timing log (TimingLog.h):
 #      test/check_record.cpp compiles only when the fields and the flag bits are the same.
-#   4. the controller of src/ctrl (the second controller of --shadow) is the application's: its classes are copies
-#      as in 1.; src/ctrl/ctrl_model_indy7.h is what bin/rbdl_model_code writes from models/indy7.urdf, and
+#   4. the controller of src/ctrl (the second controller of --shadow, and the control task of S2) is the
+#      application's: its classes are copies as in 1.; src/ctrl/ctrl_model_indy7.h is what bin/rbdl_model_code writes from models/indy7.urdf, and
 #      src/ctrl/ctrl_numbers_indy7.h what bin/ctrl_numbers_header writes from INDY7.cfg (make tools; they need the
 #      RBDL of the application).
 # Exit 1 if something differs, 2 if a tool is not built or there is no g++ (that part was not checked).
@@ -30,7 +30,8 @@ for f in ipc/ipc_layout.h ipc/ipc_slot.h obs/obs_mailbox.h; do
     same "$f" "$f"
 done
 for f in Controller.h Controller.cpp FullDynControllerRT.h FullDynControllerRT.cpp HighLevelRT.h HighLevelRT.cpp \
-         HighLevelLink.h shadow/ShadowControl.h shadow/ShadowControl.cpp; do
+         HighLevelLink.h shadow/ShadowControl.h shadow/ShadowControl.cpp TrajectoryRT.h TrajectoryRT.cpp GoalSlot.h \
+         shadow/ShadowWriter.h shadow/ControlCycle.h shadow/ControlCycle.cpp; do
     same "$f" "ctrl/$(basename "$f")"
 done
 if [ ! -x "$APP/bin/fw_cfg_header" ]; then

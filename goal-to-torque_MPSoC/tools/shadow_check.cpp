@@ -306,7 +306,7 @@ private:
 		return FALSE != m_cTraj.Start(false, adQ, adQd, (auAsk & A_FRICTION) ? TRUE : FALSE, astrWhy, auLen);
 	}
 
-	alignas(64) volatile uint32_t m_auRegion[IPC_OFF_END / 4];
+	alignas(64) volatile uint32_t m_auRegion[IPC_OFF_END2 / 4];
 	CR5Link			m_cLink;
 	CShadowTask*	m_pTask = NULL;
 	C*				m_pCtl = NULL;

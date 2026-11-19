@@ -50,6 +50,17 @@
 #endif
 
 /* ----------------------------------------------------------------------- */
+/* The control task on the R5 (control_link.h; S2): 1 = the control          */
+/* computation runs here, after the send of every cycle, on commands and    */
+/* goals of the APU, and its torque goes to the drives; the Torque slot of  */
+/* the APU is not taken.  0 = the torque is the APU's (S1).  The same C++    */
+/* project as SHADOW_CONTROL below; the two exclude each other.             */
+/* ----------------------------------------------------------------------- */
+#ifndef CONTROL_TASK
+#define CONTROL_TASK        0
+#endif
+
+/* ----------------------------------------------------------------------- */
 /* The second controller of --shadow (shadow_link.h; plan stage 3): 1 = the */
 /* control computation of the APU's control task runs here too, after the   */
 /* send of every cycle, and its torque is compared, not used.  It is C++    */
@@ -57,7 +68,10 @@
 /* and of the three libraries (README.md).  0 = the firmware without it, C. */
 /* ----------------------------------------------------------------------- */
 #ifndef SHADOW_CONTROL
-#define SHADOW_CONTROL      1
+#define SHADOW_CONTROL      (!CONTROL_TASK)
+#endif
+#if CONTROL_TASK && SHADOW_CONTROL
+#error "CONTROL_TASK and SHADOW_CONTROL: one controller in a build. With -DCONTROL_TASK=1 leave SHADOW_CONTROL unset"
 #endif
 
 #define CYCLE_NS            1000000u          /* 1 ms = 1 kHz            */

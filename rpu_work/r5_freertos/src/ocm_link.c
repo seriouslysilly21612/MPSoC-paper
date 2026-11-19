@@ -2,8 +2,9 @@
  * ocm_link.c  --  the R5's side of the shared region at the start of the OCM (see ocm_link.h).
  *
  * Reader and writer rules are those of ipc/ipc_slot.h: 32-bit words, one attempt, no waiting, a failed read leaves
- * the last copy as it was.  The R5 writes the State slot, the Shadow out slot and its half of the head; it reads the
- * Torque, Command and Shadow in slots, which only the APU writes.
+ * the last copy as it was.  The R5 writes the State slot, the Shadow out slot, the Sim torque and the Report slot
+ * and its half of the head; it reads the Torque, Command, Shadow in, Goal and Sim state slots, which only the APU
+ * writes.
  */
 #include <string.h>
 #include "xil_mmu.h"
@@ -24,6 +25,12 @@
 #define SLOT_COMMAND    ((volatile uint32_t *)(OCM_LINK_BASE + IPC_OFF_COMMAND))
 #define SLOT_SHADOW_IN  ((volatile uint32_t *)(OCM_LINK_BASE + IPC_OFF_SHADOW_IN))
 #define SLOT_SHADOW_OUT ((volatile uint32_t *)(OCM_LINK_BASE + IPC_OFF_SHADOW_OUT))
+#define SLOT_GOAL       ((volatile uint32_t *)(OCM_LINK_BASE + IPC_OFF_GOAL))
+#define SLOT_SIM_STATE  ((volatile uint32_t *)(OCM_LINK_BASE + IPC_OFF_SIM_STATE))
+#define SLOT_SIM_TORQUE ((volatile uint32_t *)(OCM_LINK_BASE + IPC_OFF_SIM_TORQUE))
+#define SLOT_REPORT     ((volatile uint32_t *)(OCM_LINK_BASE + IPC_OFF_REPORT))
+
+_Static_assert(IPC_OFF_END2 <= OCM_LINK_SIZE, "the slots are outside the OCM window");
 
 static uint32_t r5_epoch;
 static uint32_t command_epoch, command_seq;          /* (epoch, seq) of the last command seen */
@@ -31,19 +38,23 @@ static uint32_t command_done;                        /* seq of the last command 
 static uint32_t torque_stamp[2];                     /* (epoch, gen) of the last torque taken */
 static uint32_t torque_period;
 static uint32_t shadow_stamp[2];                     /* (epoch, gen) of the last Shadow in payload taken */
+static uint32_t goal_stamp[2], sim_stamp[2];         /* the same of the last goal and the last Sim state */
 static link_torque_t torque_last;                    /* the last new torque */
+static ipc_state_t state;                            /* the State slot of this cycle, in ordinary memory: one copy,
+                                                        then 32-bit stores into the OCM */
 
 int ocm_link_start(void)
 {
-    volatile uint32_t *slots[2] = { SLOT_STATE, SLOT_SHADOW_OUT };
+    volatile uint32_t *slots[4] = { SLOT_STATE, SLOT_SHADOW_OUT, SLOT_SIM_TORQUE, SLOT_REPORT };
+    ipc_command_t old;
 
     /* shortcut: nothing of this region has been touched before this call, so no cache line of it needs a flush */
     if (Xil_SetMPURegion((INTPTR)OCM_LINK_BASE, OCM_LINK_SIZE, NORM_SHARED_NCACHE | PRIV_RW_USER_RW) != (u32)XST_SUCCESS) {
         xil_printf("[link] FAIL: the MPU region for the OCM window could not be set\r\n");
         return 0;
     }
-    r5_epoch = ipc_side_start(&LINK_HEAD->r5, slots, 2);
-    (void)ocm_link_take_command();                   /* what is in the slot now was sent to an earlier run */
+    r5_epoch = ipc_side_start(&LINK_HEAD->r5, slots, 4);
+    (void)ocm_link_take_command(&old);               /* what is in the slot now was sent to an earlier run */
     command_done = 0u;
     xil_printf("[link] OCM 0x%08x: R5 epoch %u, APU side %s, system counter 0x%08x%08x\r\n", (unsigned)OCM_LINK_BASE,
                (unsigned)r5_epoch, ipc_load32(&LINK_HEAD->apu.magic) == IPC_MAGIC ? "up" : "not up yet",
@@ -60,17 +71,18 @@ static int drives_enabled(void)
     return 1;
 }
 
-uint32_t ocm_link_take_command(void)
+int ocm_link_take_command(ipc_command_t *taken)
 {
-    ipc_command_t command;
+    static ipc_command_t command;                    /* in ordinary memory: read whole, then handed on if it is new */
     uint32_t stamp[2];
 
-    if (IPC_READ(SLOT_COMMAND, &LINK_HEAD->apu, &command, stamp) != IPC_OK) return IPC_CMD_NONE;
-    if (stamp[0] == command_epoch && command.seq == command_seq) return IPC_CMD_NONE;
+    if (IPC_READ(SLOT_COMMAND, &LINK_HEAD->apu, &command, stamp) != IPC_OK) return 0;
+    if (stamp[0] == command_epoch && command.seq == command_seq) return 0;
     command_epoch = stamp[0];
     command_seq   = command.seq;
     command_done  = command.seq;
-    return command.cmd;
+    *taken = command;
+    return 1;
 }
 
 int ocm_link_take_torque(link_torque_t *held)
@@ -94,7 +106,6 @@ int ocm_link_take_torque(link_torque_t *held)
 
 uint32_t ocm_link_publish_state(uint64_t t_release, uint32_t period, uint32_t flags, const link_faults_t *faults)
 {
-    static ipc_state_t state;                        /* in ordinary memory: one copy, then 32-bit stores into the OCM */
     int i;
 
     memset(&state, 0, sizeof(state));
@@ -140,4 +151,49 @@ int ocm_link_take_shadow(ipc_shadow_in_t *in)
 void ocm_link_publish_shadow(const ipc_shadow_out_t *out)
 {
     IPC_WRITE(SLOT_SHADOW_OUT, r5_epoch, out);
+}
+
+const ipc_state_t *ocm_link_state(void)
+{
+    return &state;
+}
+
+int ocm_link_take_goal(ipc_goal_t *goal)
+{
+    static ipc_goal_t payload;
+    uint32_t stamp[2];
+
+    if (IPC_READ(SLOT_GOAL, &LINK_HEAD->apu, &payload, stamp) != IPC_OK ||
+        (stamp[0] == goal_stamp[0] && stamp[1] == goal_stamp[1])) return 0;
+    goal_stamp[0] = stamp[0];
+    goal_stamp[1] = stamp[1];
+    *goal = payload;
+    return 1;
+}
+
+int ocm_link_take_sim_state(ipc_sim_state_t *sim)
+{
+    static ipc_sim_state_t payload;
+    uint32_t stamp[2];
+
+    if (IPC_READ(SLOT_SIM_STATE, &LINK_HEAD->apu, &payload, stamp) == IPC_OK) {
+        if (stamp[0] == sim_stamp[0] && stamp[1] == sim_stamp[1]) return 0;
+        sim_stamp[0] = stamp[0];
+        sim_stamp[1] = stamp[1];
+        *sim = payload;
+        return 1;
+    }
+    /* nothing to read now (the APU is writing, or has stopped): the arm stays the simulated one as long as the
+       run of the APU that wrote a state of it is the one that is up (no run has the epoch 0 of before the first) */
+    return (ipc_load32(&LINK_HEAD->apu.magic) == IPC_MAGIC && ipc_load32(&LINK_HEAD->apu.epoch) == sim_stamp[0]) ? 0 : -1;
+}
+
+void ocm_link_publish_sim_torque(const ipc_sim_torque_t *torque)
+{
+    IPC_WRITE(SLOT_SIM_TORQUE, r5_epoch, torque);
+}
+
+void ocm_link_publish_report(const ipc_report_t *report)
+{
+    IPC_WRITE(SLOT_REPORT, r5_epoch, report);
 }

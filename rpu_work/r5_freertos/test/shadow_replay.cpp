@@ -43,8 +43,7 @@
 #include "shadow/shadow_vectors.h"
 
 #ifdef SLOT_PREEMPT_TEST
-#include <sys/wait.h>
-#include <unistd.h>
+#include "every_place.h"
 #endif
 
 extern "C" {
@@ -148,16 +147,12 @@ static bool step(void)
 }
 
 #ifdef SLOT_PREEMPT_TEST
-/* while the planner is served: at its interrupt_at-th access of a slot the EtherCAT task of the firmware, which
- * is the step of the next period, and of those after it as long as the planner has no time after them */
-static long interrupt_at, place;
-static bool serving, interrupted;
-
+/* while the planner is served, at the place of this replay: the EtherCAT task of the firmware, which is the step of
+ * the next period, and of those after it as long as the planner has no time after them */
 extern "C" void slot_preempt_point(void)
 {
-    if (!serving || interrupted || next_period >= periods || place++ != interrupt_at)
+    if (next_period >= periods || !at_place())
         return;
-    interrupted = true;         /* before the steps: they touch slots as well */
     while (next_period < periods && step())
     {
     }
@@ -176,16 +171,11 @@ static void replay(void)
             continue;
         /* the planner task of the firmware, here: back for the next period */
 #ifdef SLOT_PREEMPT_TEST
-        serving = true;
-        place = 0;
-        interrupted = false;
-#endif
+        tally.interruptions += serve_planner(shadow_ctrl_serve) ? 1 : 0;
+#else
         while (shadow_ctrl_serve())
         {
         }
-#ifdef SLOT_PREEMPT_TEST
-        serving = false;
-        tally.interruptions += interrupted ? 1 : 0;
 #endif
     }
     tally.allocated = allocations - allocations_before;
@@ -224,94 +214,22 @@ static int build(void)
 }
 
 #ifdef SLOT_PREEMPT_TEST
-/* a replay for every place, each in a process of its own (the controller is built once in a process), as many
- * at a time as there are processors, until one has no place left to put the step.  Exit code as main(). */
-static int every_place(void)
+/* the replay of one place (every_place.h) */
+static int one_place(long *interruptions)
 {
-    enum { CODE_PASS = 0, CODE_FAIL = 1 };
-    int counts[2];              /* every replay that got to its end writes how often the step ran in the middle */
-    if (pipe(counts) != 0)
-    {
-        perror("pipe");
-        return 2;
-    }
-    const long processors = sysconf(_SC_NPROCESSORS_ONLN) > 0 ? sysconf(_SC_NPROCESSORS_ONLN) : 1;
-    long started = 0, running = 0, places = 0, failed = 0, interruptions = 0;
-    bool ended = false;         /* a replay had no place for the step: nor have those after it */
-    while (!ended || running > 0)
-    {
-        while (!ended && running < processors)
-        {
-            fflush(stdout);
-            const pid_t pid = fork();
-            if (pid < 0)
-            {
-                perror("fork");
-                return 2;
-            }
-            if (pid == 0)
-            {
-                interrupt_at = started;
-                memset(&tally, 0, sizeof(tally));
-                int code = build();
-                if (code == 0)
-                {
-                    const long allocations_before = allocations;
-                    replay();
-                    code = passed(tally) ? CODE_PASS : CODE_FAIL;
-                    if (code == CODE_FAIL)
-                    {
-                        printf("FAIL with the step of the next period at place %ld of the planner's work (%ld times): ",
-                               started, tally.interruptions);
-                        print(tally, allocations_before);
-                        fflush(stdout);
-                    }
-                }
-                if ((code == CODE_PASS || code == CODE_FAIL) &&
-                    write(counts[1], &tally.interruptions, sizeof(tally.interruptions)) != (ssize_t)sizeof(tally.interruptions))
-                    code = 2;
-                _exit(code);
-            }
-            started++;
-            running++;
-        }
-        int status = 0;
-        if (wait(&status) < 0)
-        {
-            perror("wait");
-            return 2;
-        }
-        running--;
-        const int code = WIFEXITED(status) ? WEXITSTATUS(status) : -1;
-        long n = 0;
-        if (code != CODE_PASS && code != CODE_FAIL)     /* it did not get to its count */
-        {
-            printf("FAIL: a replay ended with status %d\n", status);
-            failed++;
-            ended = true;
-            continue;
-        }
-        if (read(counts[0], &n, sizeof(n)) != (ssize_t)sizeof(n))
-        {
-            perror("read");
-            return 2;
-        }
-        if (code == CODE_FAIL)
-            failed++;
-        if (n == 0)
-            ended = true;
-        else
-        {
-            places++;
-            interruptions += n;
-        }
-    }
-    printf("the step of the next period in the middle of the planner's work, at each of the %ld places where the "
-           "planner touches a slot after a period: %ld steps in the middle in all, %ld replays failed\n",
-           places, interruptions, failed);
-    const bool pass = failed == 0 && places > 0;
-    printf("%s\n", pass ? "PASS" : "FAIL");
-    return pass ? 0 : 1;
+    memset(&tally, 0, sizeof(tally));
+    const int code = build();
+    if (code != 0)
+        return code;
+    const long allocations_before = allocations;
+    replay();
+    *interruptions = tally.interruptions;
+    if (passed(tally))
+        return 0;
+    printf("FAIL with the step of the next period at place %ld of the planner's work (%ld times): ", interrupt_at,
+           tally.interruptions);
+    print(tally, allocations_before);
+    return 1;
 }
 #endif
 
@@ -349,7 +267,7 @@ int main(int argc, char **argv)
         return 1;
     }
 #ifdef SLOT_PREEMPT_TEST
-    return every_place();
+    return every_place(one_place);
 #else
     const int code = build();
     if (code != 0)

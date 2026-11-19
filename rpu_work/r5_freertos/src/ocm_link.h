@@ -1,7 +1,8 @@
 /*
  * ocm_link.h  --  the R5's side of the shared region of the APU (ipc/ipc_layout.h): State slot out, Torque and
- * Command slots in, and the two slots of --shadow.  Every call is one attempt and never waits for the APU.  The
- * layout and the slot protocol are the files of the APU build (src/ipc/), copied unchanged.
+ * Command slots in, the two slots of --shadow, and those of the control task on the R5 (Goal and Sim state in,
+ * Sim torque and Report out).  Every call is one attempt and never waits for the APU.  The layout and the slot
+ * protocol are the files of the APU build (src/ipc/), copied unchanged.
  */
 #ifndef OCM_LINK_H
 #define OCM_LINK_H
@@ -17,8 +18,9 @@
  * now (a command that was there before this start is not carried out).  0 = failed (reason printed). */
 int      ocm_link_start(void);
 
-/* The command that is new since the last call (IPC_CMD_*), or IPC_CMD_NONE. */
-uint32_t ocm_link_take_command(void);
+/* Reads the Command slot once.  Returns 1 when it holds a command that is new since the last call, and then *taken
+ * is that command; otherwise 0, and *taken is as it was. */
+int      ocm_link_take_command(ipc_command_t *taken);
 
 /* The Torque slot as the last new one left it. */
 typedef struct {
@@ -43,5 +45,18 @@ int      ocm_link_take_shadow(ipc_shadow_in_t *in);
 
 /* Writes the Shadow out slot. */
 void     ocm_link_publish_shadow(const ipc_shadow_out_t *out);
+
+/* The State slot as the last ocm_link_publish_state() wrote it: the drive values of this cycle. */
+const ipc_state_t *ocm_link_state(void);
+/* The control task on the R5 (control_link.c).  Reads the Goal slot once: 1 and *goal when it holds a goal that is
+ * new since the last call, otherwise 0. */
+int      ocm_link_take_goal(ipc_goal_t *goal);
+/* Reads the Sim state slot once.  1 and *sim: a state of the simulated arm that is new since the last call.
+ * 0: none that is new; the arm is the simulated one.  -1: the run of the APU that is up has written none: the arm
+ * is that of the bus. */
+int      ocm_link_take_sim_state(ipc_sim_state_t *sim);
+/* Write the Sim torque slot and the Report slot. */
+void     ocm_link_publish_sim_torque(const ipc_sim_torque_t *torque);
+void     ocm_link_publish_report(const ipc_report_t *report);
 
 #endif /* OCM_LINK_H */

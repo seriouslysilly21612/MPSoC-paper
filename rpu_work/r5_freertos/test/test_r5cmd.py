@@ -43,7 +43,8 @@ assert l.w[c.OFF_COMMAND // 4] & 1 and l.w[c.OFF_TORQUE // 4] & 1
 l.send_command(c.CMD_SERVO_ON, 1)
 g = l.w[c.OFF_COMMAND // 4]
 assert g % 2 == 0 and l.w[c.OFF_COMMAND // 4 + 1] == e1
-assert struct.unpack_from(c.COMMAND_FMT, struct.pack("<II", l.w[c.OFF_COMMAND // 4 + 2], l.w[c.OFF_COMMAND // 4 + 3])) == (1, c.CMD_SERVO_ON)
+assert (l.w[c.OFF_COMMAND // 4 + 2], l.w[c.OFF_COMMAND // 4 + 3]) == (1, c.CMD_SERVO_ON)
+assert not any(l.w[c.OFF_COMMAND // 4 + 4 + i] for i in range(28))       # the numbers of a start: none in a servo command
 l.side_start()
 assert l.epoch == e1 + 1 and l.w[c.OFF_COMMAND // 4] == g | 1
 l.epoch = 0xFFFFFFFF; l.w[c.HEAD_APU // 4 + 2] = 0xFFFFFFFF; l.side_start(); assert l.epoch == 1   # wrap skips 0
