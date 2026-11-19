@@ -528,7 +528,8 @@ lines of `HighLevelLink.h` that keep a count when a read fails or a newer reques
 
 ## The control task on the R5 (`CONTROL_TASK`, S2; 2026-11-19)
 
-With `-DCONTROL_TASK=1` in the symbols of the C++ project above, the control task itself runs here: the control
+With `-DCONTROL_TASK=1` in the symbols of the C++ project above (or `CONTROL_TASK` set to 1 where
+`src/app_config.h` defines it 0: one line of the project's copy), the control task itself runs here: the control
 computation after the send of every cycle, on the measured state of that cycle, and its torque goes to the drives
 with the send of the next cycle, as the torque of the APU's control task does. `SHADOW_CONTROL` is then off by
 itself (one controller in a build). The APU sends commands and goals and gets a report of every period; a period
@@ -623,6 +624,14 @@ the torque and the reference: what this firmware computes on the R5 against the 
 Not checked: in Vitis and on the board. A generator error in a motion (the reference is then not followed) has
 no test: no input here produces one. The arm of the bus has run in `test_control_link` only. The application's
 side (`--arch S2`) has run against the simulated R5 only, which runs `ControlCycle` and not `control_link.c`.
+
+On the board, with this firmware running and its bus in OP (the application's README has the rest):
+
+    python3 tools/s2_keys_sim.py --bench indy7/bench/L7N3_bus.cfg     # the keys, the fault tests and a restart of the application against this firmware; the arm simulated on the APU
+    python3 tools/run_timing.py --condition idle --arch S2 --bus indy7/bench/L7N3_bus.cfg   # the row of Table 6 from the record of this firmware, with its control task
+
+A run of the application that ends with `q` leaves the control task as it is after a start of this firmware:
+controller off, servo not asked. One that is killed leaves it as it was, and it goes on.
 
 ## The split into modules (2026-11-15)
 

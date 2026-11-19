@@ -55,7 +55,11 @@ public:
 		long	nQueueFull;			// commands that found the queue full: not written
 		long	nGoals;				// goals written
 		long	nCtrlFaults;		// controller faults of the R5 since the first report of this run ...
-		long	nDriveStops;		// ... and its stops of the drives (a dropout, a servo on that ran out)
+		long	nDriveStops;		// ... and its stops of the drives (a dropout, a servo on that ran out) ...
+		long	nNoState;			// ... its periods without a state of the arm ...
+		long	nPlans, nIks;		// ... the plans and the IK of its planner ...
+		long	nPlanLate;			// ... and its plans that were not back in their period
+		uint32_t uPlanUsMax, uIkUsMax;	// the longest plan and IK among those of the reports taken [us]
 		long	nTraj, nLaw;		// reports with the high-level step, with the law
 		double	dTrajNsSum, dLawNsSum;
 		uint32_t uTrajNsMax, uLawNsMax;
@@ -63,7 +67,8 @@ public:
 
 	CControlClient() : m_pLink(NULL), m_dTs(1e-3), m_nQueued(0), m_uSent(0), m_uSentCmd(IPC_CMD_NONE), m_uAnswered(0),
 	                   m_bAnswer(false), m_bReport(false), m_bSample(false), m_uMotion(0), m_uStates(0), m_bStates(false),
-	                   m_bStatesSim(false), m_uStatePeriod(0), m_uFaults0(0), m_uStops0(0),
+	                   m_bStatesSim(false), m_uStatePeriod(0), m_uFaults0(0), m_uStops0(0), m_uNoState0(0), m_uPlans0(0),
+	                   m_uIks0(0), m_uPlanLate0(0),
 	                   m_pGoalSlot(NULL), m_uGoalSeen(0)
 	{
 		memset(&m_stReport, 0, sizeof(m_stReport));
@@ -167,9 +172,26 @@ public:
 		{
 			m_uFaults0 = r.n_ctrl_faults;
 			m_uStops0 = r.n_drive_stops;
+			m_uNoState0 = r.n_no_state;
+			m_uPlans0 = r.n_plans;
+			m_uIks0 = r.n_iks;
+			m_uPlanLate0 = r.n_plan_late;
+		}
+		else
+		{
+			// the time of the planner's last plan and of its last IK: one of this run when their count has gone on
+			// since the report taken before
+			if (r.n_plans != m_stReport.n_plans && r.plan_us > m_stCounts.uPlanUsMax)
+				m_stCounts.uPlanUsMax = r.plan_us;
+			if (r.n_iks != m_stReport.n_iks && r.ik_us > m_stCounts.uIkUsMax)
+				m_stCounts.uIkUsMax = r.ik_us;
 		}
 		m_stCounts.nCtrlFaults = (long)(uint32_t)(r.n_ctrl_faults - m_uFaults0);
 		m_stCounts.nDriveStops = (long)(uint32_t)(r.n_drive_stops - m_uStops0);
+		m_stCounts.nNoState = (long)(uint32_t)(r.n_no_state - m_uNoState0);
+		m_stCounts.nPlans = (long)(uint32_t)(r.n_plans - m_uPlans0);
+		m_stCounts.nIks = (long)(uint32_t)(r.n_iks - m_uIks0);
+		m_stCounts.nPlanLate = (long)(uint32_t)(r.n_plan_late - m_uPlanLate0);
 		m_stReport = r;
 		m_bReport = true;
 	}
@@ -314,6 +336,7 @@ private:
 	bool			m_bStatesSim;		// ... counted as steps of the arm simulated here
 	uint32_t		m_uStatePeriod;		// StatePeriod()
 	uint32_t		m_uFaults0, m_uStops0;		// what the R5 had counted at the first report
+	uint32_t		m_uNoState0, m_uPlans0, m_uIks0, m_uPlanLate0;
 	const CGoalSlot* m_pGoalSlot;
 	unsigned int	m_uGoalSeen;
 	double			m_adGoalOffset[3];

@@ -339,11 +339,14 @@ dynamics_cycle_s2(CRobotIndy7* pRobot, RTTIME tRelease, RTTIME tStart)
 		default: break;
 	}
 	// the application ends ('q', a signal): the motion of the R5 stops and its drives go off, as they do with
-	// the control task here. An application that is killed sends nothing, and the R5 goes on
+	// the control task here; then its controller off, as a controller here ends with the application: the next
+	// run finds the R5 as a new one has it, and 'r' switches the controller on there. An application that is
+	// killed sends nothing, and the R5 goes on
 	if (stState.bStop && !g_stS2.bStopSent)
 	{
 		g_stS2.bStopSent = true;
 		pRobot->QueueControl(IPC_CMD_SERVO_OFF);
+		pRobot->QueueControl(IPC_CMD_CTRL_OFF);
 	}
 	c.Send();
 	// the goals of TRACK go to the R5, where its high-level controller reads them: after the command of the cycle,

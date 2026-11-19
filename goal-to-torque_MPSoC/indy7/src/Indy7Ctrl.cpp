@@ -247,12 +247,15 @@ CRobotIndy7::Init()
 		printf("[HL] STEP BASELINE: the IK solution is the reference, as a step (no generator, no lead bound)\n");
 	// SAFETY: the fault injection ('n') makes a torque or a measured angle
 	// non-finite, takes a drive out of Operation enabled, or cuts the power
-	// of the drives; only the simulation (-s) may have it
+	// of the drives; only the simulation (-s) may have it. And -b with
+	// --arch S2: the arm of the R5's control task is then the one simulated
+	// here, the fault is one of that arm, and the drives of the bus stay off
+	// whatever that controller does (rpu_work/r5_freertos/src/control_link.c)
 	if (stSys.nSimFaultJoint != 0)
 	{
-		if (!bSim || m_bHybridBus)
+		if (!bSim || (m_bHybridBus && m_nArch != arch::eS2))
 		{
-			DBG_LOG_ERROR("(CRobotIndy7) SIM_FAULT_JOINT=%d is refused outside the simulation (-s)",
+			DBG_LOG_ERROR("(CRobotIndy7) SIM_FAULT_JOINT=%d is refused outside the simulation (-s; -b with --arch S2)",
 			              (int)stSys.nSimFaultJoint);
 			return FALSE;
 		}
@@ -825,12 +828,14 @@ CRobotIndy7::StartTimingLog()
 	         (unsigned long long)(m_stRt.tDeadline > 0 ? m_stRt.tDeadline : (RTTIME)nPeriod),
 	         (int)vTasks[0].nCpu, (int)vTasks[0].nPriority);
 	strHead += acLine;
-	// where the EtherCAT task runs; S1: how long after the release of the R5's period the tasks here are released
+	// where the EtherCAT task runs; S1, S2: how long after the release of the R5's period the tasks here are
+	// released (each has its own: InitR5Link)
 	snprintf(acLine, sizeof(acLine), "arch=%s\n", arch::Name(m_nArch));
 	strHead += acLine;
 	if (m_pLink != NULL)
 	{
-		snprintf(acLine, sizeof(acLine), "wake_delay_ns=%d\n", (int)m_pConfig->R5Link().nWakeDelayNs);
+		snprintf(acLine, sizeof(acLine), "wake_delay_ns=%d\n", (int)(m_nArch == arch::eS2 ?
+		         m_pConfig->R5Link().nWakeDelayS2Ns : m_pConfig->R5Link().nWakeDelayNs));
 		strHead += acLine;
 	}
 	// the tasks of the pipeline: name:priority:cpu of every periodic task, in the order of the cfg
@@ -1010,10 +1015,16 @@ CRobotIndy7::PrintRtSummary() const
 		       c.nTraj > 0 ? c.dTrajNsSum / (double)c.nTraj * 1e-3 : 0.0, (double)c.uTrajNsMax * 1e-3, c.nTraj,
 		       c.nLaw > 0 ? c.dLawNsSum / (double)c.nLaw * 1e-3 : 0.0, (double)c.uLawNsMax * 1e-3, c.nLaw);
 		if (m_pS2->HasReport())
-			printf("[S2] the R5 so far: %u periods without a state of the arm; its planner: %u plans, the longest %u "
-			       "us; %u IK, the longest %u us; %u plans not back in their period\n", (unsigned)r.n_no_state,
-			       (unsigned)r.n_plans, (unsigned)r.plan_max_us, (unsigned)r.n_iks, (unsigned)r.ik_max_us,
-			       (unsigned)r.n_plan_late);
+		{
+			// the R5 counts from its own start: of this run is what came after the first report taken
+			printf("[S2] the R5 in this run: %ld periods without a state of the arm; its planner: %ld plans, the "
+			       "longest %u us; %ld IK, the longest %u us; %ld plans not back in their period\n", c.nNoState,
+			       c.nPlans, (unsigned)c.uPlanUsMax, c.nIks, (unsigned)c.uIkUsMax, c.nPlanLate);
+			printf("[S2] the R5 as this run leaves it (its period %u): controller %s, %s, %s\n", (unsigned)r.in.period,
+			       (r.state & IPC_CTL_ENABLED) ? "on" : "off",
+			       (r.state & IPC_CTL_SERVO_ASKED) ? "the servo asked on" : "the servo not asked",
+			       r.traj_state == (uint32_t)CTrajectoryRT::eRunning ? "a motion runs there" : "no motion");
+		}
 	}
 	// ... and its control a second time, here (--shadow)
 	if (m_pFollow != NULL)

@@ -428,11 +428,15 @@ Not with S2: the JOINT TEST (`u`), the tool pose and the hand-eye capture (`s`, 
 part of those methods that runs in the control task is still here; refused at the start), and the fault test
 `SIM_FAULT_WHAT=torque`.
 
-The R5 goes on when the application ends (with `q` it asks the servo off first) or is killed. A new run takes up
-what it finds: the first report tells whether the controller of the R5 is on, whether it asks the servo on and
-whether a motion runs there (`x` stops it); the controller faults and the stops of the drives are counted from
-that report on; and with an arm simulated here the R5 finds the drives of the new arm off and withdraws a servo
-request that it still had (told as a stop of the drives).
+The R5 goes on when the application ends. With `q` (or a signal) the application first asks the servo off and
+then switches the controller of the R5 off, as a controller here ends with the application: the next run finds the
+R5 as a new one has it, and the summary says so (`[S2] the R5 as this run leaves it: controller off, the servo not
+asked, no motion`). An application that is killed sends nothing. A new run takes up what it finds: the first
+report tells whether the controller of the R5 is on, whether it asks the servo on and whether a motion runs there
+(`x` stops it; `r` switches a controller that is on off); what the R5 counts (its controller faults, its stops of
+the drives, its periods without a state, the plans and the IK of its planner and its late plans) is told from that
+report on; and with an arm simulated here the R5 finds the drives of the new arm off and withdraws a servo request
+that it still had (told as a stop of the drives).
 
 **`--shadow` with `--arch S2`: the control of the R5 a second time, here.** The roles of `--shadow` with S1 the other
 way round. A report begins with the description of its period in the form of the Shadow in slot (the measured
@@ -455,15 +459,18 @@ the two sides cannot run apart, no report is lost between them, and a run does n
 host: two runs give the same logs (to 1e-10 rad), also on a host that stalls. The arm moves with the answer before
 the last one, the delay of a bus, so the log of a fixed-goal run is that of P0 one period later.
 `SIM_FAULT_WHAT=state` puts the angle that is no number into the state that the R5 gets. `-b` is the same against
-the real R5 (the L7N bench: its bus has no arm). With the arm on the bus of the R5 a report that the tasks here do
-not take in its period is lost to the logs, and counted.
+the real R5 (the L7N bench: its bus has no arm), with the fault tests: the arm of the R5's control task is then the
+one simulated here, and the drives of its bus stay off whatever its controller does (with P0 and S1 the fault tests
+are refused beside a bus). `tools/s2_keys_sim.py --bench BUS` runs the sessions of the keys there, against the
+firmware, and one more in which the application is killed in a motion and started again. With the arm on the bus
+of the R5 a report that the tasks here do not take in its period is lost to the logs, and counted.
 
 The tasks follow the period of the R5 `WAKE_DELAY_S2_US` behind (`[R5_LINK]`; 500 is a first value: the control
 task of the R5 must have ended by then, and its time on the board is not measured yet). The run ends with the
 `[S2]` lines: the reports taken and those of a period with a state that were not, the commands written, refused by
 the R5 and dropped here, the goals written and taken, the times of the two parts on the R5, its periods without a
-state and its planner. The shared region is layout 6 (the report has the counts of the high-level controller and
-the target of its IK). Not run with the real R5 yet (2026-11-20).
+state and its planner in this run, and what the run leaves on it. The shared region is layout 6 (the report has the
+counts of the high-level controller and the target of its IK). Not run with the real R5 yet (2026-11-20).
 
 ## The paper and the code
 
@@ -575,6 +582,19 @@ an optimized build.
 No IgH master then: the R5 runs the bus and must have it in OP, and the device tree must have the node of its
 slots. The reference check ends with the arm at rest at the accepted goal (it used to end in motion, into gravity
 compensation); the time to rest is outside the TRACK window of the timing log.
+
+`run_timing.py --arch S2` (a firmware with the control task): the keys of the run go to the R5 as commands, and
+the arm simulated here steps on its answers. The row of Table 6 is then the R5's, all of it, from its record: the
+send, the two parts of its control task, and for the chain its release-to-end of a cycle with them (`R5 t_w + t_e
+with control`); the tasks here have no chain. The criteria: those of the R5 (its send deadline, no late release and
+no overrun, the working counter, every period in its record, the law in every period of the window), and of the
+tasks here that a State and a report of the R5 came in every cycle. With `-b` the last and the law in every period
+say whether the loop through the simulated arm kept the period, which an arm on the bus of the R5 does not need:
+a state that reaches the R5 after its control task looked is a period without the law (`R5 release -> sim state`
+and `R5 t_w + t_e with control` say on which side of `WAKE_DELAY_S2_US` the time was short). `--shadow` with it: the
+controller here that repeats the periods of the R5 (above); its IK runs in the control task here, so it is a run
+for the numbers and not for the times. A run that was killed leaves the controller of the R5 on, and the next run
+switches it off before its keys.
 
 ### Camera application (Sec. V-C)
 

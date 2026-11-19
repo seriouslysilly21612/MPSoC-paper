@@ -19,9 +19,9 @@
 #   It is lifted to SCHED_FIFO 40, above the load and below the real-time
 #   tasks (95-97), by a fixed-command sudo wrapper that
 #   tools/host/install_ecat_op_fifo.sh installs once.
-# - With --arch S1 the bus belongs to the R5: no master runs here, and there
-#   is no thread to lift. The controller opens the slots of the R5 as the UIO
-#   device "ocm-link" (../../rpu_work/README_S1.md).
+# - With --arch S1 or S2 the bus belongs to the R5: no master runs here, and
+#   there is no thread to lift. The controller opens the slots of the R5 as
+#   the UIO device "ocm-link" (../../rpu_work/README_S1.md).
 # - A build with ROS 2 (the bridge of the camera application) loads the type
 #   support of its messages at run time (dlopen, LD_LIBRARY_PATH only): this
 #   script sources /opt/ros/humble/setup.bash and ~/ros2_ws/install/setup.bash
@@ -72,16 +72,16 @@ if ldd ./bin/indy7_ctrl 2>/dev/null | grep -q librclcpp && \
 fi
 
 SIM=0
-S1=0
+R5=0
 BEFORE=
 for a in "$@"; do
     [ "$a" = "-s" ] && SIM=1
-    # --arch S1, -a S1, --arch=S1, -aS1
-    case "$BEFORE $a" in "--arch S1"|"-a S1") S1=1 ;; esac
-    case "$a" in --arch=S1|-aS1) S1=1 ;; esac
+    # --arch S1, -a S1, --arch=S1, -aS1, and the same with S2
+    case "$BEFORE $a" in "--arch S1"|"-a S1"|"--arch S2"|"-a S2") R5=1 ;; esac
+    case "$a" in --arch=S1|-aS1|--arch=S2|-aS2) R5=1 ;; esac
     BEFORE=$a
 done
-if [ "$SIM" = 0 ] && [ "$S1" = 0 ]; then
+if [ "$SIM" = 0 ] && [ "$R5" = 0 ]; then
     (
         for _ in $(seq 1 180); do
             if pgrep -x EtherCAT-OP >/dev/null 2>&1; then

@@ -5,6 +5,9 @@ that counts from the release of the R5, a torque the R5 did not have at its rele
 its own log (--r5). A slip there would pass a run whose torque came after that release, or whose send was late.
 And what a run with --shadow says about the control task on the R5 (D-14): a slip there would move the control
 task to the R5 on a time that was not that of its control computation.
+And a log of --arch S2: the row of Table 6 is the R5's, the tasks here have no chain, and a period of the R5
+without the law is told. A slip there would give S2 the times of the tasks here, which are not in its loop, or
+pass a run in which the control task of the R5 did not run in every period.
     python3 -m pytest tools/test_timing_summary.py
 """
 import os
@@ -304,3 +307,149 @@ def test_s1_a_run_without_shadow_has_nothing_of_the_control_computation_on_the_r
     passed, text = summary(tmp_path, [s1_record(k, on) for k in range(84, 90)], S1, ['--r5', r5])
     assert passed and 'control computation' not in text and 'verdict' not in text
     assert not any(row in text for row in ts.R5_CTRL_ROWS)
+
+
+S2 = 'arch=S2\nwake_delay_ns=500000\nflag2_bits=TORQUE_LATE:1\n'
+
+
+def s2_r5(period, **over):
+    """a cycle of the R5 with its control task after the send: both parts, the cycle 300 us from its release"""
+    times = dict(t_e=297000, traj=80000, dyn=150000)
+    times.update(over)
+    return r5_record(period, **times)
+
+
+def criteria(text):
+    return re.findall(r'^  (.{40}) (PASS|FAIL) ', text, re.M)
+
+
+def cell(name, values):
+    return '  %-20s %s' % (name, values)
+
+
+def test_s2_the_row_of_table_6_is_the_r5s_and_the_tasks_here_have_no_chain(tmp_path):
+    on = F['OP'] | F['TRACK']
+    # the control task here ended 1.05 ms after the release of the R5 that it follows 150 us behind, and the record
+    # has the mark of a late torque: with S1 both are faults
+    apu = [s1_record(k, on, dyn_w=100000, dyn_e=800000, flags2=LATE) for k in range(84, 90)]
+    r5 = r5_log(tmp_path, [s2_r5(k, **(dict(t_e=397000, dyn=250000) if k == 86 else {})) for k in range(80, 95)],
+                OPTIMIZED)
+    passed, text = summary(tmp_path, apu, S1_MARKS, ['--r5', r5])
+    assert not passed and 'chain < T_s in every period' in text and 'FAIL  6 late' in text
+    # with S2 the torque is the R5's own: nothing of the tasks here is on its way to the drives
+    passed, text = summary(tmp_path, apu, S2, ['--r5', r5])
+    assert passed
+    assert ('--arch S2: the cycles of the task that takes the State slot of the R5 and the report of its control '
+            'task, released 500 us after the R5') in text
+    assert 'no chain here' in text and 'chain <' not in text and 'largest chain' not in text
+    assert 'fresh torque' not in text and 'the torque at the R5' not in text and 'at its release' not in text
+    # the law and the high-level controller of the records are the R5's, from its reports: its own log has them
+    assert 'dynamics (RBDL calls)' not in text and 'high-level controller' not in text
+    assert not re.search(r'^chain R', text, re.M)
+    assert 'all of the R5' in text
+    for line in (cell('Send Delta T_send', '0.0 / 0.0 / 0.0'), cell('EtherCAT t_w', '3.0 / 3.0 / 3.0'),
+                 cell('EtherCAT t_w + t_s', '66.0 / 66.0 / 66.0'), cell('Trajectory t_e', '80.0 / 80.0 / 80.0'),
+                 cell('Dynamics t_e', '166.7 / 250.0 / 250.0'),         # of the R5: 5 x 150 us and 250 us
+                 cell('Chain R', '316.7 / 400.0 / 400.0')):             # its t_w + t_e: 5 x 300 us and 400 us
+        assert line in text, line
+    table = open(os.path.join(str(tmp_path), 'timing_table.csv')).read().splitlines()
+    assert table[0].endswith('Trajectory t_e,Dynamics t_e,Chain R') and table[1].endswith('316.7 / 400.0 / 400.0')
+    assert 'the control task on the R5 (S2), in 6 of the 6 periods of the window that its log has:' in text
+    assert '  largest t_w + t_e 400.0 us, at most 500 us: the control task fits on the R5 (S2)' in text
+    assert [name.strip() for name, _ in criteria(text)] == [
+        'a new State of the R5 in every cycle', 'no State of the R5 that no cycle took',
+        'a report of the R5 in every cycle', 'R5: t_w + t_s <= t_b in every period', 'R5: no late release, no overrun',
+        'R5: no incomplete working counter', 'R5: every period of the window logged',
+        'R5: the control law in every period', 'no late release', 'no overrun', 'no incomplete working counter']
+    # a firmware that is not an optimized build: its times are given, not judged
+    passed, text = summary(tmp_path, apu, S2, ['--r5', r5_log(tmp_path, [s2_r5(k) for k in range(80, 95)], 'mode=r5\n')])
+    assert passed and text.rstrip().endswith('no verdict: the firmware is not an optimized build (optimized=? in its log)')
+
+
+def test_s2_a_cycle_without_a_report_and_a_period_of_the_r5_without_the_law_fail(tmp_path):
+    on = F['OP'] | F['TRACK']
+    clean = [s1_record(k, on) for k in range(84, 90)]
+    r5 = r5_log(tmp_path, [s2_r5(k) for k in range(80, 95)], OPTIMIZED)
+    # the control task here took no report in the cycle of period 85: the record of 86 has nothing of it
+    apu = [s1_record(k, on, **(dict(dyn_w=-1, dyn_e=-1) if k == 86 else {})) for k in range(84, 90)]
+    passed, text = summary(tmp_path, apu, S2, ['--r5', r5])
+    assert not passed and 'cycles in OP without a new report of the control task of the R5: 1\n' in text
+    assert ('a report of the R5 in every cycle', 'FAIL') in [(n.strip(), v) for n, v in criteria(text)]
+    assert 'a report of the R5 in every cycle        FAIL  1 without' in text
+    # the R5 had no state of the arm in its period 87: no law in it
+    r5_gap = r5_log(tmp_path, [s2_r5(k) if k != 87 else r5_record(k, t_e=110000) for k in range(80, 95)], OPTIMIZED)
+    passed, text = summary(tmp_path, clean, S2, ['--r5', r5_gap])
+    assert not passed and 'periods of the R5 in the window without the control law: 1\n' in text
+    assert 'R5: the control law in every period      FAIL  1 without' in text
+    assert 'the control task on the R5 (S2), in 5 of the 6 periods of the window that its log has:' in text
+    # with the arm simulated here (-b) the two are told as what they are there
+    stepped = [s1_record(k, on, sim=80000, **(dict(dyn_w=-1, dyn_e=-1) if k == 86 else {})) for k in range(84, 90)]
+    passed, text = summary(tmp_path, stepped, S2 + 'mode=hybrid\n', ['--r5', r5_gap])
+    assert not passed and 'of the R5: 1 (-b: the simulated arm rested for them)' in text
+    assert 'control law: 1 (-b: no state of the simulated arm reached it for them)' in text
+    assert '-b: the arm simulated here steps when the R5 has answered its last state' in text and 'R_adj' not in text
+    assert 'the chain without the simulator step' not in text and '(after the send)' not in text
+    # the state of the simulated arm for the R5: 500 us behind the R5, then 100 us and 20 us of the control task
+    # here, the step in them (the cycles after one with a step and with a report: 85, 87, 88, 89)
+    assert re.search(r'^R5 release -> sim state +620\.0 +0\.0 +620\.0 +620\.0 +620\.0 +4\n', text, re.M)
+    assert re.search(r'^Dynamics t_w +20\.0 .* +4\n', text, re.M)        # of the task: without the step of 80 us
+    assert 'is below the 500 us that the tasks follow behind it' in text
+    assert [n.strip() for n, _ in criteria(text)][-1] == '-b: no drive of the bus enabled' and len(criteria(text)) == 12
+    passed, text = summary(tmp_path, apu, S2, ['--r5', r5_gap])        # the arm of the bus: no state from here
+    assert ts.SIM_STATE not in text
+    # outside the window the R5 may be without the law (before the servo on, after the test); in it a period of
+    # the law alone (no motion: it holds) is one with the law
+    r5_out = r5_log(tmp_path, [s2_r5(k, traj=-1) if k == 86 else s2_r5(k) if 84 <= k <= 89 else r5_record(k)
+                               for k in range(80, 95)], OPTIMIZED)
+    passed, text = summary(tmp_path, clean, S2, ['--r5', r5_out])
+    assert passed and 'R5: the control law in every period      PASS  0 without' in text
+    # an overrun of the R5 is one of its cycle with the control task
+    r5_over = r5_log(tmp_path, [s2_r5(k, flags=F['OVERRUN'] if k == 88 else 0) for k in range(80, 95)], OPTIMIZED)
+    passed, text = summary(tmp_path, clean, S2, ['--r5', r5_over])
+    assert not passed and 'R5: no late release, no overrun          FAIL  0 late, 1 overruns' in text
+
+
+def test_s2_without_the_log_of_the_r5_the_row_is_empty_and_the_task_here_is_still_judged(tmp_path):
+    on = F['OP'] | F['TRACK']
+    passed, text = summary(tmp_path, [s1_record(k, on) for k in range(84, 90)], S2)
+    assert passed and 'are those of the R5, not in this log' in text
+    for name in ('Send Delta T_send', 'EtherCAT t_w', 'EtherCAT t_w + t_s', 'Trajectory t_e', 'Dynamics t_e', 'Chain R'):
+        assert cell(name, '-') + '\n' in text, name
+    assert not any(row in text for row in ts.R5_ROWS + ts.R5_CTRL_ROWS)
+    assert len(criteria(text)) == 6 and not any(name.startswith('R5:') for name, _ in criteria(text))
+    assert 'Delta T_send|' not in text and 'EtherCAT t_s' not in text and 'send deadlines' not in text
+    passed, text = summary(tmp_path, [s1_record(k, on) for k in range(84, 90)], S2, ['--hourly'])
+    assert re.search(r'^ +1 +6 +- +90\.0 +0\.0 +0 +0 +0 +0$', text, re.M)        # no t_w + t_s, no chain here
+    with pytest.raises(SystemExit, match='started again'):
+        summary(tmp_path, [s1_record(84, on), s1_record(85, on), s1_record(1, on), s1_record(2, on)], S2)
+    # the task that takes the slots here: a cycle without a State, a State that it did not take
+    records = [s1_record(84, on), s1_record(85, on), s1_record(85, F['NOSTATE']), s1_record(88, on)]
+    passed, text = summary(tmp_path, records, S2)
+    assert not passed and '1 cycles without a new State, 2 States of the R5 that no cycle took' in text
+    passed, text = summary(tmp_path, [s1_record(k, on | (F['LATE'] if k == 86 else 0)) for k in range(84, 90)], S2)
+    assert not passed and 'no late release                          FAIL  1' in text
+
+
+def test_s1_the_summary_has_nothing_of_s2(tmp_path):
+    on = F['OP'] | F['TRACK']
+    # a cycle here without the torque of the period before, and a cycle of the R5 without the control computation:
+    # with S1 the first is a period without a fresh torque, the second no fault (--shadow runs it when it is told)
+    apu = [s1_record(k, on, sim=80000, **(dict(dyn_w=-1, dyn_e=-1) if k == 86 else {})) for k in range(84, 90)]
+    r5 = r5_log(tmp_path, [s2_r5(k) if k != 87 else r5_record(k) for k in range(80, 95)], 'mode=r5\n')
+    passed, text = summary(tmp_path, apu, S1_MARKS + 'mode=hybrid\n', ['--r5', r5])
+    assert not passed and 'a fresh torque in every period           FAIL  1 without' in text
+    assert [name.strip() for name, _ in criteria(text)] == [
+        'a new State of the R5 in every cycle', 'no State of the R5 that no cycle took',
+        'the torque at the R5 by its next release', 'R5: t_w + t_s <= t_b in every period',
+        'R5: no late release, no overrun', 'R5: no incomplete working counter', 'R5: every period of the window logged',
+        'no late release', 'no overrun', 'no incomplete working counter', 'chain < T_s in every period',
+        'a fresh torque in every period', '-b: no drive of the bus enabled']
+    assert 'report' not in text and 'control law' not in text and 'no chain here' not in text
+    assert ts.SIM_STATE not in text
+    assert '--arch S1: the cycles of the task that takes the State slot of the R5, released 150 us after' in text
+    assert '-b: the step of the simulated arm (after the send) is left out' in text and 'steps when' not in text
+    assert '; the send column signed, the chain without the simulator step; the first three of the' in text
+    assert cell('Chain R_adj', '190.0 / 190.0 / 190.0') in text         # 150 + 100 + 20 us, the step of 80 us out
+    assert cell('Trajectory t_e', '10.0 / 10.0 / 10.0') in text         # of the task here
+    assert 'the control computation on the R5 (--shadow), in 5 of the 6 periods' in text
+    assert text.rstrip().endswith('(optimized=? in its log), and S2 will be one')
