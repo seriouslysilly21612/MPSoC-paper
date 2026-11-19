@@ -149,9 +149,9 @@ int main(void)
     {
         const double two_pi = 6.283185307179586;
 #if ROBOT_TARGET == TARGET_L7N_BENCH
-        CHECK(FW_CFG_CRC == 0x07AE943Du);                         /* bin/fw_cfg_header -B bench/L7N4_bus.cfg */
+        CHECK(FW_CFG_CRC == 0xB2DB751Fu);                         /* bin/fw_cfg_header -B bench/L7N3_bus.cfg */
         CHECK(fabs(axis_q_rad(0, 524288) + two_pi) < 1e-12);      /* one turn of the encoder, MOVE_CCW 0 */
-        CHECK(fabs(axis_qd_rads(3, -524288) - two_pi) < 1e-12);
+        CHECK(fabs(axis_qd_rads(2, -524288) - two_pi) < 1e-12);
         CHECK(fabs(axis_tau_nm(0, 1000) + 1.337) < 1e-12);        /* 100 % of the rated torque */
 #else
         CHECK(FW_CFG_CRC == 0x3896D4ECu);                         /* bin/fw_cfg_header (INDY7.cfg) */

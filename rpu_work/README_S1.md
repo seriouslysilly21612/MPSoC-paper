@@ -30,7 +30,7 @@ the torque in its slot before the next release of the R5.
 | Start | The R5 | The arm | Needs |
 |---|---|---|---|
 | `./run.sh -s --arch S1` | simulated: a thread of the application on another CPU, with the firmware's rules for the slots | MuJoCo, stepped by the simulated R5 | nothing of this page |
-| `./run.sh -b -B bench/L7N4_bus.cfg --arch S1` | the firmware on the bus of the bench; its drives stay off (the application never asks for a servo on with `-b`) | MuJoCo, stepped by the application once per State taken | the device tree and the firmware below |
+| `./run.sh -b -B bench/L7N3_bus.cfg --arch S1` | the firmware on the bus of the bench; its drives stay off (the application never asks for a servo on with `-b`) | MuJoCo, stepped by the application once per State taken | the device tree and the firmware below |
 | `./run.sh --arch S1` | the firmware on the bus of the robot | the robot | the same, and a firmware built for the Indy7 from the cfg |
 
 ## The device tree: the slots as a UIO device

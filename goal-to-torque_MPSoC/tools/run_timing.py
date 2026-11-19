@@ -10,7 +10,7 @@ summary of tools/timing_summary.py (the row of Table 6).
                               [--duration 600] [--cfg indy7/INDY7.cfg] [--bus FILE] [--out DIR] [--settle 30]
                               [--direct] [--no-hl-log] [--arch P0|S1] [--shadow]
 
-  --bus FILE  another bus than that of the cfg (indy7 -B FILE, e.g. indy7/bench/L7N4_bus.cfg, the L7N
+  --bus FILE  another bus than that of the cfg (indy7 -B FILE, e.g. indy7/bench/L7N3_bus.cfg, the L7N
               bench); the arm and everything else stay those of the cfg; FILE is copied into OUT
   --arch S1   the EtherCAT task on the R5 (rpu_work/README_S1.md): the R5 runs the bus and must have it in OP, the
               controller takes its State slot and follows its period; no IgH master. The record of every cycle

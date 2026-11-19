@@ -56,7 +56,7 @@ per, fl, *t = struct.unpack(c.TORQUE_FMT, raw)
 assert per == 9 and fl == 3 and t[0] == 0.05 and t[3] == -0.05 and t[4] == 0.0
 
 # clamp and parse
-assert c.parse_tau("1") == [c.MAX_TAU_NM] * 4 and c.parse_tau("-1,0,0.05,0")[0] == -c.MAX_TAU_NM and c.parse_tau(None) == [0.0] * 4
+assert c.parse_tau("1") == [c.MAX_TAU_NM] * 3 and c.parse_tau("-1,0,0.05")[0] == -c.MAX_TAU_NM and c.parse_tau(None) == [0.0] * 3
 try:
     c.parse_tau("1,2"); assert False
 except SystemExit:

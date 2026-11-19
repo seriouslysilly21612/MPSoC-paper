@@ -11,7 +11,7 @@
 *	           simulated arm (the host-timing test, paper, Sec. III-C)
 *	  -B FILE  with -b: the slaves of the bus from FILE instead of the
 *	           configuration ([ECAT_MASTER] SLAVENUMBER and [AXIS0].., e.g.
-*	           bench/L7N4_bus.cfg); the arm stays that of the configuration
+*	           bench/L7N3_bus.cfg); the arm stays that of the configuration
 *	  -t DIR   the timing of every period into DIR (TimingLog.h,
 *	           tools/timing_summary.py)
 *	  --method NAME (-m)  M1, M2, A2, A3 or FULL: what the camera application
@@ -63,7 +63,7 @@ void Usage(const char* apcProg)
 	        "  -f FILE  configuration (default: ./INDY7.cfg, then <program dir>/../INDY7.cfg)\n"
 	        "  -s       simulation: MuJoCo in place of the bus\n"
 	        "  -b       the bus of the robot, drives off, beside the simulated arm (host-timing test)\n"
-	        "  -B FILE  with -b: the slaves of the bus from FILE (e.g. bench/L7N4_bus.cfg)\n"
+	        "  -B FILE  with -b: the slaves of the bus from FILE (e.g. bench/L7N3_bus.cfg)\n"
 	        "  -t DIR   timing of every period into DIR\n"
 	        "  --method NAME (-m)  what the camera application does with the results of the camera (obs/ObsMethod.h);\n"
 	        "           default M1, the goal slot as before\n"

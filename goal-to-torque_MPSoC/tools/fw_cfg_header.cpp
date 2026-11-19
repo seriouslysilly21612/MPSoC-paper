@@ -10,7 +10,7 @@
 *	    bin/fw_cfg_header --check
 *
 *	  -f FILE    the configuration, found as by indy7_ctrl
-*	  -B FILE    the slaves of the bus from FILE (bench/L7N4_bus.cfg)
+*	  -B FILE    the slaves of the bus from FILE (bench/L7N3_bus.cfg)
 *	  -o HEADER  the header; without it to the standard output
 *	  --check    the test of FwCfg.h: the CRC-32 against its check value and
 *	             against a record packed and summed by another program; every

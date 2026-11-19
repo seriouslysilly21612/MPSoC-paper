@@ -6,7 +6,7 @@
 #      two sides must be built from the same text.  A copy is updated from the application (cp), never the other
 #      way round.
 #   2. src/cfg/fw_cfg_indy7.h and src/cfg/fw_cfg_l7n.h are what bin/fw_cfg_header writes from INDY7.cfg and
-#      bench/L7N4_bus.cfg (cd goal-to-torque_MPSoC/indy7 && make tools).  When one differs, write it again with the
+#      bench/L7N3_bus.cfg (cd goal-to-torque_MPSoC/indy7 && make tools).  When one differs, write it again with the
 #      tool and build the firmware again; the header is not edited.
 #   3. the record of a cycle (src/cycle_record.h) is the record of the application's timing log (TimingLog.h):
 #      test/check_record.cpp compiles only when the fields and the flag bits are the same.
@@ -40,7 +40,7 @@ else
     tmp=$(mktemp)
     "$APP/bin/fw_cfg_header" -f "$APP/INDY7.cfg" -o "$tmp" > /dev/null 2>&1
     if cmp -s "$tmp" src/cfg/fw_cfg_indy7.h; then echo "same: src/cfg/fw_cfg_indy7.h"; else echo "DIFFERENT: src/cfg/fw_cfg_indy7.h and the cfg"; bad=1; fi
-    "$APP/bin/fw_cfg_header" -f "$APP/INDY7.cfg" -B "$APP/bench/L7N4_bus.cfg" -o "$tmp" > /dev/null 2>&1
+    "$APP/bin/fw_cfg_header" -f "$APP/INDY7.cfg" -B "$APP/bench/L7N3_bus.cfg" -o "$tmp" > /dev/null 2>&1
     if cmp -s "$tmp" src/cfg/fw_cfg_l7n.h; then echo "same: src/cfg/fw_cfg_l7n.h"; else echo "DIFFERENT: src/cfg/fw_cfg_l7n.h and the cfg"; bad=1; fi
     rm -f "$tmp"
 fi

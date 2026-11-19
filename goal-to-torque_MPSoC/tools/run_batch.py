@@ -8,7 +8,7 @@ condition and repetition, with nobody at the board.
              repetition is one round of the 7, so that a slow drift (the temperature of the board) falls on every
              condition alike; about 11.8 h, about 2.3 GB of timing logs
   --quick    idle, stress, perception, pressure 100 for 10 min each, then pressure 100 twice more; about 1.4 h
-  --bus FILE the bus of every run (default indy7/bench/L7N4_bus.cfg, the L7N bench)
+  --bus FILE the bus of every run (default indy7/bench/L7N3_bus.cfg, the L7N bench)
   --arch S1  every run with the EtherCAT task on the R5 (run_timing.py --arch S1)
   --dry-run  the runs and their commands; nothing is run
   --from N   start at run N in an OUT of an earlier batch; the directory of a run done again is kept as
@@ -137,7 +137,7 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument('--out', required=True, help='the directory of the batch')
     ap.add_argument('--quick', action='store_true', help='the short protocol, about 1.4 h')
-    ap.add_argument('--bus', default=os.path.join(rt.APP, 'bench', 'L7N4_bus.cfg'), help='the bus of every run')
+    ap.add_argument('--bus', default=os.path.join(rt.APP, 'bench', 'L7N3_bus.cfg'), help='the bus of every run')
     ap.add_argument('--arch', default='P0', choices=('P0', 'S1'), help='where the EtherCAT task runs (S1: on the R5)')
     ap.add_argument('--dry-run', action='store_true', help='the runs and their commands only')
     ap.add_argument('--from', dest='first', type=int, default=1, help='start at run N (an earlier batch in OUT)')

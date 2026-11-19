@@ -118,7 +118,7 @@ configuration with the parser of the controller, so the two cannot read a value 
 write the value into the State slot, and the controller is to send "servo on" only when it equals its own;
 neither is wired yet. `bin/fw_cfg_header --check`: the CRC-32 against its check value and against a record packed
 and summed by another program; every value, the number of slaves and their order change the check value, a name
-does not. All 23 broken versions of `FwCfg.h` fail it. For `INDY7.cfg` and for the bench (`-B bench/L7N4_bus.cfg`)
+does not. All 23 broken versions of `FwCfg.h` fail it. For `INDY7.cfg` and for the bench (`-B bench/L7N3_bus.cfg`)
 a second reader of the files gives the same check values, and the headers compile for the R5 without a warning.
 
 **The camera results (2026-11-17; the methods below use them).** `indy7/src/obs/obs_mailbox.h` (C) carries a result from
@@ -313,7 +313,7 @@ and the affinity of every task at its start and refuses to run otherwise.
     ./run.sh -s                # simulation: MuJoCo in place of the bus
     ./run.sh                   # the robot (the bus must be up: ethercat.service)
     ./run.sh -b -t DIR         # the bus of the robot in OP, drives off, beside the simulated arm; timing into DIR
-    ./run.sh -b -B bench/L7N4_bus.cfg -t DIR   # the same with another bus: the four L7N drives of the bench
+    ./run.sh -b -B bench/L7N3_bus.cfg -t DIR   # the same with another bus: the three L7N drives of the bench
     ./run.sh --method A2       # the camera application by another method (M1, M2, A2, A3, FULL; see above)
     ./run.sh -s --arch S1      # the EtherCAT task on the R5 (below); with -s the R5 is simulated as well
     ./run.sh -s --arch S1 --shadow   # and the R5 runs the control computation beside this one (below)
@@ -464,7 +464,7 @@ the PS temperatures and the board power, every second, into `temp_power.csv`.
 
 The MPSoC measurements run every condition unattended: idle, stress, perception, and the memory pressure
 (perception + `stress-ng --memrate` at about 25, 50, 75, 100 % of its unbounded rate beside the camera
-pipeline), 30 min x 3, about 11.8 h (`--quick`: about 1.4 h). On the L7N bench (`indy7/bench/L7N4_bus.cfg`), with the
+pipeline), 30 min x 3, about 11.8 h (`--quick`: about 1.4 h). On the L7N bench (`indy7/bench/L7N3_bus.cfg`; three drives since 2026-11-19, four in the logs before), with the
 IgH master running and NTP off (`sudo timedatectl set-ntp false`; it refuses to start otherwise), inside tmux:
 
     python3 tools/run_batch.py --out ~/timing_logs/p0_bench_batch_<date>    # --dry-run lists the runs; --from N goes on from run N

@@ -9,7 +9,7 @@ R5 code yet, so this script is the APU side for the bench.  Needs root (/dev/mem
   sudo python3 r5cmd.py status                 State slot once: flags, status words, q, torque, counters
   sudo python3 r5cmd.py watch                  State slot 5x per second, until Ctrl-C
   sudo python3 r5cmd.py run                    servo on, hold zero torque, show State; Ctrl-C = servo off
-  sudo python3 r5cmd.py run --tau 0.05,0,0,0   the same with a constant test torque [N m] per axis
+  sudo python3 r5cmd.py run --tau 0.05,0,0     the same with a constant test torque [N m] per axis
   sudo python3 r5cmd.py off                    send servo off (one command, no loop)
 
 Why `run` is a loop: the R5 counts a Torque slot that did not change as "stale" and switches the servo off after
@@ -38,7 +38,7 @@ HEAD_R5, HEAD_APU = 0x00, 0x20                  # ipc_side_t: magic, layout, epo
 CMD_SERVO_ON, CMD_SERVO_OFF, CMD_STOP = 1, 2, 3
 TORQUE_VALID, TORQUE_ENABLED = 1, 2
 ST_OP, ST_WKC_ERR, ST_SERVO_ON, ST_STOP = 1, 2, 4, 8
-AXES = 4                                        # L7N bench
+AXES = 3                                        # L7N bench (bench/L7N3_bus.cfg)
 MAX_TAU_NM = 0.13                               # a hair under the drive-side 10 % limit (0.1337 N m)
 PERIOD_S = 0.001
 OFF_WAIT_S = 2.0

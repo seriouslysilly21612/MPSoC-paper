@@ -6,7 +6,7 @@ master (SOEM 1.4.0) on GEM3, which Linux leaves to the R5, driving the L7N bench
 into modules with new names, without a change in the generated code (below); the master went FREE_RUN on
 2026-11-15 and back to DC SYNC0 on 2026-11-16 (below). Torque mode and the slots of the APU came on 2026-11-17
 (commit `51a7ad8`); the send deadline, the record of every cycle and the GEM3 buffers in the OCM on 2026-11-18
-(below).
+(below). Since 2026-11-19 the bench is three drives ("Three drives" below).
 
 | Path | Content | Origin |
 |---|---|---|
@@ -118,6 +118,23 @@ On the board with DC SYNC0 (2026-11-16, builds of `48fc0af`):
 
 With SYNC0 the 0.12 drive still fails now and then at start-up; the colleague saw two failures before a pass.
 When it fails, switch the drive power off and on and start again.
+
+## Three drives (2026-11-19)
+
+The drive with firmware 0.12 is off the bus (the cable of the second drive's OUT goes to the IN of the fourth),
+and the bench target is the three drives with firmware 0.22: `AXIS_COUNT` 3 and `BUS_SLAVE_COUNT` 3 in
+`src/app_config.h`, `bench/L7N3_bus.cfg` in the application (check value 0xB2DB751F; it was 0x07AE943D with
+`bench/L7N4_bus.cfg`). A firmware built for four drives refuses this bus at the start, and the other way round.
+
+Why: with the build of that day (C++ project, `-O2`, the second controller of `--shadow`) the 0.12 drive left OP
+about 100 ms after the loop started in 4 starts of 5 (AL status 0x001B, `wkc_bad=9899` at 10 s), the three
+others stayed in OP in all five. Of the two starts right after a drive power-on one held; the three without one
+before them all failed. Why it failed more often than with the builds before is not known, and it was not
+looked for: the bench gives the timing of a real bus, and the share of one drive is at most a quarter of the
+96 us that a cycle of the EtherCAT task took at most with four (2026-11-18).
+
+DC SYNC0 stays as it is. In the FREE_RUN runs of 2026-11-16 only the 0.12 drive left OP (the first three state
+that the others stayed), so the bench could go back to FREE_RUN (D-13); that is not decided.
 
 ## SM2 watchdog (2026-11-16)
 
@@ -231,7 +248,7 @@ build; the rest of this file still describes the build of 2026-11-11 to 2026-11-
 
       cd goal-to-torque_MPSoC/indy7 && make tools
       ./bin/fw_cfg_header -o ../../rpu_work/r5_freertos/src/cfg/fw_cfg_indy7.h
-      ./bin/fw_cfg_header -B bench/L7N4_bus.cfg -o ../../rpu_work/r5_freertos/src/cfg/fw_cfg_l7n.h
+      ./bin/fw_cfg_header -B bench/L7N3_bus.cfg -o ../../rpu_work/r5_freertos/src/cfg/fw_cfg_l7n.h
 
   The bring-up now compares the vendor id and the product code of every slave with the cfg (it compared the
   vendor id of the drives). The State slot carries `FW_CFG_CRC`, the check value of those constants, instead of 0;
