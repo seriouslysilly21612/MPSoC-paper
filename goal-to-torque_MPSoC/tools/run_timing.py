@@ -35,7 +35,8 @@ in its place), the timing of every period (-t), and the summary of tools/timing_
               in the object menu of the bridge (CLASS must be in view), HOME to q_r, then TRACK following it for
               --duration s, 'x'. The bridge clears desired_class:= of the launch when a session starts, so the
               menu is the only way to set it. Without it the goal stream runs, and with a method other than M1
-              the mailbox stays empty. The logs of the application (obs_*, hl_app_*) go to OUT/hl_logs
+              the mailbox stays empty. The logs of the application (obs_*, hl_app_*) go to OUT/hl_logs, the
+              decisions of the detector (A3, FULL) to OUT/decisions.csv
   --no-hl-log HL_LOG=0 in the copy of the cfg: the high-level test is not logged (the 30-min runs of
               tools/run_batch.py; the log takes about 0.7 kB per period)
 
@@ -246,7 +247,8 @@ def start_vision(out, method='M1'):
         print('run_timing: the camera pipeline runs already; it is left running (its method and class are its own)')
         return None
     log = os.path.join(out, 'vision.txt')
-    launch = VISION + ' method:=%s' % shlex.quote(method)
+    # decision_log: why the detector ran, skipped or rejected each image (A3, FULL; the others write none)
+    launch = VISION + ' method:=%s decision_log:=%s' % (shlex.quote(method), shlex.quote(os.path.join(out, 'decisions.csv')))
     p = subprocess.Popen(['bash', '-c', launch], stdout=open(log, 'w'), stderr=subprocess.STDOUT,
                          start_new_session=True, env=dict(os.environ, PYTHONUNBUFFERED='1'))
     for _ in range(150):
