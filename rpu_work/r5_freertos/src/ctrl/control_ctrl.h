@@ -23,6 +23,8 @@ typedef struct {
     int      servo_on;              /* every joint in Operation enabled */
     uint32_t not_ready;             /* bit i: joint i cannot be switched on */
     uint32_t sim_step;
+    uint64_t release;               /* the release of the period, ticks of the system counter */
+    float    response;              /* [s] release to the end of the control computation of the period before; < 0: none */
     double   q[IPC_CTRL_DOF];       /* [rad] */
     double   qd[IPC_CTRL_DOF];      /* [rad/s] */
     double   tau[IPC_CTRL_DOF];     /* the torque the drives report [N m] */
@@ -38,8 +40,11 @@ typedef struct {
 } control_out_t;
 
 /* Builds the controller.  It takes memory from the C heap (_HEAP_SIZE of lscript.ld), here and never after.
- * 0 = not built: the heap is too small, or the classes refused the constants (their lines say why). */
-int      control_ctrl_build(void);
+ * region: the shared region of the link (ipc/ipc_layout.h), where the receiver of the camera results has its
+ * mailbox, its status and its record (obs/obs_ring.h); ticks_per_s: of the counter of the releases.
+ * 0 = not built: the heap is too small, or the classes refused the constants (their lines say why).  1 = built.
+ * 2 = built, but the receiver cannot start with the [CONTRACT] numbers of this build: IPC_CMD_OBS is refused. */
+int      control_ctrl_build(volatile uint32_t *region, double ticks_per_s);
 uint32_t control_ctrl_check_value(void);
 
 /* One period.  Only after control_ctrl_build() returned 1.  No memory is taken.  Should a class throw, there is no

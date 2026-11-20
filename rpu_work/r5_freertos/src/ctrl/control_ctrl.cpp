@@ -20,10 +20,11 @@ uint32_t control_ctrl_check_value(void)
     return ShadowCheckValue(CTRL_NUMBERS_CRC, ctrl_model_check_value());
 }
 
-int control_ctrl_build(void)
+int control_ctrl_build(volatile uint32_t *region, double ticks_per_s)
 {
     if (controller.load() != NULL)
         return 1;
+    int result = 1;
     try
     {
         CControlCycle *const built = new CControlCycle;
@@ -32,13 +33,21 @@ int control_ctrl_build(void)
             delete built;
             return 0;
         }
+        CControlCycle::ObsLink link;
+        link.pBox = (volatile obs_mailbox_t *)(region + OBS_OFF_MAILBOX / 4u);
+        link.pStatus = (volatile obs_status_region_t *)(region + OBS_OFF_STATUS / 4u);
+        link.pRing = (volatile obs_ring_t *)(region + OBS_OFF_RING / 4u);
+        link.dTicksPerS = ticks_per_s;
+        link.uContractCrc = CTRL_CONTRACT_CRC;
+        if (!built->SetObsLink(link))
+            result = 2;
         controller.store(built);        // only now: the planner task may call it from here on
     }
     catch (...)         // no memory, or an error of a library: an exception that nobody catches would stop the firmware
     {
         return 0;
     }
-    return 1;
+    return result;
 }
 
 void control_ctrl_step(const control_in_t *in, control_out_t *out, ipc_report_t *report)
@@ -52,6 +61,8 @@ void control_ctrl_step(const control_in_t *in, control_out_t *out, ipc_report_t 
         stIn.bServoOn = in->servo_on != 0;
         stIn.uNotReady = in->not_ready;
         stIn.uSimStep = in->sim_step;
+        stIn.tRelease = in->release;
+        stIn.fResponse = in->response;
         for (int i = 0; i < IPC_CTRL_DOF; i++)
         {
             stIn.adQ[i] = in->q[i];

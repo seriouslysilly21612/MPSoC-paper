@@ -264,6 +264,8 @@ public:
 			case IPC_REFUSED_FAULT:       snprintf(apcOut, auLen, "controller fault latched ('r' off, 'r' on, then 'h')"); break;
 			case IPC_REFUSED_NOT_READY:   snprintf(apcOut, auLen, "a drive in Switch on disabled, or the drives went off in that period"); break;
 			case IPC_REFUSED_UNKNOWN:     snprintf(apcOut, auLen, "the firmware does not know this command"); break;
+			case IPC_REFUSED_OBS:         snprintf(apcOut, auLen, "the receiver of the camera results on the R5 cannot run this "
+			                                       "method: its [CONTRACT] numbers (the [control] line of the firmware)"); break;
 			case IPC_REFUSED_ARGUMENT:
 				if (m_stReport.refusal_joint < 0)
 					snprintf(apcOut, auLen, "the goal threshold %.4g m is outside [0, %.4g]", m_stReport.refusal_value,

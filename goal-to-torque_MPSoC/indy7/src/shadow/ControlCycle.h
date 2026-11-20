@@ -23,6 +23,14 @@
 *	            those of 'h', servo off. A command that is refused changes
 *	            nothing, and the report says why
 *	  goal      into the goal slot of the trajectory part (GoalSlot.h)
+*	  camera    with a method that uses the mailbox (IPC_CMD_OBS; the
+*	            region of SetObsLink): the receiver of the camera results
+*	            (obs/ObsGoal.h), as the Trajectory task of the APU runs it
+*	            with P0 and S1, before the trajectory part. Its status goes
+*	            to the camera side (obs_status.h), its counts and one entry
+*	            per result to the APU (obs_ring.h); while the application
+*	            runs (IPC_OBS_GOALS) its objects, with the hover height, are
+*	            the goals of TRACK
 *	  motion    CTrajectoryRT::Update on the measured state; HOME at rest
 *	            or a generator error ends the motion with this period
 *	  law       it follows the reference of this period (TRACK or HOME
@@ -60,6 +68,8 @@
 #include "ShadowWriter.h"
 #include "TrajectoryRT.h"
 #include "ipc/ipc_layout.h"
+#include "obs/ObsGoal.h"
+#include "obs/obs_ring.h"
 
 class CControlCycle
 {
@@ -78,6 +88,8 @@ public:
 		bool		bServoOn;		// every joint in Operation enabled
 		uint32_t	uNotReady;		// bit i: joint i cannot be switched on
 		uint32_t	uSimStep;
+		uint64_t	tRelease;		// the release of the period, ticks of the counter of SetObsLink
+		float		fResponse;		// [s] release to torque of the period before; below 0: not known
 		double		adQ[DOF], adQd[DOF];	// [rad], [rad/s]
 		double		adTau[DOF];				// the torque the drives report [N m]
 		const ipc_command_t*	pCommand;	// a command that is new in this period, or NULL
@@ -94,8 +106,23 @@ public:
 	CControlCycle();
 	~CControlCycle();
 
+	/* the receiver of the camera results: where its mailbox, its status and its record are in the region of the
+	 * link, the ticks of the counter of the releases per second, and the check value of [CONTRACT] of the numbers
+	 * (ObsContractCrc) */
+	struct ObsLink
+	{
+		volatile obs_mailbox_t*			pBox;
+		volatile obs_status_region_t*	pStatus;
+		volatile obs_ring_t*			pRing;
+		double							dTicksPerS;
+		uint32_t						uContractCrc;
+	};
+
 	/* builds the controller (heap: before the periods start), as CShadowControl::Init. The controller is off. */
 	BOOL	Init		(const char* astrURDF, const double* adNumbers, uint32_t auCrc);
+	/* after Init(), before the periods. FALSE: a number of the receiver cannot be used, and IPC_CMD_OBS is
+	 * refused, as it is without this call */
+	BOOL	SetObsLink	(const ObsLink& astLink);
 	BOOL	IsInit		(	) const { return m_pCtl != NULL; }
 
 	/* one period. No allocation. */
@@ -109,6 +136,9 @@ private:
 	uint32_t	Start		(const ipc_command_t& astCommand, const Input& astIn);
 	void		StopMotion	(	);
 	void		ServoOff	(Output* apOut);
+	uint32_t	ObsCommand	(uint32_t auArg);
+	void		ObsStep		(const Input& astIn);
+	static void	TagAt		(void* apArg, const float* afQ, double* adP);
 
 	CControllerFullDynamicsRT*	m_pCtl;
 	CTrajectoryRT				m_cTraj;
@@ -126,6 +156,19 @@ private:
 	uint32_t	m_uCmdDone, m_uCmdResult, m_uStartSeq, m_uStartResult;
 	uint32_t	m_uNoState, m_uFaults, m_uDriveStops, m_uGoals;
 	uint32_t	m_uMotionPeriods;				// updates of the running motion so far
+	/* the receiver of the camera results */
+	double		m_dTs;							// the period [s] of Init()
+	double		m_adObsNumbers[SHADOW_NUMBERS - SHADOW_N_OBS_DELTA];	// of Init()
+	ObsLink		m_stObs;
+	bool		m_bObsLink;						// SetObsLink() took it
+	CObsGoal::Config m_stObsCfg;				// ... and these settings; the policy comes with IPC_CMD_OBS
+	CObsGoal	m_cObs;
+	uint32_t	m_uObsMethod;					// obs_method::eMethod, or OBS_RING_OFF
+	bool		m_bObsGoals;					// its objects are the goals of TRACK
+	CGoalSlot	m_cObsSlot;						// where it writes its objects
+	unsigned	m_uObsSeen;						// ... the count of that slot at the last one taken
+	uint32_t	m_uObsEntries;					// entries written into the record so far
+	obs_recent_max_t m_stResponse;				// the response of the last periods (the status)
 };
 
 #endif // G2T_CONTROL_CYCLE_H

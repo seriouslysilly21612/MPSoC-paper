@@ -70,11 +70,11 @@ CR5Link::OpenDevice()
 		snprintf(acPath, sizeof(acPath), "/sys/class/uio/uio%d/maps/map0/size", n);
 		if (ReadLine(acPath, acText, sizeof(acText)))
 			uSize = strtoull(acText, NULL, 0);
-		if (uAddr != R5_LINK_OCM_ADDRESS || uSize < IPC_OFF_END2)
+		if (uAddr != R5_LINK_OCM_ADDRESS || uSize < IPC_REGION_BYTES)
 		{
 			DBG_LOG_ERROR("(CR5Link) uio%d (%s): map0 at 0x%llx, %llu bytes; the region of the R5 is at 0x%llx, "
 			              "at least %u bytes", n, R5_LINK_UIO_NAME, uAddr, uSize, R5_LINK_OCM_ADDRESS,
-			              (unsigned)IPC_OFF_END2);
+			              (unsigned)IPC_REGION_BYTES);
 			return FALSE;
 		}
 		char acDevice[24];

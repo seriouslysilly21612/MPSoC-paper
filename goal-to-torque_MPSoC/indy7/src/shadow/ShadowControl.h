@@ -56,7 +56,11 @@
 
 /* the constants of the controller, as CRobotIndy7::InitController and InitTrajectory take them from the
  * configuration: the period [s]; per joint Kp, Kd, Kf, the rotor inertia, the torque limit, the ready posture;
- * the gate of the friction feedforward (0 or 1); the parameters of the high-level controller */
+ * the gate of the friction feedforward (0 or 1); the parameters of the high-level controller. Then those of the
+ * receiver of the camera results (obs/ObsGoal.h) that the control task on the R5 (S2) runs, as
+ * CRobotIndy7::InitObs takes them: [CONTRACT] (delta, the age cap, eq. (7), the measurement errors of the two
+ * modes, the offset of the tool tag), the goal checks and the smoothing of the application (APP_*), and the age
+ * of the joint angles of a period (SIM_STATE_DELAY_STEPS) */
 enum
 {
 	SHADOW_N_TS = 0,
@@ -69,6 +73,12 @@ enum
 	SHADOW_N_FF_GATE = SHADOW_N_READY + IPC_CTRL_DOF,
 	SHADOW_N_DELTA, SHADOW_N_LAMBDA, SHADOW_N_STEP_MAX, SHADOW_N_TOL, SHADOW_N_PLAN_AHEAD, SHADOW_N_ITER_MAX,
 	SHADOW_N_VEL_MAX, SHADOW_N_ACC_MAX, SHADOW_N_JERK_MAX, SHADOW_N_MARGIN, SHADOW_N_LEAD, SHADOW_N_STEP_REF,
+	SHADOW_N_OBS_DELTA, SHADOW_N_OBS_AGE_CAP, SHADOW_N_OBS_E0, SHADOW_N_OBS_G, SHADOW_N_OBS_EPS_V, SHADOW_N_OBS_A_MAX,
+	SHADOW_N_OBS_EPS_CAL, SHADOW_N_OBS_EPS_M,
+	SHADOW_N_OBS_TAG = SHADOW_N_OBS_EPS_M + 2,
+	SHADOW_N_OBS_BOX = SHADOW_N_OBS_TAG + 3,
+	SHADOW_N_OBS_R_MAX = SHADOW_N_OBS_BOX + 6, SHADOW_N_OBS_FLOOR, SHADOW_N_OBS_HOVER, SHADOW_N_OBS_KAPPA, SHADOW_N_OBS_GAP,
+	SHADOW_N_OBS_LOSS, SHADOW_N_OBS_STATE_AGE,
 	SHADOW_NUMBERS
 };
 

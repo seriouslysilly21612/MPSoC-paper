@@ -238,7 +238,7 @@ $(BIN_DIR)/rbdl_model_code: $(TOOLS_DIR)/rbdl_model_code.cpp $(SRC_DIR)/shadow/M
 $(BIN_DIR)/ctrl_numbers_header: $(TOOLS_DIR)/ctrl_numbers_header.cpp $(TOOL_OBJS) $(OBJ_DIR)/base/Config.o \
                                 $(SRC_DIR)/shadow/ShadowParams.h $(SRC_DIR)/shadow/ShadowControl.h \
                                 $(SRC_DIR)/HighLevelLink.h $(SRC_DIR)/base/AtomicSlot.h $(SRC_DIR)/ipc/FwCfg.h \
-                                $(SRC_DIR)/ipc/ipc_layout.h
+                                $(SRC_DIR)/ipc/ipc_layout.h $(SRC_DIR)/obs/ObsContract.h
 	@mkdir -p $(BIN_DIR)
 	$(CXX) $(CXXFLAGS) $(INCLUDES) -o $@ $< $(TOOL_OBJS) $(OBJ_DIR)/base/Config.o $(LDLIBS)
 

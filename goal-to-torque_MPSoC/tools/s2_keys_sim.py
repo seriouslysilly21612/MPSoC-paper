@@ -9,9 +9,9 @@ other keys and waits for what each must print. Six sessions of the controller (-
            h; m a joint move to its target; t a task move, a second goal, x; y 6 HOME to its end; m and e in
            the motion; a start with the servo off is refused; h; j; r off, a start is refused; r; q.
            The controller says the mode of each motion; the arm is at the target of the joint move and at q_r
-           after HOME (its angles from the view stream, VIEW_PORT); at the end 17 commands were written (the
-           last two those of q: servo off, controller off), none was refused by the R5 or dropped, and no report
-           was missed.
+           after HOME (its angles from the view stream, VIEW_PORT); at the end 18 commands were written (the
+           first the method of the run for the receiver of the camera results on the R5, the last two those of q:
+           servo off, controller off), none was refused by the R5 or dropped, and no report was missed.
   dropout  SIM_FAULT_WHAT=dropout: n in a joint move: the R5 switches the drives off and ends it; h enables again.
   estop    SIM_FAULT_WHAT=estop: n cuts the power: the R5 switches the drives off; h is refused while a drive
            reports Switch on disabled; n, h: on again.
@@ -28,7 +28,7 @@ off, the servo not asked, no motion. The first session also writes its timing lo
 the time that S2 follows the R5 behind, and tools/timing_summary.py finds the TRACK of the task move in it, with a
 report of the R5 in most of its cycles.
 
-Before them: --arch S2 with a method other than M1 does not start; the fault injection is refused with -b and
+Before them: --arch S2 --shadow with a method other than M1 does not start; the fault injection is refused with -b and
 --arch S1, and not with -b and --arch S2 (there the controller cannot open the slots of an R5 on a PC, and ends
 for that); and the timing log of a run with --arch S1 has the time that S1 follows the R5 behind, not that of S2.
 
@@ -254,7 +254,7 @@ def keys(c, cfg):
     key(c, 'r', CTRL_ON)
     time.sleep(0.3)
     missed, written, refused, dropped = end(c)
-    if missed or refused or dropped or written != 17:
+    if missed or refused or dropped or written != 18:
         raise RuntimeError('at the end: %d commands written, %d refused by the R5, %d dropped; %d reports missed'
                            % (written, refused, dropped, missed))
     return written
@@ -397,11 +397,11 @@ def main():
                 'fault': ['SIM_FAULT_JOINT=3', 'SIM_FAULT_WHAT=state'],
                 'law': ['SIM_FAULT_JOINT=3', 'SIM_FAULT_WHAT=torque']}
     made, failed = [], 0
-    r = subprocess.run(['./bin/indy7_ctrl', '-f', cfg, '-s', '--arch', 'S2', '--method', 'A2'], cwd=APP,
+    r = subprocess.run(['./bin/indy7_ctrl', '-f', cfg, '-s', '--arch', 'S2', '--shadow', '--method', 'A2'], cwd=APP,
                        capture_output=True, text=True, timeout=30)
     if r.returncode != 1 or 'with --method M1 only' not in r.stderr:
         failed += 1
-        print('s2_keys_sim: --arch S2 --method A2: FAILED: exit code %d, not refused' % r.returncode)
+        print('s2_keys_sim: --arch S2 --shadow --method A2: FAILED: exit code %d, not refused' % r.returncode)
     try:
         if not bus:
             # the fault injection beside a bus (-b): only where the arm of the R5's control task is the simulated

@@ -68,6 +68,7 @@
 #include "ROS2PickBridge.h"
 #include "obs/ObsMethod.h"
 #include "obs/ObsGoal.h"
+#include "obs/obs_ring.h"
 #include "obs/ObsLog.h"
 #include "JointTestLog.h"
 #include "HighLevelLog.h"
@@ -320,6 +321,17 @@ private:
 	long          m_nObsOutsideSeen{0};   // Trajectory task: CObsGoal::OutsideWorkspace() when m_bObsLost last changed
 	CObsGoal::Counts m_stObsAt0{};        // the counts at the start of the run, for its log
 	long          m_anObsWriter0[CObsWriter::eResults]{};
+	// --arch S2: the receiver is the R5's (shadow/ControlCycle.h); its status, its entries and its counts are in the
+	// region of the R5 (obs/obs_ring.h), and m_obsGoal does not run (TaskControlS2.cpp, ObsTakeR5)
+	volatile obs_status_region_t* m_pObsStatusR5{NULL};
+	volatile obs_ring_t* m_pObsRingR5{NULL};
+	obs_ring_reader_t m_stObsRing{};      // Trajectory task
+	obs_counts_t  m_stObsR5Counts{};      // Trajectory task: the newest counts of the R5
+	uint32_t      m_uObsLost0{0};         // entries of the R5 overwritten before they were taken, at the start of the run
+	link_clock::CTickClock m_cObsClock;   // Trajectory task: the counter of the R5 on the clock of the tasks
+	void          ObsTakeR5               (	);                                            // Trajectory task
+	void          ObsCounts               (CObsGoal::Counts& astC) const;
+	void          ObsTellLost             (bool abLost, long anOutside);
 	BOOL          InitObs                 (	);
 	CGoalFilter::Params AppFilter         (	) const;
 	void          ObsStep                 (const task_slots::ST_STATE_SLOT& astState);   // Trajectory task

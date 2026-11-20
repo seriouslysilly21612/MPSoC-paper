@@ -52,6 +52,27 @@ inline bool ShadowNumbers(const CConfig& acConfig, double* adNumbers)
 	n[SHADOW_N_MARGIN]     = stS.dHlMargin;
 	n[SHADOW_N_LEAD]       = stS.dHlLead;
 	n[SHADOW_N_STEP_REF]   = (stS.nHlStepBaseline != 0) ? 1.0 : 0.0;
+	const ST_CONFIG_CONTRACT& stC = acConfig.Contract();
+	n[SHADOW_N_OBS_DELTA]   = stC.dDeltaM;
+	n[SHADOW_N_OBS_AGE_CAP] = stC.dAgeCapS;
+	n[SHADOW_N_OBS_E0]      = stC.dE0M;
+	n[SHADOW_N_OBS_G]       = stC.dG;
+	n[SHADOW_N_OBS_EPS_V]   = stC.dEpsV;
+	n[SHADOW_N_OBS_A_MAX]   = stC.dAMax;
+	n[SHADOW_N_OBS_EPS_CAL] = stC.dEpsCalM;
+	for (int m = 0; m < 2; m++)
+		n[SHADOW_N_OBS_EPS_M + m] = m < (int)stC.vEpsM.size() ? stC.vEpsM[m] : 0.0;
+	for (int k = 0; k < 3; k++)
+		n[SHADOW_N_OBS_TAG + k] = k < (int)stC.vTagOffset.size() ? stC.vTagOffset[k] : 0.0;
+	for (int k = 0; k < 6; k++)
+		n[SHADOW_N_OBS_BOX + k] = k < (int)stS.vAppGoalBox.size() ? stS.vAppGoalBox[k] : 0.0;
+	n[SHADOW_N_OBS_R_MAX]     = stS.dAppGoalRMax;
+	n[SHADOW_N_OBS_FLOOR]     = stS.dAppGoalFloor;
+	n[SHADOW_N_OBS_HOVER]     = stS.dAppHover;
+	n[SHADOW_N_OBS_KAPPA]     = stS.dAppKappa;
+	n[SHADOW_N_OBS_GAP]       = stS.dAppGapS;
+	n[SHADOW_N_OBS_LOSS]      = stS.dAppLossS;
+	n[SHADOW_N_OBS_STATE_AGE] = (double)stS.nSimStateDelay;
 	return true;
 }
 

@@ -5,15 +5,26 @@
 *****************************************************************************/
 #include "ControlCycle.h"
 
+#include <cmath>
 #include <cstring>
+
+#include "obs/ObsMethod.h"
+
+static_assert((int)OBS_WORKSPACE_VERDICTS == (int)CGoalFilter::eVerdicts, "obs_counts_t.workspace");
+static_assert((int)OBS_DOF == (int)CControlCycle::DOF, "the joints of a recorded state");
 
 typedef CControllerFullDynamicsRT C;
 
 CControlCycle::CControlCycle()
 	: m_pCtl(NULL), m_uCrc(0), m_bFault(false), m_bServoAsked(false), m_bServoReached(false), m_uServoWait(0),
 	  m_uServoLimit(0), m_uCmdDone(0), m_uCmdResult(IPC_DONE_OK), m_uStartSeq(0), m_uStartResult(IPC_DONE_OK),
-	  m_uNoState(0), m_uFaults(0), m_uDriveStops(0), m_uGoals(0), m_uMotionPeriods(0)
+	  m_uNoState(0), m_uFaults(0), m_uDriveStops(0), m_uGoals(0), m_uMotionPeriods(0), m_dTs(0.0), m_bObsLink(false),
+	  m_uObsMethod(OBS_RING_OFF), m_bObsGoals(false), m_uObsSeen(0), m_uObsEntries(0)
 {
+	memset(m_adObsNumbers, 0, sizeof(m_adObsNumbers));
+	memset(&m_stObs, 0, sizeof(m_stObs));
+	memset(&m_stObsCfg, 0, sizeof(m_stObsCfg));
+	obs_recent_max_start(&m_stResponse, 1u);
 	memset(&m_stRef, 0, sizeof(m_stRef));
 	memset(&m_stPlanner, 0, sizeof(m_stPlanner));
 	memset(&m_stRefusal, 0, sizeof(m_stRefusal));
@@ -43,8 +54,151 @@ CControlCycle::Init(const char* astrURDF, const double* adNumbers, uint32_t auCr
 	m_vTor.assign(DOF, 0.0);
 	m_vTau.assign(DOF, 0.0);
 	m_uCrc = auCrc;
+	for (int i = SHADOW_N_OBS_DELTA; i < SHADOW_NUMBERS; i++)
+		m_adObsNumbers[i - SHADOW_N_OBS_DELTA] = adNumbers[i];
+	// the status tells the longest response of the last 1 to 2 s (obs_status.h): a window of 1 s of periods
+	const double dTs = adNumbers[SHADOW_N_TS];
+	m_dTs = dTs;
+	obs_recent_max_start(&m_stResponse, (dTs > 0.0 && dTs < 1.0) ? (uint32_t)std::lround(1.0 / dTs) : 1u);
 	m_pCtl = pCtl;
 	return TRUE;
+}
+
+// the position of the tool tag at the joint angles of a result: the model of the 1 ms side of the high-level
+// controller, in this task (CRobotIndy7::InitObs does the same with the APU's)
+void
+CControlCycle::TagAt(void* apArg, const float* afQ, double* adP)
+{
+	CControlCycle* const pThis = static_cast<CControlCycle*>(apArg);
+	double adQ[DOF], adTag[3];
+	for (int i = 0; i < DOF; i++)
+		adQ[i] = afQ[i];
+	for (int k = 0; k < 3; k++)
+		adTag[k] = pThis->m_adObsNumbers[SHADOW_N_OBS_TAG - SHADOW_N_OBS_DELTA + k];
+	pThis->m_cTraj.HighLevel().ToolPoint(adQ, adTag, adP);
+}
+
+// The settings of the receiver from the numbers, as CRobotIndy7::InitObs takes them from the configuration, on
+// the counter of the releases; the checks are those of InitObs and of CObsGoal::Init
+BOOL
+CControlCycle::SetObsLink(const ObsLink& astLink)
+{
+	m_bObsLink = false;
+	if (m_pCtl == NULL || astLink.pBox == NULL || astLink.pStatus == NULL || astLink.pRing == NULL ||
+	    !(astLink.dTicksPerS > 0.0) || !std::isfinite(astLink.dTicksPerS))
+		return FALSE;
+	const double* const n = m_adObsNumbers - SHADOW_N_OBS_DELTA;		// n[SHADOW_N_OBS_*]
+	const double dTs = m_dTs;
+	const double dCap = n[SHADOW_N_OBS_AGE_CAP], dAge = n[SHADOW_N_OBS_STATE_AGE];
+	bool bOk = std::isfinite(dCap) && dCap > 0.0 && dCap < 1e3 && dTs > 0.0 && dAge == std::floor(dAge);
+	for (int m = 0; m < 2; m++)
+		bOk = bOk && std::isfinite(n[SHADOW_N_OBS_EPS_M + m]) && n[SHADOW_N_OBS_EPS_M + m] >= 0.0;
+	for (int k = 0; k < 3; k++)
+		bOk = bOk && std::isfinite(n[SHADOW_N_OBS_TAG + k]);
+	if (!bOk)
+		return FALSE;
+	CObsGoal::Config& c = m_stObsCfg;
+	memset(&c, 0, sizeof(c));
+	c.stSet.policy = OBS_CONTRACT;
+	c.stSet.ticks_per_s = astLink.dTicksPerS;
+	c.stSet.period_ticks = (uint64_t)std::llround(dTs * astLink.dTicksPerS);
+	c.stSet.age_cap_ticks = (uint64_t)std::llround(dCap * astLink.dTicksPerS);
+	c.stSet.e0 = n[SHADOW_N_OBS_E0];
+	c.stSet.g = n[SHADOW_N_OBS_G];
+	c.stSet.eps_v = n[SHADOW_N_OBS_EPS_V];
+	c.stSet.a_max = n[SHADOW_N_OBS_A_MAX];
+	c.stSet.eps_cal = n[SHADOW_N_OBS_EPS_CAL];
+	c.dTolM = n[SHADOW_N_OBS_DELTA];
+	c.nStateAge = (dAge >= 0.0 && dAge <= (double)CObsGoal::MAX_STATE_AGE) ? (int)dAge : -1;
+	for (int k = 0; k < 6; k++)
+		c.stFilter.adBox[k] = n[SHADOW_N_OBS_BOX + k];
+	c.stFilter.dRMax = n[SHADOW_N_OBS_R_MAX];
+	c.stFilter.dFloor = n[SHADOW_N_OBS_FLOOR];
+	c.stFilter.dHover = n[SHADOW_N_OBS_HOVER];
+	c.stFilter.dKappa = n[SHADOW_N_OBS_KAPPA];
+	c.stFilter.dGapS = n[SHADOW_N_OBS_GAP];
+	c.dLossS = n[SHADOW_N_OBS_LOSS];
+	c.pTagAt = &CControlCycle::TagAt;
+	c.pTagArg = this;
+	// once here, so that a number that the receiver cannot use is known before any command
+	if (!m_cObs.Init(astLink.pBox, c, &m_cObsSlot))
+		return FALSE;
+	m_stObs = astLink;
+	obs_status_start(m_stObs.pStatus);
+	obs_ring_start(m_stObs.pRing);
+	m_uObsMethod = OBS_RING_OFF;
+	m_bObsGoals = false;
+	m_uObsEntries = 0;
+	m_bObsLink = true;
+	return TRUE;
+}
+
+// IPC_CMD_OBS: the receiver with the policy of the method, started again only when the method changes; M1 has
+// none. Returns IPC_DONE_OK or IPC_REFUSED_OBS.
+uint32_t
+CControlCycle::ObsCommand(uint32_t auArg)
+{
+	const uint32_t uMethod = auArg & IPC_OBS_METHOD_MASK;
+	if (uMethod >= (uint32_t)obs_method::eMethods)
+		return IPC_REFUSED_OBS;
+	if (!obs_method::UsesMailbox((int)uMethod))		// M1: the receiver off, which it always can be
+	{
+		m_uObsMethod = OBS_RING_OFF;
+		m_bObsGoals = false;
+		return IPC_DONE_OK;
+	}
+	if (!m_bObsLink)
+		return IPC_REFUSED_OBS;
+	if (uMethod != m_uObsMethod)
+	{
+		CObsGoal::Config c = m_stObsCfg;
+		c.stSet.policy = obs_method::Policy((int)uMethod);
+		if (!m_cObs.Init(m_stObs.pBox, c, &m_cObsSlot))
+		{
+			m_uObsMethod = OBS_RING_OFF;
+			m_bObsGoals = false;
+			return IPC_REFUSED_OBS;
+		}
+		m_uObsMethod = uMethod;
+	}
+	// from here on: an object written before this command is not a goal
+	m_bObsGoals = (auArg & IPC_OBS_GOALS) != 0;
+	m_uObsSeen = m_cObsSlot.Count();
+	return IPC_DONE_OK;
+}
+
+// A period with a state and a method that uses the mailbox: the receiver (CRobotIndy7::ObsStep), its status and
+// its entries; while the application runs a new object goes to TRACK, the hover height above it, as the APU adds
+// that height to the goals of the application (CControlClient::UseGoalSlot)
+void
+CControlCycle::ObsStep(const Input& astIn)
+{
+	m_cObs.Step(astIn.uPeriod, astIn.tRelease, m_adQ);
+	obs_status_t stStatus = m_cObs.Status();
+	stStatus.response_max = obs_recent_max(&m_stResponse);
+	stStatus.contract_crc = m_stObs.uContractCrc;
+	stStatus.method = (uint8_t)m_uObsMethod;
+	obs_status_write(m_stObs.pStatus, &stStatus);
+	for (unsigned i = 0; i < m_cObs.Entries(); i++)
+	{
+		const CObsGoal::Entry& stE = m_cObs.GetEntry(i);
+		obs_entry_t stOut;
+		memset(&stOut, 0, sizeof(stOut));
+		stOut.rec = stE.stRec;
+		stOut.workspace = stE.nWorkspace;
+		stOut.folded = stE.nFolded;
+		for (int k = 0; k < 3; k++)
+			stOut.obj[k] = stE.adObj[k];
+		obs_ring_put(m_stObs.pRing, m_uObsEntries++, &stOut);
+	}
+	double adP[3];
+	unsigned int uCount = 0;
+	if (m_bObsGoals && m_cObsSlot.Read(adP, &uCount) && uCount != m_uObsSeen)
+	{
+		m_uObsSeen = uCount;
+		adP[2] += m_adObsNumbers[SHADOW_N_OBS_HOVER - SHADOW_N_OBS_DELTA];
+		m_cGoal.Write(adP);
+	}
 }
 
 // the stop of the motion (CRobotIndy7::StopMotion): TRACK or HOME ends, the law holds in gravity compensation
@@ -163,6 +317,9 @@ CControlCycle::Command(const ipc_command_t& astCommand, const Input& astIn, bool
 				apOut->nServo = IPC_CMD_SERVO_ON;
 			}
 			break;
+		case IPC_CMD_OBS:
+			uResult = ObsCommand(astCommand.arg);
+			break;
 		case IPC_CMD_SERVO_OFF:
 		case IPC_CMD_STOP:				// shortcut: a servo off, as in the firmware without the control task
 			StopMotion();				// a motion does not go on against the brakes
@@ -194,6 +351,8 @@ CControlCycle::Step(const Input& astIn, Output* apOut, ipc_report_t* apReport)
 		}
 	else
 		m_uNoState++;
+	if (astIn.fResponse >= 0.0f)
+		obs_recent_max_add(&m_stResponse, astIn.fResponse);
 
 	/* the drives: a dropout, or a servo on that ran out */
 	bool bDrivesWentOff = false;
@@ -218,6 +377,10 @@ CControlCycle::Step(const Input& astIn, Output* apOut, ipc_report_t* apReport)
 		m_cGoal.Write(astIn.pGoal);
 		m_uGoals++;
 	}
+
+	/* the camera results: the result this period may use, before the trajectory part reads the goal */
+	if (bState && m_uObsMethod != OBS_RING_OFF)
+		ObsStep(astIn);
 
 	/* the trajectory part: the reference of this period */
 	uint32_t uState = 0;
@@ -351,4 +514,25 @@ CControlCycle::Step(const Input& astIn, Output* apOut, ipc_report_t* apReport)
 	apReport->ik_us = (uint32_t)m_stPlanner.dIkUs;
 	apReport->ik_max_us = (uint32_t)m_stPlanner.dIkMaxUs;
 	apReport->n_plan_late = (uint32_t)m_cTraj.PlansLate();
+
+	/* the counts of the receiver, for the APU (obs_ring.h) */
+	if (m_bObsLink)
+	{
+		CObsGoal::Counts stC;
+		m_cObs.GetCounts(stC);
+		obs_counts_t stOut;
+		memset(&stOut, 0, sizeof(stOut));
+		stOut.taken = stC.uTaken;
+		for (int v = 0; v < (int)OBS_VERDICTS; v++)
+			stOut.verdict[v] = stC.auVerdict[v];
+		for (int v = 0; v < (int)OBS_WORKSPACE_VERDICTS; v++)
+			stOut.workspace[v] = (uint32_t)stC.anWorkspace[v];
+		stOut.folded = (uint32_t)stC.nFolded;
+		stOut.restarts = (uint32_t)stC.nRestarts;
+		stOut.goals = (uint32_t)stC.nGoals;
+		stOut.entries = m_uObsEntries;
+		stOut.method = m_uObsMethod;
+		stOut.flags = m_bObsGoals ? (uint32_t)OBS_RING_GOALS : 0u;
+		obs_ring_counts(m_stObs.pRing, &stOut);
+	}
 }

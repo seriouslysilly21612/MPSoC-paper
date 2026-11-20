@@ -472,6 +472,17 @@ the R5 and dropped here, the goals written and those the R5 took in this run, th
 state and its planner in this run, and what the run leaves on it. The shared region is layout 6 (the report has the
 counts of the high-level controller and the target of its IK). Not run with the real R5 yet (2026-11-20).
 
+With a method other than M1 (2026-11-20, layout 7) the receiver of the camera results (`obs/ObsGoal.h`) runs in the
+control task of the R5, before its trajectory part, built from the same `[CONTRACT]` and `APP_*` numbers
+(`shadow/ControlCycle.h`; they are part of its check value, and the firmware's `CTRL_CONTRACT_CRC` is the check value of
+`[CONTRACT]` that its status carries). The mailbox lies in the shared region (+0x500), its times are ticks of the
+system counter, and the camera side here writes them so (`obs/ObsWriter.h`). The run tells the R5 its method
+(`IPC_CMD_OBS`, also before every TRACK: with the application's goal slot the R5 makes the objects the goals of TRACK
+itself, with the hover height). The R5 writes the status of the receiver (+0xD00) and an entry for every result
+that left it with its counts (+0xD80, `obs/obs_ring.h`); here they become the status of the bridge and the log of
+the camera results of a run, as with P0. `--shadow` is refused with these methods (the report does not carry the
+goals of the receiver).
+
 ## The paper and the code
 
 | Paper | Code | Reproduction |

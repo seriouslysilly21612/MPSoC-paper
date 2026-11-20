@@ -2,8 +2,9 @@
 # check_copies.sh -- what this firmware has from the APU application (goal-to-torque_MPSoC/indy7) must be what the
 # application has now.  From r5_freertos/:
 #   sh test/check_copies.sh
-#   1. src/ipc/ipc_layout.h, src/ipc/ipc_slot.h, src/obs/obs_mailbox.h are copies of the application's files: the
-#      two sides must be built from the same text.  A copy is updated from the application (cp), never the other
+#   1. src/ipc/ipc_layout.h, src/ipc/ipc_slot.h and src/obs/ (the mailbox; with the control task of S2 also the
+#      receiver of the camera results) are copies of the application's files: the two sides must be built from the
+#      same text.  A copy is updated from the application (cp), never the other
 #      way round.
 #   2. src/cfg/fw_cfg_indy7.h and src/cfg/fw_cfg_l7n.h are what bin/fw_cfg_header writes from INDY7.cfg and
 #      bench/L7N3_bus.cfg (cd goal-to-torque_MPSoC/indy7 && make tools).  When one differs, write it again with the
@@ -26,12 +27,13 @@ same() {
         bad=1
     fi
 }
-for f in ipc/ipc_layout.h ipc/ipc_slot.h obs/obs_mailbox.h; do
+for f in ipc/ipc_layout.h ipc/ipc_slot.h obs/obs_mailbox.h obs/obs_receiver.h obs/obs_status.h obs/obs_ring.h \
+         obs/ObsEstimate.h obs/ObsGoal.h obs/ObsMethod.h; do
     same "$f" "$f"
 done
 for f in Controller.h Controller.cpp FullDynControllerRT.h FullDynControllerRT.cpp HighLevelRT.h HighLevelRT.cpp \
          HighLevelLink.h shadow/ShadowControl.h shadow/ShadowControl.cpp TrajectoryRT.h TrajectoryRT.cpp GoalSlot.h \
-         shadow/ShadowWriter.h shadow/ControlCycle.h shadow/ControlCycle.cpp; do
+         shadow/ShadowWriter.h shadow/ControlCycle.h shadow/ControlCycle.cpp GoalFilter.h; do
     same "$f" "ctrl/$(basename "$f")"
 done
 if [ ! -x "$APP/bin/fw_cfg_header" ]; then

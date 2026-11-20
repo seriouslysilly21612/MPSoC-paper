@@ -3,8 +3,9 @@
 #ifndef CTRL_NUMBERS_H
 #define CTRL_NUMBERS_H
 
-#define CTRL_NUMBERS_CRC   0x355B499Du	/* of the numbers below */
-#define CTRL_NUMBERS_COUNT 50
+#define CTRL_NUMBERS_CRC   0x087FA2D3u	/* of the numbers below */
+#define CTRL_CONTRACT_CRC  0x2E7B0347u	/* of [CONTRACT] (obs/ObsContract.h): the camera side compares it */
+#define CTRL_NUMBERS_COUNT 75
 
 static const double CTRL_NUMBERS[CTRL_NUMBERS_COUNT] =
 {
@@ -58,6 +59,31 @@ static const double CTRL_NUMBERS[CTRL_NUMBERS_COUNT] =
 	0x1.0a3d70a3d70a4p-2,	/* 0.26: limit margin [rad] */
 	0x1.999999999999ap-4,	/* 0.1: lead bound [rad] */
 	0x0p+0,	/* 0: step baseline (0, 1) */
+	0x1.47ae147ae147bp-7,	/* 0.01: contract: delta [m] */
+	0x1p-2,	/* 0.25: contract: age cap [s] */
+	0x1.0624dd2f1a9fcp-10,	/* 0.001: contract: e0 [m] */
+	0x1p+0,	/* 1: contract: g */
+	0x0p+0,	/* 0: contract: eps_v [m/s] */
+	0x0p+0,	/* 0: contract: a_max [m/s^2] */
+	0x1.0624dd2f1a9fcp-9,	/* 0.002: contract: eps_cal [m] */
+	0x1.0624dd2f1a9fcp-9,	/* 0.002: contract: eps_m of mode 0 (416) [m] */
+	0x1.89374bc6a7efap-9,	/* 0.003: contract: eps_m of mode 1 (320) [m] */
+	-0x1.5c28f5c28f5c3p-4,	/* -0.085: tool tag offset x [m] */
+	0x0p+0,	/* 0: tool tag offset y [m] */
+	0x0p+0,	/* 0: tool tag offset z [m] */
+	0x1.3333333333333p-2,	/* 0.3: goal box x0 [m] */
+	0x1.e147ae147ae14p-1,	/* 0.94: goal box x1 [m] */
+	-0x1.7ae147ae147aep-2,	/* -0.37: goal box y0 [m] */
+	0x1.428f5c28f5c29p-1,	/* 0.63: goal box y1 [m] */
+	0x1p-2,	/* 0.25: goal box z0 [m] */
+	0x1p-1,	/* 0.5: goal box z1 [m] */
+	0x1.d70a3d70a3d71p-1,	/* 0.92: goal r max [m] */
+	0x1p-2,	/* 0.25: goal floor [m] */
+	0x1.999999999999ap-3,	/* 0.2: hover height [m] */
+	0x1.999999999999ap-2,	/* 0.4: smoothing kappa */
+	0x1p+0,	/* 1: smoothing gap [s] */
+	0x1p+0,	/* 1: target lost after [s] */
+	0x1p+1,	/* 2: age of the joint angles of a period [periods] */
 };
 
 #endif /* CTRL_NUMBERS_H */

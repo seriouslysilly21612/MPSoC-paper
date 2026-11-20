@@ -150,6 +150,9 @@ public:
 	 * the last call */
 	BOOL	TakeSimTorque	(ipc_sim_torque_t* apTorque);
 
+	/* the region (IPC_REGION_BYTES): with S2 the receiver of the camera results has its parts there (obs/obs_ring.h) */
+	volatile uint32_t*	Region	(	) const { return m_pRegion; }
+
 	/* after the tasks */
 	const Counts&	GetCounts	(	) const { return m_stCounts; }
 	const R5Follow&	GetFollow	(	) const { return m_stFollow; }
