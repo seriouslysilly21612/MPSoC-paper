@@ -374,6 +374,7 @@ class PickTarget3DNode(Node):
             self.get_logger().info(
                 f'tool tag: 36h11 id {f.tag_id}, black square {1e3 * f.size_m:.1f} mm, '
                 f'its distance from the {self.tag_position}, '
+                f"corners {self.get_parameter('tag_refine').value} in the window, "
                 f"images of {self.get_parameter('color_topic').value}")
 
     def color_callback(self, msg: Image):

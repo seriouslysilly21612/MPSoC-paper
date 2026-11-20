@@ -52,7 +52,9 @@ TOOL TAG. `tool_tag:=true` makes pick_target_3d_node look for the tool tag
 (AprilTag 36h11 tag_id:=0, black square tag_size_m:=0.065) in the color image
 of each target, so that the control application can take the object from it
 (APP_RESULT_FORMAT=tag; D-22). tag_position:=depth|pnp: its distance from the
-depth image (default) or from its corners.
+depth image (default) or from its corners. tag_refine:=apriltag|subpix: the
+corners in the window around the tag; the whole image always gets the plain
+detector (subpix is cheaper and gives the depth mode the same centre pixel).
 """
 import os
 import re
@@ -189,6 +191,7 @@ def launch_setup(context, *args, **kwargs):
         'tag_id': int(LaunchConfiguration('tag_id').perform(context)),
         'tag_size_m': float(LaunchConfiguration('tag_size_m').perform(context)),
         'tag_position': LaunchConfiguration('tag_position').perform(context).strip(),
+        'tag_refine': LaunchConfiguration('tag_refine').perform(context).strip(),
     }
 
     pick_logic_config = PathJoinSubstitution([
@@ -418,6 +421,10 @@ def generate_launch_description():
             'tag_position', default_value='depth',
             description="depth: the tag's distance from the depth image, as for the "
                         'object; pnp: from its four corners'),
+        DeclareLaunchArgument(
+            'tag_refine', default_value='apriltag',
+            description='the tag corners in the window around it: apriltag (as the '
+                        'calibration; for tag_position:=pnp) or subpix (cheaper)'),
         DeclareLaunchArgument(
             'method', default_value='M1',
             description='M1, M2, A2, A3 or FULL: what the detector does with an '

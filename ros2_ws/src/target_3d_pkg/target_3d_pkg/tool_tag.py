@@ -9,7 +9,10 @@ the tag position that the joint angles of that capture give.
 
   ToolTagFinder.find(gray, t_s)   the tag in a grayscale image: first in a window around where it
                                   was last seen (it moves little between two captures), then in the
-                                  whole image
+                                  whole image, with the plain detector; AprilTag corner refinement
+                                  only in a window (on a whole image it takes about 20 times as
+                                  long). After a whole image without the tag the next one waits
+                                  whole_image_period_s: a result then has no tag ('not_searched')
   gray_of_image(...)              a grayscale view of a sensor_msgs/Image's fields (rgb8, bgr8,
                                   mono8)
 
@@ -65,28 +68,33 @@ def marker_points(size_m):
 class ToolTagFinder:
     """Finds one tag (tag_id, black square size_m) in grayscale images of one camera."""
 
-    def __init__(self, tag_id, size_m, refine='apriltag', window_margin_px=48, window_keep_s=0.5):
+    def __init__(self, tag_id, size_m, refine='apriltag', window_margin_px=48, window_keep_s=0.5,
+                 whole_image_period_s=0.2):
         if not size_m > 0.0:
             raise ValueError(f'tag size {size_m!r} m: the side of the black square, > 0')
+        if refine not in ('apriltag', 'subpix', 'none'):
+            raise ValueError(f"tag corner refinement {refine!r} is none of apriltag, subpix, none")
         self.tag_id = int(tag_id)
         self.size_m = float(size_m)
         self.obj = marker_points(self.size_m)
-        # the corners of the calibration (calib_cpo.py): AprilTag refinement first. It can drop a
-        # tag that a
-        # coarser one finds, so SUBPIX comes after it. In rendered images (test_tool_tag.py) the
-        # AprilTag
-        # corners put the centre within about 1 mm across and 7 mm in depth at 0.55-1.1 m, the
-        # SUBPIX ones
-        # 28 mm in depth.
-        self.detects = [aruco_detector(refine)] + (
-            [aruco_detector('subpix')] if refine == 'apriltag' else []
-        )
+        # Two detectors. The plain one (SUBPIX corners) searches the whole image: with AprilTag
+        # refinement a whole 848x480 image with sensor noise took 120 ms on a PC against 7 ms, tag
+        # or no tag, and in 270 rendered images it found no tag that the plain one missed (I-110).
+        # The corners of the calibration (calib_cpo.py, AprilTag refinement) are then taken in a
+        # window around the tag, where that costs little. It can drop a tag there: the SUBPIX
+        # corners stay. In rendered images (test_tool_tag.py) the AprilTag corners put the centre
+        # within about 1 mm across and 7 mm in depth at 0.55-1.1 m, the SUBPIX ones 28 mm in depth.
+        self.coarse = aruco_detector('none' if refine == 'none' else 'subpix')
+        self.fine = aruco_detector('apriltag') if refine == 'apriltag' else None
+        self.in_window = ([self.fine] if self.fine is not None else []) + [self.coarse]
         self.margin = int(window_margin_px)
         self.keep_s = float(window_keep_s)
+        self.whole_period_s = float(whole_image_period_s)
         self.K = None
         self.D = None
         self._last_box = None  # (u0, v0, u1, v1) of the corners the last time
         self._last_t = None
+        self._miss_t = None  # when the whole image last had no tag of ours
         self.seen_ids = ()  # the ids of the last image with tags but not ours (to find tag_id)
 
     def set_camera(self, k, d):
@@ -97,11 +105,12 @@ class ToolTagFinder:
     def ready(self):
         return self.K is not None
 
-    def _corners_in(self, gray, box):
-        """the corners (4, 2) of the one tag with tag_id inside box of gray, or a reason"""
+    def _corners_in(self, gray, box, detects):
+        """the corners (4, 2) of the one tag with tag_id inside box of gray, by the first of
+        detects that finds it, or a reason"""
         u0, v0, u1, v1 = box
         reason = 'not_found'
-        for detect in self.detects:
+        for detect in detects:
             corners, ids = detect(gray[v0:v1, u0:u1])
             if ids is None or len(ids) == 0:
                 continue
@@ -119,12 +128,32 @@ class ToolTagFinder:
             )
         return None, reason
 
+    @staticmethod
+    def _corner_box(pts):
+        return (
+            int(pts[:, 0].min()),
+            int(pts[:, 1].min()),
+            int(np.ceil(pts[:, 0].max())),
+            int(np.ceil(pts[:, 1].max())),
+        )
+
+    def _window(self, corner_box, w, h):
+        """corner_box grown by the margin, inside the image; None if no tag fits in it"""
+        u0, v0, u1, v1 = corner_box
+        box = (
+            max(0, u0 - self.margin),
+            max(0, v0 - self.margin),
+            min(w, u1 + self.margin),
+            min(h, v1 + self.margin),
+        )
+        return box if box[2] - box[0] >= 16 and box[3] - box[1] >= 16 else None
+
     def find(self, gray, t_s=None):
-        """TagResult for one grayscale image taken at t_s [s] (for the window; None: no window)."""
+        """TagResult for one grayscale image taken at t_s [s] (for the window and the wait after
+        a whole image without the tag; None: neither)."""
         if not self.ready():
             return TagResult(False, 'no_camera_info')
         h, w = gray.shape[:2]
-        full = (0, 0, w, h)
         pts, reason, window = None, 'not_found', False
         if (
             self._last_box is not None
@@ -132,20 +161,28 @@ class ToolTagFinder:
             and self._last_t is not None
             and 0.0 <= t_s - self._last_t <= self.keep_s
         ):
-            u0, v0, u1, v1 = self._last_box
-            box = (
-                max(0, u0 - self.margin),
-                max(0, v0 - self.margin),
-                min(w, u1 + self.margin),
-                min(h, v1 + self.margin),
-            )
-            if box[2] - box[0] >= 16 and box[3] - box[1] >= 16:
-                pts, reason = self._corners_in(gray, box)
+            box = self._window(self._last_box, w, h)
+            if box is not None:
+                pts, reason = self._corners_in(gray, box, self.in_window)
                 window = pts is not None
         if pts is None:
-            pts, reason = self._corners_in(gray, full)
-        if pts is None:
-            return TagResult(False, reason)
+            # the whole image, the slow part: not again right after one that had no tag
+            if (
+                t_s is not None
+                and self._miss_t is not None
+                and 0.0 <= t_s - self._miss_t < self.whole_period_s
+            ):
+                return TagResult(False, 'not_searched')
+            pts, reason = self._corners_in(gray, (0, 0, w, h), [self.coarse])
+            if pts is None:
+                self._miss_t = t_s
+                return TagResult(False, reason)
+            box = self._window(self._corner_box(pts), w, h)
+            if self.fine is not None and box is not None:
+                fine_pts, _ = self._corners_in(gray, box, [self.fine])
+                if fine_pts is not None:
+                    pts = fine_pts
+        self._miss_t = None
         ok, rvecs, tvecs, errs = cv2.solvePnPGeneric(
             self.obj, pts, self.K, self.D, flags=cv2.SOLVEPNP_IPPE_SQUARE
         )
@@ -157,12 +194,7 @@ class ToolTagFinder:
         if not np.all(np.isfinite(p)) or p[2] <= 0.0:
             return TagResult(False, 'pnp_failed')
         ratio = float(errs[1 - best] / max(errs[best], 1e-9)) if errs.size > 1 else float('inf')
-        self._last_box = (
-            int(pts[:, 0].min()),
-            int(pts[:, 1].min()),
-            int(np.ceil(pts[:, 0].max())),
-            int(np.ceil(pts[:, 1].max())),
-        )
+        self._last_box = self._corner_box(pts)
         self._last_t = t_s
         return TagResult(True, '', p, float(errs[best]) if errs.size else 0.0, ratio, window)
 

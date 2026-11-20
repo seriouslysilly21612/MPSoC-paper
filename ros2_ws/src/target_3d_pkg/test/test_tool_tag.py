@@ -135,6 +135,44 @@ def test_the_window_then_the_whole_image():
     assert d.found and not d.window
 
 
+def test_the_whole_image_goes_to_the_plain_detector_only():
+    # AprilTag refinement of a whole image takes about 20 times as long: it sees windows only
+    f = finder()
+    seen = {'fine': [], 'coarse': []}
+
+    def recording(name):
+        inner = getattr(f, name)
+        return lambda gray: (seen[name].append(gray.shape), inner(gray))[1]
+
+    f.fine, f.coarse = recording('fine'), recording('coarse')
+    f.in_window = [f.fine, f.coarse]
+    t = np.array([0.05, -0.03, 0.80])
+    res = f.find(render([(0, 0.065, rot(0.2, -0.3, 0.1), t)]), t_s=0.0)
+    assert res.found and not res.window and abs(res.p_cam[2] - t[2]) < 12e-3
+    assert seen['coarse'] == [(H, W)]
+    assert len(seen['fine']) == 1 and seen['fine'][0][0] < H / 2 and seen['fine'][0][1] < W / 2
+    f.find(np.full((H, W), 255, np.uint8), t_s=5.0)  # no tag: the plain detector alone
+    assert seen['coarse'][-1] == (H, W) and len(seen['fine']) == 1
+
+
+def test_after_a_whole_image_without_the_tag_the_next_one_waits():
+    f = finder()
+    calls = []
+    inner = f.coarse
+    f.coarse = lambda gray: (calls.append(gray.shape), inner(gray))[1]
+    f.in_window = [f.fine, f.coarse]
+    blank = np.full((H, W), 255, np.uint8)
+    tag = render([(0, 0.065, rot(0, 0, 0), np.array([0.0, 0.0, 0.8]))])
+    assert f.find(blank, t_s=10.00).reason == 'not_found' and len(calls) == 1
+    res = f.find(tag, t_s=10.05)  # the tag is back, but the whole image is not searched yet
+    assert not res.found and res.reason == 'not_searched' and len(calls) == 1
+    assert f.find(tag, t_s=10.25).found  # 0.2 s after the miss: searched, found
+    assert f.find(blank, t_s=20.0).reason == 'not_found'
+    assert f.find(blank, t_s=19.9).reason == 'not_found'  # a time before the miss: searched
+    assert f.find(blank).reason == 'not_found'  # without a time: no wait
+    assert finder().find(blank).reason == 'not_found'
+
+
 def test_no_camera_info_and_bad_size():
     assert ToolTagFinder(0, 0.065).find(np.zeros((H, W), np.uint8)).reason == 'no_camera_info'
     with pytest.raises(ValueError):

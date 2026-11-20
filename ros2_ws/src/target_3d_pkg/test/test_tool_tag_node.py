@@ -231,11 +231,28 @@ def test_no_tag_in_view():
 def test_another_id_in_view_is_told_once():
     node = make_node(tool_tag=True)
     img = render_lib.render([(7, 0.065, render_lib.rot(0, 0, 0), np.array([0.0, 0.0, 0.8]))])
-    for _ in range(2):
-        node.depth_callback(depth_msg(0.8, T_NS))
-        node.color_callback(color_msg(img, T_NS))
-        node.pick_target_callback(target(T_NS))
-    assert node.tag_tally == {'other_id': 2} and node.tag_ids_told == {(7,)}
+    # 0, 0.1 and 0.3 s: the whole image is searched again only 0.2 s after one without the tag
+    for ns in (T_NS, T_NS + 100_000_000, T_NS + 300_000_000):
+        node.depth_callback(depth_msg(0.8, ns))
+        node.color_callback(color_msg(img, ns))
+        node.pick_target_callback(target(ns))
+    assert node.tag_tally == {'other_id': 2, 'not_searched': 1} and node.tag_ids_told == {(7,)}
+
+
+def test_the_tag_goes_from_the_color_to_the_depth_frame():
+    # the color camera 15 mm beside the depth camera (p_color = p_depth + t): the tag found in the
+    # color image is published in the frame of the object, the depth one
+    t_dc = np.array([0.015, 0.0, 0.0])
+    p_color = np.array([0.05, -0.02, 0.80])
+    for position in ('depth', 'pnp'):
+        node = make_node(tool_tag=True, tag_position=position)
+        node.extrinsics_callback(
+            Msg(rotation=list(np.eye(3).flatten(order='F')), translation=list(t_dc))
+        )
+        out = run(node, p_color, plane_z=0.80)
+        got = np.array([out.tag_x, out.tag_y, out.tag_z])
+        # the other direction would put it 30 mm away
+        assert out.tag_valid and np.abs(got[:2] - (p_color - t_dc)[:2]).max() < 2.5e-3, position
 
 
 def test_off_by_default():
