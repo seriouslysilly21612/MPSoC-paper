@@ -306,7 +306,7 @@ private:
 		return FALSE != m_cTraj.Start(false, adQ, adQd, (auAsk & A_FRICTION) ? TRUE : FALSE, astrWhy, auLen);
 	}
 
-	alignas(64) volatile uint32_t m_auRegion[IPC_OFF_END / 4];
+	alignas(64) volatile uint32_t m_auRegion[IPC_OFF_END2 / 4];
 	CR5Link			m_cLink;
 	CShadowTask*	m_pTask = NULL;
 	C*				m_pCtl = NULL;
@@ -646,28 +646,32 @@ void ByHand(const char* astrURDF, const double* adNumbers, CHighLevelRT& acApuHl
 	Expect(nSame == 0, "the check value changes with every byte of every number");
 
 	/* the check value of the model takes its numbers on a grid of 2^-40. The reader of the board (aarch64) gives
-	 * E(1,1) and E(2,0) of the joint frames of bodies 2 and 5 as below, the reader of a PC (x86) 1.6e-23 away
-	 * (2026-11-19): the same model. A frame 1e-11 m away is another. */
+	 * E(1,1) and E(2,0) of the joint frames of bodies 2 and 5 as dBoard below, the reader of a PC (x86) as dPc,
+	 * 1.6e-23 away (2026-11-19): the same model, whichever of the two the reader of this run gives. A frame 1e-11 m
+	 * away is another. */
 	{
 		RigidBodyDynamics::Model cModel;
-		model_code::ModelCode stPc, stBoard, stOther;
+		model_code::ModelCode stHere, stPc, stBoard, stOther;
 		bool bOk = RigidBodyDynamics::Addons::URDFReadFromFile(astrURDF, &cModel, false, false) &&
-		           model_code::ModelCodeOf(cModel, &stPc);
-		const double dBoard = -0x1.a7939a720126dp-53;
-		double dApart = 0.0;
+		           model_code::ModelCodeOf(cModel, &stHere);
+		const double dBoard = -0x1.a7939a720126dp-53, dPc = -0x1.a79398p-53;
+		double dApart = 0.0;		// this reader from the nearer of the two
 		for (unsigned uBody = 2; bOk && uBody <= 5; uBody += 3)
-		{
-			dApart = std::fmax(dApart, std::fabs(cModel.X_T[uBody].E(1, 1) - dBoard));
-			cModel.X_T[uBody].E(1, 1) = dBoard;
-			cModel.X_T[uBody].E(2, 0) = dBoard;
-		}
+			dApart = std::fmax(dApart, std::fmin(std::fabs(cModel.X_T[uBody].E(1, 1) - dBoard),
+			                                     std::fabs(cModel.X_T[uBody].E(1, 1) - dPc)));
+		for (unsigned uBody = 2; bOk && uBody <= 5; uBody += 3)
+			cModel.X_T[uBody].E(1, 1) = cModel.X_T[uBody].E(2, 0) = dPc;
+		bOk = bOk && model_code::ModelCodeOf(cModel, &stPc);
+		for (unsigned uBody = 2; bOk && uBody <= 5; uBody += 3)
+			cModel.X_T[uBody].E(1, 1) = cModel.X_T[uBody].E(2, 0) = dBoard;
 		bOk = bOk && model_code::ModelCodeOf(cModel, &stBoard);
 		if (bOk)
 			cModel.X_T[2].r[2] += 1e-11;
 		bOk = bOk && model_code::ModelCodeOf(cModel, &stOther);
-		Expect(bOk && dApart > 0.0 && dApart < 1e-20 && stBoard.strBodies != stPc.strBodies && stBoard.uCrc == stPc.uCrc &&
-		       stOther.uCrc != stPc.uCrc,
-		       "the check value of the model: the same for the numbers of the board's reader, another for a frame 1e-11 m away");
+		Expect(bOk && dApart < 1e-20 && stBoard.strBodies != stPc.strBodies && stBoard.uCrc == stPc.uCrc &&
+		       stHere.uCrc == stPc.uCrc && stOther.uCrc != stPc.uCrc,
+		       "the check value of the model: the same for the numbers of the board's reader and of a PC's, another for "
+		       "a frame 1e-11 m away");
 	}
 }
 

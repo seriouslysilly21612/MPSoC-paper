@@ -38,23 +38,67 @@ CTrajectoryRT::Init(const char* astrURDF, double adTs, const CHighLevelRT::Param
     return m_hl.Init(astrURDF, adTs, astParams) && m_planner.Init(astrURDF, adTs, astParams);
 }
 
+void
+CTrajectoryRT::RefusalText(const Refusal& astWhy, char* astrWhy, size_t auWhyLen)
+{
+    switch (astWhy.eWhy) {
+    case eNotInit:
+        snprintf(astrWhy, auWhyLen, "high-level controller not initialized (see the log at start-up)");
+        break;
+    case eMotionRuns:
+        snprintf(astrWhy, auWhyLen, "%s is running ('x' first)", astWhy.nJoint == (int)eMotionHome ? "HOME" : "TRACK");
+        break;
+    case eArmMoves:
+        snprintf(astrWhy, auWhyLen, "the arm is moving (|qd| %.3f rad/s > %.2f)", astWhy.dValue, REST_QD);
+        break;
+    case eJointOutside:
+        snprintf(astrWhy, auWhyLen, "J%d at %.3f rad, outside its range [%.3f, %.3f]", astWhy.nJoint + 1, astWhy.dValue,
+                 astWhy.dLo, astWhy.dHi);
+        break;
+    case eTargetOutside:
+        snprintf(astrWhy, auWhyLen, "the target of J%d, %.3f rad, is outside [%.3f, %.3f]", astWhy.nJoint + 1,
+                 astWhy.dValue, astWhy.dLo, astWhy.dHi);
+        break;
+    default:
+        snprintf(astrWhy, auWhyLen, "refused (%d)", astWhy.eWhy);
+        break;
+    }
+}
+
 BOOL
 CTrajectoryRT::Start(bool abHome, const double* adQ, const double* adQd, BOOL abFrictionFF,
                      char* astrWhy, size_t auWhyLen, const double* adHomeTarget)
 {
+    Refusal stWhy;
+    if (Start(abHome, adQ, adQd, abFrictionFF, &stWhy, adHomeTarget))
+        return TRUE;
+    RefusalText(stWhy, astrWhy, auWhyLen);
+    return FALSE;
+}
+
+BOOL
+CTrajectoryRT::Start(bool abHome, const double* adQ, const double* adQd, BOOL abFrictionFF,
+                     Refusal* apWhy, const double* adHomeTarget)
+{
+    Refusal& stWhy = *apWhy;
+    stWhy.eWhy = eStartOk;
+    stWhy.nJoint = 0;
+    stWhy.dValue = stWhy.dLo = stWhy.dHi = 0.0;
     if (!m_hl.IsInit()) {
-        snprintf(astrWhy, auWhyLen, "high-level controller not initialized (see the log at start-up)");
+        stWhy.eWhy = eNotInit;
         return FALSE;
     }
     if (m_eState == eRunning) {
-        snprintf(astrWhy, auWhyLen, "%s is running ('x' first)", m_eMotion == eMotionHome ? "HOME" : "TRACK");
+        stWhy.eWhy = eMotionRuns;
+        stWhy.nJoint = (int)m_eMotion;
         return FALSE;
     }
     double dQdSq = 0.0;
     for (int i = 0; i < MAX_DOF; ++i)
         dQdSq += adQd[i] * adQd[i];
     if (dQdSq > REST_QD * REST_QD) {
-        snprintf(astrWhy, auWhyLen, "the arm is moving (|qd| %.3f rad/s > %.2f)", std::sqrt(dQdSq), REST_QD);
+        stWhy.eWhy = eArmMoves;
+        stWhy.dValue = std::sqrt(dQdSq);
         return FALSE;
     }
     // a measured angle outside the range of its joint (wrong zero offset,
@@ -63,8 +107,11 @@ CTrajectoryRT::Start(bool abHome, const double* adQ, const double* adQd, BOOL ab
     const CHighLevelRT::Params& stP = m_hl.GetParams();
     for (int i = 0; i < MAX_DOF; ++i) {
         if (adQ[i] < stP.adLimLo[i] || adQ[i] > stP.adLimHi[i]) {
-            snprintf(astrWhy, auWhyLen, "J%d at %.3f rad, outside its range [%.3f, %.3f]", i + 1, adQ[i],
-                     stP.adLimLo[i], stP.adLimHi[i]);
+            stWhy.eWhy = eJointOutside;
+            stWhy.nJoint = i;
+            stWhy.dValue = adQ[i];
+            stWhy.dLo = stP.adLimLo[i];
+            stWhy.dHi = stP.adLimHi[i];
             return FALSE;
         }
     }
@@ -74,8 +121,11 @@ CTrajectoryRT::Start(bool abHome, const double* adQ, const double* adQd, BOOL ab
         for (int i = 0; i < MAX_DOF; ++i) {
             const double dLo = stP.adLimLo[i] + stP.dMargin, dHi = stP.adLimHi[i] - stP.dMargin;
             if (!std::isfinite(adHomeTarget[i]) || adHomeTarget[i] < dLo || adHomeTarget[i] > dHi) {
-                snprintf(astrWhy, auWhyLen, "the target of J%d, %.3f rad, is outside [%.3f, %.3f]", i + 1,
-                         adHomeTarget[i], dLo, dHi);
+                stWhy.eWhy = eTargetOutside;
+                stWhy.nJoint = i;
+                stWhy.dValue = adHomeTarget[i];
+                stWhy.dLo = dLo;
+                stWhy.dHi = dHi;
                 return FALSE;
             }
         }

@@ -22,7 +22,8 @@ enum {
     EVENT_TORQUE_STALE_STOP,      /* [0] stale cycles in a row (TORQUE_STALE_LIMIT): servo switched off */
     EVENT_OBS_REPORT,             /* see obs_link_report() in obs_link.c                              */
     EVENT_TIMING_REPORT,          /* see post_status_report() in ecat_task.c                          */
-    EVENT_SHADOW_REPORT           /* see shadow_link_report() in shadow_link.c                        */
+    EVENT_SHADOW_REPORT,          /* see shadow_link_report() in shadow_link.c                        */
+    EVENT_CONTROL_REPORT          /* see control_link_report() in control_link.c                      */
 };
 
 #define EVENT_VALUES    (10 + 2 * AXIS_COUNT)

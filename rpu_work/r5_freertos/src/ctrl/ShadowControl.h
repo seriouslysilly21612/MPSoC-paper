@@ -87,6 +87,12 @@ public:
 	CShadowControl();
 	~CShadowControl();
 
+	/* a controller of the numbers: the parameters of its high-level controller, as CRobotIndy7::InitTrajectory
+	 * takes them from the configuration, and its control law, as InitController makes it (NULL: its model could
+	 * not be made). Also for the control task where it has no configuration file (control/ControlCycle.h) */
+	static CHighLevelRT::Params			HlParams	(const double* adNumbers);
+	static CControllerFullDynamicsRT*	NewLaw		(const char* astrURDF, const double* adNumbers);
+
 	/* builds the two controllers (heap: before the periods start). astrURDF: the model, as for the control task
 	 * (the firmware has its own, whatever the name); adNumbers: SHADOW_NUMBERS constants; auCrc: the check value
 	 * that goes into every answer */
@@ -99,6 +105,10 @@ public:
 	 * of the firmware; on a PC whoever calls Step(), after it. Only once Init() has returned TRUE. TRUE: it did
 	 * something, call again. No allocation. */
 	BOOL	ServePlanner(	) { return m_cLink.Serve(m_cPlanner) ? TRUE : FALSE; }
+	/* for a test that compares more than the answer has: the state of its high-level controller and the
+	 * reference of its last update */
+	const CHighLevelRT::Status&					HlStatus	(	) const { return m_cHl.GetStatus(); }
+	const CControllerFullDynamicsRT::Reference&	Reference	(	) const { return m_stRef; }
 
 private:
 	void	StartMotion	(const ipc_shadow_in_t& astIn);

@@ -2,6 +2,9 @@
  * record (cycle_record.c); the bus, the slots of the APU and the axis logic are stand-ins here.  From r5_freertos/:
  *   gcc -std=gnu11 -DHOST_TEST -DRECORD_RING_BYTES=4096 -Isrc/soem -Isrc/osal -Isrc/osal/freertos -Isrc/oshw/freertos \
  *       -Itest/stub -Isrc test/test_ecat_cycle.c src/loop_timing.c src/cycle_record.c -lm -o /tmp/t_cycle && /tmp/t_cycle
+ * and once more with -DCONTROL_TASK=1: the control task in the place of the second controller.  Then the State says
+ * so, the cycle takes neither command nor torque of the APU but gives the drives what the control task decided, and
+ * the control task gets the period and whether the frame came back.
  * It checks, cycle by cycle: the release goes into the State slot and to the slots of the APU; one record per cycle
  * with the period of the State and the flags OP, WKC, SERVO, STOP; a late send is counted in the record of its
  * cycle and in the State of the next; a cycle in which the second controller ran ends with it, has its two times
@@ -43,8 +46,9 @@ static struct { uint64_t release; uint32_t period, flags; link_faults_t faults; 
 static uint64_t obs_now;
 static uint32_t servo_flag;
 int      ocm_link_start(void) { return 1; }
-uint32_t ocm_link_take_command(void) { return IPC_CMD_NONE; }
-int      ocm_link_take_torque(link_torque_t *held) { memset(held, 0, sizeof(*held)); return 0; }
+static int apu_takes;                /* looks at the Command and the Torque slot */
+int      ocm_link_take_command(ipc_command_t *taken) { (void)taken; apu_takes++; return 0; }
+int      ocm_link_take_torque(link_torque_t *held) { memset(held, 0, sizeof(*held)); apu_takes++; return 0; }
 uint32_t ocm_link_publish_state(uint64_t t_release, uint32_t period, uint32_t flags, const link_faults_t *faults)
 {
     state.release = t_release; state.period = period; state.flags = flags | servo_flag; state.faults = *faults; state.n++;
@@ -65,6 +69,19 @@ int  shadow_link_step(int32_t *traj_ns, int32_t *ctrl_ns)
     return 1;
 }
 void shadow_link_report(void) { }
+
+/* ---- the control task (CONTROL_TASK): for the clock as the second controller; what the cycle gives it ---- */
+static int control_drives, control_bus_state = -1;
+static uint32_t control_period;
+int  control_link_start(void) { return 1; }
+void control_link_drives(void) { control_drives++; }
+int  control_link_step(uint32_t period, int bus_state, int32_t *traj_ns, int32_t *ctrl_ns)
+{
+    control_period = period; control_bus_state = bus_state;
+    return shadow_link_step(traj_ns, ctrl_ns);
+}
+void control_link_report(void) { }
+#define ST(flags)   ((flags) | (CONTROL_TASK ? IPC_STATE_CONTROL : 0u))     /* the State flags of this build */
 
 /* ---- events, console, FreeRTOS, caches ---- */
 static event_t an_event; static int stop_events;
@@ -126,7 +143,12 @@ int main(void)
     /* an ordinary cycle: 5 us late, the receive 10 us, the logic 20 us, the send 30 us */
     next_wkc = ecat_expected_wkc; wake_ticks = 500; part_ticks[0] = 1000; part_ticks[1] = 2000; part_ticks[2] = 3000;
     ecat_cycle(1000);
-    CHECK(cycle_index == 1 && state.n == 1 && state.period == 1 && state.flags == IPC_STATE_OP);
+    CHECK(cycle_index == 1 && state.n == 1 && state.period == 1 && state.flags == ST(IPC_STATE_OP));
+#if CONTROL_TASK
+    CHECK(apu_takes == 0 && control_drives == 1 && control_period == 1 && control_bus_state == 1);
+#else
+    CHECK(apu_takes == 2 && control_drives == 0 && control_bus_state == -1);
+#endif
     CHECK(state.release == 1000ull * TICKS_PER_CYCLE && obs_now == state.release);       /* the tick, not the start */
     CHECK(state.faults.late == 0 && state.faults.missed == 0 && state.faults.overruns == 0 && state.faults.wkc == 0);
     CHECK(updates == 1 && zeros == 0 && frames_sent == 1 && record_count() == 1);
@@ -159,7 +181,10 @@ int main(void)
     next_wkc = ecat_expected_wkc - 3;
     ecat_cycle(1004);
     r = last_record();
-    CHECK(r.period == 5 && r.flags == (RECORD_BUS | RECORD_WKC) && state.flags == (IPC_STATE_OP | IPC_STATE_WKC_ERR));
+    CHECK(r.period == 5 && r.flags == (RECORD_BUS | RECORD_WKC) && state.flags == ST(IPC_STATE_OP | IPC_STATE_WKC_ERR));
+#if CONTROL_TASK
+    CHECK(control_period == 5 && control_bus_state == 0);          /* the control task: no measured state in this cycle */
+#endif
     CHECK(zeros == 1 && updates == 4 && frames_sent == 5 && state.faults.wkc == 1);
     next_wkc = ecat_expected_wkc;
 
@@ -189,6 +214,11 @@ int main(void)
     ecat_cycle(1009);
     r = last_record();
     CHECK(stop_step == STOP_HOLD && stop_events == 1 && (r.flags & RECORD_STOP) && (state.flags & IPC_STATE_STOP));
+#if CONTROL_TASK
+    CHECK(control_drives == 10 && control_period == 9 && apu_takes == 0);  /* the drives of this cycle still; no step in a stop */
+#else
+    CHECK(apu_takes == 20);
+#endif
     next_wkc = 0;                                          /* the drives leave OP */
     for (cycles = 0; stop_step != STOP_DONE && cycles < 5000; cycles++) {
         ecat_cycle(1010u + (uint32_t)cycles);

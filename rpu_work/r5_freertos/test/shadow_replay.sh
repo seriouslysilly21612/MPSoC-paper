@@ -8,18 +8,21 @@
 #   RBDL_SRC    the sources of RBDL 3.1.3 (its src/ and include/)
 #   RUCKIG_SRC  the sources of Ruckig 0.19.4 (its src/ruckig/ and include/)
 #   EIGEN_DIR   Eigen 3.4 (default /usr/include/eigen3)
-#   BUILD_DIR   where the objects go (default /tmp/shadow_replay); the libraries are compiled once
+#   BUILD_DIR   where the objects go (default /tmp/shadow_replay); the libraries are compiled once, and
+#               test/control_replay.sh takes them from there
 #
 # The PC run must agree with the file exactly.  The R5 run (arm-none-eabi-g++, qemu-arm; skipped with a line if
 # one is missing) within 1e-9 N m and rad: it has no fused multiply-add, the PC that wrote the file may.
 # Neither may allocate memory in a period.
+# Between the two, on the PC: the replay once for every place at which the planner touches a slot, with the step
+# of the next period in the middle of it there (SLOT_PREEMPT_TEST, see shadow_replay.cpp); about 1000 replays.
 # Then, with COUNT=N, the instructions of the first N periods on the R5 are counted (test/count_periods.py).
 # Exit 1 if a run failed, 2 if the R5 run was not made.
 set -e
 FILE="$1"; B="${2:-/tmp/shadow_replay}"; EIGEN="${EIGEN_DIR:-/usr/include/eigen3}"
 [ -f "$FILE" ] && [ -d "$RBDL_SRC/src" ] && [ -d "$RUCKIG_SRC/src/ruckig" ] || { sed -n '2,16p' "$0"; exit 2; }
 APP=../../goal-to-torque_MPSoC/indy7
-INC="-Isrc/ctrl/port -Isrc/ctrl -Isrc -I$APP/src -isystem $RBDL_SRC/include -isystem $EIGEN -isystem $RUCKIG_SRC/include"
+INC="-Isrc/ctrl/port -Isrc/ctrl -Isrc -Itest -I$APP/src -isystem $RBDL_SRC/include -isystem $EIGEN -isystem $RUCKIG_SRC/include"
 OURS="test/shadow_replay.cpp src/ctrl/shadow_ctrl.cpp src/ctrl/ShadowControl.cpp src/ctrl/FullDynControllerRT.cpp src/ctrl/Controller.cpp src/ctrl/HighLevelRT.cpp src/ctrl/ctrl_model.cpp"
 R5="-mcpu=cortex-r5 -mfpu=vfpv3-d16 -mfloat-abi=hard -Wno-psabi"
 WRAP="-Wl,--wrap=malloc,--wrap=calloc,--wrap=realloc"     # the allocation count of shadow_replay.cpp
@@ -44,13 +47,22 @@ build() {
 }
 
 build "$B/pc" g++ ""
-g++ $WRAP "$B"/pc/*.o -o "$B/pc/shadow_replay"
+g++ $WRAP "$B"/pc/ours_*.o "$B"/pc/rbdl_*.o "$B"/pc/ruckig_*.o -o "$B/pc/shadow_replay"
 echo "PC:"
 "$B/pc/shadow_replay" "$FILE" 0 || bad=1
 
+mkdir -p "$B/pre"
+for f in $OURS; do
+    g++ -O2 -std=gnu++17 -DNDEBUG -Wall -DSLOT_PREEMPT_TEST $INC -c "$f" -o "$B/pre/ours_$(basename "$f" .cpp).o"
+done
+g++ $WRAP "$B"/pre/ours_*.o "$B"/pc/rbdl_*.o "$B"/pc/ruckig_*.o -o "$B/pre/shadow_replay"
+echo "PC, the step of a period in the middle of the planner's work:"
+"$B/pre/shadow_replay" "$FILE" 0 || bad=1
+
 if command -v arm-none-eabi-g++ > /dev/null && command -v qemu-arm > /dev/null; then
     build "$B/r5" arm-none-eabi-g++ "$R5 -ffunction-sections -fdata-sections"
-    arm-none-eabi-g++ $R5 --specs=rdimon.specs -Wl,--gc-sections $WRAP "$B"/r5/*.o -o "$B/r5/shadow_replay.elf"
+    arm-none-eabi-g++ $R5 --specs=rdimon.specs -Wl,--gc-sections $WRAP "$B"/r5/ours_*.o "$B"/r5/rbdl_*.o "$B"/r5/ruckig_*.o \
+        -o "$B/r5/shadow_replay.elf"
     echo "R5 (qemu-arm):"
     qemu-arm -cpu cortex-r5f "$B/r5/shadow_replay.elf" "$FILE" 1e-9 || bad=1
     arm-none-eabi-size "$B/r5/shadow_replay.elf"

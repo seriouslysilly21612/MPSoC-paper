@@ -6,8 +6,8 @@
  *   ecat_task (ecat_task.c)       prio MAX-2  EtherCAT bring-up, then the 1 kHz process-data loop; the APU's
  *                                 Command / Torque / State slots (ocm_link.c) are served inside that loop.
  *   event_log_task (event_log.c)  prio 1      prints the events the 1 kHz loop posts (it never prints itself).
- *   planner_task (planner_task.c) prio 2      with SHADOW_CONTROL: the IK and the plans that the second controller
- *                                 asks for in the loop, in the time a period leaves.
+ *   planner_task (planner_task.c) prio 2      with SHADOW_CONTROL or CONTROL_TASK: the IK and the plans that the
+ *                                 controller asks for in the loop, in the time a period leaves.
  *
  * Console: every xil_printf() goes to the DDR ring buffer of r5log.c (r5log.c MUST be in the project);
  *          read it on the Linux side with  "sudo python3 r5log.py -f".
@@ -52,8 +52,8 @@ int main(void)
    if (xTaskCreate(event_log_task, "ecatlog", 1024, NULL, tskIDLE_PRIORITY + 1, NULL) != pdPASS)
       xil_printf("[main] WARN: could not start the log task (FreeRTOS heap full?) - event lines will not be printed\r\n");
 
-#if SHADOW_CONTROL
-   /* without it the second controller gets no plan: its reference stays where a motion started */
+#if SHADOW_CONTROL || CONTROL_TASK
+   /* without it the controller gets no plan: its reference stays where a motion started */
    if (xTaskCreate(planner_task, "planner", PLANNER_TASK_STACK_WORDS, NULL, tskIDLE_PRIORITY + 2, NULL) != pdPASS)
       xil_printf("[main] FAIL: could not create planner_task (FreeRTOS heap too small? raise total_heap_size)\r\n");
 #endif

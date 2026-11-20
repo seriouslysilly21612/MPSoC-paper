@@ -39,6 +39,11 @@
  * After the send (SHADOW_CONTROL, shadow_link.c): the control computation of the APU's control task once more, on
  * what the control task told of its last period; its torque is compared, not used.  A cycle in which it ran ends
  * with it, not with its send: t_e and the overrun rule take it in, the send deadline does not.
+ *
+ * Or, with CONTROL_TASK (control_link.c; S2): the control task itself runs after the send, on the measured state of
+ * this cycle and the commands and goals of the APU, and the drives get its torque with the send of the next cycle
+ * in place of the Torque slot.  A servo on or off is then the control task's to ask (its interlock), not the
+ * Command slot's.
  */
 #include "FreeRTOS.h"
 #include "task.h"
@@ -58,6 +63,7 @@
 #include "ocm_link.h"
 #include "obs_link.h"
 #include "shadow_link.h"
+#include "control_link.h"
 
 volatile int ecat_status = ECAT_STATUS_STARTING;
 
@@ -218,18 +224,23 @@ static void post_slave_al_states(void)
 /* ----------------------------------------------------------------------- */
 static void take_apu_slots(uint64_t now)
 {
-    uint32_t command = ocm_link_take_command();
+#if CONTROL_TASK
+    control_link_drives();              /* the command and the torque are the control task's (after the send) */
+#else
+    ipc_command_t command;
 
-    if (command != IPC_CMD_NONE) {
-        event_post(EVENT_COMMAND, 1, (int)command, 0, 0);
-        /* shortcut: IPC_CMD_STOP is a servo off here; the clean stop to PRE-OP is still r5log.py -f */
-        if (command == IPC_CMD_SERVO_ON) axis_control_servo(1);
-        else                             axis_control_servo(0);
+    if (ocm_link_take_command(&command)) {
+        event_post(EVENT_COMMAND, 1, (int)command.cmd, 0, 0);
+        /* shortcut: IPC_CMD_STOP is a servo off here; the clean stop to PRE-OP is still r5log.py -f.  So is a
+           command for the control task (S2), which this build has not */
+        if (command.cmd == IPC_CMD_SERVO_ON) axis_control_servo(1);
+        else                                 axis_control_servo(0);
     }
     link_torque_t torque;
     int fresh = ocm_link_take_torque(&torque);
 
     axis_control_torque_input(fresh, torque.usable, torque.tau);
+#endif
     obs_link_poll(now);                 /* the camera results: taken and counted; the control task will use them (plan 4-3) */
 }
 
@@ -241,7 +252,7 @@ static void ecat_cycle(uint32_t planned_tick)
     cycle_times_t t;
     cycle_record_t record;
     link_faults_t faults;
-    uint32_t link_flags = IPC_STATE_OP;
+    uint32_t link_flags = IPC_STATE_OP | (CONTROL_TASK ? IPC_STATE_CONTROL : 0u);
     int wkc;
 
     loop_timing_begin(planned_tick, &t);
@@ -298,11 +309,15 @@ static void ecat_cycle(uint32_t planned_tick)
     t.end = t.send_end;                 /* the end of the cycle, unless the second controller runs: what follows
                                            it is the record of its times */
     cycle_record_init(&record);
-#if SHADOW_CONTROL
+#if SHADOW_CONTROL || CONTROL_TASK
     {
         int32_t traj_ns, ctrl_ns;
 
+#if CONTROL_TASK
+        if (stop_step == STOP_NONE && control_link_step(cycle_index, wkc >= ecat_expected_wkc, &traj_ns, &ctrl_ns)) {
+#else
         if (stop_step == STOP_NONE && shadow_link_step(&traj_ns, &ctrl_ns)) {
+#endif
             t.end = sys_counter_low();
             record.hl_ns  = traj_ns;
             record.dyn_ns = ctrl_ns;
@@ -359,6 +374,9 @@ static void post_status_report(uint32_t cycles)
 #if SHADOW_CONTROL
     shadow_link_report();
 #endif
+#if CONTROL_TASK
+    control_link_report();
+#endif
     loop_timing_reset_window();
     event_budget = EVENTS_PER_REPORT;
 }
@@ -387,10 +405,14 @@ void ecat_task(void *arg)
 #if SHADOW_CONTROL
     (void)shadow_link_start();          /* here: nothing is on the bus yet while the controller is built */
 #endif
+#if CONTROL_TASK
+    (void)control_link_start();
+#endif
 
-    xil_printf("[ecat] ecat_task: target %s, %d axes, cycle %u us, tick %u Hz; servo on / off come from the APU\r\n",
+    xil_printf("[ecat] ecat_task: target %s, %d axes, cycle %u us, tick %u Hz; servo on / off come from the APU%s\r\n",
                ROBOT_TARGET == TARGET_INDY7 ? "Indy7" : "L7N bench", AXIS_COUNT,
-               (unsigned)(CYCLE_NS / 1000u), (unsigned)configTICK_RATE_HZ);
+               (unsigned)(CYCLE_NS / 1000u), (unsigned)configTICK_RATE_HZ,
+               CONTROL_TASK ? ", through the control task of this firmware" : "");
 
     if (!ecat_bring_up()) {
         set_status(ECAT_STATUS_INIT_FAILED);

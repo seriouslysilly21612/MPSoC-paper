@@ -290,6 +290,7 @@ of `ObsGoal.h` and `ObsWriter.h` fail it.
     make tools                 # bin/hl_check, bin/goal_filter_check, bin/slot_check, bin/ipc_slot_check,
                                # bin/obs_mailbox_check, bin/obs_receiver_check, bin/obs_estimate_check,
                                # bin/obs_goal_check, bin/obs_status_check, bin/r5_link_check, bin/shadow_check,
+                               # bin/control_check, bin/s2_link_check,
                                # bin/fw_cfg_header, bin/rbdl_model_code, bin/ctrl_numbers_header (the three write
                                # the headers of the R5 firmware), bin/model_check (MuJoCo)
 
@@ -325,6 +326,8 @@ and the affinity of every task at its start and refuses to run otherwise.
     ./run.sh --method A2       # the camera application by another method (M1, M2, A2, A3, FULL; see above)
     ./run.sh -s --arch S1      # the EtherCAT task on the R5 (below); with -s the R5 is simulated as well
     ./run.sh -s --arch S1 --shadow   # and the R5 runs the control computation beside this one (below)
+    ./run.sh -s --arch S2      # the control task on the R5 as well (below)
+    ./run.sh -s --arch S2 --shadow   # and a controller here repeats every period that the R5 reports (below)
 
 The keys of the operator are printed at the start and with `?`:
 
@@ -398,6 +401,77 @@ compared. The run ends with two more lines, counted from the first answer of the
     [SHADOW] the planner of the R5: <n> plans, the longest <t> us from start to end; <n> IK, the longest <t> us from its request to its result; <n> plans not back in their period (asked for again)
     [SHADOW] the IK of the R5's planner against this one's: <n> goals compared, <n> differ by more than 1e-09 rad, largest difference <d> rad
 
+**`--arch S2`: the control task on the R5 as well (2026-11-20).** The R5 runs the control task itself (a firmware
+built with `CONTROL_TASK`, `../rpu_work/r5_freertos/README.md`): the trajectory part with the high-level controller
+and its planner, and the control law, on the measured state of its own cycle. A cycle of Linux that comes late no
+longer leaves the drives without a new torque. What stays here (`indy7/src/TaskControlS2.cpp`,
+`r5link/ControlClient.h`):
+
+- **The keys of the operator, the tests and their logs.** What a key asks of the controller or of the drives goes to
+  the R5 as a command: controller on and off, the hold, servo on with its time limit (`SERVO_ON_TIMEOUT_MS`), servo
+  off, the start of HOME, of a joint move or of TRACK with the goal threshold and the ready posture, the stop. One
+  at a time: the next is written when a report has the number of the last (eight can wait). The conditions of a
+  start and of a servo on are checked here, for the operator, and by the R5 on its own state; when the R5 refuses,
+  its reason is printed.
+- **The goals.** TRACK on the R5 reads the Goal slot of the region; the control task here writes every new goal of
+  the slot that TRACK would read here into it (the tests, the bridge of the camera application). A goal reaches the
+  high-level controller one period later than with P0 and S1.
+- **The report** of every period of the R5's control task: the state of its controller and of its motion, the
+  sample of the period (the reference, the measured state, the torque, the numbers of the IK and of the plan), and
+  what it counted. The logs of the high-level tests are written from it, with the columns they have with P0. The
+  controller object here keeps what the R5 reports (enabled, mode, hold, fault) once every command is answered,
+  and a motion that the R5 ended (HOME at rest, a stop of the drives, a controller fault) ends here.
+- The rules of the drives are the R5's: a joint that leaves Operation enabled during servo on, a servo on that does
+  not complete in its time, a law that fails. The lines and the counts of the summary are those of P0.
+
+Not with S2: the JOINT TEST (`u`), the tool pose and the hand-eye capture (`s`, `w`), a method other than M1 (the
+part of those methods that runs in the control task is still here; refused at the start), and the fault test
+`SIM_FAULT_WHAT=torque`.
+
+The R5 goes on when the application ends. With `q` (or a signal) the application first asks the servo off and
+then switches the controller of the R5 off, as a controller here ends with the application: the next run finds the
+R5 as a new one has it, and the summary says so (`[S2] the R5 as this run leaves it: controller off, the servo not
+asked, no motion`). An application that is killed sends nothing. A new run takes up what it finds: the first
+report tells whether the controller of the R5 is on, whether it asks the servo on and whether a motion runs there
+(`x` stops it; `r` switches a controller that is on off); what the R5 counts (its controller faults, its stops of
+the drives, its periods without a state, the plans and the IK of its planner and its late plans) is told from that
+report on; and with an arm simulated here the R5 finds the drives of the new arm off and withdraws a servo request
+that it still had (told as a stop of the drives).
+
+**`--shadow` with `--arch S2`: the control of the R5 a second time, here.** The roles of `--shadow` with S1 the other
+way round. A report begins with the description of its period in the form of the Shadow in slot (the measured
+state, the goal, the start, the mode of the law, the IK that the update took), and a controller of the application
+(`r5link/ControlFollower.h`, with the class that the R5 runs beside the control task of S1) repeats the period from
+it; its torque and its reference are compared with those of the report. The run ends with two more `[S2]` lines:
+the periods repeated, the torques that differ from the R5's by more than 1e-6 N m and the references by more than
+1e-9 rad, the largest difference of each, the periods in which the two were apart and not compared (after a report
+that did not arrive, while the run has had no start of its own, or when a plan came into use in another period:
+until the next start), and the time of the two parts here. In the simulation the two are the same code on one CPU:
+no difference at all. On the board they are the same code on two CPUs.
+
+With `-s` the R5 is simulated as well (`sim/SimR5Control.h`, with the class that the firmware runs), and the arm
+stays the application's: its state goes to the R5 in the Sim state slot, the control task of the R5 runs one period
+on each new state and answers with the torque (Sim torque slot) after its report, and TASK0 steps the arm when the
+answer to its last state is there. What goes to the R5 is written by one task, the control task here, in the order
+command, goal, state (TASK0 hands it the state of its step), and the R5 reads the three in the reverse order: when
+it has a state it has what the cycle before it decided, and when it has a goal it has the start of its TRACK. So
+the two sides cannot run apart, no report is lost between them, and a run does not depend on the timing of the
+host: two runs give the same logs (to 1e-10 rad), also on a host that stalls. The arm moves with the answer before
+the last one, the delay of a bus, so the log of a fixed-goal run is that of P0 one period later.
+`SIM_FAULT_WHAT=state` puts the angle that is no number into the state that the R5 gets. `-b` is the same against
+the real R5 (the L7N bench: its bus has no arm), with the fault tests: the arm of the R5's control task is then the
+one simulated here, and the drives of its bus stay off whatever its controller does (with P0 and S1 the fault tests
+are refused beside a bus). `tools/s2_keys_sim.py --bench BUS` runs the sessions of the keys there, against the
+firmware, and one more in which the application is killed in a motion and started again. With the arm on the bus
+of the R5 a report that the tasks here do not take in its period is lost to the logs, and counted.
+
+The tasks follow the period of the R5 `WAKE_DELAY_S2_US` behind (`[R5_LINK]`, 640: the control
+task of the R5 must have ended by then, at most 458 us after its release on the idle bench and 690 us under pressure). The run ends with the
+`[S2]` lines: the reports taken and those of a period with a state that were not, the commands written, refused by
+the R5 and dropped here, the goals written and those the R5 took in this run, the times of the two parts on the R5, its periods without a
+state and its planner in this run, and what the run leaves on it. The shared region is layout 6 (the report has the
+counts of the high-level controller and the target of its IK). Not run with the real R5 yet (2026-11-20).
+
 ## The paper and the code
 
 | Paper | Code | Reproduction |
@@ -432,6 +506,10 @@ compared. The run ends with two more lines, counted from the first answer of the
     ./bin/obs_status_check                                # the status for the camera side, the contract check value, PASS
     ./bin/r5_link_check                                   # --arch S1: the exchange with the R5 and following its period, PASS
     ./bin/shadow_check                                    # --shadow: a second controller, told through the slots what the control task did, gives its torque and reference, PASS
+    ./bin/control_check                                   # the control task that the R5 has with CONTROL_TASK (shadow/ControlCycle.h): its commands, its rules for the drives, its report, PASS
+    ./bin/s2_link_check                                   # the exchange with such an R5: commands, the goal, the report, an arm simulated here, another run of the application, PASS
+    python3 ../tools/s2_keys_sim.py                       # --arch S2 in the simulation: the keys of the operator, a dropout, the E-stop, a servo on that runs out, a controller fault, PASS
+    python3 ../tools/hl_run_sim.py --arch S2 --shadow --analyze   # the high-level tests with the control task on the simulated R5; the [S2] lines of the console: no report missed, no torque differs
     ./bin/hl_check models/indy7.urdf                      # the reference contract, PASS
     ./bin/goal_filter_check                               # the goal checks of the bridge, PASS
     ./bin/model_check models/indy7.urdf models/indy7_mujoco.xml B=6.07917,6.68933,1.99649,0.87306,0.86394,0.84747  # B as in INDY7.cfg
@@ -504,6 +582,19 @@ an optimized build.
 No IgH master then: the R5 runs the bus and must have it in OP, and the device tree must have the node of its
 slots. The reference check ends with the arm at rest at the accepted goal (it used to end in motion, into gravity
 compensation); the time to rest is outside the TRACK window of the timing log.
+
+`run_timing.py --arch S2` (a firmware with the control task): the keys of the run go to the R5 as commands, and
+the arm simulated here steps on its answers. The row of Table 6 is then the R5's, all of it, from its record: the
+send, the two parts of its control task, and for the chain its release-to-end of a cycle with them (`R5 t_w + t_e
+with control`); the tasks here have no chain. The criteria: those of the R5 (its send deadline, no late release and
+no overrun, the working counter, every period in its record, the law in every period of the window), and of the
+tasks here that a State and a report of the R5 came in every cycle. With `-b` the last and the law in every period
+say whether the loop through the simulated arm kept the period, which an arm on the bus of the R5 does not need:
+a state that reaches the R5 after its control task looked is a period without the law (`R5 release -> sim state`
+and `R5 t_w + t_e with control` say on which side of `WAKE_DELAY_S2_US` the time was short). `--shadow` with it: the
+controller here that repeats the periods of the R5 (above); its IK runs in the control task here, so it is a run
+for the numbers and not for the times. A run that was killed leaves the controller of the R5 on, and the next run
+switches it off before its keys.
 
 ### Camera application (Sec. V-C)
 

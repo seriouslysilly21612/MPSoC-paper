@@ -114,6 +114,20 @@ static void print_event(const event_t *e)
                    (int)(FW_CFG_SEND_DEADLINE_NS / 1000), (int)e->value[5], (int)e->value[6], (int)e->value[7],
                    (int)e->value[8], (int)e->value[9]);
         break;
+    case EVENT_CONTROL_REPORT:
+        if (e->value[0] == 0) {
+            xil_printf("[control] the controller is not built\r\n");
+        } else {
+            xil_printf("[control] periods %d (without a state %d), longest %d us | commands %d (refused %d), goals %d |"
+                       " arm: %s | so far: controller faults %d, drive stops %d, lines not printed %d\r\n",
+                       (int)e->value[1], (int)e->value[2], (int)e->value[5], (int)e->value[3], (int)e->value[4],
+                       (int)e->value[12], e->value[15] ? "simulated by the APU" : "the bus", (int)e->value[13],
+                       (int)e->value[14], (int)e->value[6]);
+            xil_printf("[control] planner task: plans %d (longest %d us), IK %d (longest %d us)"
+                       " | plans not back in their period so far %d\r\n",
+                       (int)e->value[7], (int)e->value[8], (int)e->value[9], (int)e->value[10], (int)e->value[11]);
+        }
+        break;
     case EVENT_SHADOW_REPORT:
         if (e->value[0] == 0) {
             xil_printf("[shadow] the controller is not built\r\n");

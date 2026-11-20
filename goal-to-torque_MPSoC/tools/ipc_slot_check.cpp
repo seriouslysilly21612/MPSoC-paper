@@ -39,7 +39,7 @@ namespace {
 
 enum { WORDS = IPC_WORDS_MAX };
 
-alignas(64) uint32_t g_auRegion[IPC_OFF_END / 4];
+alignas(64) uint32_t g_auRegion[IPC_OFF_END2 / 4];
 int g_nFailed = 0;
 
 volatile ipc_head_t* Head() { return reinterpret_cast<volatile ipc_head_t*>(g_auRegion); }

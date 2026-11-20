@@ -81,7 +81,8 @@ IPC_ASSERT(sizeof(obs_desc_t) == 4 * OBS_DESC_WORDS && offsetof(obs_desc_t, f) =
            offsetof(obs_desc_t, n_check) == 60, "obs_desc_t");
 IPC_ASSERT(offsetof(obs_mailbox_t, state) == 64 && offsetof(obs_mailbox_t, slot) == 128 &&
            sizeof(obs_mailbox_t) == 640, "obs_mailbox_t");
-IPC_ASSERT(OBS_OFF_MAILBOX % 64u == 0u && OBS_OFF_MAILBOX >= IPC_OFF_END, "the mailbox overlaps the slots");
+IPC_ASSERT(OBS_OFF_MAILBOX % 64u == 0u && OBS_OFF_MAILBOX >= IPC_OFF_END &&
+           OBS_OFF_MAILBOX + sizeof(obs_mailbox_t) <= IPC_OFF_COMMAND, "the mailbox overlaps the slots");
 
 enum
 {

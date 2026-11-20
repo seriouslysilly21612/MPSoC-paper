@@ -357,6 +357,85 @@ CRobotIndy7::CheckMotionStart(const char* apcWho, const task_slots::ST_STATE_SLO
 	return TRUE;
 }
 
+// A motion starts (Trajectory task): the checks of CTrajectoryRT::Start on the measured state. With --arch S2
+// the motion is the R5's: the start goes there as a command with the goal threshold and the ready posture of
+// the high-level controller here, the R5 checks it again on its own state, and its answer comes with a report
+// (TaskControlS2.cpp); until then m_cTraj has the motion as running.
+BOOL
+CRobotIndy7::StartMotion(bool abHome, const double* adQ, const double* adQd, char* astrWhy, size_t auWhyLen,
+                         const double* adHomeTarget)
+{
+	if (FALSE == m_cTraj.Start(abHome, adQ, adQd, m_bHlFF ? TRUE : FALSE, astrWhy, auWhyLen, adHomeTarget))
+		return FALSE;
+	if (m_pS2 == NULL)
+		return TRUE;
+	const CHighLevelRT::Params& stP = m_cTraj.HighLevel().GetParams();
+	ipc_command_t stC;
+	memset(&stC, 0, sizeof(stC));
+	stC.delta = stP.dDelta;
+	for (int i = 0; i < CHighLevelRT::DOF; i++)
+	{
+		stC.q_ready[i] = stP.adQr[i];
+		stC.target[i] = (adHomeTarget != NULL) ? adHomeTarget[i] : 0.0;
+	}
+	const uint32_t uArg = (abHome ? (uint32_t)IPC_START_HOME : 0u) |
+	                      ((abHome && adHomeTarget != NULL) ? (uint32_t)IPC_START_TARGET : 0u) |
+	                      (m_bHlFF ? (uint32_t)IPC_START_FRICTION_FF : 0u);
+	if (!m_pS2->Queue(IPC_CMD_START, uArg, &stC))
+	{
+		m_cTraj.End(CTrajectoryRT::eAborted);
+		snprintf(astrWhy, auWhyLen, "the R5 has not answered the commands before this one");
+		return FALSE;
+	}
+	return TRUE;
+}
+
+// A motion ends (Trajectory task; nothing if none runs). With --arch S2 the stop goes to the R5, also for a
+// motion that runs there and that this run did not start: the R5 goes on when the application starts again.
+void
+CRobotIndy7::EndMotion(CTrajectoryRT::eState aeState)
+{
+	const BOOL bRan = m_cTraj.IsRunning();
+	m_cTraj.End(aeState);
+	if (m_pS2 != NULL && (bRan || (m_pS2->HasReport() &&
+	                               m_pS2->Report().traj_state == (uint32_t)CTrajectoryRT::eRunning)))
+		QueueControl(IPC_CMD_MOTION_STOP);
+}
+
+// the goal slot that TRACK reads from here on, and the offset of its goals (CTrajectoryRT)
+void
+CRobotIndy7::UseGoalSlot(const CGoalSlot* apSlot, const double* adOffset)
+{
+	m_cTraj.SetGoalSlot(apSlot);
+	m_cTraj.SetGoalOffset(adOffset);
+	if (m_pS2 != NULL)
+		m_pS2->UseGoalSlot(apSlot, adOffset);
+}
+
+CTrajectoryRT::Sample*
+CRobotIndy7::HlSample()
+{
+	if (m_pS2 != NULL)
+		return m_pS2->Sample();
+	return m_cTraj.HasSample() ? &m_cTraj.GetSample() : NULL;
+}
+
+void
+CRobotIndy7::HlCounts(long* anCounts) const
+{
+	if (m_pS2 != NULL)
+	{
+		for (int k = 0; k < 4; k++)
+			anCounts[k] = (long)m_pS2->HlCounts()[k];
+		return;
+	}
+	const CHighLevelRT::Status& st = m_cTraj.HighLevel().GetStatus();
+	anCounts[0] = st.nAccepted;
+	anCounts[1] = st.nConverged;
+	anCounts[2] = st.nRejected;
+	anCounts[3] = st.nLeadResets;
+}
+
 // menu entry anSel of 'y' (Trajectory task, from the command word of
 // DoInput, or the selection of the camera application)
 BOOL
@@ -409,7 +488,7 @@ CRobotIndy7::StartHighLevelMenu(int anSel, const task_slots::ST_STATE_SLOT& astS
 		return FALSE;
 	}
 	char acWhy[192];
-	if (FALSE == m_cTraj.Start(true, astState.adQ, astState.adQd, m_bHlFF ? TRUE : FALSE, acWhy, sizeof(acWhy)))
+	if (FALSE == StartMotion(true, astState.adQ, astState.adQd, acWhy, sizeof(acWhy)))
 	{
 		printf("[HL] refused - %s\n", acWhy);
 		return FALSE;
@@ -449,11 +528,10 @@ CRobotIndy7::StartHighLevelTrack(const task_slots::ST_STATE_SLOT& astState,
 	 * (paper, Sec. V-C) */
 	const bool bApp = (m_nHlSel == HL_APP);
 	const double adOff[3] = {0.0, 0.0, bApp ? m_dAppHover : 0.0};
-	m_cTraj.SetGoalSlot(bApp ? &m_appGoalSlot : &m_goalSlot);
-	m_cTraj.SetGoalOffset(adOff);
+	UseGoalSlot(bApp ? &m_appGoalSlot : &m_goalSlot, adOff);
 	m_cTraj.HighLevel().SetDelta(m_nHlSel == 4 ? 0.0 : m_dHlDelta);
 	char acWhy[192];
-	if (FALSE == m_cTraj.Start(false, astState.adQ, astState.adQd, m_bHlFF ? TRUE : FALSE, acWhy, sizeof(acWhy)))
+	if (FALSE == StartMotion(false, astState.adQ, astState.adQd, acWhy, sizeof(acWhy)))
 	{
 		printf("[HL] TRACK refused - %s\n", acWhy);
 		m_eHlTest = eHlTestIdle;
@@ -563,8 +641,7 @@ CRobotIndy7::StopHighLevel()
 	}
 	if (m_eHlTest == eHlTestIdle)
 		m_bHlSeq = false;
-	if (m_cTraj.IsRunning())
-		m_cTraj.End(CTrajectoryRT::eAborted);
+	EndMotion(CTrajectoryRT::eAborted);
 }
 
 // The recorded goal noise of tests 3 and 4 (HL_TEST_NOISE_FILE,
@@ -778,12 +855,13 @@ CRobotIndy7::HighLevelTestAfterUpdate(const task_slots::ST_STATE_SLOT& astState,
 		/* the reference check is over: its motion comes to rest at the accepted goal, then the Dynamics task
 		 * holds in gravity compensation, as after HOME. A stop ('x', 'j', 'e') ends it at once */
 		const double dPeriod = m_stHlMeta.dPeriod > 0.0 ? m_stHlMeta.dPeriod : 1e-3;
-		const bool bAtRest = m_cTraj.HasSample() && (m_cTraj.GetSample().uFlags & T::HL_AT_REST) != 0;
+		const T::Sample* const pRest = HlSample();
+		const bool bAtRest = pRest != NULL && (pRest->uFlags & T::HL_AT_REST) != 0;
 		const bool bTooLong = ++m_nHlSettleCycles >= (long)std::lround(20.0 / dPeriod);
 		if (eSt == T::eRunning && !bAtRest && !bTooLong)
 			return;
 		if (eSt == T::eRunning)
-			m_cTraj.End(bAtRest ? T::eDoneAtRest : T::eAborted);
+			EndMotion(bAtRest ? T::eDoneAtRest : T::eAborted);
 		printf("[HL] %s - gravity compensation\n", eSt != T::eRunning ? "stopped before the arm was at rest" :
 		       bAtRest ? "at rest at the accepted goal" : "not at rest after 20 s");
 		m_eHlTest = eHlTestIdle;
@@ -835,9 +913,10 @@ CRobotIndy7::HighLevelTestAfterUpdate(const task_slots::ST_STATE_SLOT& astState,
 	}
 
 	/* TRACK */
-	if (m_cTraj.HasSample())
+	T::Sample* const pSample = HlSample();
+	if (pSample != NULL)
 	{
-		T::Sample& stS = m_cTraj.GetSample();
+		T::Sample& stS = *pSample;
 		// the torque of the Dynamics task's last cycle (Torque slot)
 		for (int i = 0; i < T::MAX_DOF; i++)
 			stS.adTau[i] = astTorque.bValid ? astTorque.adTau[i] : 0.0;
@@ -916,14 +995,15 @@ CRobotIndy7::ObsStep(const task_slots::ST_STATE_SLOT& astState)
 void
 CRobotIndy7::EndHighLevelTest(int anState, const task_slots::ST_FAULTS& astFaults, unsigned long auAllocs)
 {
-	const CHighLevelRT::Status& st = m_cTraj.HighLevel().GetStatus();
+	long anCounts[4];
+	HlCounts(anCounts);
 	CHighLevelLog::Result stR;
 	FillRtResult(stR, astFaults, m_stHlRt0, m_nHlCtrlFaults0, m_nHlDropouts0);
 	stR.nAllocs = malloc_count::Enabled() ? (long)(auAllocs - m_uHlAllocs0) : -1;
-	stR.nAccepted = st.nAccepted;
-	stR.nConverged = st.nConverged;
-	stR.nRejected = st.nRejected;
-	stR.nLeadResets = st.nLeadResets;
+	stR.nAccepted = anCounts[0];
+	stR.nConverged = anCounts[1];
+	stR.nRejected = anCounts[2];
+	stR.nLeadResets = anCounts[3];
 	stR.dRestTime = (m_nHlRestSince >= 0) ? m_nHlRestSince * m_stHlMeta.dPeriod : -1.0;
 	m_cHlLog.Close(anState, stR);
 	if (m_cObsLog.IsOpen())
@@ -944,7 +1024,7 @@ CRobotIndy7::EndHighLevelTest(int anState, const task_slots::ST_FAULTS& astFault
 	// otherwise the motion ends with the test: the Reference slot of this period carries
 	// no reference, and the Dynamics task returns to gravity compensation
 	if (!bSettle && m_cTraj.IsRunning())
-		m_cTraj.End(CTrajectoryRT::eAborted);
+		EndMotion(CTrajectoryRT::eAborted);
 	DBG_LOG_INFO("[HL] %s %s - %s", s_apcHlName[m_nHlSel],
 	             anState == eTestCompleted ? "done" : anState == eTestTimeout ? "ended: not at rest after 20 s" :
 	             anState == eTestGenError ? "ended: trajectory generator error" : "stopped",
@@ -1007,8 +1087,7 @@ CRobotIndy7::StartUserMove(const task_slots::ST_MOVE_REQ& astReq, const task_slo
 	char acWhy[192];
 	if (astReq.eKind == eMoveJoint)
 	{
-		if (FALSE == m_cTraj.Start(true, astState.adQ, astState.adQd, m_bHlFF ? TRUE : FALSE, acWhy, sizeof(acWhy),
-		                           astReq.adTarget))
+		if (FALSE == StartMotion(true, astState.adQ, astState.adQd, acWhy, sizeof(acWhy), astReq.adTarget))
 		{
 			printf("[MOVE] refused - %s\n", acWhy);
 			return;
@@ -1021,10 +1100,9 @@ CRobotIndy7::StartUserMove(const task_slots::ST_MOVE_REQ& astReq, const task_slo
 		return;
 	}
 	const double adOff[3] = {0.0, 0.0, 0.0};
-	m_cTraj.SetGoalSlot(&m_goalSlot);
-	m_cTraj.SetGoalOffset(adOff);
+	UseGoalSlot(&m_goalSlot, adOff);
 	m_cTraj.HighLevel().SetDelta(m_dHlDelta);
-	if (FALSE == m_cTraj.Start(false, astState.adQ, astState.adQd, m_bHlFF ? TRUE : FALSE, acWhy, sizeof(acWhy)))
+	if (FALSE == StartMotion(false, astState.adQ, astState.adQd, acWhy, sizeof(acWhy)))
 	{
 		printf("[MOVE] refused - %s\n", acWhy);
 		return;
@@ -1070,6 +1148,10 @@ namespace
 		double adQr[CTrajectoryRT::MAX_DOF], adQdr[CTrajectoryRT::MAX_DOF], adQddr[CTrajectoryRT::MAX_DOF];
 	} g_stTraj;
 }
+
+// --arch S2 (TaskControlS2.cpp): the report of the R5 that is new in this cycle; the reference of its period
+bool s2_take_report(CRobotIndy7* pRobot);
+int  s2_trajectory_step(CRobotIndy7* pRobot, double* adQRef, double* adQdRef, double* adQddRef, int32_t* apnHlNs);
 
 bool
 trajectory_begin(CRobotIndy7* pRobot, CRtTask* pTask)
@@ -1130,8 +1212,12 @@ trajectory_cycle(CRobotIndy7* pRobot, RTTIME tRelease, RTTIME tStart)
 	if (bNewState && obs_method::UsesMailbox(pRobot->m_nMethod))
 		pRobot->ObsStep(stState);
 
-	/* the command of the operator (DoInput, Dynamics task) */
-	const int nCmd = pRobot->m_nHlCmd.exchange(HL_CMD_NONE, std::memory_order_acq_rel);
+	/* the command of the operator (DoInput, Dynamics task: this thread). A stop is taken at once; a start waits
+	 * for a cycle with a new state, which it needs (with S1 and S2 the R5 brings none in a cycle now and then,
+	 * and the start taken in such a cycle was lost without a word) */
+	int nCmd = pRobot->m_nHlCmd.load(std::memory_order_acquire);
+	nCmd = (nCmd == HL_CMD_STOP || bNewState) ? pRobot->m_nHlCmd.exchange(HL_CMD_NONE, std::memory_order_acq_rel) :
+	                                            (int)HL_CMD_NONE;
 	if (nCmd == HL_CMD_STOP || (stState.bStop && pRobot->m_cTraj.IsRunning()))
 		pRobot->StopHighLevel();
 	else if (nCmd >= 1 && nCmd <= (int)CRobotIndy7::HL_MENU && bNewState)
@@ -1160,8 +1246,11 @@ trajectory_cycle(CRobotIndy7* pRobot, RTTIME tRelease, RTTIME tStart)
 	}
 
 	/* the step: with a new state only (without one, the reference of the
-	 * last state stands) */
-	if (bNewState)
+	 * last state stands). --arch S2: with a new report of the R5, which has the motion. It is taken here, after
+	 * the commands of this cycle: a stop among them is then on its way, and the report is not taken for the
+	 * state that the stop leaves */
+	const bool bStep = (pRobot->m_pS2 != NULL) ? s2_take_report(pRobot) : bNewState;
+	if (bStep)
 	{
 		int32_t nHlNs = -1;
 		int eMode = eRefNone;
@@ -1169,7 +1258,9 @@ trajectory_cycle(CRobotIndy7* pRobot, RTTIME tRelease, RTTIME tStart)
 		{
 			// the goal of this period, from the test program, into the slot
 			pRobot->HighLevelTestBeforeUpdate();
-			if (pRobot->m_cTraj.IsRunning())
+			if (pRobot->m_pS2 != NULL)
+				eMode = s2_trajectory_step(pRobot, adQr, adQdr, adQddr, &nHlNs);
+			else if (pRobot->m_cTraj.IsRunning())
 			{
 				const BOOL bOk = pRobot->m_cTraj.Update(adQ, adQd, adQr, adQdr, adQddr);
 				if (pRobot->m_pShadow != NULL)
@@ -1199,7 +1290,6 @@ trajectory_cycle(CRobotIndy7* pRobot, RTTIME tRelease, RTTIME tStart)
 		}
 		stRef.nHlNs = nHlNs;
 	}
-
 	/* the end of a motion of the operator */
 	if (pRobot->m_eUserMove != CRobotIndy7::eUserNone && !pRobot->m_cTraj.IsRunning())
 	{
@@ -1222,7 +1312,7 @@ trajectory_cycle(CRobotIndy7* pRobot, RTTIME tRelease, RTTIME tStart)
 	pRobot->m_refSlot.Write(stRef);
 
 	/* then: the log of the test, HOME -> TRACK, the end of the test */
-	if (bNewState)
+	if (bStep)
 		pRobot->HighLevelTestAfterUpdate(stState, stTorque);
 
 	/* the timing of this task */

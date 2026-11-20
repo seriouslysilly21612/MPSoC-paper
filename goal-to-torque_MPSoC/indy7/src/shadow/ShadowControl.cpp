@@ -36,14 +36,10 @@ CShadowControl::~CShadowControl()
 	delete m_pCtl;
 }
 
-BOOL
-CShadowControl::Init(const char* astrURDF, const double* adNumbers, uint32_t auCrc)
+CHighLevelRT::Params
+CShadowControl::HlParams(const double* adNumbers)
 {
-	if (m_pCtl != NULL)
-		return FALSE;
 	const double* const n = adNumbers;
-
-	/* the high-level controller, as CRobotIndy7::InitTrajectory */
 	CHighLevelRT::Params stP = CHighLevelRT::DefaultParams();
 	stP.dDelta     = n[SHADOW_N_DELTA];
 	stP.dLambda    = n[SHADOW_N_LAMBDA];
@@ -59,10 +55,13 @@ CShadowControl::Init(const char* astrURDF, const double* adNumbers, uint32_t auC
 	stP.bStepRef   = (n[SHADOW_N_STEP_REF] != 0.0);
 	for (int i = 0; i < DOF; i++)
 		stP.adQr[i] = n[SHADOW_N_READY + i];
-	if (FALSE == m_cHl.Init(astrURDF, n[SHADOW_N_TS], stP) || FALSE == m_cPlanner.Init(astrURDF, n[SHADOW_N_TS], stP))
-		return FALSE;
+	return stP;
+}
 
-	/* the control law, as CRobotIndy7::InitController; enabled for good: whether it runs in a period is the APU's */
+CControllerFullDynamicsRT*
+CShadowControl::NewLaw(const char* astrURDF, const double* adNumbers)
+{
+	const double* const n = adNumbers;
 	CControllerFullDynamicsRT* const pCtl = new CControllerFullDynamicsRT(astrURDF, DOF);
 	pCtl->EnableRTMode(TRUE);
 	pCtl->SetDeadline(500000);
@@ -70,7 +69,7 @@ CShadowControl::Init(const char* astrURDF, const double* adNumbers, uint32_t auC
 	if (!pCtl->Init())
 	{
 		delete pCtl;
-		return FALSE;
+		return NULL;
 	}
 	pCtl->SetControlGains(std::vector<double>(n + SHADOW_N_KP, n + SHADOW_N_KP + DOF),
 	                      std::vector<double>(n + SHADOW_N_KD, n + SHADOW_N_KD + DOF));
@@ -78,6 +77,23 @@ CShadowControl::Init(const char* astrURDF, const double* adNumbers, uint32_t auC
 	pCtl->SetRotorInertia(std::vector<double>(n + SHADOW_N_ROTOR, n + SHADOW_N_ROTOR + DOF));
 	pCtl->SetFrictionFFGate(n[SHADOW_N_FF_GATE] != 0.0);
 	pCtl->SetTorqueLimits(std::vector<double>(n + SHADOW_N_TAU_MAX, n + SHADOW_N_TAU_MAX + DOF));
+	return pCtl;
+}
+
+BOOL
+CShadowControl::Init(const char* astrURDF, const double* adNumbers, uint32_t auCrc)
+{
+	if (m_pCtl != NULL)
+		return FALSE;
+	const CHighLevelRT::Params stP = HlParams(adNumbers);
+	if (FALSE == m_cHl.Init(astrURDF, adNumbers[SHADOW_N_TS], stP) ||
+	    FALSE == m_cPlanner.Init(astrURDF, adNumbers[SHADOW_N_TS], stP))
+		return FALSE;
+
+	/* the control law; enabled for good: whether it runs in a period is the APU's */
+	CControllerFullDynamicsRT* const pCtl = NewLaw(astrURDF, adNumbers);
+	if (pCtl == NULL)
+		return FALSE;
 	pCtl->Enable(TRUE);
 
 	m_vQ.assign(DOF, 0.0);

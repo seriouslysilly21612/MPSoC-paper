@@ -32,12 +32,12 @@ import sys
 import time
 
 OCM_ADDR, OCM_SIZE = 0xFFFC0000, 0x4000
-IPC_MAGIC, IPC_LAYOUT = 0x31435049, 4
-OFF_HEAD, OFF_STATE, OFF_TORQUE, OFF_COMMAND = 0x000, 0x040, 0x1C0, 0x240
+IPC_MAGIC, IPC_LAYOUT = 0x31435049, 6
+OFF_HEAD, OFF_STATE, OFF_TORQUE, OFF_COMMAND = 0x000, 0x040, 0x1C0, 0x800
 HEAD_R5, HEAD_APU = 0x00, 0x20                  # ipc_side_t: magic, layout, epoch (+5 reserved)
 CMD_SERVO_ON, CMD_SERVO_OFF, CMD_STOP = 1, 2, 3
 TORQUE_VALID, TORQUE_ENABLED = 1, 2
-ST_OP, ST_WKC_ERR, ST_SERVO_ON, ST_STOP = 1, 2, 4, 8
+ST_OP, ST_WKC_ERR, ST_SERVO_ON, ST_STOP, ST_CONTROL = 1, 2, 4, 8, 16
 AXES = 3                                        # L7N bench (bench/L7N3_bus.cfg)
 MAX_TAU_NM = 0.13                               # a hair under the drive-side 10 % limit (0.1337 N m)
 PERIOD_S = 0.001
@@ -46,8 +46,8 @@ OFF_WAIT_S = 2.0
 STATE_FMT = "<QIIIIIIII8H8d8d8d8i8i4I"          # ipc_state_t, 328 bytes
 STATE_BYTES = struct.calcsize(STATE_FMT)
 TORQUE_FMT = "<II8d"                            # ipc_torque_t, 72 bytes
-COMMAND_FMT = "<II"                             # ipc_command_t, 8 bytes
-assert STATE_BYTES == 328 and struct.calcsize(TORQUE_FMT) == 72 and struct.calcsize(COMMAND_FMT) == 8
+COMMAND_FMT = "<IIII13d"                        # ipc_command_t, 120 bytes: seq, cmd, then what a servo command leaves 0
+assert STATE_BYTES == 328 and struct.calcsize(TORQUE_FMT) == 72 and struct.calcsize(COMMAND_FMT) == 120
 
 
 class Link:
@@ -98,7 +98,7 @@ class Link:
         self.w[h] = IPC_MAGIC
 
     def send_command(self, cmd, seq):
-        self.slot_write(OFF_COMMAND, self.epoch, struct.pack(COMMAND_FMT, seq, cmd))
+        self.slot_write(OFF_COMMAND, self.epoch, struct.pack(COMMAND_FMT, seq, cmd, 0, 0, *([0.0] * 13)))
 
     def send_torque(self, tau, period=0):
         t = list(tau) + [0.0] * (8 - len(tau))
@@ -118,7 +118,8 @@ class Link:
 
 def fmt_state(s):
     fl = "".join(n if s["flags"] & b else "-" for n, b in (("OP ", ST_OP), ("WKC_ERR ", ST_WKC_ERR),
-                                                           ("SERVO_ON ", ST_SERVO_ON), ("STOP ", ST_STOP)))
+                                                           ("SERVO_ON ", ST_SERVO_ON), ("STOP ", ST_STOP),
+                                                           ("CONTROL ", ST_CONTROL)))
     n = min(AXES, s["dof"])
     return ("period %u  flags %s  cmd_done %u  stale %u  late/overrun/missed/wkc %u/%u/%u/%u\n"
             "  status  %s\n  q [rad] %s\n  tau_act [N m] %s   tau_cmd_raw %s   tau_act_raw %s"
@@ -231,6 +232,9 @@ def cmd_run(link, args):
     s = need_r5(link)
     if not s["flags"] & ST_OP:
         raise SystemExit("the R5 is not in OP yet (flags %d): wait for OP in r5log.py" % s["flags"])
+    if s["flags"] & ST_CONTROL:
+        raise SystemExit("this firmware has the control task (CONTROL_TASK): it takes no torque of the APU, and a servo on "
+                         "only with its controller on. `run` is for the firmware without it")
     print("torque [N m] %s (clamped to +-%.2f)%s" % (tau, MAX_TAU_NM,
           " as the amplitude of a sine of %.3g Hz" % args.sine if args.sine else ""))
     try:

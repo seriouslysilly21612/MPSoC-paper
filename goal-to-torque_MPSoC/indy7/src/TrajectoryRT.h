@@ -88,12 +88,24 @@ public:
 	void	SetGoalSlot		(const CGoalSlot* apSlot) { m_pGoalSlot = apSlot; }
 	void	SetGoalOffset	(const double* adOff) { for (int k = 0; k < 3; k++) m_adGoalOffset[k] = adOff[k]; }
 
+	/* why a start is refused, as numbers: a caller that cannot print (the control task on the R5) passes them
+	 * on, and RefusalText() makes the line of them elsewhere */
+	enum eRefusal { eStartOk = 0, eNotInit = 1, eMotionRuns = 2, eArmMoves = 3, eJointOutside = 4, eTargetOutside = 5 };
+	struct Refusal {
+		int    eWhy;                            // eRefusal
+		int    nJoint;                          // eJointOutside, eTargetOutside: the joint (0-based); eMotionRuns: eMotion
+		double dValue, dLo, dHi;                // eArmMoves: |qd|; the two with a joint: its angle and its range
+	};
+	static void	RefusalText	(const Refusal& astWhy, char* astrWhy, size_t auWhyLen);
+
 	/* start TRACK (abHome false) or HOME from the measured state, HOME to
 	 * q_r or to adHomeTarget; FALSE with the reason: not initialized, a
 	 * motion is running, the arm is moving, a joint is outside its range, or
 	 * the target of HOME is outside the joint limits minus the margin */
 	BOOL	Start			(bool abHome, const double* adQ, const double* adQd, BOOL abFrictionFF,
 	                         char* astrWhy, size_t auWhyLen, const double* adHomeTarget = NULL);
+	BOOL	Start			(bool abHome, const double* adQ, const double* adQd, BOOL abFrictionFF,
+	                         Refusal* apWhy, const double* adHomeTarget = NULL);
 	/* end the motion (a stop, or the end of a test); nothing if none runs */
 	void	End				(eState aeState);
 

@@ -124,32 +124,46 @@ def test_s1_batch_needs_the_r5(tmp_path, monkeypatch, capsys):
 
 
 class FakeConsole:
-    """in place of the controller: keeps its command, has printed its start, and is gone at the first wait"""
+    """in place of the controller: keeps its command and what the run waits for first, has printed its start, and
+    is gone at that wait; records: the directories for which the record of the R5 was started"""
     made = []
+    records = []
+    first = None    # with it the controller gets through its start: the line of its first report of the R5 ...
+    waits = 0       # ... and then answers this many waits
 
     def __init__(self, cmd, cwd, env, log_path):
-        self.cmd, self.lock = cmd, threading.Lock()
+        self.cmd, self.lock, self.keys, self.waited = cmd, threading.Lock(), [], []
         self.text = ('[R5] OP: the bus of the R5\n[SHADOW] the control task tells the R5 every period\n'
-                     'another line\n')
+                     '[S2] reports of the control task of the R5\nanother line\n')
         FakeConsole.made.append(self)
 
     def expect_all(self, patterns, timeout, fail=None):
-        raise RuntimeError('the controller has exited (see the console log)')
+        self.patterns = patterns
+        if FakeConsole.first is None:
+            raise RuntimeError('the controller has exited (see the console log)')
+        self.text += FakeConsole.first
+
+    def expect(self, pattern, timeout, fail=None):
+        self.waited.append(pattern)
+        if len(self.waited) > FakeConsole.waits:
+            raise RuntimeError('the controller has exited (see the console log)')
 
     def send(self, key):
-        pass
+        self.keys.append(key)
 
     def close(self):
         pass
 
 
-def timing_run(tmp_path, monkeypatch, args):
-    FakeConsole.made = []
+def timing_run(tmp_path, monkeypatch, args, first=None, waits=0):
+    FakeConsole.made, FakeConsole.records = [], []
+    monkeypatch.setattr(FakeConsole, 'first', first)
+    monkeypatch.setattr(FakeConsole, 'waits', waits)
     monkeypatch.setattr(rt, 'Console', FakeConsole)
     monkeypatch.setattr(rt, 'checks', lambda a, cpu: None)
     monkeypatch.setattr(rt, 'cfg_copy', lambda *a, **k: None)
     monkeypatch.setattr(rt, 'sample', lambda path, stop: None)
-    monkeypatch.setattr(rt, 'start_r5rec', lambda out: None)
+    monkeypatch.setattr(rt, 'start_r5rec', lambda out: FakeConsole.records.append(out))
     monkeypatch.setattr(rt, 'vision_missing', lambda: list(rt.PERCEPTION))
     monkeypatch.setattr(rt, 'run_extras', lambda out: (None, None))
     monkeypatch.setattr(rt.time, 'sleep', lambda s: None)
@@ -173,3 +187,38 @@ def test_shadow_goes_with_the_ethercat_task_on_the_r5_only(tmp_path, monkeypatch
         timing_run(tmp_path, monkeypatch, ['--shadow'])
     assert '--shadow goes with --arch S1' in capsys.readouterr().err
     assert FakeConsole.made == [] and not (tmp_path / 'out').exists()
+
+
+def test_s2_the_run_takes_the_record_of_the_r5_and_waits_for_its_bus(tmp_path, monkeypatch, capsys):
+    assert timing_run(tmp_path, monkeypatch, ['--arch', 'S2', '--shadow']) == 1      # the fake wrote no timing log
+    run = FakeConsole.made[0]
+    assert run.cmd[run.cmd.index('--arch'):] == ['--arch', 'S2', '--shadow']
+    assert FakeConsole.records == [str(tmp_path / 'out')] and run.patterns[1] == r'\[R5\] OP: '
+    assert 'run_timing: [S2] reports of the control task of the R5' in capsys.readouterr().out
+    # the EtherCAT task here: no record of an R5, and the bus is that of the master
+    timing_run(tmp_path, monkeypatch, [])
+    assert FakeConsole.records == [] and 'BUS' in FakeConsole.made[0].patterns[1]
+    assert '--arch' not in FakeConsole.made[0].cmd
+
+
+REPORTS = '[R5] the control task of the R5 reports (its period 5120): controller %s, the servo not asked, no motion\n'
+
+
+def test_s2_a_controller_that_a_killed_run_left_on_is_switched_off_before_the_keys(tmp_path, monkeypatch, capsys):
+    # the R5 as a run that ended with q leaves it: the keys start with r, which switches its controller on
+    timing_run(tmp_path, monkeypatch, ['--arch', 'S2'], first=REPORTS % 'off', waits=1)
+    run = FakeConsole.made[0]
+    assert run.keys[:2] == ['r', 'g'] and run.waited[0] == rt.CTRL_ON
+    assert 'left on' not in capsys.readouterr().out
+    # left on: one r more, which switches it off, and the wait for that
+    timing_run(tmp_path, monkeypatch, ['--arch', 'S2'], first=REPORTS % 'on', waits=2)
+    run = FakeConsole.made[0]
+    assert run.keys[:3] == ['r', 'r', 'g'] and 'DISABLED' in run.waited[0] and run.waited[1] == rt.CTRL_ON
+    assert 'run_timing: the controller of the R5 was left on by a run before: off first' in capsys.readouterr().out
+    # no report: not the firmware with the control task, or it does not answer
+    assert timing_run(tmp_path, monkeypatch, ['--arch', 'S2'], first='another line\n', waits=9) == 1
+    assert FakeConsole.made[0].waited == []
+    assert 'run_timing: stopped: no report of the control task of the R5' in capsys.readouterr().out
+    # with S1 nothing reports: the keys as before
+    timing_run(tmp_path, monkeypatch, ['--arch', 'S1'], first='another line\n', waits=1)
+    assert FakeConsole.made[0].keys[:2] == ['r', 'g'] and FakeConsole.made[0].waited[0] == rt.CTRL_ON

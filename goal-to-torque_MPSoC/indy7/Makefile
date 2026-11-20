@@ -107,8 +107,9 @@ SOURCES := base/Config.cpp base/RtTask.cpp base/ViewStream.cpp base/MallocCount.
            ecat/EcatMaster.cpp ecat/Indy7Joint.cpp ecat/Indy7EndTool.cpp \
            sim/SimArm.cpp sim/SimJoint.cpp sim/SimCamera.cpp sim/SimR5.cpp r5link/R5Link.cpp \
            Controller.cpp FullDynControllerRT.cpp HighLevelRT.cpp TrajectoryRT.cpp shadow/ShadowControl.cpp \
+           shadow/ControlCycle.cpp \
            JointTestLog.cpp HighLevelLog.cpp obs/ObsLog.cpp TimingLog.cpp CalibCapture.cpp $(BRIDGE_SOURCE) \
-           Indy7Ctrl.cpp TaskEtherCAT.cpp TaskTrajectory.cpp TaskDynamics.cpp TaskPlanner.cpp main.cpp
+           Indy7Ctrl.cpp TaskEtherCAT.cpp TaskTrajectory.cpp TaskDynamics.cpp TaskControlS2.cpp TaskPlanner.cpp main.cpp
 RTPOSIX_SOURCES := posix_rt.c commons.c
 
 OBJECTS := $(addprefix $(OBJ_DIR)/,$(SOURCES:.cpp=.o)) \
@@ -140,7 +141,9 @@ $(OBJ_DIR)/rt-posix/%.o: $(RTPOSIX_DIR)/src/%.c $(STAMP)
 	@mkdir -p $(dir $@)
 	$(CC) -MD -MP $(CFLAGS) -I$(RTPOSIX_DIR)/include -c -o $@ $<
 
-# the offline checks link the same objects as the controller
+# the offline checks link the same objects as the controller. Each compiles its own source in its link command, so
+# its rule names every header of this tree that the source takes and that no object of the rule has (.d): with
+# one missing, `make tools` keeps the old program after a change of that header
 TOOL_OBJS := $(OBJ_DIR)/FullDynControllerRT.o $(OBJ_DIR)/Controller.o $(OBJ_DIR)/HighLevelRT.o \
              $(OBJ_DIR)/base/MallocCount.o $(OBJ_DIR)/rt-posix/posix_rt.o $(OBJ_DIR)/rt-posix/commons.o
 
@@ -148,6 +151,7 @@ tools: $(BIN_DIR)/hl_check $(BIN_DIR)/goal_filter_check $(BIN_DIR)/slot_check $(
        $(BIN_DIR)/obs_mailbox_check $(BIN_DIR)/obs_receiver_check $(BIN_DIR)/obs_estimate_check \
        $(BIN_DIR)/obs_goal_check $(BIN_DIR)/obs_status_check $(BIN_DIR)/r5_link_check \
        $(BIN_DIR)/fw_cfg_header $(BIN_DIR)/rbdl_model_code $(BIN_DIR)/ctrl_numbers_header $(BIN_DIR)/shadow_check \
+       $(BIN_DIR)/control_check $(BIN_DIR)/s2_link_check \
        $(BIN_DIR)/console_check \
        $(if $(filter 1,$(MUJOCO)),$(BIN_DIR)/model_check)
 
@@ -197,14 +201,15 @@ $(BIN_DIR)/obs_estimate_check: $(TOOLS_DIR)/obs_estimate_check.cpp $(SRC_DIR)/ob
 # the two ends of the mailbox in the control application (obs/ObsWriter.h, obs/ObsGoal.h), against the bridge of M1
 $(BIN_DIR)/obs_goal_check: $(TOOLS_DIR)/obs_goal_check.cpp $(SRC_DIR)/obs/ObsGoal.h $(SRC_DIR)/obs/ObsWriter.h \
                            $(SRC_DIR)/obs/ObsEstimate.h $(SRC_DIR)/obs/obs_receiver.h $(SRC_DIR)/obs/obs_mailbox.h \
-                           $(SRC_DIR)/obs/obs_status.h \
+                           $(SRC_DIR)/obs/obs_status.h $(SRC_DIR)/ipc/ipc_slot.h $(SRC_DIR)/ipc/ipc_layout.h \
                            $(SRC_DIR)/GoalFilter.h $(SRC_DIR)/GoalSlot.h $(SRC_DIR)/base/AtomicSlot.h
 	@mkdir -p $(BIN_DIR)
 	$(CXX) -O2 -std=gnu++17 -Wall -I$(SRC_DIR) -o $@ $< -lpthread
 
 # what the control task tells the camera side (obs/obs_status.h) and the check value of the contract (obs/ObsContract.h)
 $(BIN_DIR)/obs_status_check: $(TOOLS_DIR)/obs_status_check.cpp $(SRC_DIR)/obs/obs_status.h $(SRC_DIR)/obs/ObsContract.h \
-                             $(SRC_DIR)/ipc/FwCfg.h $(SRC_DIR)/ipc/ipc_slot.h $(OBJ_DIR)/base/Config.o
+                             $(SRC_DIR)/obs/obs_receiver.h $(SRC_DIR)/obs/obs_mailbox.h \
+                             $(SRC_DIR)/ipc/FwCfg.h $(SRC_DIR)/ipc/ipc_slot.h $(SRC_DIR)/ipc/ipc_layout.h $(OBJ_DIR)/base/Config.o
 	@mkdir -p $(BIN_DIR)
 	$(CXX) $(CXXFLAGS) -I$(SRC_DIR) -I$(RTPOSIX_DIR)/include -o $@ $< $(OBJ_DIR)/base/Config.o -lpthread
 
@@ -223,13 +228,17 @@ $(BIN_DIR)/fw_cfg_header: $(TOOLS_DIR)/fw_cfg_header.cpp $(SRC_DIR)/ipc/FwCfg.h 
 	$(CXX) $(CXXFLAGS) -I$(SRC_DIR) -I$(RTPOSIX_DIR)/include -o $@ $< $(OBJ_DIR)/base/Config.o
 
 # the RBDL model of the controller as numbers for the firmware of the R5 (rpu_work/r5_freertos/src/ctrl)
-$(BIN_DIR)/rbdl_model_code: $(TOOLS_DIR)/rbdl_model_code.cpp $(SRC_DIR)/shadow/ModelCode.h $(SRC_DIR)/ipc/FwCfg.h
+$(BIN_DIR)/rbdl_model_code: $(TOOLS_DIR)/rbdl_model_code.cpp $(SRC_DIR)/shadow/ModelCode.h $(SRC_DIR)/ipc/FwCfg.h \
+                            $(SRC_DIR)/base/Config.h $(SRC_DIR)/base/Common.h \
+                            $(RTPOSIX_DIR)/include/commons.h $(RTPOSIX_DIR)/include/posix_rt.h
 	@mkdir -p $(BIN_DIR)
 	$(CXX) $(CXXFLAGS) $(INCLUDES) -o $@ $< -L$(RBDL_DIR)/lib -lrbdl -lrbdl_urdfreader -Wl,-rpath,$(RBDL_DIR)/lib
 
 # the numbers of the controller as a header for the firmware of the R5 (rpu_work/r5_freertos/src/ctrl)
 $(BIN_DIR)/ctrl_numbers_header: $(TOOLS_DIR)/ctrl_numbers_header.cpp $(TOOL_OBJS) $(OBJ_DIR)/base/Config.o \
-                                $(SRC_DIR)/shadow/ShadowParams.h $(SRC_DIR)/shadow/ShadowControl.h
+                                $(SRC_DIR)/shadow/ShadowParams.h $(SRC_DIR)/shadow/ShadowControl.h \
+                                $(SRC_DIR)/HighLevelLink.h $(SRC_DIR)/base/AtomicSlot.h $(SRC_DIR)/ipc/FwCfg.h \
+                                $(SRC_DIR)/ipc/ipc_layout.h
 	@mkdir -p $(BIN_DIR)
 	$(CXX) $(CXXFLAGS) $(INCLUDES) -o $@ $< $(TOOL_OBJS) $(OBJ_DIR)/base/Config.o $(LDLIBS)
 
@@ -239,12 +248,30 @@ SHADOW_OBJS := $(OBJ_DIR)/shadow/ShadowControl.o $(OBJ_DIR)/TrajectoryRT.o $(OBJ
 $(BIN_DIR)/shadow_check: $(TOOLS_DIR)/shadow_check.cpp $(TOOL_OBJS) $(SHADOW_OBJS) $(SRC_DIR)/shadow/ShadowWriter.h \
                          $(SRC_DIR)/TrajectoryRT.h $(SRC_DIR)/HighLevelLink.h \
                          $(SRC_DIR)/shadow/ShadowTask.h $(SRC_DIR)/shadow/ShadowParams.h \
-                         $(SRC_DIR)/shadow/shadow_vectors.h $(SRC_DIR)/sim/SimR5Slots.h
+                         $(SRC_DIR)/shadow/shadow_vectors.h $(SRC_DIR)/sim/SimR5Slots.h \
+                         $(SRC_DIR)/shadow/ModelCode.h $(SRC_DIR)/ipc/FwCfg.h
 	@mkdir -p $(BIN_DIR)
 	$(CXX) $(CXXFLAGS) $(INCLUDES) -o $@ $< $(TOOL_OBJS) $(SHADOW_OBJS) $(LDLIBS)
 
+# the control task without its operating system (src/shadow/ControlCycle.h; S2), with a second controller on its reports
+CONTROL_OBJS := $(OBJ_DIR)/shadow/ControlCycle.o $(OBJ_DIR)/shadow/ShadowControl.o $(OBJ_DIR)/TrajectoryRT.o $(OBJ_DIR)/base/Config.o
+$(BIN_DIR)/control_check: $(TOOLS_DIR)/control_check.cpp $(TOOL_OBJS) $(CONTROL_OBJS) $(SRC_DIR)/shadow/ShadowWriter.h \
+                          $(SRC_DIR)/shadow/ShadowParams.h $(SRC_DIR)/shadow/control_vectors.h $(SRC_DIR)/ipc/ipc_layout.h \
+                          $(SRC_DIR)/shadow/shadow_vectors.h $(SRC_DIR)/ipc/FwCfg.h
+	@mkdir -p $(BIN_DIR)
+	$(CXX) $(CXXFLAGS) $(INCLUDES) -o $@ $< $(TOOL_OBJS) $(CONTROL_OBJS) $(LDLIBS)
+
+# the exchange with an R5 that has the control task (--arch S2): R5Link.h against sim/SimR5Control.h, one period at a time
+$(BIN_DIR)/s2_link_check: $(TOOLS_DIR)/s2_link_check.cpp $(TOOL_OBJS) $(CONTROL_OBJS) $(OBJ_DIR)/r5link/R5Link.o \
+                          $(SRC_DIR)/sim/SimR5Control.h $(SRC_DIR)/sim/SimR5Slots.h $(SRC_DIR)/r5link/R5Link.h \
+                          $(SRC_DIR)/r5link/ControlClient.h $(SRC_DIR)/r5link/ControlFollower.h \
+                          $(SRC_DIR)/shadow/ShadowParams.h $(SRC_DIR)/ipc/FwCfg.h
+	@mkdir -p $(BIN_DIR)
+	$(CXX) $(CXXFLAGS) $(INCLUDES) -o $@ $< $(TOOL_OBJS) $(CONTROL_OBJS) $(OBJ_DIR)/r5link/R5Link.o $(LDLIBS)
+
 # the console of the real-time tasks (base/RtConsole.h), with the stdio wrappers of indy7_ctrl
-$(BIN_DIR)/console_check: $(TOOLS_DIR)/console_check.cpp $(OBJ_DIR)/base/RtConsole.o
+$(BIN_DIR)/console_check: $(TOOLS_DIR)/console_check.cpp $(OBJ_DIR)/base/RtConsole.o $(SRC_DIR)/base/Common.h \
+                          $(RTPOSIX_DIR)/include/commons.h $(RTPOSIX_DIR)/include/posix_rt.h
 	@mkdir -p $(BIN_DIR)
 	$(CXX) $(CXXFLAGS) $(INCLUDES) -o $@ $< $(OBJ_DIR)/base/RtConsole.o $(WRAP_STDIO) -lpthread
 

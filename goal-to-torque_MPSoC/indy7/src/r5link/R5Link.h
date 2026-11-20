@@ -31,9 +31,35 @@
 *	firmware without the counter leaves it 0); with a time that fails, the
 *	state is taken, the grid is not moved, and the release is estimated.
 *
-*	One thread per slot: Receive, RequestCommand and SendCommand belong to
-*	the EtherCAT task of the application, SendTorque to the control task.
-*	Nothing here allocates, locks or waits after Start().
+*	With the control task on the R5 (--arch S2; a firmware built with
+*	CONTROL_TASK) the application writes neither a torque nor a command of
+*	the drives:
+*	  Command  SendControlCommand(): a command for the control task of the
+*	           R5, with its numbers. One at a time: the next is written when
+*	           the report has the number of this one (cmd_done). That number
+*	           is of this run alone: the R5 goes on when the application
+*	           starts again, and its report keeps the last answer it gave
+*	  Goal     SendGoal(): the goal of the tool, when the goal slot of the
+*	           application has a new one
+*	  Report   TakeReport(): what the control task of the R5 did in a
+*	           period, for the logs and the tests of the application
+*	  Sim state, Sim torque   with an arm simulated here: its state for the
+*	           R5, and the torque the R5 computed from it (SendSimState,
+*	           TakeSimTorque). The R5 writes the report of a period before
+*	           that torque and no other report until the next state: who
+*	           takes the torque of its state, then the report, then writes
+*	           the next state, has the report of every period with a state
+*	The three that go to the R5 are written by one task in the order
+*	command, goal, state, and the R5 reads them in the reverse order: with a
+*	state it has every command and goal written before it, and with a goal
+*	the start of its TRACK.
+*
+*	One thread per slot: Receive, RequestCommand, SendCommand, the report and
+*	the torque of the simulated arm belong to the EtherCAT task of the
+*	application; SendTorque, SendShadow, TakeShadow, and with the control
+*	task on the R5 the command, the goal and the state of the simulated arm,
+*	to the control task. Nothing here allocates, locks or waits after
+*	Start().
 *****************************************************************************/
 #ifndef G2T_R5_LINK_H
 #define G2T_R5_LINK_H
@@ -108,6 +134,21 @@ public:
 	void	SendShadow		(const ipc_shadow_in_t& astIn);
 	/* its answer (Shadow out slot), one attempt. TRUE: *apOut is an answer that is new since the last call */
 	BOOL	TakeShadow		(ipc_shadow_out_t* apOut);
+	/* --- with the control task on the R5 (S2) --- */
+	/* the firmware of the R5 has the control task (the State taken last says so) */
+	BOOL	HasControlTask	(	) const { return (m_bHaveState && (m_stState.flags & IPC_STATE_CONTROL)) ? TRUE : FALSE; }
+	/* a command for it (cmd, arg and the numbers of astCommand), written now; its number, which no command of
+	 * another run of this side has */
+	uint32_t SendControlCommand	(const ipc_command_t& astCommand);
+	void	SendGoal		(const double* adP);
+	/* the state of the arm simulated here, after the command and the goal of the cycle */
+	void	SendSimState	(const ipc_sim_state_t& astSim);
+	/* --- with the control task on the R5, the EtherCAT task of the application --- */
+	/* its report, one attempt. TRUE: *apReport is a report that is new since the last call */
+	BOOL	TakeReport		(ipc_report_t* apReport);
+	/* the arm simulated here: the torque for its next step, one attempt. TRUE: *apTorque is one that is new since
+	 * the last call */
+	BOOL	TakeSimTorque	(ipc_sim_torque_t* apTorque);
 
 	/* after the tasks */
 	const Counts&	GetCounts	(	) const { return m_stCounts; }
@@ -142,6 +183,8 @@ private:
 	uint32_t			m_uCommandSeq;
 	BOOL				m_bToldBadState, m_bToldBadTime, m_bToldFollowing;
 	uint32_t			m_auShadowStamp[2];	// the control task: (epoch, sequence number) of the last answer taken
+	uint32_t			m_auReportStamp[2];	// ... of the last report taken
+	uint32_t			m_auSimStamp[2];	// the EtherCAT task: of the last Sim torque taken
 	Counts				m_stCounts;
 };
 

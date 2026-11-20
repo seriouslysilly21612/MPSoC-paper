@@ -9,6 +9,10 @@
  * returns false at once (the application's reader tries again, for a writer on another core), and the reader
  * comes back in its next period.  A reader that the writer interrupts sees another number afterwards and reads
  * once more.
+ *
+ * slot_preempt_point() stands before every access of a slot that another task can tell: a host test built with
+ * SLOT_PREEMPT_TEST has the task of the higher priority run there, in the middle of what the caller does
+ * (test/shadow_replay.cpp).  The firmware has nothing there.
  */
 #ifndef G2T_ATOMIC_SLOT_H
 #define G2T_ATOMIC_SLOT_H
@@ -18,6 +22,12 @@
 #include <cstdint>
 #include <cstring>
 #include <type_traits>
+
+#ifdef SLOT_PREEMPT_TEST
+extern "C" void slot_preempt_point(void);
+#else
+static inline void slot_preempt_point(void) { }
+#endif
 
 template <class T>
 class CAtomicSlot
@@ -56,9 +66,14 @@ public:
 		memset(auBuf, 0, sizeof(auBuf));
 		memcpy(auBuf, &astData, sizeof(T));
 		const uint32_t uSeq = m_uSeq.load();
+		slot_preempt_point();
 		m_uSeq.store(uSeq + 1);					// odd: being written
 		for (size_t i = 0; i < WORDS; i++)
+		{
+			slot_preempt_point();
 			m_auWord[i].store(auBuf[i]);
+		}
+		slot_preempt_point();
 		m_uSeq.store(uSeq + 2);					// even: published
 	}
 
@@ -70,11 +85,16 @@ public:
 		uint32_t auBuf[WORDS];
 		for (int nAttempt = 0; nAttempt < (int)MAX_ATTEMPTS; nAttempt++)
 		{
+			slot_preempt_point();
 			const uint32_t uS0 = m_uSeq.load();
 			if (uS0 == 0 || uS0 % 2 != 0)
 				return false;					// never published, or the writer is interrupted in the middle
 			for (size_t i = 0; i < WORDS; i++)
+			{
+				slot_preempt_point();
 				auBuf[i] = m_auWord[i].load();
+			}
+			slot_preempt_point();
 			const uint32_t uS1 = m_uSeq.load();
 			if (Accept(uS0, uS1))
 			{
@@ -88,7 +108,11 @@ public:
 	}
 
 	/* the number of payloads published so far */
-	uint32_t Count() const { return m_uSeq.load() / 2; }
+	uint32_t Count() const
+	{
+		slot_preempt_point();
+		return m_uSeq.load() / 2;
+	}
 
 private:
 	std::atomic<uint32_t>	m_uSeq;

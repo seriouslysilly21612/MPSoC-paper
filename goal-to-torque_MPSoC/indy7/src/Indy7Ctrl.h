@@ -31,6 +31,14 @@
 *	then takes the State slot of the R5 in place of the receive, the control
 *	task writes its Torque slot, and the grid of the two follows the period
 *	of the R5 (r5link/R5Link.h; the head of TaskEtherCAT.cpp).
+*
+*	--arch S2: the control task runs on the R5 as well (TaskControlS2.cpp).
+*	TASK0 takes the State slot and the report of the R5; with -s and -b it
+*	steps the arm simulated here with the torque that the R5 computed.
+*	TASK1 runs no controller: the trajectory part keeps the operator
+*	motions, the tests and their logs, starts and stops the motions of the R5
+*	with commands and sends it the goals; in place of the dynamics part the
+*	state of the controller of the R5 is taken from its report.
 *****************************************************************************/
 #ifndef G2T_INDY7_CTRL_H
 #define G2T_INDY7_CTRL_H
@@ -47,6 +55,8 @@
 #include "ecat/Indy7EndTool.h"
 #include "ecat/R5Joint.h"
 #include "r5link/R5Link.h"
+#include "r5link/ControlClient.h"
+#include "r5link/ControlFollower.h"
 #include "sim/SimArm.h"
 #include "sim/SimJoint.h"
 #include "sim/SimCamera.h"
@@ -66,6 +76,7 @@
 
 class CShadowTask;
 class CShadowControl;
+class CControlCycle;
 
 class CRobotIndy7
 {
@@ -134,6 +145,15 @@ private:
 	BOOL						m_bShadow{FALSE};
 	CShadowTask*				m_pShadow{NULL};
 	CShadowControl*				m_pSimShadow{NULL};
+	// --arch S2: what the control task keeps of the control task on the R5; the reports of the R5, from the
+	// EtherCAT task to it; the state of the arm simulated here, from the EtherCAT task to the control task, which
+	// writes it for the R5 after its command and its goal (TaskControlS2.cpp); with -s the control task that the
+	// simulated R5 runs
+	CControlClient*				m_pS2{NULL};
+	CControlFollower*			m_pFollow{NULL};	// --shadow with S2: the control of the R5 a second time, here
+	CAtomicSlot<ipc_report_t>	m_reportSlot;
+	CAtomicSlot<ipc_sim_state_t>	m_simOutSlot;
+	CControlCycle*				m_pSimControl{NULL};
 	CViewStream					m_cView;		// newest joint angles for an external viewer
 
 	/* the tasks: those of the cfg in its order ([TASK0]..[TASK2]: EtherCAT, control (trajectory and dynamics
@@ -164,6 +184,10 @@ private:
 	friend void	dynamics_end(CRobotIndy7*);
 	friend void	proc_keyboard_control(void*);
 	friend void	proc_planner_task(void*);
+	friend bool	s2_take_report(CRobotIndy7*);
+	friend int	s2_trajectory_step(CRobotIndy7*, double*, double*, double*, int32_t*);
+	friend bool	dynamics_begin_s2(CRobotIndy7*, CRtTask*);
+	friend void	dynamics_cycle_s2(CRobotIndy7*, RTTIME, RTTIME);
 
 	/* the slots between the tasks (TaskSlots.h), one writer each */
 	CAtomicSlot<task_slots::ST_STATE_SLOT>	m_stateSlot;	// EtherCAT task
@@ -354,6 +378,22 @@ private:
 	                                        const task_slots::ST_TORQUE_SLOT& astTorque);
 	BOOL          CheckMotionStart         (const char* apcWho, const task_slots::ST_STATE_SLOT& astState,
 	                                        const task_slots::ST_TORQUE_SLOT& astTorque);
+	/* Trajectory task: a motion of the high-level controller starts and ends here, wherever that controller
+	 * runs. With --arch S2 it runs on the R5: the start and the stop go there as commands, m_cTraj keeps what
+	 * this side expects of them until the reports of the R5 tell (TaskControlS2.cpp), and the goals of the slot
+	 * that TRACK reads are sent on. HlSample: the sample of the last period of a motion (NULL: none), HlCounts:
+	 * goals accepted, IK converged, IK given up, restarts at the lead bound in the motion */
+	BOOL          StartMotion              (bool abHome, const double* adQ, const double* adQd, char* astrWhy,
+	                                        size_t auWhyLen, const double* adHomeTarget = NULL);
+	void          EndMotion                (CTrajectoryRT::eState aeState);
+	void          UseGoalSlot              (const CGoalSlot* apSlot, const double* adOffset);
+	CTrajectoryRT::Sample* HlSample        (	);
+	void          HlCounts                 (long* anCounts) const;
+	/* --arch S2, the control task: a command for the control task on the R5 into the queue of m_pS2; FALSE and a
+	 * line when the queue is full (the R5 does not answer) */
+	BOOL          QueueControl             (uint32_t auCmd, uint32_t auArg = 0);
+	uint32_t      m_uS2Check{0};           // the check value of the controller of this configuration (ShadowCheckValue)
+	bool          m_bS2SameController{true};  // the firmware of the R5 has that controller (its reports say so)
 
 	// malloc-count build: heap allocations of the Dynamics task, in the
 	// control law (Update) and in the whole cycle, and of the whole cycles of
@@ -426,13 +466,15 @@ private:
 	// Init): the joint (0-based, -1: off), the torque (0) or the measured
 	// angle (1), one cycle or every cycle until 'r' off; the angle is poisoned
 	// by the Dynamics task before Update() (m_nStateInject: 1 the next cycle,
-	// 2 every cycle), the torque by the controller (InjectTorqueFault). Or a
+	// 2 every cycle; with --arch S2 by the EtherCAT task, in the state of the
+	// simulated arm that the R5 gets), the torque by the controller
+	// (InjectTorqueFault). Or a
 	// drive dropout (2): the EtherCAT task takes the simulated joint out of
 	// Operation enabled once (m_nSimDropout: the joint, 1-based; 0: none)
 	int               m_nSimFaultJoint{-1};
 	int               m_nSimFaultWhat{0};
 	bool              m_bSimFaultPersist{false};
-	int               m_nStateInject{0};
+	std::atomic<int>  m_nStateInject{0};
 	std::atomic<int>  m_nSimDropout{0};
 	// the E-stop tests (3, SIM_FAULT_WHAT=estop): 'n' cuts the power of every
 	// simulated drive, the next 'n' restores it (CSimJoint::SetPowerCut); the

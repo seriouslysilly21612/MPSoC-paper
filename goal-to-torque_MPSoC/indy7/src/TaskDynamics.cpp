@@ -367,19 +367,24 @@ dynamics_end(CRobotIndy7* pRobot)
 bool trajectory_begin(CRobotIndy7* pRobot, CRtTask* pTask);
 void trajectory_cycle(CRobotIndy7* pRobot, RTTIME tRelease, RTTIME tStart);
 void trajectory_end(CRobotIndy7* pRobot);
+// --arch S2: what stands in place of the dynamics part (TaskControlS2.cpp)
+bool dynamics_begin_s2(CRobotIndy7* pRobot, CRtTask* pTask);
+void dynamics_cycle_s2(CRobotIndy7* pRobot, RTTIME tRelease, RTTIME tStart);
 
 // The control task (TASK1, D-05 of the T-ASE work): in every period the
 // trajectory part (TaskTrajectory.cpp), then the dynamics part, in the order
 // in which the Trajectory and the Dynamics task of the paper (Table 3: two
 // tasks, 96 and 95, on one core) ran them; the Reference slot still passes
 // between the two, so the data of every period are those of the two tasks.
+// With --arch S2 the controller is on the R5, and the second part takes its reports instead.
 void
 proc_control_task(void* apRobot)
 {
 	rt_console::MarkRealTime();
 	auto* pRobot = static_cast<CRobotIndy7*>(apRobot);
 	CRtTask* const pTask = CRtTask::Self();
-	if (!trajectory_begin(pRobot, pTask) || !dynamics_begin(pRobot, pTask))
+	const bool bS2 = (pRobot->m_pS2 != NULL);
+	if (!trajectory_begin(pRobot, pTask) || !(bS2 ? dynamics_begin_s2(pRobot, pTask) : dynamics_begin(pRobot, pTask)))
 	{
 		pRobot->m_bTrajDone.store(true, std::memory_order_release);
 		pRobot->m_bDynDone.store(true, std::memory_order_release);
@@ -394,7 +399,10 @@ proc_control_task(void* apRobot)
 			break;
 		trajectory_cycle(pRobot, tRelease, tStart);
 		// t_w of the dynamics part counts from the same release
-		dynamics_cycle(pRobot, tRelease, read_timer());
+		if (bS2)
+			dynamics_cycle_s2(pRobot, tRelease, read_timer());
+		else
+			dynamics_cycle(pRobot, tRelease, read_timer());
 	}
 	trajectory_end(pRobot);
 	dynamics_end(pRobot);

@@ -38,17 +38,21 @@ CSimR5::CSimR5() : m_pArm(NULL)
 BOOL
 CSimR5::Start(const Spec& astSpec, CSimArm* apArm, const std::vector<CSimJoint*>& avJoints)
 {
-	if (apArm == NULL || avJoints.empty() || avJoints.size() > (size_t)IPC_MAX_DOF || astSpec.tPeriod == 0 ||
-	    astSpec.nStaleLimit < 1)
+	const bool bControl = (m_pControl != NULL);
+	if (astSpec.tPeriod == 0 || astSpec.nStaleLimit < 1 ||
+	    (!bControl && (apArm == NULL || avJoints.empty() || avJoints.size() > (size_t)IPC_MAX_DOF)) ||
+	    (bControl && (apArm != NULL || !avJoints.empty() || astSpec.uDrives == 0 || astSpec.uDrives > (unsigned)IPC_MAX_DOF)))
 	{
-		DBG_LOG_ERROR("(CSimR5) no arm, %u joints, or no period", (unsigned)avJoints.size());
+		DBG_LOG_ERROR("(CSimR5) no arm, %u joints, or no period; with the control task: an arm, or no drives on its bus",
+		              (unsigned)avJoints.size());
 		return FALSE;
 	}
 	m_stSpec = astSpec;
 	m_pArm = apArm;
 	m_vJoints = avJoints;
 	m_stDrives.uDof = (unsigned)avJoints.size();
-	const uint32_t uEpoch = m_cSlots.Start(m_auRegion, astSpec.uCfgCrc, astSpec.nStaleLimit);
+	const uint32_t uEpoch = bControl ? m_cControlR5.Start(m_pControl, m_auRegion, astSpec.uCfgCrc, astSpec.uDrives) :
+	                                   m_cSlots.Start(m_auRegion, astSpec.uCfgCrc, astSpec.nStaleLimit);
 
 	CRtTask::Spec stTask;
 	stTask.strName = "Sim R5";
@@ -71,9 +75,14 @@ CSimR5::Start(const Spec& astSpec, CSimArm* apArm, const std::vector<CSimJoint*>
 		Stop();
 		return FALSE;
 	}
-	printf("[SIM R5] the R5 of the simulation: epoch %u, %u joints, period %.3f ms, servo off after %d periods "
-	       "without a new torque\n", (unsigned)uEpoch, (unsigned)m_vJoints.size(), (double)astSpec.tPeriod * 1e-6,
-	       astSpec.nStaleLimit);
+	if (bControl)
+		printf("[SIM R5] the R5 of the simulation with the control task: epoch %u, a bus of %u drives that stay off, "
+		       "period %.3f ms; the arm is the application's (Sim state slot)\n", (unsigned)uEpoch, astSpec.uDrives,
+		       (double)astSpec.tPeriod * 1e-6);
+	else
+		printf("[SIM R5] the R5 of the simulation: epoch %u, %u joints, period %.3f ms, servo off after %d periods "
+		       "without a new torque\n", (unsigned)uEpoch, (unsigned)m_vJoints.size(), (double)astSpec.tPeriod * 1e-6,
+		       astSpec.nStaleLimit);
 	return TRUE;
 }
 
@@ -140,6 +149,11 @@ CSimR5::Run()
 void
 CSimR5::Cycle(uint64_t auReleaseTicks, uint32_t auPeriod)
 {
+	if (m_pControl != NULL)		// --arch S2: the period of a firmware with the control task
+	{
+		m_cControlR5.Cycle(auReleaseTicks, auPeriod, (uint32_t)m_stCounts.nOverruns);
+		return;
+	}
 	const unsigned uDof = m_stDrives.uDof;
 	double adTau[CSimArm::MAX_DOF];
 	BOOL   abReleased[CSimArm::MAX_DOF];
@@ -213,4 +227,6 @@ CSimR5::PrintSummary() const
 	       "%ld ended after the next release; servo switched off for want of a new torque: %ld\n",
 	       m_stCounts.nPeriods, (double)m_stSpec.tPeriod * 1e-6, m_stCounts.nLeftOut,
 	       (double)m_stCounts.tCycleMax * 1e-3, m_stCounts.nOverruns, m_stCounts.nStaleStops);
+	if (m_pControl != NULL)
+		printf("[SIM R5] its control task had no new state of the arm in %ld of those periods\n", m_cControlR5.NoState());
 }
