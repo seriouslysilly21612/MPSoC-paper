@@ -114,6 +114,16 @@ static void print_event(const event_t *e)
                    (int)(FW_CFG_SEND_DEADLINE_NS / 1000), (int)e->value[5], (int)e->value[6], (int)e->value[7],
                    (int)e->value[8], (int)e->value[9]);
         break;
+    case EVENT_SHADOW_REPORT:
+        if (e->value[0] == 0) {
+            xil_printf("[shadow] the controller is not built\r\n");
+        } else {
+            xil_printf("[shadow] periods of the control task computed %d (apart %d, failed %d), longest %d us"
+                       " | payloads missed so far %d, lines of the controller not printed %d\r\n",
+                       (int)e->value[1], (int)e->value[2], (int)e->value[3], (int)e->value[5], (int)e->value[4],
+                       (int)e->value[6]);
+        }
+        break;
     case EVENT_SLAVE_AL_STATUS: {
         unsigned st = (unsigned)e->value[1];
         if ((st & 0x0FU) == 0U) {      /* state 0 = the AL status read got no answer */

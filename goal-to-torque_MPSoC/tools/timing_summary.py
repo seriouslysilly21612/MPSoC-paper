@@ -48,6 +48,12 @@ send, so the send rows and the send deadline are those of the R5, not of this lo
                                  t_w + t_s over the periods of the window, by the rules of a log with the EtherCAT
                                  task here, its faults, and whether every period of the window is in it. They
                                  fill the send columns of the row of Table 6
+  a run with --shadow            the R5 ran the control computation after its send, in the cycles with a payload of
+                                 the control task (rpu_work/r5_freertos/src/shadow_link.h): the rows of its two
+                                 parts, of both, and of t_w + t_e of those cycles (release -> end of the control
+                                 computation), and what the largest t_w + t_e says about the control task on the
+                                 R5 (D-14): at most 500 us, at most 800 us, or above. No verdict from a firmware
+                                 that is not an optimized build
 """
 import argparse
 import csv
@@ -62,6 +68,9 @@ FLAGS = dict(OP=1, WKC=2, LATE=4, MISSED=8, OVERRUN=16, LAW=32, HL=64, TRACK=128
              BUS=1024, SERVO=2048, BUSSERVO=4096, TEST=8192, R5=16384, NOSTATE=32768)
 FLAGS2 = dict(TORQUE_LATE=1)
 R5_ROWS = ('R5 Delta T_send (signed)', 'R5 |Delta T_send|', 'R5 t_w', 'R5 t_w + t_s')
+# --shadow: the cycles of the R5 in which it ran the control computation
+R5_CTRL_ROWS = ('R5 Trajectory part', 'R5 Dynamics part', 'R5 control (both parts)', 'R5 t_w + t_e with control')
+FIT_NS = (500_000, 800_000)     # D-14: the two lines of the largest "EtherCAT + control computation" of the R5
 BIN_NS = 100            # bins of the percentiles
 MAX_NS = 10_000_000     # the last bin: 10 ms (beyond: overflow, the maximum stays exact)
 
@@ -142,16 +151,19 @@ def read_log(path):
 
 def r5_window(path, first, last):
     """--r5: the send of the periods first..last in the R5's own log (r5rec.py), by the rules of a log with the
-    EtherCAT task here. -> (the head of the log, the rows R5_ROWS, the counts, (largest t_w + t_s, its period))"""
+    EtherCAT task here, and the cycles in which the R5 ran the control computation (--shadow: hl_ns or dyn_ns of
+    the record, -1 without). -> (the head of the log, the rows R5_ROWS and R5_CTRL_ROWS, the counts, (largest
+    t_w + t_s, its period), (largest t_w + t_e of a cycle with the control computation, its period, t_w, t_s, the
+    two parts) or None)"""
     head, _, data = read_log(path)
     if head.get('mode') != 'r5':
         raise SystemExit('--r5: %s is not a log of r5rec.py (mode=%s)' % (path, head.get('mode')))
-    d = {k: Dist() for k in R5_ROWS}
+    d = {k: Dist() for k in R5_ROWS + R5_CTRL_ROWS}
     d[R5_ROWS[0]] = Dist(off=MAX_NS // 2)
     cnt = dict(periods=0, late=0, overrun=0, missed=0, wkc=0, notop=0)
-    worst = prev = None     # prev: (period, t_w + t_s) of the record before
+    worst = worst_ctrl = prev = None     # prev: (period, t_w + t_s) of the record before
     for r in REC.iter_unpack(data):
-        per, w, s, fl = r[0], r[1], r[2], r[8]
+        per, w, s, e, dyn, hl, fl = r[0], r[1], r[2], r[3], r[4], r[5], r[8]
         if prev is not None and per < prev[0]:
             raise SystemExit('--r5: the periods of the R5 go back (%d after %d): the R5 started again; a summary is of '
                              'one run of it' % (per, prev[0]))
@@ -164,12 +176,33 @@ def r5_window(path, first, last):
             d[R5_ROWS[3]].add(w + s)
             if worst is None or w + s > worst[0]:
                 worst = (w + s, per)
+            if hl >= 0 or dyn >= 0:
+                if hl >= 0:
+                    d[R5_CTRL_ROWS[0]].add(hl)
+                if dyn >= 0:
+                    d[R5_CTRL_ROWS[1]].add(dyn)
+                d[R5_CTRL_ROWS[2]].add(max(hl, 0) + max(dyn, 0))
+                d[R5_CTRL_ROWS[3]].add(w + e)
+                if worst_ctrl is None or w + e > worst_ctrl[0]:
+                    worst_ctrl = (w + e, per, w, s, hl, dyn)
             for key in ('late', 'overrun', 'missed', 'wkc'):
                 cnt[key] += bool(fl & FLAGS[key.upper()])
             cnt['notop'] += not (fl & FLAGS['OP'])
         prev = (per, w + s)
     cnt['gaps'] = max(0, last - first + 1) - cnt['periods']
-    return head, d, cnt, worst
+    return head, d, cnt, worst, worst_ctrl
+
+
+def fit_verdict(worst_ns):
+    """D-14: what the largest t_w + t_e of a cycle of the R5 with the control computation says"""
+    lines = tuple(x / 1000.0 for x in FIT_NS)
+    if worst_ns <= FIT_NS[0]:
+        return 'at most %.0f us: the control task fits on the R5 (S2)' % lines[0]
+    if worst_ns <= FIT_NS[1]:
+        return ('above %.0f us, at most %.0f us: S2 with a small margin; if its batch has one overrun of the control '
+                'computation, trajectory generation leaves the 1 ms task' % lines)
+    return ('above %.0f us: trajectory generation (IK and the replanning) leaves the 1 ms task, and the verdict is '
+            'taken again' % lines[1])
 
 
 def us(v, fmt='%.1f'):
@@ -345,11 +378,11 @@ def main(argv=None):
     gaps = (last - first + 1) - present
     r5 = None
     if a.r5:        # the periods of the R5 that the cycles measured here took
-        r5_head, r5_d, r5, r5_worst = r5_window(a.r5, first + a.skip, last)
+        r5_head, r5_d, r5, r5_worst, r5_ctrl = r5_window(a.r5, first + a.skip, last)
         if int(r5_head.get('period_ns', '0')) != period:
             raise SystemExit('--r5: a period of %s ns, this log %d ns' % (r5_head.get('period_ns'), period))
         d.update(r5_d)
-        names = list(R5_ROWS) + names
+        names = list(R5_ROWS + R5_CTRL_ROWS) + names
 
     out = a.out or os.path.dirname(os.path.abspath(a.log))
     os.makedirs(out, exist_ok=True)
@@ -434,6 +467,11 @@ def main(argv=None):
         L.append('largest t_w + t_s of the R5: %.1f us (its period %d)' % (r5_worst[0] / 1000.0, r5_worst[1]))
     if worst_chain:
         L.append('largest chain: %.1f us (the cycle of release period %d)' % (worst_chain[0] / 1000.0, worst_chain[1]))
+    if r5 is not None and r5_ctrl:
+        L.append('largest t_w + t_e of the R5 with the control computation: %.1f us (its period %d: t_w %.1f, t_s '
+                 '%.1f, the Trajectory part %s, the Dynamics part %s)'
+                 % (r5_ctrl[0] / 1000.0, r5_ctrl[1], r5_ctrl[2] / 1000.0, r5_ctrl[3] / 1000.0,
+                    us(r5_ctrl[4] if r5_ctrl[4] >= 0 else None), us(r5_ctrl[5] if r5_ctrl[5] >= 0 else None)))
     if a.hourly and hours:
         L.append('')
         L.append('%6s %10s %10s %10s %10s %6s %8s %7s %5s' % ('hour', 'periods', 't_w+t_s', 't_w+t_e', 'chain', 'late',
@@ -470,6 +508,15 @@ def main(argv=None):
     L.append('criteria:')
     for name, ok, note in crit:
         L.append('  %-40s %-5s %s' % (name, 'PASS' if ok else 'FAIL', note))
+    if r5 is not None and r5_ctrl:
+        L.append('')
+        L.append('the control computation on the R5 (--shadow), in %d of the %d periods of the window that its log '
+                 'has:' % (d[R5_CTRL_ROWS[2]].n, r5['periods']))
+        if r5_head.get('optimized') != '1':
+            L.append('  no verdict: the firmware is not an optimized build (optimized=%s in its log), and S2 will be one'
+                     % r5_head.get('optimized', '?'))
+        else:
+            L.append('  largest t_w + t_e %.1f us, %s' % (r5_ctrl[0] / 1000.0, fit_verdict(r5_ctrl[0])))
     allok = all(ok for _, ok, _ in crit)
     text = '\n'.join(L)
     print(text)

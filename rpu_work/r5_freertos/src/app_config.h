@@ -28,22 +28,36 @@
 /* differs between the two lives under this switch: the number of axes and  */
 /* which constants of the cfg are used (robot_target.h: identity, units).    */
 /* ----------------------------------------------------------------------- */
-#define TARGET_L7N_BENCH    0                 /* four LS Mecapion L7N single-axis drives, motors lying flat */
+#define TARGET_L7N_BENCH    0                 /* three LS Mecapion L7N single-axis drives, motors lying flat */
 #define TARGET_INDY7        1                 /* the Indy7: six joint drives + the end-tool module */
 #ifndef ROBOT_TARGET
 #define ROBOT_TARGET        TARGET_L7N_BENCH
 #endif
 
 #if ROBOT_TARGET == TARGET_L7N_BENCH
-#define AXIS_COUNT          4                 /* drives that are driven */
-#define BUS_SLAVE_COUNT     4                 /* slaves on the bus; exactly this many must answer */
-#define ECAT_USE_DC         1                 /* DC SYNC0 on the drives: the L7N firmware 0.12 only stays in OP with it (I-40) */
+#define AXIS_COUNT          3                 /* drives that are driven.  The bench has one more, with firmware 0.12, the third on the
+                                                 bus until 2026-11-19: taken off, it left OP at the start of 4 runs of 5 (bench/L7N3_bus.cfg) */
+#define BUS_SLAVE_COUNT     3                 /* slaves on the bus; exactly this many must answer */
+#define ECAT_USE_DC         1                 /* DC SYNC0 on the drives, as the bench has run since 2026-11-16: the drive with firmware
+                                                 0.12 only stayed in OP with it (I-40).  The three left (0.22) stayed in OP without it
+                                                 too; whether the bench goes back to free run is open (D-13) */
 #elif ROBOT_TARGET == TARGET_INDY7
 #define AXIS_COUNT          6
 #define BUS_SLAVE_COUNT     7                 /* + the end-tool module as slave 7 (shortcut: left as the bus scan finds it, no PDO hook, no DC) */
 #define ECAT_USE_DC         0                 /* free run, as the old Indy7 build ran (INDY7.cfg has no DC_SUPPORT key, 2026-11-17) */
 #else
 #error "ROBOT_TARGET must be TARGET_L7N_BENCH (0) or TARGET_INDY7 (1)"
+#endif
+
+/* ----------------------------------------------------------------------- */
+/* The second controller of --shadow (shadow_link.h; plan stage 3): 1 = the */
+/* control computation of the APU's control task runs here too, after the   */
+/* send of every cycle, and its torque is compared, not used.  It is C++    */
+/* with RBDL, Ruckig and Eigen: a C++ project with the sources of src/ctrl  */
+/* and of the three libraries (README.md).  0 = the firmware without it, C. */
+/* ----------------------------------------------------------------------- */
+#ifndef SHADOW_CONTROL
+#define SHADOW_CONTROL      1
 #endif
 
 #define CYCLE_NS            1000000u          /* 1 ms = 1 kHz            */

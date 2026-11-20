@@ -94,6 +94,15 @@ public:
 	/* end the motion (a stop, or the end of a test); nothing if none runs */
 	void	End				(eState aeState);
 
+	/* the last successful Start(): its number (1 the first), HOME or TRACK, and the target of HOME (of TRACK:
+	 * the posture it started from). For a second controller that is to follow this one (shadow/ShadowWriter.h) */
+	struct StartCall {
+		unsigned int uCount;
+		bool         bHome;
+		double       adTarget[MAX_DOF];
+	};
+	const StartCall& LastStart	(	) const { return m_start; }
+
 	/* one period: the measured state -> the reference of this period. TRUE
 	 * if the reference is valid (the generator returned no error). After it,
 	 * Pending() tells whether the motion ends with this period (HOME at
@@ -125,6 +134,7 @@ private:
 	double				m_dTs;
 	Sample				m_sample;
 	BOOL				m_bSample;
+	StartCall			m_start;
 };
 
 #endif // G2T_TRAJECTORY_RT_H

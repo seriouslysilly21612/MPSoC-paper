@@ -62,6 +62,9 @@
 #include "GoalSlot.h"
 #include "TimingLog.h"
 
+class CShadowTask;
+class CShadowControl;
+
 class CRobotIndy7
 {
 public:
@@ -74,6 +77,8 @@ public:
 	void			SetMethod				(int anMethod) { m_nMethod = anMethod; }
 	// --arch: arch::eArch, before Init()
 	void			SetArch					(int anArch) { m_nArch = anArch; }
+	// --shadow, before Init(): with --arch S1 the control task tells the R5 every period, for the controller there
+	void			SetShadow				(BOOL abOn) { m_bShadow = abOn; }
 	void			SetTimingLogDir			(const TSTRING& astrDir) { m_strTimingDir = astrDir; }
 
 	/* the controller, the bus or the simulation, the tasks; FALSE: the
@@ -123,6 +128,10 @@ private:
 	CR5Link*					m_pLink{NULL};
 	std::vector<CR5Joint*>		m_vR5Joints;
 	CSimR5*						m_pSimR5{NULL};
+	// --shadow: the control task's side of it; with -s the controller that the simulated R5 runs
+	BOOL						m_bShadow{FALSE};
+	CShadowTask*				m_pShadow{NULL};
+	CShadowControl*				m_pSimShadow{NULL};
 	CViewStream					m_cView;		// newest joint angles for an external viewer
 
 	/* the tasks, in the order of the cfg ([TASK0]..[TASK2]) */

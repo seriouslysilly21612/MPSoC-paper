@@ -4,8 +4,9 @@
  *   release   the tick of the period timer that woke the task: the FreeRTOS tick, a TTC in interval mode
  *   t_w       release -> start of the cycle (how far the timer has counted when the task runs)
  *   t_s       start -> return of the send;  t_w + t_s <= t_b, the send deadline of the cfg (eq. (3) of the paper)
- *   t_e       start -> end of the cycle.  The cycle ends with its send, so t_e = t_s here; the record of the times
- *             is written after it and is in neither
+ *   t_e       start -> end of the cycle: the return of the send, or, in a cycle in which the second controller of
+ *             --shadow ran after the send (shadow_link.h), its end.  The record of the times is written after it
+ *             and is in neither.  t_w + t_e <= T: the cycle ends before the next release
  * The names and the rules of late, missed and overrun are those of the EtherCAT task of the APU controller
  * (TaskSlots.h, TimingLog.h).
  */
@@ -31,8 +32,8 @@ _Static_assert(RX_TIMEOUT_US * 1000 + 100000 <= FW_CFG_SEND_DEADLINE_NS,
 typedef struct {                        /* one cycle [ticks of the system counter] */
     uint64_t release;                   /* the release of the period */
     uint32_t wake;                      /* t_w */
-    /* the low word of the counter at: the start of the cycle, the inputs in, before and after the send */
-    uint32_t start, recv, send_begin, send_end;
+    /* the low word of the counter at: the start of the cycle, the inputs in, before and after the send, the end */
+    uint32_t start, recv, send_begin, send_end, end;
 } cycle_times_t;
 
 typedef struct {
@@ -41,7 +42,7 @@ typedef struct {
     uint32_t periods;                   /* start-to-start samples */
     uint64_t period_sum;
     uint32_t period_min, period_max;
-    uint32_t wake_max, send_max, exec_max;      /* t_w, t_w + t_s, t_e (start -> return of the send) */
+    uint32_t wake_max, send_max, exec_max;      /* t_w, t_w + t_s, t_e */
     uint32_t exec_max_run;              /* t_e, whole run */
     uint32_t prev_start;
     int      have_prev;

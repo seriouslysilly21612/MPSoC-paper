@@ -8,6 +8,12 @@
 #include "CallTiming.h"
 #include "ipc/FwCfg.h"
 #include "obs/ObsContract.h"
+#include "shadow/ModelCode.h"
+#include "shadow/ShadowControl.h"
+#include "shadow/ShadowParams.h"
+#include "shadow/ShadowTask.h"
+
+#include <rbdl/addons/urdfreader/urdfreader.h>
 
 #include <cmath>
 #include <cstring>
@@ -56,6 +62,10 @@ CRobotIndy7::~CRobotIndy7()
 		m_pSimR5->Stop();
 	delete m_pSimR5;
 	m_pSimR5 = NULL;
+	delete m_pSimShadow;		// after the thread that ran it
+	m_pSimShadow = NULL;
+	delete m_pShadow;
+	m_pShadow = NULL;
 	for (CR5Joint* p : m_vR5Joints)
 		delete p;
 	m_vR5Joints.clear();
@@ -962,6 +972,8 @@ CRobotIndy7::PrintRtSummary() const
 		       st.dWSum / dN * 1e-3, (double)st.tWMax * 1e-3, st.dESum / dN * 1e-3, (double)st.tEMax * 1e-3, st.nLate,
 		       st.nOverruns);
 		m_pLink->PrintSummary();
+		if (m_pShadow != NULL)
+			m_pShadow->PrintSummary();
 	}
 	// the two parts of the control task (t_w of the dynamics part counts from the release)
 	const task_slots::ST_TASK_TIMING* apT[2] = { &m_stTrajTiming, &m_stDynTiming };
@@ -1314,6 +1326,25 @@ CRobotIndy7::InitR5Link()
 			uDrives++;
 	const uint32_t uCfgCrc = FwCfgCrc(m_pConfig->Master(), m_pConfig->BusSlaves());
 
+	// --shadow: the check value of this controller, of its constants and of the model that the URDF reader built
+	double adNumbers[SHADOW_NUMBERS];
+	uint32_t uShadowCheck = 0;
+	if (m_bShadow)
+	{
+		RigidBodyDynamics::Model cModel;
+		model_code::ModelCode stCode;
+		const char* const pcURDF = m_pConfig->System().strURDFPath.c_str();
+		if (!ShadowNumbers(*m_pConfig, adNumbers) ||
+		    !RigidBodyDynamics::Addons::URDFReadFromFile(pcURDF, &cModel, false, false) ||
+		    !model_code::ModelCodeOf(cModel, &stCode))
+		{
+			DBG_LOG_ERROR("--shadow: the constants and the model of the controller cannot be told (not the arm of %d joints?)",
+			              IPC_CTRL_DOF);
+			return FALSE;
+		}
+		uShadowCheck = ShadowCheckValue(ShadowNumbersCrc(adNumbers), stCode.uCrc);
+	}
+
 	m_pLink = new CR5Link();
 	if (m_pConfig->System().bSim && !m_bHybridBus)
 	{
@@ -1324,6 +1355,14 @@ CRobotIndy7::InitR5Link()
 		stSpec.nPriority = (int)vTasks[0].nPriority;
 		stSpec.nCpu = CpuBesideTheTasks(vTasks);
 		m_pSimR5 = new CSimR5();
+		if (m_bShadow)
+		{
+			// the simulated R5 has the controller that the firmware has: built from the same numbers
+			m_pSimShadow = new CShadowControl();
+			if (FALSE == m_pSimShadow->Init(m_pConfig->System().strURDFPath.c_str(), adNumbers, uShadowCheck))
+				return FALSE;
+			m_pSimR5->SetShadow(m_pSimShadow);
+		}
 		if (FALSE == m_pSimR5->Start(stSpec, m_pSim, m_vSimJoints))
 			return FALSE;
 		m_pLink->UseRegion(m_pSimR5->Region(), "the simulated R5");
@@ -1332,6 +1371,12 @@ CRobotIndy7::InitR5Link()
 		return FALSE;
 	if (FALSE == m_pLink->Start(uDrives, uCfgCrc, tPeriod, (RTTIME)stLink.nWakeDelayNs))
 		return FALSE;
+	if (m_bShadow)
+	{
+		m_pShadow = new CShadowTask(m_pLink, uShadowCheck);
+		printf("[SHADOW] the control task tells the R5 every period; check value of this controller 0x%08X (its "
+		       "constants 0x%08X)\n", (unsigned)uShadowCheck, (unsigned)ShadowNumbersCrc(adNumbers));
+	}
 	if (!m_bHybridBus)
 	{
 		const VEC_ECAT_SLAVE_CONF& vSl = m_pConfig->Slaves();

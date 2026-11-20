@@ -8,6 +8,7 @@
 
 #include "../base/RtConsole.h"
 #include "../r5link/LinkClock.h"
+#include "../shadow/ShadowControl.h"
 
 namespace {
 
@@ -192,6 +193,15 @@ CSimR5::Cycle(uint64_t auReleaseTicks, uint32_t auPeriod)
 		abReleased[i] = m_vJoints[i]->IsBrakeReleased();
 	}
 	m_pArm->Step(adTau, abReleased);
+
+	/* --shadow, after the send: the period that the control task told last, through the second controller */
+	ipc_shadow_in_t stIn;
+	if (m_pShadow != NULL && m_cSlots.TakeShadow(&stIn))
+	{
+		ipc_shadow_out_t stOut;
+		m_pShadow->Step(stIn, &stOut);
+		m_cSlots.PublishShadow(stOut);
+	}
 }
 
 void

@@ -118,7 +118,7 @@ configuration with the parser of the controller, so the two cannot read a value 
 write the value into the State slot, and the controller is to send "servo on" only when it equals its own;
 neither is wired yet. `bin/fw_cfg_header --check`: the CRC-32 against its check value and against a record packed
 and summed by another program; every value, the number of slaves and their order change the check value, a name
-does not. All 23 broken versions of `FwCfg.h` fail it. For `INDY7.cfg` and for the bench (`-B bench/L7N4_bus.cfg`)
+does not. All 23 broken versions of `FwCfg.h` fail it. For `INDY7.cfg` and for the bench (`-B bench/L7N3_bus.cfg`)
 a second reader of the files gives the same check values, and the headers compile for the R5 without a warning.
 
 **The camera results (2026-11-17; the methods below use them).** `indy7/src/obs/obs_mailbox.h` (C) carries a result from
@@ -281,8 +281,9 @@ of `ObsGoal.h` and `ObsWriter.h` fail it.
     make                       # bin/indy7_ctrl; prints [indy7] MUJOCO=.. ROS=.. MALLOC_COUNT=..
     make tools                 # bin/hl_check, bin/goal_filter_check, bin/slot_check, bin/ipc_slot_check,
                                # bin/obs_mailbox_check, bin/obs_receiver_check, bin/obs_estimate_check,
-                               # bin/obs_goal_check, bin/obs_status_check, bin/fw_cfg_header,
-                               # bin/model_check (MuJoCo)
+                               # bin/obs_goal_check, bin/obs_status_check, bin/r5_link_check, bin/shadow_check,
+                               # bin/fw_cfg_header, bin/rbdl_model_code, bin/ctrl_numbers_header (the three write
+                               # the headers of the R5 firmware), bin/model_check (MuJoCo)
 
 `make MUJOCO=0` builds without the simulation, `make ROS=0` without the bridge (the default is ROS=1 when ROS 2
 and the messages of `ros2/` are found: build `ros2/` first and source both environments, `ros2/README.md`).
@@ -312,9 +313,10 @@ and the affinity of every task at its start and refuses to run otherwise.
     ./run.sh -s                # simulation: MuJoCo in place of the bus
     ./run.sh                   # the robot (the bus must be up: ethercat.service)
     ./run.sh -b -t DIR         # the bus of the robot in OP, drives off, beside the simulated arm; timing into DIR
-    ./run.sh -b -B bench/L7N4_bus.cfg -t DIR   # the same with another bus: the four L7N drives of the bench
+    ./run.sh -b -B bench/L7N3_bus.cfg -t DIR   # the same with another bus: the three L7N drives of the bench
     ./run.sh --method A2       # the camera application by another method (M1, M2, A2, A3, FULL; see above)
     ./run.sh -s --arch S1      # the EtherCAT task on the R5 (below); with -s the R5 is simulated as well
+    ./run.sh -s --arch S1 --shadow   # and the R5 runs the control computation beside this one (below)
 
 The keys of the operator are printed at the start and with `?`:
 
@@ -359,6 +361,20 @@ not wait for the tasks, so a host that is not real-time shows in the results (a 
 moves the arm a period ahead of the reference; such runs are marked `TIMING FAULTS`). On the board, the device tree,
 the firmware and what to look at: `../rpu_work/README_S1.md`. Not run with the real R5 yet (2026-11-18).
 
+**`--shadow` (with `--arch S1`): the control computation on the R5, beside this one.** The control task tells the R5
+every period what it did with its controller (the Shadow in slot: the measured state of the period, the goal and
+the calls of the Trajectory part, the mode of the law and its torque; `indy7/src/shadow/ShadowTask.h`,
+`ShadowWriter.h`). A firmware with the second controller (`SHADOW_CONTROL`, `../rpu_work/r5_freertos/README.md`)
+runs the same classes on it after its send. Its torque is not used: it comes back with the largest difference to
+the torque of this side and the time of its two parts (the Shadow out slot), and the run ends with the `[SHADOW]`
+lines: the periods told and answered, the torques compared and how many differ by more than 1e-6 N m, the times on
+the R5. A period that the R5 did not get, or one with two measured states (the Trajectory part and the law took
+different States), leaves the two controllers apart until the next start of a motion: those periods are counted,
+not compared. The check value printed at the start (the constants of the cfg, the model of the URDF) must be that
+of the firmware's `[shadow]` line; answers with another one are not compared. With `-s` the simulated R5 has the
+second controller as well. The two slots made the shared region layout 2: firmware, application and `r5cmd.py` go
+together, and a side of another layout is not read. Not run with the real R5 yet (2026-11-18).
+
 ## The paper and the code
 
 | Paper | Code | Reproduction |
@@ -392,6 +408,7 @@ the firmware and what to look at: `../rpu_work/README_S1.md`. Not run with the r
     ./bin/obs_goal_check                                  # the two ends of the mailbox in the application, PASS
     ./bin/obs_status_check                                # the status for the camera side, the contract check value, PASS
     ./bin/r5_link_check                                   # --arch S1: the exchange with the R5 and following its period, PASS
+    ./bin/shadow_check                                    # --shadow: a second controller, told through the slots what the control task did, gives its torque and reference, PASS
     ./bin/hl_check models/indy7.urdf                      # the reference contract, PASS
     ./bin/goal_filter_check                               # the goal checks of the bridge, PASS
     ./bin/model_check models/indy7.urdf models/indy7_mujoco.xml B=6.07917,6.68933,1.99649,0.87306,0.86394,0.84747  # B as in INDY7.cfg
@@ -447,7 +464,7 @@ the PS temperatures and the board power, every second, into `temp_power.csv`.
 
 The MPSoC measurements run every condition unattended: idle, stress, perception, and the memory pressure
 (perception + `stress-ng --memrate` at about 25, 50, 75, 100 % of its unbounded rate beside the camera
-pipeline), 30 min x 3, about 11.8 h (`--quick`: about 1.4 h). On the L7N bench (`indy7/bench/L7N4_bus.cfg`), with the
+pipeline), 30 min x 3, about 11.8 h (`--quick`: about 1.4 h). On the L7N bench (`indy7/bench/L7N3_bus.cfg`; three drives since 2026-11-19, four in the logs before), with the
 IgH master running and NTP off (`sudo timedatectl set-ntp false`; it refuses to start otherwise), inside tmux:
 
     python3 tools/run_batch.py --out ~/timing_logs/p0_bench_batch_<date>    # --dry-run lists the runs; --from N goes on from run N
@@ -457,6 +474,10 @@ IgH master running and NTP off (`sudo timedatectl set-ntp false`; it refuses to 
 
 With the EtherCAT task on the R5 (`../rpu_work/README_S1.md`): `--arch S1` for `run_timing.py` and `run_batch.py`;
 the send columns of the row then come from the record of the R5, taken during the run (`OUT/r5`).
+`run_timing.py --arch S1 --shadow` (a firmware with the second controller): the summary also has the times of the
+control computation on the R5 from that record, and what the largest release-to-end of a cycle with it says about
+the control task on the R5 (D-14): at most 500 us, at most 800 us, or above; no verdict from a firmware that is not
+an optimized build.
 No IgH master then: the R5 runs the bus and must have it in OP, and the device tree must have the node of its
 slots. The reference check ends with the arm at rest at the accepted goal (it used to end in motion, into gravity
 compensation); the time to rest is outside the TRACK window of the timing log.

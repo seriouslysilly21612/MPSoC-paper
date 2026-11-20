@@ -2,8 +2,8 @@
  * ocm_link.c  --  the R5's side of the shared region at the start of the OCM (see ocm_link.h).
  *
  * Reader and writer rules are those of ipc/ipc_slot.h: 32-bit words, one attempt, no waiting, a failed read leaves
- * the last copy as it was.  The R5 writes the State slot and its half of the head; it reads the Torque and Command
- * slots, which only the APU writes.
+ * the last copy as it was.  The R5 writes the State slot, the Shadow out slot and its half of the head; it reads the
+ * Torque, Command and Shadow in slots, which only the APU writes.
  */
 #include <string.h>
 #include "xil_mmu.h"
@@ -22,24 +22,27 @@
 #define SLOT_STATE      ((volatile uint32_t *)(OCM_LINK_BASE + IPC_OFF_STATE))
 #define SLOT_TORQUE     ((volatile uint32_t *)(OCM_LINK_BASE + IPC_OFF_TORQUE))
 #define SLOT_COMMAND    ((volatile uint32_t *)(OCM_LINK_BASE + IPC_OFF_COMMAND))
+#define SLOT_SHADOW_IN  ((volatile uint32_t *)(OCM_LINK_BASE + IPC_OFF_SHADOW_IN))
+#define SLOT_SHADOW_OUT ((volatile uint32_t *)(OCM_LINK_BASE + IPC_OFF_SHADOW_OUT))
 
 static uint32_t r5_epoch;
 static uint32_t command_epoch, command_seq;          /* (epoch, seq) of the last command seen */
 static uint32_t command_done;                        /* seq of the last command carried out */
 static uint32_t torque_stamp[2];                     /* (epoch, gen) of the last torque taken */
 static uint32_t torque_period;
+static uint32_t shadow_stamp[2];                     /* (epoch, gen) of the last Shadow in payload taken */
 static link_torque_t torque_last;                    /* the last new torque */
 
 int ocm_link_start(void)
 {
-    volatile uint32_t *slots[1] = { SLOT_STATE };
+    volatile uint32_t *slots[2] = { SLOT_STATE, SLOT_SHADOW_OUT };
 
     /* shortcut: nothing of this region has been touched before this call, so no cache line of it needs a flush */
     if (Xil_SetMPURegion((INTPTR)OCM_LINK_BASE, OCM_LINK_SIZE, NORM_SHARED_NCACHE | PRIV_RW_USER_RW) != (u32)XST_SUCCESS) {
         xil_printf("[link] FAIL: the MPU region for the OCM window could not be set\r\n");
         return 0;
     }
-    r5_epoch = ipc_side_start(&LINK_HEAD->r5, slots, 1);
+    r5_epoch = ipc_side_start(&LINK_HEAD->r5, slots, 2);
     (void)ocm_link_take_command();                   /* what is in the slot now was sent to an earlier run */
     command_done = 0u;
     xil_printf("[link] OCM 0x%08x: R5 epoch %u, APU side %s, system counter 0x%08x%08x\r\n", (unsigned)OCM_LINK_BASE,
@@ -119,4 +122,22 @@ uint32_t ocm_link_publish_state(uint64_t t_release, uint32_t period, uint32_t fl
     state.n_wkc          = faults->wkc;
     IPC_WRITE(SLOT_STATE, r5_epoch, &state);
     return state.flags;
+}
+
+int ocm_link_take_shadow(ipc_shadow_in_t *in)
+{
+    static ipc_shadow_in_t payload;                  /* in ordinary memory: read whole, then handed on if it is new */
+    uint32_t stamp[2];
+
+    if (IPC_READ(SLOT_SHADOW_IN, &LINK_HEAD->apu, &payload, stamp) != IPC_OK ||
+        (stamp[0] == shadow_stamp[0] && stamp[1] == shadow_stamp[1])) return 0;
+    shadow_stamp[0] = stamp[0];
+    shadow_stamp[1] = stamp[1];
+    *in = payload;
+    return 1;
+}
+
+void ocm_link_publish_shadow(const ipc_shadow_out_t *out)
+{
+    IPC_WRITE(SLOT_SHADOW_OUT, r5_epoch, out);
 }

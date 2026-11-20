@@ -23,17 +23,19 @@ uint32_t cycle_wake_ticks(uint32_t periods_late, uint32_t timer_count, uint32_t 
 void loop_timing_end(const cycle_times_t *t, cycle_record_t *record)
 {
     /* low words of the counter: a wrap between two of them cancels in the difference */
-    const uint32_t exec = t->send_end - t->start;                /* t_s, and t_e: the cycle ends with its send */
-    const uint64_t release_to_send = (uint64_t)t->wake + exec;
+    const uint32_t sent = t->send_end - t->start;                /* t_s */
+    const uint32_t exec = t->end - t->start;                     /* t_e */
+    const uint64_t release_to_send = (uint64_t)t->wake + sent;
+    const uint64_t release_to_end  = (uint64_t)t->wake + exec;
 
     record->w_ns    = (int32_t)sys_counter_ns(t->wake);
-    record->s_ns    = (int32_t)sys_counter_ns(exec);
-    record->e_ns    = record->s_ns;
+    record->s_ns    = (int32_t)sys_counter_ns(sent);
+    record->e_ns    = (int32_t)sys_counter_ns(exec);
     record->recv_ns = (int32_t)sys_counter_ns(t->recv - t->start);
     record->send_ns = (int32_t)sys_counter_ns(t->send_end - t->send_begin);
     if (t->wake > TICKS_PER_CYCLE)             { record->flags |= RECORD_LATE;    loop_timing.late++; }
     if (release_to_send > TICKS_SEND_DEADLINE) { record->flags |= RECORD_MISSED;  loop_timing.missed++; }
-    if (release_to_send > TICKS_PER_CYCLE)     { record->flags |= RECORD_OVERRUN; loop_timing.overruns++; }
+    if (release_to_end > TICKS_PER_CYCLE)      { record->flags |= RECORD_OVERRUN; loop_timing.overruns++; }
 
     if (loop_timing.have_prev) {
         const uint32_t period = t->start - loop_timing.prev_start;

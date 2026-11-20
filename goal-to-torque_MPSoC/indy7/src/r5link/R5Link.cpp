@@ -38,6 +38,7 @@ CR5Link::CR5Link()
 	memset(m_acWhere, 0, sizeof(m_acWhere));
 	memset(&m_stState, 0, sizeof(m_stState));
 	memset(&m_stCounts, 0, sizeof(m_stCounts));
+	m_auShadowStamp[0] = m_auShadowStamp[1] = 0;
 	m_stFollow.Start(1, 0);
 }
 
@@ -121,8 +122,11 @@ CR5Link::Start(uint32_t auDof, uint32_t auCfgCrc, RTTIME atPeriod, RTTIME atWake
 	m_tPeriod = atPeriod;
 	m_tWakeDelay = atWakeDelay;
 	m_stFollow.Start((int64_t)atPeriod, (int64_t)atWakeDelay);
-	volatile uint32_t* apSlots[2] = { Slot(IPC_OFF_TORQUE), Slot(IPC_OFF_COMMAND) };
-	m_uApuEpoch = ipc_side_start(&Head()->apu, apSlots, 2);
+	volatile uint32_t* apSlots[3] = { Slot(IPC_OFF_TORQUE), Slot(IPC_OFF_COMMAND), Slot(IPC_OFF_SHADOW_IN) };
+	m_uApuEpoch = ipc_side_start(&Head()->apu, apSlots, 3);
+	// what the Shadow out slot holds now answers a run of this side before this one: not taken (no read: nothing there)
+	ipc_shadow_out_t stOld;
+	(void)IPC_READ(Slot(IPC_OFF_SHADOW_OUT), &Head()->r5, &stOld, m_auShadowStamp);
 	// a first offset of the counter while nothing is timed yet: a cycle whose pair of reads is refused keeps the last one
 	for (int nTry = 0; nTry < 100 && !m_cClock.Sample(); nTry++)
 		;
@@ -292,6 +296,26 @@ CR5Link::SendTorque(uint32_t auStatePeriod, BOOL abValid, BOOL abEnabled, const 
 		stTorque.tau[i] = adTau[i];
 	IPC_WRITE(Slot(IPC_OFF_TORQUE), m_uApuEpoch, &stTorque);
 	m_stCounts.nTorquesWritten++;
+}
+
+void
+CR5Link::SendShadow(const ipc_shadow_in_t& astIn)
+{
+	IPC_WRITE(Slot(IPC_OFF_SHADOW_IN), m_uApuEpoch, &astIn);
+}
+
+BOOL
+CR5Link::TakeShadow(ipc_shadow_out_t* apOut)
+{
+	ipc_shadow_out_t stOut;
+	uint32_t auStamp[2];
+	if (IPC_READ(Slot(IPC_OFF_SHADOW_OUT), &Head()->r5, &stOut, auStamp) != IPC_OK ||
+	    (auStamp[0] == m_auShadowStamp[0] && auStamp[1] == m_auShadowStamp[1]))
+		return FALSE;
+	m_auShadowStamp[0] = auStamp[0];
+	m_auShadowStamp[1] = auStamp[1];
+	*apOut = stOut;
+	return TRUE;
 }
 
 void

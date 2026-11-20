@@ -15,16 +15,24 @@ static int fails;
 static uint32_t exact_ns(uint32_t ticks) { return (uint32_t)(((uint64_t)ticks * 1000000000ull + SYSCNT_HZ / 2u) / SYSCNT_HZ); }
 static int ns_ok(uint32_t ticks) { int64_t d = (int64_t)sys_counter_ns(ticks) - (int64_t)exact_ns(ticks); return d >= -1 && d <= 1; }
 
-/* a cycle that starts `wake` ticks after its release, with the low word of the counter at `start` */
-static cycle_record_t cycle(uint32_t start, uint32_t wake, uint32_t recv, uint32_t send_begin, uint32_t send_end)
+/* a cycle that starts `wake` ticks after its release, with the low word of the counter at `start`, and ends `end`
+ * ticks after its start */
+static cycle_record_t cycle_to(uint32_t start, uint32_t wake, uint32_t recv, uint32_t send_begin, uint32_t send_end,
+                               uint32_t end)
 {
     cycle_times_t t = { .release = 0, .wake = wake, .start = start, .recv = start + recv,
-                        .send_begin = start + send_begin, .send_end = start + send_end };
+                        .send_begin = start + send_begin, .send_end = start + send_end, .end = start + end };
     cycle_record_t r;
 
     memset(&r, 0, sizeof(r));
     loop_timing_end(&t, &r);
     return r;
+}
+
+/* the same, ending with its send */
+static cycle_record_t cycle(uint32_t start, uint32_t wake, uint32_t recv, uint32_t send_begin, uint32_t send_end)
+{
+    return cycle_to(start, wake, recv, send_begin, send_end, send_end);
 }
 
 int main(void)
@@ -79,9 +87,18 @@ int main(void)
     CHECK(r.flags == (RECORD_LATE | RECORD_MISSED | RECORD_OVERRUN) && loop_timing.late == 1);
     CHECK(loop_timing.missed == 6 && loop_timing.overruns == 3);
 
+    /* a cycle that goes on after its send (the second controller): t_s is the send's, t_e the end's; the send
+     * deadline is held by the send, the period by the end */
+    r = cycle_to(1800000u, 400, 1500, 5000, 6200, 30000);
+    CHECK(r.s_ns == 62001 && r.e_ns == 300003 && r.send_ns == 12000 && r.flags == 0);
+    r = cycle_to(1900000u, 400, 1500, 5000, 6200, TICKS_PER_CYCLE - 400);
+    CHECK(r.flags == 0 && loop_timing.missed == 6 && loop_timing.overruns == 3);
+    r = cycle_to(2000000u, 400, 1500, 5000, 6200, TICKS_PER_CYCLE - 400 + 1);
+    CHECK(r.flags == RECORD_OVERRUN && loop_timing.missed == 6 && loop_timing.overruns == 4);
+
     /* flags that the caller set stay, in a cycle in time and in one that breaks every rule */
     {
-        cycle_times_t t = { .wake = 400, .start = 5, .recv = 10, .send_begin = 20, .send_end = 30 };
+        cycle_times_t t = { .wake = 400, .start = 5, .recv = 10, .send_begin = 20, .send_end = 30, .end = 30 };
         memset(&r, 0, sizeof(r)); r.flags = RECORD_BUS | RECORD_OP;
         loop_timing_end(&t, &r);
         CHECK(r.flags == (RECORD_BUS | RECORD_OP));
@@ -101,15 +118,15 @@ int main(void)
     memset(&loop_timing, 0, sizeof(loop_timing)); loop_timing_reset_window();
     (void)cycle(0xFFFFFFF0u, 300, 1500, 5000, 6000);
     (void)cycle(0xFFFFFFF0u + 99999u, 500, 1500, 5000, 7000);           /* across the wrap */
-    (void)cycle(0xFFFFFFF0u + 99999u + 100100u, 400, 1500, 5000, 50000);
+    (void)cycle_to(0xFFFFFFF0u + 99999u + 100100u, 400, 1500, 5000, 50000, 70000);
     (void)cycle(0xFFFFFFF0u + 99999u + 100100u + 99898u, 200, 1500, 5000, 6500);
     CHECK(loop_timing.periods == 3 && loop_timing.period_min == 99898u && loop_timing.period_max == 100100u);
     CHECK(loop_timing.period_sum == 99999u + 100100u + 99898u);
-    CHECK(loop_timing.wake_max == 500u && loop_timing.send_max == 50400u && loop_timing.exec_max == 50000u);
-    CHECK(loop_timing.exec_max_run == 50000u && loop_timing.missed == 1);
+    CHECK(loop_timing.wake_max == 500u && loop_timing.send_max == 50400u && loop_timing.exec_max == 70000u);
+    CHECK(loop_timing.exec_max_run == 70000u && loop_timing.missed == 1);
     loop_timing_reset_window();
     CHECK(loop_timing.periods == 0 && loop_timing.wake_max == 0 && loop_timing.send_max == 0 && loop_timing.exec_max == 0);
-    CHECK(loop_timing.exec_max_run == 50000u && loop_timing.missed == 1);
+    CHECK(loop_timing.exec_max_run == 70000u && loop_timing.missed == 1);
     (void)cycle(0xFFFFFFF0u + 99999u + 100100u + 99898u + 99999u, 100, 1500, 5000, 6000);
     CHECK(loop_timing.periods == 1 && loop_timing.period_min == 99999u);    /* the period into the new window */
 

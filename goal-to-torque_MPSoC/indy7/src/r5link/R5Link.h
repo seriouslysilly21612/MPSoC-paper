@@ -104,6 +104,10 @@ public:
 	/* --- the control task --- */
 	/* the torque computed from the State of period auStatePeriod [N m] */
 	void	SendTorque		(uint32_t auStatePeriod, BOOL abValid, BOOL abEnabled, const double* adTau, unsigned auDof);
+	/* --shadow: what the control task did in a period, for the second controller on the R5 (Shadow in slot) */
+	void	SendShadow		(const ipc_shadow_in_t& astIn);
+	/* its answer (Shadow out slot), one attempt. TRUE: *apOut is an answer that is new since the last call */
+	BOOL	TakeShadow		(ipc_shadow_out_t* apOut);
 
 	/* after the tasks */
 	const Counts&	GetCounts	(	) const { return m_stCounts; }
@@ -137,6 +141,7 @@ private:
 	uint32_t			m_uLastCommand;		// the command last written
 	uint32_t			m_uCommandSeq;
 	BOOL				m_bToldBadState, m_bToldBadTime, m_bToldFollowing;
+	uint32_t			m_auShadowStamp[2];	// the control task: (epoch, sequence number) of the last answer taken
 	Counts				m_stCounts;
 };
 

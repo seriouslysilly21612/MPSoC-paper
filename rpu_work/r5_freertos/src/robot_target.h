@@ -4,14 +4,15 @@
  *
  * The constants are not typed here.  They come from the cfg of the APU controller, through the header that its
  * tool writes (goal-to-torque_MPSoC/indy7: bin/fw_cfg_header), one per target in cfg/:
- *     cfg/fw_cfg_l7n.h     bin/fw_cfg_header -B bench/L7N4_bus.cfg -o ...     ROBOT_TARGET 0
+ *     cfg/fw_cfg_l7n.h     bin/fw_cfg_header -B bench/L7N3_bus.cfg -o ...     ROBOT_TARGET 0
  *     cfg/fw_cfg_indy7.h   bin/fw_cfg_header -o ...                           ROBOT_TARGET 1
  * FW_CFG_CRC of that header goes into the State slot (ocm_link.c), where the APU compares it with the check value
  * of its own cfg before it asks for servo on.  When [ECAT_MASTER] or an [AXISn] of the cfg changes, write the
  * header again and build again; test/check_copies.sh tells when a header is not what the tool writes now.
  *
- * Not taken from the header: the sync mode.  The bench cfg has FREE_RUN, with which the L7N firmware 0.12 does not
- * stay in OP (I-40), so ECAT_USE_DC of app_config.h decides (to be settled with D-13).
+ * Not taken from the header: the sync mode.  The bench cfg has FREE_RUN, with which the bench's drive with firmware
+ * 0.12 did not stay in OP (I-40; off the bus since 2026-11-19), so ECAT_USE_DC of app_config.h decides (to be settled
+ * with D-13).
  */
 #ifndef ROBOT_TARGET_H
 #define ROBOT_TARGET_H

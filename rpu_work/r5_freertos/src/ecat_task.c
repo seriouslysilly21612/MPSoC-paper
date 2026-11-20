@@ -35,6 +35,10 @@
  * starts, missed deadlines and overruns go into the State slot and the status report; the times of every cycle go
  * into the record ring (cycle_record.c, r5rec.py on Linux).  The drives take the outputs at their SYNC0; the loop is
  * not phase-locked to SYNC0 (no master clock alignment), as in the colleague's DC build.
+ *
+ * After the send (SHADOW_CONTROL, shadow_link.c): the control computation of the APU's control task once more, on
+ * what the control task told of its last period; its torque is compared, not used.  A cycle in which it ran ends
+ * with it, not with its send: t_e and the overrun rule take it in, the send deadline does not.
  */
 #include "FreeRTOS.h"
 #include "task.h"
@@ -53,6 +57,7 @@
 #include "r5log.h"
 #include "ocm_link.h"
 #include "obs_link.h"
+#include "shadow_link.h"
 
 volatile int ecat_status = ECAT_STATUS_STARTING;
 
@@ -289,9 +294,21 @@ static void ecat_cycle(uint32_t planned_tick)
     if (stop_step != STOP_DONE) {
         ec_send_processdata();          /* outputs are re-sent unchanged on a bad cycle */
     }
-    t.send_end = sys_counter_low();     /* the end of the cycle: what follows is the record of its times */
-
+    t.send_end = sys_counter_low();
+    t.end = t.send_end;                 /* the end of the cycle, unless the second controller runs: what follows
+                                           it is the record of its times */
     cycle_record_init(&record);
+#if SHADOW_CONTROL
+    {
+        int32_t traj_ns, ctrl_ns;
+
+        if (stop_step == STOP_NONE && shadow_link_step(&traj_ns, &ctrl_ns)) {
+            t.end = sys_counter_low();
+            record.hl_ns  = traj_ns;
+            record.dyn_ns = ctrl_ns;
+        }
+    }
+#endif
     record.period = cycle_index;
     record.flags  = RECORD_BUS | (wkc >= ecat_expected_wkc ? RECORD_OP : 0u) |
                     ((link_flags & IPC_STATE_SERVO_ON) ? RECORD_SERVO : 0u);
@@ -339,6 +356,9 @@ static void post_status_report(uint32_t cycles)
         event_publish();
     }
     obs_link_report(sys_counter_now());
+#if SHADOW_CONTROL
+    shadow_link_report();
+#endif
     loop_timing_reset_window();
     event_budget = EVENTS_PER_REPORT;
 }
@@ -364,6 +384,9 @@ void ecat_task(void *arg)
     }
     obs_link_start();
     cycle_record_start();
+#if SHADOW_CONTROL
+    (void)shadow_link_start();          /* here: nothing is on the bus yet while the controller is built */
+#endif
 
     xil_printf("[ecat] ecat_task: target %s, %d axes, cycle %u us, tick %u Hz; servo on / off come from the APU\r\n",
                ROBOT_TARGET == TARGET_INDY7 ? "Indy7" : "L7N bench", AXIS_COUNT,
