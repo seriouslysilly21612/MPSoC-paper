@@ -28,15 +28,50 @@ def fake_sys(root, state, uio_names):
 
 
 def test_r5_side_there(tmp_path):
-    assert rt.r5_missing(fake_sys(str(tmp_path), 'running', ['axi-pmon', 'ocm-link'])) == []
+    assert rt.r5_missing(fake_sys(str(tmp_path), 'running', ['axi-pmon', 'ocm-link', 'r5-record']), root=False) == []
+
+
+def test_the_record_of_the_r5_needs_its_uio_device_unless_root(tmp_path):
+    sys_root = fake_sys(str(tmp_path), 'running', ['axi-pmon', 'ocm-link'])
+    as_user = rt.r5_missing(sys_root, root=False)
+    assert len(as_user) == 1 and 'r5-record' in as_user[0]
+    assert rt.r5_missing(sys_root, root=True) == []          # /dev/mem
+
+
+def test_the_run_takes_the_record_of_the_r5_and_hands_its_log_to_the_summary(tmp_path, monkeypatch, capsys):
+    # in place of r5rec.py: writes a log into --out and, as r5rec.py, ends at SIGTERM with a line about it
+    fake = tmp_path / 'r5rec.py'
+    fake.write_text("import os, signal, sys, time\n"
+                    "out = sys.argv[sys.argv.index('--out') + 1]\n"
+                    "os.makedirs(out, exist_ok=True)\n"
+                    "open(os.path.join(out, 'timing_r5_1.bin'), 'w').write('x')\n"
+                    "def end(*_):\n"
+                    "    print('r5rec: 5 cycles written', flush=True)\n"
+                    "    sys.exit(0)\n"
+                    "signal.signal(signal.SIGTERM, end)\n"
+                    "time.sleep(60)\n")
+    monkeypatch.setattr(rt, 'R5REC', str(fake))
+    out = str(tmp_path)
+    p = rt.start_r5rec(out)
+    assert p.poll() is None
+    assert rt.stop_r5rec(p, out) == os.path.join(out, 'r5', 'timing_r5_1.bin')
+    assert 'run_timing: r5rec: 5 cycles written' in capsys.readouterr().out
+    # one that cannot read the ring ends at once: the run stops there, with what it said
+    fake.write_text("import sys\nsys.exit('r5rec: /dev/mem: Permission denied (sudo, or the UIO device)')\n")
+    try:
+        rt.start_r5rec(out)
+        stopped = None
+    except RuntimeError as ex:
+        stopped = str(ex)
+    assert stopped is not None and 'Permission denied' in stopped
 
 
 def test_r5_not_running_or_no_slots(tmp_path):
-    stopped = rt.r5_missing(fake_sys(str(tmp_path / 'a'), 'offline', ['ocm-link']))
+    stopped = rt.r5_missing(fake_sys(str(tmp_path / 'a'), 'offline', ['ocm-link', 'r5-record']))
     assert len(stopped) == 1 and 'not running' in stopped[0]
-    no_node = rt.r5_missing(fake_sys(str(tmp_path / 'b'), 'running', ['axi-pmon']))
+    no_node = rt.r5_missing(fake_sys(str(tmp_path / 'b'), 'running', ['axi-pmon', 'r5-record']))
     assert len(no_node) == 1 and 'ocm-link' in no_node[0]
-    neither = rt.r5_missing(fake_sys(str(tmp_path / 'c'), None, []))
+    neither = rt.r5_missing(fake_sys(str(tmp_path / 'c'), None, []), root=True)
     assert len(neither) == 2 and 'remoteproc0' in neither[0]
 
 

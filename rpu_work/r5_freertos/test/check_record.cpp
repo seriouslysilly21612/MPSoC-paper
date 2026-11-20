@@ -14,7 +14,7 @@ typedef CTimingLog::Record app_record_t;
 static_assert(sizeof(app_record_t) == sizeof(cycle_record_t), "the size of the record differs");
 SAME_FIELD(uPeriod, period);   SAME_FIELD(nW, w_ns);          SAME_FIELD(nS, s_ns);          SAME_FIELD(nE, e_ns);
 SAME_FIELD(nDyn, dyn_ns);      SAME_FIELD(nHl, hl_ns);        SAME_FIELD(nSim, sim_ns);      SAME_FIELD(uSyncDiff, sync_ns);
-SAME_FIELD(usFlags, flags);    SAME_FIELD(usReserved, reserved);
+SAME_FIELD(usFlags, flags);    SAME_FIELD(usFlags2, reserved);
 SAME_FIELD(nRecv, recv_ns);    SAME_FIELD(nSend, send_ns);    SAME_FIELD(nTrajW, traj_w_ns); SAME_FIELD(nTrajE, traj_e_ns);
 SAME_FIELD(nDynW, dyn_w_ns);   SAME_FIELD(nDynE, dyn_e_ns);
 

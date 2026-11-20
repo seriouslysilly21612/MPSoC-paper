@@ -6,20 +6,23 @@ that Linux reserves for the R5: when the cycle started after its release (t_w), 
 receive and the send, and whether it was late, missed the send deadline or overran.  The record is that of the timing
 log of the APU controller, so the file this script writes is read by the same tool:
 
-  sudo python3 r5rec.py --out DIR [--seconds N]   the records from now on into DIR/timing_r5_<stamp>.bin, until
-                                                  Ctrl-C (or N seconds); the counts into DIR/timing_r5_<stamp>.txt
-  sudo python3 r5rec.py --head                    the head of the ring, and exit
+  python3 r5rec.py --out DIR [--seconds N]   the records from now on into DIR/timing_r5_<stamp>.bin, until
+                                             Ctrl-C (or N seconds); the counts into DIR/timing_r5_<stamp>.txt
+  python3 r5rec.py --head                    the head of the ring, and exit
 
   python3 goal-to-torque_MPSoC/tools/timing_summary.py DIR/timing_r5_<stamp>.bin --window op
 
-Needs root (/dev/mem).  The R5 never waits for this script: it overwrites the oldest record, and the ring holds 16 s.
+The ring is read through the UIO device "r5-record" (the device tree node of rpu_work/r5_record_uio.dtso, given to
+the user of the board by 99-ocm-link.rules: README_S1.md).  Without that node: through /dev/mem, with sudo.
+The R5 never waits for this script: it overwrites the oldest record, and the ring holds 16 s.
 Records that were overwritten before they were read are counted as lost (none, unless this script is held up for
 seconds).  A file is of one run of the R5: when the R5 starts again, the script ends.
 
-Words only: /dev/mem maps the R5's memory as Device memory, where a slice copy faults (r5log.py rev2).  Every access
+Words only: both devices map the R5's memory as Device memory, where a slice copy faults (r5log.py rev2).  Every access
 here is one aligned 32-bit load through a memoryview cast to 'I', as in r5cmd.py.
 """
 import argparse
+import glob
 import mmap
 import os
 import platform
@@ -29,13 +32,15 @@ import sys
 import time
 
 RING_ADDR, RING_BYTES = 0x36300000, 0x000F0000          # RECORD_RING_ADDR, RECORD_RING_BYTES of cycle_record.h
+UIO_NAME = "r5-record"                                  # the node of rpu_work/r5_record_uio.dtso
 MAGIC, VERSION = 0x43523552, 1                          # "R5RC"
 HEAD_WORDS, RECORD_WORDS = 16, 15                       # 64 and 60 bytes
 W_MAGIC, W_VERSION, W_RECORD_BYTES, W_CAPACITY, W_COUNT, W_BOOT, W_PERIOD, W_DEADLINE, W_HZ, W_CRC, W_BUILD = range(11)
 BUILD_GEM3_OCM, BUILD_OPTIMIZED, BUILD_DC = 1, 2, 4
 HEADER_BYTES = 1024                                     # of a timing log (indy7/src/TimingLog.h)
 POLL_S = 0.05
-# the two lines every timing log starts with (Indy7Ctrl.cpp); the R5 sets OP, WKC, LATE, MISSED, OVERRUN, STOP, BUS, SERVO
+# the lines every timing log starts with (Indy7Ctrl.cpp; its flags2 is `reserved` here, 0); the R5 sets OP, WKC, LATE,
+# MISSED, OVERRUN, STOP, BUS, SERVO
 FORMAT_LINES = ("format=g2t-timing-1\nrecord_bytes=60\n"
                 "fields=period,w_ns,s_ns,e_ns,dyn_ns,hl_ns,sim_ns,sync_ns,flags,reserved,recv_ns,send_ns,"
                 "traj_w_ns,traj_e_ns,dyn_w_ns,dyn_e_ns\n"
@@ -45,6 +50,18 @@ FORMAT_LINES = ("format=g2t-timing-1\nrecord_bytes=60\n"
 
 class RingError(Exception):
     pass
+
+
+def ring_device(sys_root="/sys", dev_root="/dev"):
+    """where the ring is read: (device, offset of the ring in it).  The UIO device of the node "r5-record", which
+    the user of the board may read; without that node /dev/mem, which needs root."""
+    for name in sorted(glob.glob(os.path.join(sys_root, "class/uio/uio*/name"))):
+        try:
+            if open(name).read().strip() == UIO_NAME:
+                return os.path.join(dev_root, os.path.basename(os.path.dirname(name))), 0
+        except OSError:
+            pass
+    return os.path.join(dev_root, "mem"), RING_ADDR
 
 
 def ring_head(w):
@@ -150,11 +167,13 @@ def main(argv=None):
     a = ap.parse_args(argv)
     if not a.head and not a.out:
         ap.error("--out DIR or --head")
+    dev, offset = ring_device()
     try:
-        fd = os.open("/dev/mem", os.O_RDONLY | os.O_SYNC)
-    except OSError as e:
-        sys.exit("r5rec: /dev/mem: %s (sudo?)" % e)
-    mm = mmap.mmap(fd, RING_BYTES, mmap.MAP_SHARED, mmap.PROT_READ, offset=RING_ADDR)
+        fd = os.open(dev, os.O_RDONLY | os.O_SYNC)
+        mm = mmap.mmap(fd, RING_BYTES, mmap.MAP_SHARED, mmap.PROT_READ, offset=offset)
+    except (OSError, ValueError) as e:
+        sys.exit("r5rec: %s: %s%s" % (dev, e, " (sudo, or the UIO device of r5_record_uio.dtso)" if offset else
+                                      " (its group: 99-ocm-link.rules)"))
     w = memoryview(mm).cast("I")
     signal.signal(signal.SIGTERM, on_sigterm)
     try:

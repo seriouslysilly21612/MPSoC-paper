@@ -36,7 +36,7 @@ into modules with new names, without a change in the generated code (below); the
 | `user-override.dtb` | the device tree the board boots with this firmware, sha256 `b1f13abe9be882fb887bfd6fdc8bc540edcd0a8acdb6facbb2064befa2a34207`: byte for byte `fdtoverlay -i ../base.dtb -o user-override.dtb ../rpu_v2.dtbo ../gem3_off.dtbo` | board |
 | `../gem3_off.dtso`, `.dtbo` | the overlay that disables GEM3 (`ethernet@ff0e0000`) for Linux; the `.dtbo` is `dtc -@` of the `.dtso` | own |
 | `r5log.py` | reads the log ring through `/dev/mem` on Linux (single-byte loads: the carveout is Device memory); with `-f`, Ctrl-C stops the run cleanly ("Clean stop") | own |
-| `r5rec.py` | reads the record ring through `/dev/mem` on Linux and writes a timing log that `goal-to-torque_MPSoC/tools/timing_summary.py` reads | own |
+| `r5rec.py` | reads the record ring on Linux (the UIO device `r5-record` of `../r5_record_uio.dtso`, else `/dev/mem` with `sudo`) and writes a timing log that `goal-to-torque_MPSoC/tools/timing_summary.py` reads | own |
 
 The BSP was not modified: its `mpu.c` is the same file as in the FSBL and PMU firmware BSPs, and the three
 copies of `FreeRTOSConfig.h` are identical. The BSP can be generated again from the platform files.

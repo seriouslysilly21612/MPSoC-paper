@@ -5,3 +5,5 @@
 #   sudo cp 99-ocm-link.rules /etc/udev/rules.d/
 #   sudo udevadm control --reload && sudo udevadm trigger --subsystem-match=uio
 SUBSYSTEM=="uio", ATTR{name}=="ocm-link", GROUP="ubuntu", MODE="0660"
+# The record of every cycle of the R5 (r5_record_uio.dtso), read by r5_freertos/r5rec.py as that user.
+SUBSYSTEM=="uio", ATTR{name}=="r5-record", GROUP="ubuntu", MODE="0660"

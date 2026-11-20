@@ -106,6 +106,16 @@ assert r.take(Racing(w, -6), 0, 3) is None
 # follow(): a file that tools/timing_summary.py reads; records before the start are not in it
 tmp = tempfile.mkdtemp()
 try:
+    # the device: the UIO node "r5-record" whatever its number, at offset 0; without it /dev/mem at the ring
+    sysfs = os.path.join(tmp, "sys")
+    for number, name in ((0, "axi-pmon"), (4, "ocm-link")):
+        os.makedirs(os.path.join(sysfs, "class/uio/uio%d" % number))
+        open(os.path.join(sysfs, "class/uio/uio%d/name" % number), "w").write(name + "\n")
+    assert r.ring_device(sysfs, "/dev") == ("/dev/mem", r.RING_ADDR)
+    os.makedirs(os.path.join(sysfs, "class/uio/uio5"))
+    open(os.path.join(sysfs, "class/uio/uio5/name"), "w").write("r5-record\n")
+    assert r.ring_device(sysfs, "/dev") == ("/dev/uio5", 0)
+
     w = ring(cap=64); push(w, 7)
     def r5_runs(seconds):                               # 20 cycles per poll, every 9th past the send deadline
         for _ in range(20):

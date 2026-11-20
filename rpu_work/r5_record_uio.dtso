@@ -1,0 +1,17 @@
+/dts-v1/;
+/plugin/;
+/* The record of every cycle of the R5's EtherCAT task (r5_freertos/src/cycle_record.h: a ring of 0xF0000 bytes at
+ * 0x36300000, in the DDR that rpu_v2.dtso reserves for the R5). This node gives the ring to Linux as a UIO
+ * device, so that r5_freertos/r5rec.py, and tools/run_timing.py --arch S1 through it, read it as the user of the
+ * board, without /dev/mem (r5rec.py looks for the name "r5-record"). The node does not reserve the region: the
+ * remoteproc driver and r5log.py go on as before. Needs uio_pdrv_genirq.of_id=generic-uio in the kernel command
+ * line (README_S1.md). */
+&{/} {
+    #address-cells = <2>;
+    #size-cells = <2>;
+
+    r5-record@36300000 {
+        compatible = "generic-uio";
+        reg = <0x0 0x36300000 0x0 0xf0000>;
+    };
+};
