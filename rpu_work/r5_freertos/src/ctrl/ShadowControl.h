@@ -72,6 +72,20 @@ enum
 	SHADOW_NUMBERS
 };
 
+/* the constants of the receiver of the camera results (obs/ObsGoal.h) that the control task on the R5 (S2) runs, as
+ * CRobotIndy7::InitObs takes them from the configuration: [CONTRACT] (delta, the age cap, eq. (7), the measurement
+ * errors of the two modes, the offset of the tool tag), the goal checks and the smoothing of the application
+ * (APP_*), and the age of the joint angles of a period (SIM_STATE_DELAY_STEPS). Apart from those of the controller:
+ * a firmware built from other values of them refuses the methods with the mailbox (IPC_CMD_OBS), and only them */
+enum
+{
+	OBS_N_DELTA = 0, OBS_N_AGE_CAP, OBS_N_E0, OBS_N_G, OBS_N_EPS_V, OBS_N_A_MAX, OBS_N_EPS_CAL, OBS_N_EPS_M,
+	OBS_N_TAG = OBS_N_EPS_M + 2,
+	OBS_N_BOX = OBS_N_TAG + 3,
+	OBS_N_R_MAX = OBS_N_BOX + 6, OBS_N_FLOOR, OBS_N_HOVER, OBS_N_KAPPA, OBS_N_GAP, OBS_N_LOSS, OBS_N_STATE_AGE,
+	OBS_NUMBERS
+};
+
 /* the check value of a controller: of its numbers (ShadowNumbersCrc of shadow/ShadowParams.h) and of its model
  * (the firmware: CTRL_NUMBERS_CRC and CTRL_MODEL_CRC of its two generated headers). Either alone changes it. */
 inline uint32_t ShadowCheckValue(uint32_t auNumbersCrc, uint32_t auModelCrc)

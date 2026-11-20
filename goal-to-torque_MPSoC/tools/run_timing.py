@@ -3,12 +3,13 @@
 
 The bus of the robot in OP with its drives off, beside the simulated arm (-b), the reference-check goal
 stream (high-level test 5: newly sampled reachable goals, unreachable goals, repeated goals, goal-free
-intervals, 1-mm perturbations every 67 periods) for --duration s, the timing of every period (-t), and the
-summary of tools/timing_summary.py (the row of Table 6).
+intervals, 1-mm perturbations every 67 periods) for --duration s (with --desired-class the camera application
+in its place), the timing of every period (-t), and the summary of tools/timing_summary.py (the row of Table 6).
 
   python3 tools/run_timing.py --condition idle|stress|perception|pressure [--pressure 0|25|50|75|100]
                               [--duration 600] [--cfg indy7/INDY7.cfg] [--bus FILE] [--out DIR] [--settle 30]
                               [--direct] [--no-hl-log] [--arch P0|S1|S2] [--shadow]
+                              [--method M1|M2|A2|A3|FULL] [--desired-class CLASS]
 
   --bus FILE  another bus than that of the cfg (indy7 -B FILE, e.g. indy7/bench/L7N3_bus.cfg, the L7N
               bench); the arm and everything else stay those of the cfg; FILE is copied into OUT
@@ -26,6 +27,16 @@ summary of tools/timing_summary.py (the row of Table 6).
               the two parts of its control task and its t_w + t_e in place of a chain here (tools/
               timing_summary.py). With --shadow a controller here repeats every period of the R5 from its report
               (the console: [S2] the control of the R5 a second time here)
+  --method M  --method of the controller and method:= of the camera pipeline (default M1). With another method
+              the results of the camera go through the mailbox to the control task (with S2 the R5's); they come
+              only for an object of --desired-class
+  --desired-class CLASS
+              the camera application in place of the goal stream (perception, pressure): 'p', the digit of CLASS
+              in the object menu of the bridge (CLASS must be in view), HOME to q_r, then TRACK following it for
+              --duration s, 'x'. The bridge clears desired_class:= of the launch when a session starts, so the
+              menu is the only way to set it. Without it the goal stream runs, and with a method other than M1
+              the mailbox stays empty. The logs of the application (obs_*, hl_app_*) go to OUT/hl_logs, the
+              decisions of the detector (A3, FULL) to OUT/decisions.csv
   --no-hl-log HL_LOG=0 in the copy of the cfg: the high-level test is not logged (the 30-min runs of
               tools/run_batch.py; the log takes about 0.7 kB per period)
 
@@ -52,7 +63,8 @@ In order:
   4. the load of the condition, then 120 s before the controller
   5. the controller through indy7/run.sh (the limits, EtherCAT-OP at SCHED_FIFO 40) with -b -t OUT; --settle s
      in OP; then the keys r, g, k (the hold off), h (servo on of the simulated arm; the drives of the bus stay
-     off), y 5 (HOME to q_r, then TRACK with the stream); its end; j, q
+     off), y 5 (HOME to q_r, then TRACK with the stream); its end (--desired-class: p and the digit of the
+     class, HOME, TRACK; x after --duration s); j, q
   6. the load stopped; tools/timing_summary.py on the timing log: OUT/timing_summary.txt, timing_table.csv
 The console of the controller is saved as OUT/console.txt. The high-level log of the run takes about 0.7 kB
 per period (OUT/hl_logs), the timing log 60 bytes per period. Standard library only.
@@ -61,6 +73,7 @@ import argparse
 import glob
 import os
 import re
+import shlex
 import shutil
 import signal
 import subprocess
@@ -228,13 +241,15 @@ def vision_missing():
     return [p for p in PERCEPTION if subprocess.run(['pgrep', '-f', p], capture_output=True).returncode]
 
 
-def start_vision(out):
+def start_vision(out, method='M1'):
     """the camera pipeline in a process group of its own; None if it runs already (it is then left running)"""
     if not vision_missing():
-        print('run_timing: the camera pipeline runs already; it is left running')
+        print('run_timing: the camera pipeline runs already; it is left running (its method and class are its own)')
         return None
     log = os.path.join(out, 'vision.txt')
-    p = subprocess.Popen(['bash', '-c', VISION], stdout=open(log, 'w'), stderr=subprocess.STDOUT,
+    # decision_log: why the detector ran, skipped or rejected each image (A3, FULL; the others write none)
+    launch = VISION + ' method:=%s decision_log:=%s' % (shlex.quote(method), shlex.quote(os.path.join(out, 'decisions.csv')))
+    p = subprocess.Popen(['bash', '-c', launch], stdout=open(log, 'w'), stderr=subprocess.STDOUT,
                          start_new_session=True, env=dict(os.environ, PYTHONUNBUFFERED='1'))
     for _ in range(150):
         time.sleep(1.0)
@@ -262,6 +277,36 @@ def stop_vision(p):
             time.sleep(0.5)
             if p.poll() is not None and len(vision_missing()) == len(PERCEPTION):
                 return
+
+
+def run_app(c, desired_class, duration):
+    """the camera application following desired_class for duration s: 'p', its digit in the object menu, HOME, TRACK,
+    then 'x'; a RuntimeError if the class is not in view or the application does not start or ends before"""
+    c.send('p')
+    m = c.expect(r'\[bridge\] classes in view[^\n]*\n((?:[^\n]*\n)*?)  0 cancel[^\n]*', 10)
+    sel = re.search(r'^  (\d) %s \(' % re.escape(desired_class), m.group(1), re.M)
+    if sel is None:
+        c.send('0')
+        raise RuntimeError('%s is not in view of the camera (the menu: %s)'
+                           % (desired_class, ', '.join(re.findall(r'^  \d (\S+)', m.group(1), re.M)) or 'empty'))
+    c.send(sel.group(1))
+    c.expect(r'\[HL\] camera application: HOME', 10, fail=r'\[(HL|bridge)\] (refused|no entry)[^\n]*')
+    c.expect(r'\[HL\] TRACK: camera application', 120, fail=r'\[HL\] (HOME stopped|TRACK refused|refused)[^\n]*')
+    print('run_timing: the camera application follows %s for %.0f s' % (desired_class, duration))
+    # nothing ends the TRACK of the application but 'x' (or a fault): one that ends before is a fault of the run
+    ended = re.compile(r'\[HL\] (camera application stopped|saved [^\n]*\(app, run)[^\n]*')
+    t_end = time.monotonic() + duration
+    while time.monotonic() < t_end:
+        time.sleep(1.0)
+        with c.lock:
+            e = ended.search(c.text, c.pos)
+        if e is not None:
+            raise RuntimeError('the camera application ended after %.0f s: %s'
+                               % (duration - (t_end - time.monotonic()), e.group(0)))
+        if not c.alive:
+            raise RuntimeError('the controller has exited (see the console log)')
+    c.send('x')
+    print('run_timing: %s' % c.expect(r'\[HL\] camera application stopped[^\n]*', 10).group(0).strip())
 
 
 def memrate_rate(path):
@@ -338,6 +383,9 @@ def main():
     ap.add_argument('--no-hl-log', action='store_true', help='HL_LOG=0: the high-level test not logged')
     ap.add_argument('--arch', default='P0', choices=('P0', 'S1', 'S2'),
                     help='where the EtherCAT task runs (S1: on the R5; S2: the control task there too)')
+    ap.add_argument('--method', default='M1', choices=('M1', 'M2', 'A2', 'A3', 'FULL'),
+                    help='--method of the controller and method:= of the camera pipeline')
+    ap.add_argument('--desired-class', default='', help='the camera application following CLASS, not the stream')
     ap.add_argument('--shadow', action='store_true',
                     help='the control computation a second time: with --arch S1 on the R5, with S2 here')
     a = ap.parse_args()
@@ -345,6 +393,8 @@ def main():
         ap.error('--pressure goes with --condition pressure, and only with it')
     if a.shadow and a.arch == 'P0':
         ap.error('--shadow goes with --arch S1 or S2')
+    if a.desired_class and a.condition not in ('perception', 'pressure'):
+        ap.error('--desired-class goes with the camera pipeline: --condition perception or pressure')
 
     src = os.path.abspath(a.cfg)
     rt_cpu = int(float(jp.cfg_get(src, 'TASK0', 'CPU', '3') or 3))
@@ -361,7 +411,7 @@ def main():
     code = 0
     try:
         if a.condition in ('perception', 'pressure'):
-            vision = start_vision(out)
+            vision = start_vision(out, a.method)
         elif len(vision_missing()) < len(PERCEPTION):
             warn('the camera pipeline runs: this is not the condition %s' % a.condition)
         if a.condition == 'stress':
@@ -390,6 +440,8 @@ def main():
             cmd += ['--arch', a.arch]
         if a.shadow:
             cmd += ['--shadow']
+        if a.method != 'M1':
+            cmd += ['--method', a.method]
         if a.arch != 'P0':
             r5rec = start_r5rec(out)
         print('run_timing: %s (in %s)' % (' '.join(cmd), APP))
@@ -425,16 +477,19 @@ def main():
         c.send('h')
         c.expect(r'\[ARM\] servo on: every joint in Operation enabled', 10,
                  fail=r'\[ARM\] (refused|the R5 refused the servo on)[^\n]*|SERVO ON NOT COMPLETE[^\n]*')
-        c.send('y')
-        c.expect(r'\[HL\] high-level tests', 10)
-        c.send('5')
-        c.expect(r'\[HL\] reference check: HOME to q_r', 10, fail=r'\[HL\] refused[^\n]*')
-        c.expect(r'\[HL\] TRACK: reference check', 120, fail=r'\[HL\] (HOME stopped|TRACK refused)[^\n]*')
-        print('run_timing: the goal stream runs for %.0f s' % a.duration)
-        m = c.expect(r'\[HL\] reference check (done|ended|stopped)[^\n]*', a.duration + 300)
-        print('run_timing: %s' % m.group(0).strip())
-        if 'coming to rest' in m.group(0):      # the arm stops at the accepted goal before the servo off
-            c.expect(r'\[HL\] (at rest at the accepted goal|not at rest after 20 s|stopped before the arm was at rest)', 30)
+        if a.desired_class:
+            run_app(c, a.desired_class, a.duration)
+        else:
+            c.send('y')
+            c.expect(r'\[HL\] high-level tests', 10)
+            c.send('5')
+            c.expect(r'\[HL\] reference check: HOME to q_r', 10, fail=r'\[HL\] refused[^\n]*')
+            c.expect(r'\[HL\] TRACK: reference check', 120, fail=r'\[HL\] (HOME stopped|TRACK refused)[^\n]*')
+            print('run_timing: the goal stream runs for %.0f s' % a.duration)
+            m = c.expect(r'\[HL\] reference check (done|ended|stopped)[^\n]*', a.duration + 300)
+            print('run_timing: %s' % m.group(0).strip())
+            if 'coming to rest' in m.group(0):      # the arm stops at the accepted goal before the servo off
+                c.expect(r'\[HL\] (at rest at the accepted goal|not at rest after 20 s|stopped before the arm was at rest)', 30)
         time.sleep(1.0)
         c.send('j')
         c.expect(r'SERVO OFF', 10)
@@ -480,7 +535,7 @@ def main():
         return 1
     with c.lock:
         for line in c.text.splitlines():
-            if line.startswith(('[RT]', '[BUS]', '[SIM]', '[R5]', '[SHADOW]', '[S2]')):
+            if line.startswith(('[RT]', '[BUS]', '[SIM]', '[R5]', '[SHADOW]', '[S2]', '[OBS]', '[bridge] ')):
                 print('run_timing: ' + line)
     logs = sorted(glob.glob(os.path.join(out, 'timing_*.bin')))
     if not logs:

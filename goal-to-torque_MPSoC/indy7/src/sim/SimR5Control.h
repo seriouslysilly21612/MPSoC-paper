@@ -27,11 +27,12 @@
 
 #include "../shadow/ControlCycle.h"
 #include "SimR5Slots.h"
+#include "../r5link/LinkClock.h"
 
 class CSimR5Control
 {
 public:
-	CSimR5Control() : m_pControl(NULL), m_nNoState(0)
+	CSimR5Control() : m_pControl(NULL), m_nNoState(0), m_fResponse(-1.0f)
 	{
 		memset(&m_stDrives, 0, sizeof(m_stDrives));
 		memset(&m_stSim, 0, sizeof(m_stSim));
@@ -57,6 +58,9 @@ public:
 		CControlCycle::Input stIn;
 		memset(&stIn, 0, sizeof(stIn));
 		stIn.uPeriod = auPeriod;
+		stIn.tRelease = auReleaseTicks;
+		stIn.fResponse = m_fResponse;		// of the period before that had a state, once (control_link.c)
+		m_fResponse = -1.0f;
 		ipc_command_t stCommand;
 		ipc_goal_t stGoal;
 		// the state, the goal, the command, as the firmware reads them (control_link.c): the reverse of the order
@@ -92,6 +96,7 @@ public:
 			for (int i = 0; i < IPC_CTRL_DOF; i++)
 				stTorque.tau[i] = stOut.adTau[i];
 			m_cSlots.PublishSimTorque(stTorque);
+			m_fResponse = (float)((double)(link_clock::Ticks() - auReleaseTicks) / (double)link_clock::TicksPerSecond());
 		}
 		else
 			m_nNoState++;
@@ -110,6 +115,7 @@ private:
 	ipc_sim_state_t		m_stSim;		// the last state of the arm taken
 	ipc_report_t		m_stReport;
 	long				m_nNoState;
+	float				m_fResponse;	// [s] release to torque of the last period with a state; < 0: given already
 };
 
 #endif // G2T_SIM_R5_CONTROL_H

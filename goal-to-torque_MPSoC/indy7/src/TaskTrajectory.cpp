@@ -380,7 +380,8 @@ CRobotIndy7::StartMotion(bool abHome, const double* adQ, const double* adQd, cha
 	}
 	const uint32_t uArg = (abHome ? (uint32_t)IPC_START_HOME : 0u) |
 	                      ((abHome && adHomeTarget != NULL) ? (uint32_t)IPC_START_TARGET : 0u) |
-	                      (m_bHlFF ? (uint32_t)IPC_START_FRICTION_FF : 0u);
+	                      (m_bHlFF ? (uint32_t)IPC_START_FRICTION_FF : 0u) |
+	                      ((!abHome && m_bS2ObsGoals) ? (uint32_t)IPC_START_OBS_GOALS : 0u);
 	if (!m_pS2->Queue(IPC_CMD_START, uArg, &stC))
 	{
 		m_cTraj.End(CTrajectoryRT::eAborted);
@@ -409,7 +410,12 @@ CRobotIndy7::UseGoalSlot(const CGoalSlot* apSlot, const double* adOffset)
 	m_cTraj.SetGoalSlot(apSlot);
 	m_cTraj.SetGoalOffset(adOffset);
 	if (m_pS2 != NULL)
+	{
 		m_pS2->UseGoalSlot(apSlot, adOffset);
+		// the methods with the mailbox: the receiver of the R5 writes the objects of a run of the application into
+		// the goal slot of its TRACK itself, with the hover height; the start says so (StartMotion)
+		m_bS2ObsGoals = (apSlot == &m_appGoalSlot) && obs_method::UsesMailbox(m_nMethod);
+	}
 }
 
 CTrajectoryRT::Sample*
@@ -463,6 +469,12 @@ CRobotIndy7::StartHighLevelMenu(int anSel, const task_slots::ST_STATE_SLOT& astS
 			       "HL_READY_Q and restart before test 1\n");
 		printf("[HL] 't' still checks the reach of a position from the q_r of the cfg\n");
 		return TRUE;
+	}
+	if (anSel == HL_APP && m_bS2ObsRefused)
+	{
+		printf("[HL] refused - the R5 refused the method of this run (the [R5] line above): its firmware was built "
+		       "from other [CONTRACT] or APP_* values than this cfg\n");
+		return FALSE;
 	}
 	if (anSel == HL_APP && m_pBridge == NULL && m_pSimCam == NULL)
 	{
@@ -608,8 +620,10 @@ CRobotIndy7::StartHighLevelTrack(const task_slots::ST_STATE_SLOT& astState,
 		/* the log of the camera results of this run: t = 0 is the first period of TRACK, the next one */
 		CObsLog::Meta stO = m_stObsMeta;
 		stO.nRun = stM.nRun;
-		stO.tStart = (uint64_t)astState.tRelease + stO.stSet.period_ticks;
-		m_obsGoal.GetCounts(m_stObsAt0);
+		stO.tStart = (m_pObsRingR5 != NULL ? m_cObsClock.TicksOf(astState.tRelease) : (uint64_t)astState.tRelease) +
+		             stO.stSet.period_ticks;
+		ObsCounts(m_stObsAt0);
+		m_uObsLost0 = m_stObsRing.lost;
 		for (int w = 0; w < (int)CObsWriter::eResults; w++)
 			m_anObsWriter0[w] = m_obsWriter.Count((CObsWriter::eResult)w);
 		m_cObsLog.Open(stO);
@@ -973,23 +987,49 @@ CRobotIndy7::ObsStep(const task_slots::ST_STATE_SLOT& astState)
 	obs_status_write(&m_obsStatus, &stStatus);
 	for (unsigned i = 0; m_cObsLog.IsOpen() && i < m_obsGoal.Entries(); i++)
 		m_cObsLog.Push(m_obsGoal.GetEntry(i));
-	if (m_obsGoal.Lost() != m_bObsLost)
+	ObsTellLost(m_obsGoal.Lost(), m_obsGoal.OutsideWorkspace());
+}
+
+// the target lost, or there again (a run of the application only)
+void
+CRobotIndy7::ObsTellLost(bool abLost, long anOutside)
+{
+	if (abLost == m_bObsLost)
+		return;
+	m_bObsLost = abLost;
+	// results came but lay outside the workspace since the target was last there: say so
+	const char* const pcWhy = anOutside > m_nObsOutsideSeen ?
+		"its results are outside the workspace (box, floor or radius)" :
+		"no camera result that the control task could use";
+	m_nObsOutsideSeen = anOutside;
+	if (m_eHlTest == eHlTestTracking && m_nHlSel == HL_APP)
 	{
-		m_bObsLost = m_obsGoal.Lost();
-		// results came but lay outside the workspace since the target was last there: say so
-		const long nOutside = m_obsGoal.OutsideWorkspace();
-		const char* const pcWhy = nOutside > m_nObsOutsideSeen ?
-			"its results are outside the workspace (box, floor or radius)" :
-			"no camera result that the control task could use";
-		m_nObsOutsideSeen = nOutside;
-		if (m_eHlTest == eHlTestTracking && m_nHlSel == HL_APP)
-		{
-			if (m_bObsLost)
-				printf("[APP] target lost: %s - the arm keeps its last goal\n", pcWhy);
-			else
-				printf("[APP] target again\n");
-		}
+		if (m_bObsLost)
+			printf("[APP] target lost: %s - the arm keeps its last goal\n", pcWhy);
+		else
+			printf("[APP] target again\n");
 	}
+}
+
+// the counts of the receiver: this side's, or with --arch S2 the newest of the R5
+void
+CRobotIndy7::ObsCounts(CObsGoal::Counts& astC) const
+{
+	if (m_pObsRingR5 == NULL)
+	{
+		m_obsGoal.GetCounts(astC);
+		return;
+	}
+	static_assert((int)OBS_WORKSPACE_VERDICTS == (int)CGoalFilter::eVerdicts, "the workspace verdicts");
+	const obs_counts_t& c = m_stObsR5Counts;
+	astC.uTaken = c.taken;
+	for (int v = 0; v < (int)OBS_VERDICTS; v++)
+		astC.auVerdict[v] = c.verdict[v];
+	for (int v = 0; v < (int)CGoalFilter::eVerdicts; v++)
+		astC.anWorkspace[v] = (long)c.workspace[v];
+	astC.nFolded = (long)c.folded;
+	astC.nRestarts = (long)c.restarts;
+	astC.nGoals = (long)c.goals;
 }
 
 void
@@ -1009,8 +1049,11 @@ CRobotIndy7::EndHighLevelTest(int anState, const task_slots::ST_FAULTS& astFault
 	if (m_cObsLog.IsOpen())
 	{
 		CObsLog::Result stO;
-		m_obsGoal.GetCounts(stO.stCounts);
+		ObsCounts(stO.stCounts);
 		stO.stCounts.Minus(m_stObsAt0);
+		if (m_stObsRing.lost != m_uObsLost0)
+			printf("[APP] the log of the camera results misses %u rows: the R5 wrote over them before they were taken\n",
+			       (unsigned)(m_stObsRing.lost - m_uObsLost0));
 		for (int w = 0; w < (int)CObsWriter::eResults; w++)
 			stO.anWriter[w] = m_obsWriter.Count((CObsWriter::eResult)w) - m_anObsWriter0[w];
 		m_cObsLog.Close(anState, stO);
@@ -1208,8 +1251,10 @@ trajectory_cycle(CRobotIndy7* pRobot, RTTIME tRelease, RTTIME tStart)
 			pRobot->m_pShadow->TrajState(stState.uPeriod, adQ, adQd);
 	}
 
-	/* the camera results of this period (the methods with the mailbox) */
-	if (bNewState && obs_method::UsesMailbox(pRobot->m_nMethod))
+	/* the camera results of this period (the methods with the mailbox); --arch S2: what the receiver of the R5 did */
+	if (obs_method::UsesMailbox(pRobot->m_nMethod) && pRobot->m_pObsRingR5 != NULL)
+		pRobot->ObsTakeR5();
+	else if (bNewState && obs_method::UsesMailbox(pRobot->m_nMethod))
 		pRobot->ObsStep(stState);
 
 	/* the command of the operator (DoInput, Dynamics task: this thread). A stop is taken at once; a start waits

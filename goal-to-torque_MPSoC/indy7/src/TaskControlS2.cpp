@@ -81,6 +81,46 @@ namespace
 	} g_stS2;
 }
 
+// --arch S2 with a method that uses the mailbox (Trajectory task, every cycle): the receiver is the R5's
+// (shadow/ControlCycle.h). Its status goes to the bridge as ObsStep writes it there, with its times on the clock of
+// the tasks; its entries go into the log of a run of the application, and its counts are those of that log.
+void
+CRobotIndy7::ObsTakeR5()
+{
+	obs_counts_t stC;
+	if (obs_ring_read_counts(m_pObsRingR5, &m_stObsRing, &stC) == IPC_OK)
+		m_stObsR5Counts = stC;
+	obs_entry_t stE;
+	while (obs_ring_take(m_pObsRingR5, &m_stObsRing, &m_stObsR5Counts, &stE))
+		if (m_cObsLog.IsOpen())
+		{
+			CObsGoal::Entry e;
+			e.stRec = stE.rec;
+			e.nWorkspace = stE.workspace;
+			e.nFolded = stE.folded;
+			for (int k = 0; k < 3; k++)
+				e.adObj[k] = stE.obj[k];
+			m_cObsLog.Push(e);
+		}
+	m_cObsClock.Sample();
+	obs_status_t stS;
+	uint32_t auStamp[2];
+	if (obs_status_read(m_pObsStatusR5, &stS, auStamp) != IPC_OK || stS.method == (uint8_t)OBS_RING_OFF)
+		return;
+	stS.t_release = (uint64_t)m_cObsClock.MonotonicOf(stS.t_release);
+	if (stS.result_t_e != 0)
+	{
+		stS.result_t_e = (uint64_t)m_cObsClock.MonotonicOf(stS.result_t_e);
+		stS.result_t_valid_until = (uint64_t)m_cObsClock.MonotonicOf(stS.result_t_valid_until);
+	}
+	obs_status_write(&m_obsStatus, &stS);
+	long nOutside = 0;
+	for (int v = 0; v < (int)OBS_WORKSPACE_VERDICTS; v++)
+		if (v != (int)CGoalFilter::eAccepted)
+			nOutside += (long)m_stObsR5Counts.workspace[v];
+	ObsTellLost((stS.flags & OBS_STATUS_TARGET_LOST) != 0, nOutside);
+}
+
 BOOL
 CRobotIndy7::QueueControl(uint32_t auCmd, uint32_t auArg)
 {
@@ -141,6 +181,13 @@ s2_take_report(CRobotIndy7* pRobot)
 		{
 			pRobot->m_nServoRefused++;
 			printf("[ARM] the R5 refused the servo on - %s\n", acWhy);
+		}
+		else if (uCmd == IPC_CMD_OBS)
+		{
+			pRobot->m_bS2ObsRefused = (uResult != IPC_DONE_OK);
+			if (pRobot->m_bS2ObsRefused)
+				printf("[R5] the method %s is refused, the application ('y' 8) too - %s\n",
+				       obs_method::Name(pRobot->m_nMethod), acWhy);
 		}
 		else if (uResult != IPC_DONE_OK)
 			printf("[R5] command %u refused - %s\n", (unsigned)uCmd, acWhy);

@@ -139,10 +139,10 @@ int main(int argc, char** argv)
 		Usage(argv[0]);
 		return 1;
 	}
-	if (nArch == arch::eS2 && obs_method::UsesMailbox(nMethod))
+	if (nArch == arch::eS2 && bShadow && obs_method::UsesMailbox(nMethod))
 	{
-		fprintf(stderr, "--arch S2: with --method M1 only so far (the part of the other methods that runs in the control "
-		                "task is not on the R5)\n");
+		fprintf(stderr, "--arch S2 --shadow: with --method M1 only (the goals of the receiver of the R5 are not in its "
+		                "report, from which the controller here repeats its periods)\n");
 		return 1;
 	}
 

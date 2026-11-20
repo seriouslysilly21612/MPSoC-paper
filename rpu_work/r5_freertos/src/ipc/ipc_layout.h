@@ -48,7 +48,7 @@
 #endif
 
 #define IPC_MAGIC	0x31435049u		/* "IPC1" */
-#define IPC_LAYOUT	6u				/* + 1 with every change of this file */
+#define IPC_LAYOUT	7u				/* + 1 with every change of this file */
 enum { IPC_MAX_DOF = 8 };			/* MAX_DOF of TaskSlots.h */
 enum { IPC_CTRL_DOF = 6 };			/* the joints of the controller (CHighLevelRT::DOF) */
 
@@ -112,15 +112,21 @@ enum
 	IPC_CMD_CTRL_ON = 4, IPC_CMD_CTRL_OFF = 5,		/* 'r' */
 	IPC_CMD_MOTION_STOP = 6,						/* 'x', 'g': the motion ends, gravity compensation */
 	IPC_CMD_HOLD_ON = 7, IPC_CMD_HOLD_OFF = 8,		/* 'k' */
-	IPC_CMD_START = 9								/* TRACK or HOME from the measured state (arg, delta, q_ready, target) */
+	IPC_CMD_START = 9,								/* TRACK or HOME from the measured state (arg, delta, q_ready, target) */
+	IPC_CMD_OBS = 10								/* the method of the camera application (arg: obs/ObsMethod.h; check):
+													 * its receiver on the R5 (obs/obs_ring.h) */
 };
-enum { IPC_START_HOME = 1u, IPC_START_TARGET = 2u, IPC_START_FRICTION_FF = 4u };	/* arg of IPC_CMD_START */
+/* arg of IPC_CMD_START. IPC_START_OBS_GOALS: the TRACK of the application; the objects of the receiver of the camera
+ * results are its goals, those after the start. Without it the goals of the Goal slot are */
+enum { IPC_START_HOME = 1u, IPC_START_TARGET = 2u, IPC_START_FRICTION_FF = 4u, IPC_START_OBS_GOALS = 8u };
 typedef struct
 {
 	uint32_t	seq;
 	uint32_t	cmd;				/* IPC_CMD_* */
 	uint32_t	arg;				/* IPC_CMD_START: IPC_START_* (without HOME: TRACK; HOME to q_ready, or to target) */
-	uint32_t	reserved;
+	uint32_t	check;				/* IPC_CMD_OBS: the check value of the receiver's numbers of the APU (ObsNumbersCrc of
+									 * shadow/ShadowParams.h); the R5 refuses a method with the mailbox when its own
+									 * numbers have another */
 	double		delta;				/* IPC_CMD_START: the goal threshold of the motion [m] */
 	double		q_ready[IPC_CTRL_DOF];	/* ... the ready posture [rad] */
 	double		target[IPC_CTRL_DOF];	/* ... IPC_START_TARGET [rad] */
@@ -137,8 +143,10 @@ enum
 	IPC_REFUSED_FAULT = 6,			/* a servo on: a controller fault is latched */
 	IPC_REFUSED_NOT_READY = 7,		/* a servo on: a drive cannot be switched on */
 	IPC_REFUSED_UNKNOWN = 8,		/* not a command of this control task */
-	IPC_REFUSED_ARGUMENT = 9		/* a start: a number of the command is not finite or outside its range (refusal_*:
+	IPC_REFUSED_ARGUMENT = 9,		/* a start: a number of the command is not finite or outside its range (refusal_*:
 									 * joint -1 the goal threshold, else that joint of the ready posture) */
+	IPC_REFUSED_OBS = 10			/* IPC_CMD_OBS: no such method; the receiver's numbers of the firmware are not those of
+									 * the APU ([CONTRACT], APP_*: another check value), or the receiver cannot use them */
 };
 
 /* APU -> R5 with --shadow: the control task's period, as far as a second controller needs it to compute the
@@ -302,6 +310,9 @@ typedef struct
 #define IPC_OFF_SIM_TORQUE	0x980u
 #define IPC_OFF_REPORT		0x9C0u
 #define IPC_OFF_END2		0xCC0u
+/* behind it the status of the receiver of the camera results and its record (obs/obs_ring.h), up to the end of
+ * the region that both sides map */
+#define IPC_REGION_BYTES	0x4000u
 
 enum { IPC_SLOT_HEAD_WORDS = 2, IPC_WORDS_MAX = sizeof(ipc_report_t) / 4 };	/* the largest payload */
 

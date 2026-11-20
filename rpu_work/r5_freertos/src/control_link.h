@@ -34,9 +34,10 @@ int  control_link_start(void);
 void control_link_drives(void);
 
 /* After the send of the cycle `period`.  bus_state: the frame of this cycle came back complete and the firmware is
- * not stopping.  Returns 1 with the times of the two parts of the control task in *traj_ns and *ctrl_ns (-1: that
- * part did not run), 0 when there is no controller. */
-int  control_link_step(uint32_t period, int bus_state, int32_t *traj_ns, int32_t *ctrl_ns);
+ * not stopping; release: of this cycle, ticks of the system counter (the time base of the camera results).
+ * Returns 1 with the times of the two parts of the control task in *traj_ns and *ctrl_ns (-1: that part did not
+ * run), 0 when there is no controller. */
+int  control_link_step(uint32_t period, int bus_state, uint64_t release, int32_t *traj_ns, int32_t *ctrl_ns);
 
 /* One line into the event log (EVENT_CONTROL_REPORT): the counts of the window, which starts anew. */
 void control_link_report(void);

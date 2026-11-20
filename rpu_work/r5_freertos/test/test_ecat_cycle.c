@@ -73,11 +73,12 @@ void shadow_link_report(void) { }
 /* ---- the control task (CONTROL_TASK): for the clock as the second controller; what the cycle gives it ---- */
 static int control_drives, control_bus_state = -1;
 static uint32_t control_period;
+static uint64_t control_release;
 int  control_link_start(void) { return 1; }
 void control_link_drives(void) { control_drives++; }
-int  control_link_step(uint32_t period, int bus_state, int32_t *traj_ns, int32_t *ctrl_ns)
+int  control_link_step(uint32_t period, int bus_state, uint64_t release, int32_t *traj_ns, int32_t *ctrl_ns)
 {
-    control_period = period; control_bus_state = bus_state;
+    control_period = period; control_bus_state = bus_state; control_release = release;
     return shadow_link_step(traj_ns, ctrl_ns);
 }
 void control_link_report(void) { }
@@ -144,12 +145,13 @@ int main(void)
     next_wkc = ecat_expected_wkc; wake_ticks = 500; part_ticks[0] = 1000; part_ticks[1] = 2000; part_ticks[2] = 3000;
     ecat_cycle(1000);
     CHECK(cycle_index == 1 && state.n == 1 && state.period == 1 && state.flags == ST(IPC_STATE_OP));
-#if CONTROL_TASK
+#if CONTROL_TASK      /* the camera results are the control task's: it has the release, the old reader is not polled */
     CHECK(apu_takes == 0 && control_drives == 1 && control_period == 1 && control_bus_state == 1);
+    CHECK(state.release == 1000ull * TICKS_PER_CYCLE && control_release == state.release && obs_now == 0);
 #else
     CHECK(apu_takes == 2 && control_drives == 0 && control_bus_state == -1);
-#endif
     CHECK(state.release == 1000ull * TICKS_PER_CYCLE && obs_now == state.release);       /* the tick, not the start */
+#endif
     CHECK(state.faults.late == 0 && state.faults.missed == 0 && state.faults.overruns == 0 && state.faults.wkc == 0);
     CHECK(updates == 1 && zeros == 0 && frames_sent == 1 && record_count() == 1);
     r = last_record();

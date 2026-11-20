@@ -8,7 +8,7 @@ namespace {
 
 /* the keys of the .json */
 const char* const s_apcWorkspace[CGoalFilter::eVerdicts] = { "accepted", "invalid", "not_finite", "below_floor", "outside_box" };
-const char* const s_apcWriter[CObsWriter::eResults] = { "written", "invalid", "not_finite", "age", "full", "expired" };
+const char* const s_apcWriter[CObsWriter::eResults] = { "written", "invalid", "not_finite", "age", "full", "expired", "clock" };
 
 /* a time of the log [s]: from the start of the run, negative before it */
 double Rel(uint64_t atT, const ObsFormat::Meta& astM)

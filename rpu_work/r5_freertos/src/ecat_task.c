@@ -226,6 +226,7 @@ static void take_apu_slots(uint64_t now)
 {
 #if CONTROL_TASK
     control_link_drives();              /* the command and the torque are the control task's (after the send) */
+    (void)now;
 #else
     ipc_command_t command;
 
@@ -240,8 +241,8 @@ static void take_apu_slots(uint64_t now)
     int fresh = ocm_link_take_torque(&torque);
 
     axis_control_torque_input(fresh, torque.usable, torque.tau);
+    obs_link_poll(now);                 /* the camera results: taken and counted (the control task takes them itself) */
 #endif
-    obs_link_poll(now);                 /* the camera results: taken and counted; the control task will use them (plan 4-3) */
 }
 
 /* ----------------------------------------------------------------------- */
@@ -314,7 +315,8 @@ static void ecat_cycle(uint32_t planned_tick)
         int32_t traj_ns, ctrl_ns;
 
 #if CONTROL_TASK
-        if (stop_step == STOP_NONE && control_link_step(cycle_index, wkc >= ecat_expected_wkc, &traj_ns, &ctrl_ns)) {
+        if (stop_step == STOP_NONE &&
+            control_link_step(cycle_index, wkc >= ecat_expected_wkc, t.release, &traj_ns, &ctrl_ns)) {
 #else
         if (stop_step == STOP_NONE && shadow_link_step(&traj_ns, &ctrl_ns)) {
 #endif
@@ -370,7 +372,9 @@ static void post_status_report(uint32_t cycles)
         e->value[9] = (int32_t)loop_timing.overruns;
         event_publish();
     }
+#if !CONTROL_TASK
     obs_link_report(sys_counter_now());
+#endif
 #if SHADOW_CONTROL
     shadow_link_report();
 #endif
@@ -400,7 +404,9 @@ void ecat_task(void *arg)
         set_status(ECAT_STATUS_INIT_FAILED);
         for (;;) vTaskDelay(pdMS_TO_TICKS(1000));
     }
-    obs_link_start();
+#if !CONTROL_TASK
+    obs_link_start();                   /* with the control task the mailbox has one reader: its receiver */
+#endif
     cycle_record_start();
 #if SHADOW_CONTROL
     (void)shadow_link_start();          /* here: nothing is on the bus yet while the controller is built */

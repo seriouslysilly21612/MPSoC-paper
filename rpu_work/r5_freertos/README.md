@@ -534,8 +534,12 @@ computation after the send of every cycle, on the measured state of that cycle, 
 with the send of the next cycle, as the torque of the APU's control task does. `SHADOW_CONTROL` is then off by
 itself (one controller in a build). The APU sends commands and goals and gets a report of every period; a period
 of the APU that comes late no longer leaves the drives without a torque. The application's side is `--arch S2`
-(`../../goal-to-torque_MPSoC/README.md`); the shared region is layout 6 with it (2026-11-20: the report also has
-the counts of the high-level controller in the motion and the target of its IK, for the logs of the application).
+(`../../goal-to-torque_MPSoC/README.md`); the shared region is layout 7 with it (2026-11-20: the report also has
+the counts of the high-level controller in the motion and the target of its IK, for the logs of the application; and
+the receiver of the camera results of the methods other than M1 runs in the control task: `src/obs/` and
+`src/ctrl/GoalFilter.h` are copies of the application's files, `obs_link.c` is not polled in this build; its
+numbers are the second array of `src/ctrl/ctrl_numbers_indy7.h`, with a check value of their own that the `[control]`
+line prints: a cfg with other `[CONTRACT]` or `APP_*` values refuses those methods, not the controller).
 With `--shadow` the application repeats every period from its report with a controller of its own and compares
 the torque and the reference: what this firmware computes on the R5 against the same code on the APU.
 

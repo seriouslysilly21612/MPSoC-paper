@@ -47,7 +47,8 @@ VERDICTS = ['accepted', 'superseded', 'expired', 'state_unrecoverable', 'seq_fai
 HL_AT_REST, HL_HAS_GOAL = 32, 64        # flags of the high-level log (TrajectoryRT.h)
 # why the camera side did not write a result (ObsWriter.h), why the workspace check refused one (GoalFilter.h)
 NOT_WRITTEN = [('invalid', 'invalid'), ('not_finite', 'not finite'), ('age', 'older than the cap or from the future'),
-               ('full', 'with no free slot'), ('expired', 'past their deadline')]
+               ('full', 'with no free slot'), ('expired', 'past their deadline'),
+               ('clock', 'without a close reading of the counter')]
 OUTSIDE = [('invalid', 'invalid'), ('not_finite', 'not finite'), ('below_floor', 'below the floor'),
            ('outside_box', 'outside the box or the radius')]
 

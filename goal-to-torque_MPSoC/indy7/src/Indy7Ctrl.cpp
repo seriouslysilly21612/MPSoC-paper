@@ -314,10 +314,13 @@ CRobotIndy7::Init()
 	}
 
 	// the bridge of the camera application, the logs of the tests, the live
-	// view: before the tasks use them
-	if (FALSE == InitObs() || FALSE == InitSimCamera())
+	// view: before the tasks use them. --arch S2: the camera side after the
+	// link, as its mailbox is in the region of the R5
+	const BOOL bCameraLater = (m_nArch == arch::eS2) ? TRUE : FALSE;
+	if (!bCameraLater && (FALSE == InitObs() || FALSE == InitSimCamera()))
 		return FALSE;
-	InitBridge();
+	if (!bCameraLater)
+		InitBridge();
 	InitJointTest();
 	InitHighLevelTests();
 	if (stSys.nViewPort > 0)
@@ -329,6 +332,10 @@ CRobotIndy7::Init()
 		return FALSE;
 	if (bR5 && FALSE == InitR5Link())
 		return FALSE;
+	if (bCameraLater && (FALSE == InitObs() || FALSE == InitSimCamera()))
+		return FALSE;
+	if (bCameraLater)
+		InitBridge();
 
 	// -t: the log takes the first period of the EtherCAT task
 	if (!m_strTimingDir.empty())
@@ -459,6 +466,10 @@ CRobotIndy7::AppFilter() const
 // (obs/ObsGoal.h) by the Trajectory task. The settings are those of
 // [CONTRACT], which M1 does not read, with the goal checks and the smoothing
 // of the application (APP_*). FALSE: a setting cannot be used.
+// --arch S2 (after InitR5Link): the control task's side is the R5's, built
+// from the same settings (shadow/ControlCycle.h); the mailbox is in the
+// region of the R5, and its times are ticks of the system counter. The
+// settings are still checked here, on a receiver that does not run.
 BOOL
 CRobotIndy7::InitObs()
 {
@@ -516,8 +527,20 @@ CRobotIndy7::InitObs()
 		              "SIM_STATE_DELAY_STEPS 0..%d", pcMethod, (int)OBS_STATES - 3, (int)CObsGoal::MAX_STATE_AGE);
 		return FALSE;
 	}
-	const CObsWriter::Config stW = { stC.dAgeCapS, { (float)stC.vEpsM[0], (float)stC.vEpsM[1] } };
-	m_obsWriter.Init(&m_obsBox, stW);
+	const bool bR5 = (m_nArch == arch::eS2);
+	CObsWriter::Config stW = { stC.dAgeCapS, { (float)stC.vEpsM[0], (float)stC.vEpsM[1] } };
+	volatile obs_mailbox_t* pBox = &m_obsBox;
+	if (bR5)
+	{
+		volatile uint32_t* const pRegion = m_pLink->Region();
+		pBox = (volatile obs_mailbox_t*)(pRegion + OBS_OFF_MAILBOX / 4u);
+		m_pObsStatusR5 = (volatile obs_status_region_t*)(pRegion + OBS_OFF_STATUS / 4u);
+		m_pObsRingR5 = (volatile obs_ring_t*)(pRegion + OBS_OFF_RING / 4u);
+		stW.pTicks = &link_clock::Ticks;
+		stW.uTicksPerS = link_clock::TicksPerSecond();
+		m_cObsClock.Sample();
+	}
+	m_obsWriter.Init(pBox, stW);
 	m_uContractCrc = ObsContractCrc(stC);
 	obs_recent_max_start(&m_stObsResponse, (uint32_t)(1000000000LL / m_pConfig->Tasks()[1].nPeriod));		// 1 s of periods
 	obs_status_start(&m_obsStatus);
@@ -526,12 +549,19 @@ CRobotIndy7::InitObs()
 	snprintf(stM.acMethod, sizeof(stM.acMethod), "%s", pcMethod);
 	stM.bSim = stSys.bSim;
 	stM.stSet = stG.stSet;
+	if (bR5)		// the times of the entries are the R5's (CControlCycle::SetObsLink)
+	{
+		const double dTps = (double)link_clock::TicksPerSecond();
+		stM.stSet.ticks_per_s = dTps;
+		stM.stSet.period_ticks = (uint64_t)std::llround((double)m_pConfig->Tasks()[1].nPeriod * 1e-9 * dTps);
+		stM.stSet.age_cap_ticks = (uint64_t)std::llround(stC.dAgeCapS * dTps);
+	}
 	stM.dTolM = stG.dTolM;
 	stM.nStateAge = stG.nStateAge;
 	for (int k = 0; k < 3; k++)
 		stM.adTagOffset[k] = m_adTagOffset[k];
-	printf("[APP] method %s: the camera results go through the mailbox; the control task uses one for at most %.0f ms "
-	       "after its capture%s\n", pcMethod, stC.dAgeCapS * 1e3,
+	printf("[APP] method %s: the camera results go through the mailbox%s; the control task uses one for at most %.0f ms "
+	       "after its capture%s\n", pcMethod, bR5 ? " to the R5" : "", stC.dAgeCapS * 1e3,
 	       stG.stSet.policy == OBS_CONTRACT ? ", with the joint angles of the capture and the error bound of eq. (7)" :
 	       ", with the joint angles of its arrival");
 	if (stG.stSet.policy == OBS_CONTRACT)
@@ -1010,6 +1040,11 @@ CRobotIndy7::PrintRtSummary() const
 		printf("[S2] commands: %ld written, %ld refused by the R5, %ld dropped here (it did not answer); goals "
 		       "written: %ld, taken by the R5 in this run: %ld\n", c.nCommands, c.nRefused, c.nQueueFull, c.nGoals,
 		       c.nGoalsTaken);
+		if (m_pObsRingR5 != NULL)		// the goals of the application are the receiver's there
+			printf("[S2] the receiver of the camera results on the R5 (since it started): %u results taken, %u object "
+			       "positions written (the goals of a run of the application); %u of its log entries were "
+			       "overwritten before they were taken here\n",
+			       (unsigned)m_stObsR5Counts.taken, (unsigned)m_stObsR5Counts.goals, (unsigned)m_stObsRing.lost);
 		printf("[S2] time on the R5, in the reports taken: high-level controller mean %.1f us, max %.1f us (%ld "
 		       "periods); control law mean %.1f us, max %.1f us (%ld periods)\n",
 		       c.nTraj > 0 ? c.dTrajNsSum / (double)c.nTraj * 1e-3 : 0.0, (double)c.uTrajNsMax * 1e-3, c.nTraj,
@@ -1453,6 +1488,21 @@ CRobotIndy7::InitR5Link()
 			m_pSimControl = new CControlCycle();
 			if (FALSE == m_pSimControl->Init(m_pConfig->System().strURDFPath.c_str(), adNumbers, uShadowCheck))
 				return FALSE;
+			// its receiver of the camera results, as the firmware builds it (control_ctrl_build)
+			volatile uint32_t* const pRegion = m_pSimR5->Region();
+			double adObs[OBS_NUMBERS];
+			ObsNumbers(*m_pConfig, adObs);
+			CControlCycle::ObsLink stObs;
+			stObs.pBox = (volatile obs_mailbox_t*)(pRegion + OBS_OFF_MAILBOX / 4u);
+			stObs.pStatus = (volatile obs_status_region_t*)(pRegion + OBS_OFF_STATUS / 4u);
+			stObs.pRing = (volatile obs_ring_t*)(pRegion + OBS_OFF_RING / 4u);
+			stObs.dTicksPerS = (double)link_clock::TicksPerSecond();
+			stObs.pNumbers = adObs;
+			stObs.uNumbersCrc = ObsNumbersCrc(adObs);
+			stObs.uContractCrc = ObsContractCrc(m_pConfig->Contract());
+			if (FALSE == m_pSimControl->SetObsLink(stObs))
+				printf("[SIM R5] the receiver of the camera results cannot use the [CONTRACT] and APP_* values of the "
+				       "cfg: the methods other than M1 are refused\n");
 			m_pSimR5->SetControl(m_pSimControl);
 			stSpec.uDrives = (unsigned)uDrives;
 		}
@@ -1471,8 +1521,18 @@ CRobotIndy7::InitR5Link()
 		m_pS2 = new CControlClient();
 		m_pS2->Init(m_pLink, (double)vTasks[1].nPeriod * 1e-9);
 		m_pS2->UseGoalSlot(&m_goalSlot, adNone);
+		// the method of this run for the receiver of the R5, which keeps the method of a run before (M1: off), with
+		// the check value of its numbers here: a firmware built from other ones refuses it
+		double adObs[OBS_NUMBERS];
+		ObsNumbers(*m_pConfig, adObs);
+		m_uS2ObsCheck = ObsNumbersCrc(adObs);
+		ipc_command_t stObsCmd;
+		memset(&stObsCmd, 0, sizeof(stObsCmd));
+		stObsCmd.check = m_uS2ObsCheck;
+		m_pS2->Queue(IPC_CMD_OBS, (uint32_t)m_nMethod, &stObsCmd);
 		printf("[S2] the control task runs on the R5: commands and goals go there, its report comes back; check value "
-		       "of the controller of this configuration 0x%08X\n", (unsigned)uShadowCheck);
+		       "of the controller of this configuration 0x%08X, of the receiver of the camera results 0x%08X\n",
+		       (unsigned)uShadowCheck, (unsigned)m_uS2ObsCheck);
 	}
 	if (m_bShadow && bS2)
 	{

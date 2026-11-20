@@ -30,7 +30,7 @@
 #define SLOT_SIM_TORQUE ((volatile uint32_t *)(OCM_LINK_BASE + IPC_OFF_SIM_TORQUE))
 #define SLOT_REPORT     ((volatile uint32_t *)(OCM_LINK_BASE + IPC_OFF_REPORT))
 
-_Static_assert(IPC_OFF_END2 <= OCM_LINK_SIZE, "the slots are outside the OCM window");
+_Static_assert(IPC_REGION_BYTES <= OCM_LINK_SIZE, "the region of the link is outside the OCM window");
 
 static uint32_t r5_epoch;
 static uint32_t command_epoch, command_seq;          /* (epoch, seq) of the last command seen */

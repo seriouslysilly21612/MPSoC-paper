@@ -7,6 +7,7 @@
 #include "app_config.h"
 #include "control_link.h"
 #include "ocm_link.h"
+#include "sys_counter.h"
 #include "axis_control.h"
 #include "event_log.h"
 #include "ctrl/control_ctrl.h"
@@ -31,15 +32,21 @@ static uint32_t n_plans, n_iks, n_plan_late, n_plans_before, n_iks_before, plan_
 
 int control_link_start(void)
 {
-    built = control_ctrl_build();
+    built = control_ctrl_build((volatile uint32_t *)OCM_LINK_BASE, (double)SYSCNT_HZ);
     ctrl_port_loop();                                /* from here the classes print nothing */
+    if (built == 2) {
+        xil_printf("[control] the receiver of the camera results cannot use its numbers of this build ([CONTRACT],"
+                   " APP_*): the methods other than M1 are refused (IPC_CMD_OBS)\r\n");
+        built = 1;
+    }
     if (!built) {
         xil_printf("[control] FAIL: the controller could not be built (the C heap, _HEAP_SIZE of lscript.ld, or the"
                    " [ctrl] lines above): the cycle runs without it and the drives stay off\r\n");
         return 0;
     }
-    xil_printf("[control] the control task runs here, after the send of every cycle: check value 0x%08x; the arm"
-               " is %s\r\n", (unsigned)control_ctrl_check_value(),
+    xil_printf("[control] the control task runs here, after the send of every cycle: check value 0x%08x, of the"
+               " receiver of the camera results 0x%08x; the arm is %s\r\n", (unsigned)control_ctrl_check_value(),
+               (unsigned)control_ctrl_obs_check_value(),
                BUS_IS_ARM ? "that of the bus, or the one the APU simulates (Sim state slot)"
                                           : "the one the APU simulates (Sim state slot): this bus has not its joints");
     return 1;
@@ -62,8 +69,9 @@ void control_link_drives(void)
     held_fresh = 0;
 }
 
-int control_link_step(uint32_t period, int bus_state, int32_t *traj_ns, int32_t *ctrl_ns)
+int control_link_step(uint32_t period, int bus_state, uint64_t release, int32_t *traj_ns, int32_t *ctrl_ns)
 {
+    static float response = -1.0f;                   /* [s] of the period before that had a state; < 0: none */
     static control_in_t     in;
     static control_out_t    out;
     static ipc_report_t     report;
@@ -75,7 +83,10 @@ int control_link_step(uint32_t period, int bus_state, int32_t *traj_ns, int32_t 
 
     if (!built) return 0;
     memset(&in, 0, sizeof(in));
-    in.period  = period;
+    in.period   = period;
+    in.release  = release;
+    in.response = response;
+    response    = -1.0f;
     /* The state of a simulated arm, the goal, the command: the reverse of the order in which the APU writes them
        (command, goal, state, from one task).  So a state that is here has every command and goal that the APU wrote
        before it, and a run with a simulated arm does not depend on when the APU writes; and a goal that is here has
@@ -137,6 +148,8 @@ int control_link_step(uint32_t period, int bus_state, int32_t *traj_ns, int32_t 
         held = out;
         held_fresh = 1;
     }
+    if (in.state)                                    /* release to torque, as the APU's control task measures it */
+        response = (float)((double)(sys_counter_now() - release) / (double)SYSCNT_HZ);
 
     *traj_ns = (report.state & IPC_CTL_SAMPLE) ? (int32_t)report.traj_ns : -1;
     *ctrl_ns = (report.in.flags & IPC_SHADOW_CTRL) ? (int32_t)report.ctrl_ns : -1;
