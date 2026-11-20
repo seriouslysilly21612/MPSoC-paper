@@ -469,16 +469,20 @@ The tasks follow the period of the R5 `WAKE_DELAY_S2_US` behind (`[R5_LINK]`, 64
 task of the R5 must have ended by then, at most 458 us after its release on the idle bench and 690 us under pressure). The run ends with the
 `[S2]` lines: the reports taken and those of a period with a state that were not, the commands written, refused by
 the R5 and dropped here, the goals written and those the R5 took in this run, the times of the two parts on the R5, its periods without a
-state and its planner in this run, and what the run leaves on it. The shared region is layout 6 (the report has the
-counts of the high-level controller and the target of its IK). Not run with the real R5 yet (2026-11-20).
+state and its planner in this run, and what the run leaves on it. The shared region is layout 7 (the report has the
+counts of the high-level controller and the target of its IK; behind the slots the receiver of the camera results,
+below). Run with the real R5 on the L7N bench with M1 (layout 6, 2026-11-20); layout 7 not yet.
 
 With a method other than M1 (2026-11-20, layout 7) the receiver of the camera results (`obs/ObsGoal.h`) runs in the
 control task of the R5, before its trajectory part, built from the same `[CONTRACT]` and `APP_*` numbers
-(`shadow/ControlCycle.h`; they are part of its check value, and the firmware's `CTRL_CONTRACT_CRC` is the check value of
-`[CONTRACT]` that its status carries). The mailbox lies in the shared region (+0x500), its times are ticks of the
-system counter, and the camera side here writes them so (`obs/ObsWriter.h`). The run tells the R5 its method
-(`IPC_CMD_OBS`, also before every TRACK: with the application's goal slot the R5 makes the objects the goals of TRACK
-itself, with the hover height). The R5 writes the status of the receiver (+0xD00) and an entry for every result
+(`shadow/ControlCycle.h`; `OBS_NUMBERS` of `shadow/ShadowControl.h`, the second array of the firmware's
+`ctrl_numbers_indy7.h`, apart from the numbers of the controller: other values refuse these methods, not the
+controller; `CTRL_CONTRACT_CRC` is the check value of `[CONTRACT]` that its status carries). The mailbox lies in the
+shared region (+0x500), its times are ticks of the system counter, and the camera side here writes them so
+(`obs/ObsWriter.h`, the counter read between two close reads of the clock). The run tells the R5 its method with the
+check value of those numbers (`IPC_CMD_OBS`; refused: `'y'` 8 is refused too), and the start of the application's
+TRACK says that the objects of the receiver are its goals (`IPC_START_OBS_GOALS`): the R5 writes them, with the hover
+height, until another writer of the mailbox starts. Commands go to the R5 once it has reported in this run. The R5 writes the status of the receiver (+0xD00) and an entry for every result
 that left it with its counts (+0xD80, `obs/obs_ring.h`); here they become the status of the bridge and the log of
 the camera results of a run, as with P0. `--shadow` is refused with these methods (the report does not carry the
 goals of the receiver).

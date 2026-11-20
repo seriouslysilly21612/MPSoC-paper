@@ -301,7 +301,8 @@ static int build(void)
         printf("FAIL: the planner has work before the controller is built\n");
         return 1;
     }
-    if (!control_ctrl_build() || !shadow_ctrl_build())
+    static volatile uint32_t region[IPC_REGION_BYTES / 4];      // the link of the firmware: its receiver is not replayed
+    if (!control_ctrl_build(region, 1e9) || !shadow_ctrl_build())
     {
         fprintf(stderr, "the controllers cannot be built\n");
         return 2;

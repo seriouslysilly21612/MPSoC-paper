@@ -1,11 +1,11 @@
-/* The numbers of the controller (SHADOW_NUMBERS of ShadowControl.h), from the configuration of the
- * controller. Written by ctrl_numbers_header: not to be edited. */
+/* The numbers of the controller (SHADOW_NUMBERS of ShadowControl.h) and of the receiver of the camera
+ * results (OBS_NUMBERS), from the configuration of the controller. Written by ctrl_numbers_header: not to
+ * be edited. */
 #ifndef CTRL_NUMBERS_H
 #define CTRL_NUMBERS_H
 
-#define CTRL_NUMBERS_CRC   0x087FA2D3u	/* of the numbers below */
-#define CTRL_CONTRACT_CRC  0x2E7B0347u	/* of [CONTRACT] (obs/ObsContract.h): the camera side compares it */
-#define CTRL_NUMBERS_COUNT 75
+#define CTRL_NUMBERS_CRC   0x355B499Du	/* of the numbers below */
+#define CTRL_NUMBERS_COUNT 50
 
 static const double CTRL_NUMBERS[CTRL_NUMBERS_COUNT] =
 {
@@ -59,6 +59,15 @@ static const double CTRL_NUMBERS[CTRL_NUMBERS_COUNT] =
 	0x1.0a3d70a3d70a4p-2,	/* 0.26: limit margin [rad] */
 	0x1.999999999999ap-4,	/* 0.1: lead bound [rad] */
 	0x0p+0,	/* 0: step baseline (0, 1) */
+};
+
+/* the receiver: other values refuse the methods with the mailbox (IPC_CMD_OBS), not the controller */
+#define CTRL_OBS_NUMBERS_CRC   0x108279EDu	/* of the numbers below: IPC_CMD_OBS brings the APU's */
+#define CTRL_CONTRACT_CRC      0x2E7B0347u	/* of [CONTRACT] (obs/ObsContract.h): the camera side compares it */
+#define CTRL_OBS_NUMBERS_COUNT 25
+
+static const double CTRL_OBS_NUMBERS[CTRL_OBS_NUMBERS_COUNT] =
+{
 	0x1.47ae147ae147bp-7,	/* 0.01: contract: delta [m] */
 	0x1p-2,	/* 0.25: contract: age cap [s] */
 	0x1.0624dd2f1a9fcp-10,	/* 0.001: contract: e0 [m] */

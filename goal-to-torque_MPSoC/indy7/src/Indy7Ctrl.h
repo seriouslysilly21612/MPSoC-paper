@@ -406,6 +406,9 @@ private:
 	BOOL          QueueControl             (uint32_t auCmd, uint32_t auArg = 0);
 	uint32_t      m_uS2Check{0};           // the check value of the controller of this configuration (ShadowCheckValue)
 	bool          m_bS2SameController{true};  // the firmware of the R5 has that controller (its reports say so)
+	uint32_t      m_uS2ObsCheck{0};        // the check value of the receiver's numbers of this configuration (ObsNumbersCrc)
+	bool          m_bS2ObsRefused{false};  // the R5 refused the method of this run (IPC_CMD_OBS): no application
+	bool          m_bS2ObsGoals{false};    // the goal slot of TRACK is the application's: its start says so to the R5
 
 	// malloc-count build: heap allocations of the Dynamics task, in the
 	// control law (Update) and in the whole cycle, and of the whole cycles of

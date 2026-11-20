@@ -380,7 +380,8 @@ CRobotIndy7::StartMotion(bool abHome, const double* adQ, const double* adQd, cha
 	}
 	const uint32_t uArg = (abHome ? (uint32_t)IPC_START_HOME : 0u) |
 	                      ((abHome && adHomeTarget != NULL) ? (uint32_t)IPC_START_TARGET : 0u) |
-	                      (m_bHlFF ? (uint32_t)IPC_START_FRICTION_FF : 0u);
+	                      (m_bHlFF ? (uint32_t)IPC_START_FRICTION_FF : 0u) |
+	                      ((!abHome && m_bS2ObsGoals) ? (uint32_t)IPC_START_OBS_GOALS : 0u);
 	if (!m_pS2->Queue(IPC_CMD_START, uArg, &stC))
 	{
 		m_cTraj.End(CTrajectoryRT::eAborted);
@@ -412,9 +413,8 @@ CRobotIndy7::UseGoalSlot(const CGoalSlot* apSlot, const double* adOffset)
 	{
 		m_pS2->UseGoalSlot(apSlot, adOffset);
 		// the methods with the mailbox: the receiver of the R5 writes the objects of a run of the application into
-		// the goal slot of its TRACK itself, with the hover height (before the start: only later objects count)
-		if (obs_method::UsesMailbox(m_nMethod))
-			QueueControl(IPC_CMD_OBS, (uint32_t)m_nMethod | (apSlot == &m_appGoalSlot ? (uint32_t)IPC_OBS_GOALS : 0u));
+		// the goal slot of its TRACK itself, with the hover height; the start says so (StartMotion)
+		m_bS2ObsGoals = (apSlot == &m_appGoalSlot) && obs_method::UsesMailbox(m_nMethod);
 	}
 }
 
@@ -469,6 +469,12 @@ CRobotIndy7::StartHighLevelMenu(int anSel, const task_slots::ST_STATE_SLOT& astS
 			       "HL_READY_Q and restart before test 1\n");
 		printf("[HL] 't' still checks the reach of a position from the q_r of the cfg\n");
 		return TRUE;
+	}
+	if (anSel == HL_APP && m_bS2ObsRefused)
+	{
+		printf("[HL] refused - the R5 refused the method of this run (the [R5] line above): its firmware was built "
+		       "from other [CONTRACT] or APP_* values than this cfg\n");
+		return FALSE;
 	}
 	if (anSel == HL_APP && m_pBridge == NULL && m_pSimCam == NULL)
 	{

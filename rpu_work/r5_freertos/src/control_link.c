@@ -35,8 +35,8 @@ int control_link_start(void)
     built = control_ctrl_build((volatile uint32_t *)OCM_LINK_BASE, (double)SYSCNT_HZ);
     ctrl_port_loop();                                /* from here the classes print nothing */
     if (built == 2) {
-        xil_printf("[control] the receiver of the camera results cannot start with the [CONTRACT] numbers of this"
-                   " build: the methods other than M1 are refused (IPC_CMD_OBS)\r\n");
+        xil_printf("[control] the receiver of the camera results cannot use its numbers of this build ([CONTRACT],"
+                   " APP_*): the methods other than M1 are refused (IPC_CMD_OBS)\r\n");
         built = 1;
     }
     if (!built) {
@@ -44,8 +44,9 @@ int control_link_start(void)
                    " [ctrl] lines above): the cycle runs without it and the drives stay off\r\n");
         return 0;
     }
-    xil_printf("[control] the control task runs here, after the send of every cycle: check value 0x%08x; the arm"
-               " is %s\r\n", (unsigned)control_ctrl_check_value(),
+    xil_printf("[control] the control task runs here, after the send of every cycle: check value 0x%08x, of the"
+               " receiver of the camera results 0x%08x; the arm is %s\r\n", (unsigned)control_ctrl_check_value(),
+               (unsigned)control_ctrl_obs_check_value(),
                BUS_IS_ARM ? "that of the bus, or the one the APU simulates (Sim state slot)"
                                           : "the one the APU simulates (Sim state slot): this bus has not its joints");
     return 1;

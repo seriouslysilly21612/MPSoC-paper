@@ -182,6 +182,13 @@ s2_take_report(CRobotIndy7* pRobot)
 			pRobot->m_nServoRefused++;
 			printf("[ARM] the R5 refused the servo on - %s\n", acWhy);
 		}
+		else if (uCmd == IPC_CMD_OBS)
+		{
+			pRobot->m_bS2ObsRefused = (uResult != IPC_DONE_OK);
+			if (pRobot->m_bS2ObsRefused)
+				printf("[R5] the method %s is refused, the application ('y' 8) too - %s\n",
+				       obs_method::Name(pRobot->m_nMethod), acWhy);
+		}
 		else if (uResult != IPC_DONE_OK)
 			printf("[R5] command %u refused - %s\n", (unsigned)uCmd, acWhy);
 	}

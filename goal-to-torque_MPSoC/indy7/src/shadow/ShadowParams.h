@@ -52,36 +52,44 @@ inline bool ShadowNumbers(const CConfig& acConfig, double* adNumbers)
 	n[SHADOW_N_MARGIN]     = stS.dHlMargin;
 	n[SHADOW_N_LEAD]       = stS.dHlLead;
 	n[SHADOW_N_STEP_REF]   = (stS.nHlStepBaseline != 0) ? 1.0 : 0.0;
-	const ST_CONFIG_CONTRACT& stC = acConfig.Contract();
-	n[SHADOW_N_OBS_DELTA]   = stC.dDeltaM;
-	n[SHADOW_N_OBS_AGE_CAP] = stC.dAgeCapS;
-	n[SHADOW_N_OBS_E0]      = stC.dE0M;
-	n[SHADOW_N_OBS_G]       = stC.dG;
-	n[SHADOW_N_OBS_EPS_V]   = stC.dEpsV;
-	n[SHADOW_N_OBS_A_MAX]   = stC.dAMax;
-	n[SHADOW_N_OBS_EPS_CAL] = stC.dEpsCalM;
-	for (int m = 0; m < 2; m++)
-		n[SHADOW_N_OBS_EPS_M + m] = m < (int)stC.vEpsM.size() ? stC.vEpsM[m] : 0.0;
-	for (int k = 0; k < 3; k++)
-		n[SHADOW_N_OBS_TAG + k] = k < (int)stC.vTagOffset.size() ? stC.vTagOffset[k] : 0.0;
-	for (int k = 0; k < 6; k++)
-		n[SHADOW_N_OBS_BOX + k] = k < (int)stS.vAppGoalBox.size() ? stS.vAppGoalBox[k] : 0.0;
-	n[SHADOW_N_OBS_R_MAX]     = stS.dAppGoalRMax;
-	n[SHADOW_N_OBS_FLOOR]     = stS.dAppGoalFloor;
-	n[SHADOW_N_OBS_HOVER]     = stS.dAppHover;
-	n[SHADOW_N_OBS_KAPPA]     = stS.dAppKappa;
-	n[SHADOW_N_OBS_GAP]       = stS.dAppGapS;
-	n[SHADOW_N_OBS_LOSS]      = stS.dAppLossS;
-	n[SHADOW_N_OBS_STATE_AGE] = (double)stS.nSimStateDelay;
 	return true;
 }
 
-/* the check value of the numbers: their count, then each as 8 bytes, least significant first */
-inline uint32_t ShadowNumbersCrc(const double* adNumbers)
+/* the numbers of the receiver of the camera results (OBS_NUMBERS, shadow/ShadowControl.h), as CRobotIndy7::InitObs
+ * and AppFilter read them */
+inline void ObsNumbers(const CConfig& acConfig, double* adNumbers)
 {
-	const uint8_t auCount[4] = { (uint8_t)SHADOW_NUMBERS, (uint8_t)(SHADOW_NUMBERS >> 8), 0, 0 };
+	const ST_CONFIG_SYSTEM& stS = acConfig.System();
+	const ST_CONFIG_CONTRACT& stC = acConfig.Contract();
+	double* const n = adNumbers;
+	n[OBS_N_DELTA]   = stC.dDeltaM;
+	n[OBS_N_AGE_CAP] = stC.dAgeCapS;
+	n[OBS_N_E0]      = stC.dE0M;
+	n[OBS_N_G]       = stC.dG;
+	n[OBS_N_EPS_V]   = stC.dEpsV;
+	n[OBS_N_A_MAX]   = stC.dAMax;
+	n[OBS_N_EPS_CAL] = stC.dEpsCalM;
+	for (int m = 0; m < 2; m++)
+		n[OBS_N_EPS_M + m] = m < (int)stC.vEpsM.size() ? stC.vEpsM[m] : 0.0;
+	for (int k = 0; k < 3; k++)
+		n[OBS_N_TAG + k] = k < (int)stC.vTagOffset.size() ? stC.vTagOffset[k] : 0.0;
+	for (int k = 0; k < 6; k++)
+		n[OBS_N_BOX + k] = k < (int)stS.vAppGoalBox.size() ? stS.vAppGoalBox[k] : 0.0;
+	n[OBS_N_R_MAX]     = stS.dAppGoalRMax;
+	n[OBS_N_FLOOR]     = stS.dAppGoalFloor;
+	n[OBS_N_HOVER]     = stS.dAppHover;
+	n[OBS_N_KAPPA]     = stS.dAppKappa;
+	n[OBS_N_GAP]       = stS.dAppGapS;
+	n[OBS_N_LOSS]      = stS.dAppLossS;
+	n[OBS_N_STATE_AGE] = (double)stS.nSimStateDelay;
+}
+
+/* the check value of anCount numbers: their count, then each as 8 bytes, least significant first */
+inline uint32_t NumbersCrc(const double* adNumbers, int anCount)
+{
+	const uint8_t auCount[4] = { (uint8_t)anCount, (uint8_t)(anCount >> 8), 0, 0 };
 	uint32_t uCrc = FwCfgCrc32(0, auCount, sizeof(auCount));
-	for (int i = 0; i < SHADOW_NUMBERS; i++)
+	for (int i = 0; i < anCount; i++)
 	{
 		uint64_t u;
 		memcpy(&u, &adNumbers[i], sizeof(u));
@@ -92,5 +100,8 @@ inline uint32_t ShadowNumbersCrc(const double* adNumbers)
 	}
 	return uCrc;
 }
+inline uint32_t ShadowNumbersCrc(const double* adNumbers) { return NumbersCrc(adNumbers, SHADOW_NUMBERS); }
+/* the receiver's: the APU sends it with IPC_CMD_OBS, and the R5 compares it with that of its own numbers */
+inline uint32_t ObsNumbersCrc(const double* adNumbers) { return NumbersCrc(adNumbers, OBS_NUMBERS); }
 
 #endif // G2T_SHADOW_PARAMS_H

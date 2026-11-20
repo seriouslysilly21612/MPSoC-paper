@@ -15,8 +15,8 @@
 
 #include "ipc/ipc_layout.h"
 
-#define SHADOW_VECTORS_MAGIC	0x32564853u		/* "SHV2": the numbers of the receiver of the camera results added */
-enum { SHADOW_VECTORS_NUMBERS = 75 };			/* SHADOW_NUMBERS of shadow/ShadowControl.h */
+#define SHADOW_VECTORS_MAGIC	0x31564853u		/* "SHV1" */
+enum { SHADOW_VECTORS_NUMBERS = 50 };			/* SHADOW_NUMBERS of shadow/ShadowControl.h */
 
 typedef struct
 {

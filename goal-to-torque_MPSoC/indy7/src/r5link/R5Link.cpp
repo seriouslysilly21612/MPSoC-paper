@@ -334,7 +334,6 @@ CR5Link::SendControlCommand(const ipc_command_t& astCommand)
 	// the run of this side goes into the number: the report can still have the answer to a command of the run
 	// before this one, which counted from 1 too (two numbers meet after 65536 commands of a run or 65536 runs)
 	stCommand.seq = (m_uApuEpoch << 16) + ++m_uCommandSeq;
-	stCommand.reserved = 0;
 	IPC_WRITE(Slot(IPC_OFF_COMMAND), m_uApuEpoch, &stCommand);
 	m_stCounts.nCommands++;
 	return stCommand.seq;

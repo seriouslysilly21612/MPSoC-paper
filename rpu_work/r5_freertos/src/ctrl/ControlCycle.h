@@ -28,9 +28,10 @@
 *	            (obs/ObsGoal.h), as the Trajectory task of the APU runs it
 *	            with P0 and S1, before the trajectory part. Its status goes
 *	            to the camera side (obs_status.h), its counts and one entry
-*	            per result to the APU (obs_ring.h); while the application
-*	            runs (IPC_OBS_GOALS) its objects, with the hover height, are
-*	            the goals of TRACK
+*	            per result to the APU (obs_ring.h); in the TRACK of the
+*	            application (IPC_START_OBS_GOALS) its objects, with the hover
+*	            height, are the goals, until a new writer of the mailbox
+*	            starts
 *	  motion    CTrajectoryRT::Update on the measured state; HOME at rest
 *	            or a generator error ends the motion with this period
 *	  law       it follows the reference of this period (TRACK or HOME
@@ -107,14 +108,16 @@ public:
 	~CControlCycle();
 
 	/* the receiver of the camera results: where its mailbox, its status and its record are in the region of the
-	 * link, the ticks of the counter of the releases per second, and the check value of [CONTRACT] of the numbers
-	 * (ObsContractCrc) */
+	 * link, the ticks of the counter of the releases per second, its numbers (OBS_NUMBERS of ShadowControl.h) with
+	 * their check value (ObsNumbersCrc), and the check value of [CONTRACT] (ObsContractCrc) for its status */
 	struct ObsLink
 	{
 		volatile obs_mailbox_t*			pBox;
 		volatile obs_status_region_t*	pStatus;
 		volatile obs_ring_t*			pRing;
 		double							dTicksPerS;
+		const double*					pNumbers;
+		uint32_t						uNumbersCrc;
 		uint32_t						uContractCrc;
 	};
 
@@ -136,7 +139,7 @@ private:
 	uint32_t	Start		(const ipc_command_t& astCommand, const Input& astIn);
 	void		StopMotion	(	);
 	void		ServoOff	(Output* apOut);
-	uint32_t	ObsCommand	(uint32_t auArg);
+	uint32_t	ObsCommand	(const ipc_command_t& astCommand);
 	void		ObsStep		(const Input& astIn);
 	static void	TagAt		(void* apArg, const float* afQ, double* adP);
 
@@ -158,13 +161,14 @@ private:
 	uint32_t	m_uMotionPeriods;				// updates of the running motion so far
 	/* the receiver of the camera results */
 	double		m_dTs;							// the period [s] of Init()
-	double		m_adObsNumbers[SHADOW_NUMBERS - SHADOW_N_OBS_DELTA];	// of Init()
+	double		m_adObsNumbers[OBS_NUMBERS];	// of SetObsLink()
 	ObsLink		m_stObs;
 	bool		m_bObsLink;						// SetObsLink() took it
 	CObsGoal::Config m_stObsCfg;				// ... and these settings; the policy comes with IPC_CMD_OBS
 	CObsGoal	m_cObs;
 	uint32_t	m_uObsMethod;					// obs_method::eMethod, or OBS_RING_OFF
-	bool		m_bObsGoals;					// its objects are the goals of TRACK
+	bool		m_bObsGoals;					// its objects are the goals of TRACK (IPC_START_OBS_GOALS) ...
+	uint32_t	m_uObsGoalsEpoch;				// ... while the mailbox has the writer of that start
 	CGoalSlot	m_cObsSlot;						// where it writes its objects
 	unsigned	m_uObsSeen;						// ... the count of that slot at the last one taken
 	uint32_t	m_uObsEntries;					// entries written into the record so far

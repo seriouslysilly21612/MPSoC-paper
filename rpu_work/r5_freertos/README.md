@@ -537,7 +537,9 @@ of the APU that comes late no longer leaves the drives without a torque. The app
 (`../../goal-to-torque_MPSoC/README.md`); the shared region is layout 7 with it (2026-11-20: the report also has
 the counts of the high-level controller in the motion and the target of its IK, for the logs of the application; and
 the receiver of the camera results of the methods other than M1 runs in the control task: `src/obs/` and
-`src/ctrl/GoalFilter.h` are copies of the application's files, `obs_link.c` is not polled in this build).
+`src/ctrl/GoalFilter.h` are copies of the application's files, `obs_link.c` is not polled in this build; its
+numbers are the second array of `src/ctrl/ctrl_numbers_indy7.h`, with a check value of their own that the `[control]`
+line prints: a cfg with other `[CONTRACT]` or `APP_*` values refuses those methods, not the controller).
 With `--shadow` the application repeats every period from its report with a controller of its own and compares
 the torque and the reference: what this firmware computes on the R5 against the same code on the APU.
 

@@ -113,19 +113,20 @@ enum
 	IPC_CMD_MOTION_STOP = 6,						/* 'x', 'g': the motion ends, gravity compensation */
 	IPC_CMD_HOLD_ON = 7, IPC_CMD_HOLD_OFF = 8,		/* 'k' */
 	IPC_CMD_START = 9,								/* TRACK or HOME from the measured state (arg, delta, q_ready, target) */
-	IPC_CMD_OBS = 10								/* the method of the camera application (arg: obs/ObsMethod.h, and
-													 * IPC_OBS_GOALS): its receiver on the R5 (obs/obs_ring.h) */
+	IPC_CMD_OBS = 10								/* the method of the camera application (arg: obs/ObsMethod.h; check):
+													 * its receiver on the R5 (obs/obs_ring.h) */
 };
-/* arg of IPC_CMD_OBS: the method in the low byte; with this bit the objects of the receiver are the goals of TRACK
- * (the application runs), without it the goals of the Goal slot are */
-enum { IPC_OBS_METHOD_MASK = 0xFFu, IPC_OBS_GOALS = 0x100u };
-enum { IPC_START_HOME = 1u, IPC_START_TARGET = 2u, IPC_START_FRICTION_FF = 4u };	/* arg of IPC_CMD_START */
+/* arg of IPC_CMD_START. IPC_START_OBS_GOALS: the TRACK of the application; the objects of the receiver of the camera
+ * results are its goals, those after the start. Without it the goals of the Goal slot are */
+enum { IPC_START_HOME = 1u, IPC_START_TARGET = 2u, IPC_START_FRICTION_FF = 4u, IPC_START_OBS_GOALS = 8u };
 typedef struct
 {
 	uint32_t	seq;
 	uint32_t	cmd;				/* IPC_CMD_* */
 	uint32_t	arg;				/* IPC_CMD_START: IPC_START_* (without HOME: TRACK; HOME to q_ready, or to target) */
-	uint32_t	reserved;
+	uint32_t	check;				/* IPC_CMD_OBS: the check value of the receiver's numbers of the APU (ObsNumbersCrc of
+									 * shadow/ShadowParams.h); the R5 refuses a method with the mailbox when its own
+									 * numbers have another */
 	double		delta;				/* IPC_CMD_START: the goal threshold of the motion [m] */
 	double		q_ready[IPC_CTRL_DOF];	/* ... the ready posture [rad] */
 	double		target[IPC_CTRL_DOF];	/* ... IPC_START_TARGET [rad] */
@@ -144,8 +145,8 @@ enum
 	IPC_REFUSED_UNKNOWN = 8,		/* not a command of this control task */
 	IPC_REFUSED_ARGUMENT = 9,		/* a start: a number of the command is not finite or outside its range (refusal_*:
 									 * joint -1 the goal threshold, else that joint of the ready posture) */
-	IPC_REFUSED_OBS = 10			/* IPC_CMD_OBS: no such method, or the receiver cannot start with the constants of
-									 * the firmware ([CONTRACT] and APP_* in its numbers) */
+	IPC_REFUSED_OBS = 10			/* IPC_CMD_OBS: no such method; the receiver's numbers of the firmware are not those of
+									 * the APU ([CONTRACT], APP_*: another check value), or the receiver cannot use them */
 };
 
 /* APU -> R5 with --shadow: the control task's period, as far as a second controller needs it to compute the

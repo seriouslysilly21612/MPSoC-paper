@@ -1490,15 +1490,19 @@ CRobotIndy7::InitR5Link()
 				return FALSE;
 			// its receiver of the camera results, as the firmware builds it (control_ctrl_build)
 			volatile uint32_t* const pRegion = m_pSimR5->Region();
+			double adObs[OBS_NUMBERS];
+			ObsNumbers(*m_pConfig, adObs);
 			CControlCycle::ObsLink stObs;
 			stObs.pBox = (volatile obs_mailbox_t*)(pRegion + OBS_OFF_MAILBOX / 4u);
 			stObs.pStatus = (volatile obs_status_region_t*)(pRegion + OBS_OFF_STATUS / 4u);
 			stObs.pRing = (volatile obs_ring_t*)(pRegion + OBS_OFF_RING / 4u);
 			stObs.dTicksPerS = (double)link_clock::TicksPerSecond();
+			stObs.pNumbers = adObs;
+			stObs.uNumbersCrc = ObsNumbersCrc(adObs);
 			stObs.uContractCrc = ObsContractCrc(m_pConfig->Contract());
 			if (FALSE == m_pSimControl->SetObsLink(stObs))
-				printf("[SIM R5] the receiver of the camera results cannot start with the [CONTRACT] numbers: the "
-				       "methods other than M1 are refused\n");
+				printf("[SIM R5] the receiver of the camera results cannot use the [CONTRACT] and APP_* values of the "
+				       "cfg: the methods other than M1 are refused\n");
 			m_pSimR5->SetControl(m_pSimControl);
 			stSpec.uDrives = (unsigned)uDrives;
 		}
@@ -1517,10 +1521,18 @@ CRobotIndy7::InitR5Link()
 		m_pS2 = new CControlClient();
 		m_pS2->Init(m_pLink, (double)vTasks[1].nPeriod * 1e-9);
 		m_pS2->UseGoalSlot(&m_goalSlot, adNone);
-		// the method of this run for the receiver of the R5, which keeps the method of a run before (M1: off)
-		m_pS2->Queue(IPC_CMD_OBS, (uint32_t)m_nMethod);
+		// the method of this run for the receiver of the R5, which keeps the method of a run before (M1: off), with
+		// the check value of its numbers here: a firmware built from other ones refuses it
+		double adObs[OBS_NUMBERS];
+		ObsNumbers(*m_pConfig, adObs);
+		m_uS2ObsCheck = ObsNumbersCrc(adObs);
+		ipc_command_t stObsCmd;
+		memset(&stObsCmd, 0, sizeof(stObsCmd));
+		stObsCmd.check = m_uS2ObsCheck;
+		m_pS2->Queue(IPC_CMD_OBS, (uint32_t)m_nMethod, &stObsCmd);
 		printf("[S2] the control task runs on the R5: commands and goals go there, its report comes back; check value "
-		       "of the controller of this configuration 0x%08X\n", (unsigned)uShadowCheck);
+		       "of the controller of this configuration 0x%08X, of the receiver of the camera results 0x%08X\n",
+		       (unsigned)uShadowCheck, (unsigned)m_uS2ObsCheck);
 	}
 	if (m_bShadow && bS2)
 	{

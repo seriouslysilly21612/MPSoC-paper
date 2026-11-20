@@ -11,6 +11,7 @@
 #include "ctrl_numbers_indy7.h"
 
 static_assert(CTRL_NUMBERS_COUNT == SHADOW_NUMBERS, "ctrl_numbers_indy7.h is not of this ShadowControl.h: write it again");
+static_assert(CTRL_OBS_NUMBERS_COUNT == OBS_NUMBERS, "ctrl_numbers_indy7.h is not of this ShadowControl.h: write it again");
 
 /* written once, by the task that builds the controller; read by the task of the planner */
 static std::atomic<CControlCycle *> controller(NULL);
@@ -18,6 +19,11 @@ static std::atomic<CControlCycle *> controller(NULL);
 uint32_t control_ctrl_check_value(void)
 {
     return ShadowCheckValue(CTRL_NUMBERS_CRC, ctrl_model_check_value());
+}
+
+uint32_t control_ctrl_obs_check_value(void)
+{
+    return CTRL_OBS_NUMBERS_CRC;
 }
 
 int control_ctrl_build(volatile uint32_t *region, double ticks_per_s)
@@ -38,6 +44,8 @@ int control_ctrl_build(volatile uint32_t *region, double ticks_per_s)
         link.pStatus = (volatile obs_status_region_t *)(region + OBS_OFF_STATUS / 4u);
         link.pRing = (volatile obs_ring_t *)(region + OBS_OFF_RING / 4u);
         link.dTicksPerS = ticks_per_s;
+        link.pNumbers = CTRL_OBS_NUMBERS;
+        link.uNumbersCrc = CTRL_OBS_NUMBERS_CRC;
         link.uContractCrc = CTRL_CONTRACT_CRC;
         if (!built->SetObsLink(link))
             result = 2;

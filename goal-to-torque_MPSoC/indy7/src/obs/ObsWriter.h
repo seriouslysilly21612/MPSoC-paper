@@ -11,7 +11,10 @@
 *	            system clock there. A result older than the cap, or from the
 *	            future, is not written (D-21). With the receiver on the R5
 *	            (--arch S2) the descriptor has ticks of the system counter:
-*	            the counter now less the age of the capture.
+*	            the counter now less the age of the capture, the counter
+*	            read between two reads of the clock at most PAIR_MAX_NS apart
+*	            (as r5link/LinkClock.h takes its offsets); without such a
+*	            pair in a few tries the result is not written.
 *	  deadline  the capture plus the cap ([CONTRACT] AGE_CAP_MS).
 *	  sigma     the measurement error of the mode ([CONTRACT] EPS_M_MM).
 *	  checks    valid and finite here. The workspace is checked by the
@@ -41,7 +44,8 @@ public:
 		uint64_t (*pTicks)() = NULL;	// the system counter (r5link/LinkClock.h), for a receiver on the R5; NULL: ns
 		uint64_t uTicksPerS = 0;		// ... its frequency
 	};
-	enum eResult { eWritten = 0, eInvalid, eNotFinite, eAge, eFull, eExpired, eResults };
+	enum eResult { eWritten = 0, eInvalid, eNotFinite, eAge, eFull, eExpired, eClock, eResults };
+	enum { PAIR_MAX_NS = 20000, PAIR_TRIES = 4 };
 
 	/* before the first Put(), and before the control task reads the mailbox */
 	void Init(volatile obs_mailbox_t* apBox, const Config& astCfg)
@@ -72,7 +76,8 @@ public:
 	static const char* Name(eResult aeR)
 	{
 		static const char* const s_apc[eResults] = { "written", "invalid", "not finite", "older than the cap or from the future",
-		                                             "no free slot", "past its deadline" };
+		                                             "no free slot", "past its deadline",
+		                                             "no close reading of the counter" };
 		return (aeR >= 0 && aeR < eResults) ? s_apc[aeR] : "?";
 	}
 
@@ -110,11 +115,21 @@ private:
 		obs_desc_t stD;
 		memset(&stD, 0, sizeof(stD));
 		stD.t_e = (uint64_t)atCapture;
-		if (m_stCfg.pTicks != NULL)			// the counter, read between two reads of the clock of the capture
+		if (m_stCfg.pTicks != NULL)			// the counter, read between two close reads of the clock of the capture
 		{
-			const int64_t t0 = (int64_t)NowNs();
-			const uint64_t uNow = m_stCfg.pTicks();
-			const int64_t t1 = (int64_t)NowNs();
+			int nTry = 0;
+			int64_t t0 = 0, t1 = 0;
+			uint64_t uNow = 0;
+			for (; nTry < (int)PAIR_TRIES; nTry++)
+			{
+				t0 = (int64_t)NowNs();
+				uNow = m_stCfg.pTicks();
+				t1 = (int64_t)NowNs();
+				if (t1 - t0 <= (int64_t)PAIR_MAX_NS)
+					break;
+			}
+			if (nTry == (int)PAIR_TRIES)	// preempted every time: the capture would be put at the wrong time
+				return eClock;
 			const int64_t tAgeNow = t0 + (t1 - t0) / 2 - atCapture;
 			stD.t_e = uNow - TicksOfNs((uint64_t)(tAgeNow > 0 ? tAgeNow : 0));
 		}

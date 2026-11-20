@@ -43,9 +43,11 @@ typedef struct {
  * region: the shared region of the link (ipc/ipc_layout.h), where the receiver of the camera results has its
  * mailbox, its status and its record (obs/obs_ring.h); ticks_per_s: of the counter of the releases.
  * 0 = not built: the heap is too small, or the classes refused the constants (their lines say why).  1 = built.
- * 2 = built, but the receiver cannot start with the [CONTRACT] numbers of this build: IPC_CMD_OBS is refused. */
+ * 2 = built, but the receiver cannot use its numbers of this build (CTRL_OBS_NUMBERS): IPC_CMD_OBS is refused. */
 int      control_ctrl_build(volatile uint32_t *region, double ticks_per_s);
 uint32_t control_ctrl_check_value(void);
+/* the check value of the receiver's numbers of this build (CTRL_OBS_NUMBERS_CRC): IPC_CMD_OBS must bring it */
+uint32_t control_ctrl_obs_check_value(void);
 
 /* One period.  Only after control_ctrl_build() returned 1.  No memory is taken.  Should a class throw, there is no
  * torque, the servo is asked off, the report has IPC_CTL_FAULT, and the cycle goes on. */

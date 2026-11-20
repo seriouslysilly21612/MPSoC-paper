@@ -14,7 +14,7 @@
 
 #include "shadow_vectors.h"
 
-#define CONTROL_VECTORS_MAGIC	0x32564343u		/* "CCV2": the head of shadow_vectors.h has the numbers of the receiver */
+#define CONTROL_VECTORS_MAGIC	0x31564343u		/* "CCV1" */
 
 enum
 {

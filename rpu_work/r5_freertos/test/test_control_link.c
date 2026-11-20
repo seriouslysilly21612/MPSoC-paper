@@ -40,6 +40,7 @@ int      control_ctrl_build(volatile uint32_t *region, double ticks_per_s)
     return can_build;
 }
 uint32_t control_ctrl_check_value(void) { return 0xC0FFEE02u; }
+uint32_t control_ctrl_obs_check_value(void) { return 0x0B5C0FFEu; }
 void     control_ctrl_step(const control_in_t *in, control_out_t *out, ipc_report_t *r)
 {
     steps++;

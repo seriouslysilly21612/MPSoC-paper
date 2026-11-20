@@ -144,10 +144,11 @@ CROS2PickBridge::DeInit()
 	{
 		const CObsWriter& cObs = *m_stCfg.pObs;
 		printf("[bridge] %ld samples: %ld written into the mailbox; not written: %ld invalid, %ld not finite, "
-		       "%ld older than the cap or from the future, %ld with no free slot, %ld past their deadline\n",
+		       "%ld older than the cap or from the future, %ld with no free slot, %ld past their deadline, %ld without "
+		       "a close reading of the counter\n",
 		       m_nSamples.load(), cObs.Count(CObsWriter::eWritten), cObs.Count(CObsWriter::eInvalid),
 		       cObs.Count(CObsWriter::eNotFinite), cObs.Count(CObsWriter::eAge), cObs.Count(CObsWriter::eFull),
-		       cObs.Count(CObsWriter::eExpired));
+		       cObs.Count(CObsWriter::eExpired), cObs.Count(CObsWriter::eClock));
 	}
 	else
 		printf("[bridge] %ld samples: %ld written into the goal slot (%ld restarts of the average); rejected: "
