@@ -163,6 +163,7 @@ class PickTargetBaseNode(Node):
             out.x = float(p[0])
             out.y = float(p[1])
             out.z = float(p[2])
+            self.tag_to_base(msg, out, R, t)
             self._emit(out, capture_stamp, compute_start_ns, in_age)
             return
 
@@ -190,15 +191,17 @@ class PickTargetBaseNode(Node):
             out.x = float(point_out.point.x)
             out.y = float(point_out.point.y)
             out.z = float(point_out.point.z)
+            q = transform.transform.rotation
+            tr = transform.transform.translation
+            R = quat_to_rotation_matrix(q.x, q.y, q.z, q.w)
+            t = np.array([tr.x, tr.y, tr.z], dtype=np.float64)
+            # the transform of the object: one frame for both
+            self.tag_to_base(msg, out, R, t)
 
             self._emit(out, capture_stamp, compute_start_ns, in_age)
 
             # R, t를 캐싱
             if self.static_tf_cache:
-                q = transform.transform.rotation
-                tr = transform.transform.translation
-                R = quat_to_rotation_matrix(q.x, q.y, q.z, q.w)
-                t = np.array([tr.x, tr.y, tr.z], dtype=np.float64)
                 p = R @ np.array(
                     [msg.x, msg.y, msg.z], dtype=np.float64) + t
                 diff = max(
@@ -230,6 +233,14 @@ class PickTargetBaseNode(Node):
             self._emit(out, capture_stamp, compute_start_ns, in_age,
                        publish=self.publish_invalid_targets)
 
+    @staticmethod
+    def tag_to_base(msg, out, R, t):
+        """the tool tag of msg (the camera frame of the object) into out (base_link), by R, t"""
+        out.tag_valid = bool(msg.tag_valid)
+        if out.tag_valid:
+            p = R @ np.array([msg.tag_x, msg.tag_y, msg.tag_z], dtype=np.float64) + t
+            out.tag_x, out.tag_y, out.tag_z = float(p[0]), float(p[1]), float(p[2])
+
     def make_output_from_input(self, msg: PickTarget3D):
         out = PickTarget3D()
         out.capture_stamp = msg.capture_stamp
@@ -249,6 +260,9 @@ class PickTargetBaseNode(Node):
         out.x = 0.0
         out.y = 0.0
         out.z = 0.0
+        out.mode = msg.mode
+        out.tag_valid = False
+        out.tag_x = out.tag_y = out.tag_z = 0.0
 
         return out
 

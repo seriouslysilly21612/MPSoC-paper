@@ -103,7 +103,8 @@ CROS2PickBridge::Init(const Config& astCfg, CGoalSlot* apSlot)
 	m_bInit = TRUE;
 	const CGoalFilter::Params& p = astCfg.stFilter;
 	if (astCfg.pObs != NULL)
-		printf("[bridge] up: %s -> mailbox (the control task checks and averages), %s at 20 Hz%s%s\n", TOPIC_TARGET,
+		printf("[bridge] up: %s -> mailbox (the control task checks and averages; %s), %s at 20 Hz%s%s\n",
+		       TOPIC_TARGET, astCfg.bTagFormat ? "the object from the tool tag of its image" : "the object in base_link",
 		       TOPIC_JOINTS, astCfg.pStatus != NULL ? ", the status of the control task on " : "",
 		       astCfg.pStatus != NULL ? TOPIC_STATUS : "");
 	else
@@ -149,6 +150,11 @@ CROS2PickBridge::DeInit()
 		       m_nSamples.load(), cObs.Count(CObsWriter::eWritten), cObs.Count(CObsWriter::eInvalid),
 		       cObs.Count(CObsWriter::eNotFinite), cObs.Count(CObsWriter::eAge), cObs.Count(CObsWriter::eFull),
 		       cObs.Count(CObsWriter::eExpired), cObs.Count(CObsWriter::eClock));
+		printf("[bridge] samples by mode: %ld of 416, %ld of 320%s", m_anMode[0].load(), m_anMode[1].load(),
+		       m_stCfg.bTagFormat ? "" : "\n");
+		if (m_stCfg.bTagFormat)
+			printf("; %ld valid ones without the tool tag in their image (written, the control task refuses them)\n",
+			       m_nTagLost.load());
 	}
 	else
 		printf("[bridge] %ld samples: %ld written into the goal slot (%ld restarts of the average); rejected: "
@@ -263,8 +269,15 @@ CROS2PickBridge::OnTarget(const my_interfaces::msg::PickTarget3D::SharedPtr apMs
 		/* the methods with the mailbox: the control task accepts the result, checks the workspace and averages */
 		const int64_t tCapture = CObsWriter::MonoOfReal((int64_t)apMsg->capture_stamp.sec * 1000000000LL +
 		                                                (int64_t)apMsg->capture_stamp.nanosec);
-		const CObsWriter::eResult eR = m_stCfg.pObs->Put(bValid, adP, OBS_Z_BASE, tCapture, 0, (int)apMsg->class_id);
+		const int nMode = apMsg->mode == 1 ? 1 : 0;
+		const double adTag[3] = {apMsg->tag_x, apMsg->tag_y, apMsg->tag_z};
+		double adZ[3];
+		const unsigned uFormat = CObsWriter::FormatOf(m_stCfg.bTagFormat, adP, apMsg->tag_valid, adTag, adZ);
+		const CObsWriter::eResult eR = m_stCfg.pObs->Put(bValid, adZ, uFormat, tCapture, nMode, (int)apMsg->class_id);
 		m_nSamples.fetch_add(1, std::memory_order_relaxed);
+		m_anMode[nMode].fetch_add(1, std::memory_order_relaxed);
+		if (bValid && (uFormat & OBS_TAG_LOST))
+			m_nTagLost.fetch_add(1, std::memory_order_relaxed);
 		if (eR != CObsWriter::eWritten)
 			return;
 		m_nWritten.fetch_add(1, std::memory_order_relaxed);

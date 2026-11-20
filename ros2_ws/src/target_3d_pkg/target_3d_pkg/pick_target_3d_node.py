@@ -18,6 +18,7 @@ from sensor_msgs.msg import Image, CameraInfo
 from realsense2_camera_msgs.msg import Extrinsics
 
 from my_interfaces.msg import PickTarget, PickTarget3D
+from target_3d_pkg.tool_tag import ToolTagFinder, gray_of_image
 from target_3d_pkg.metrics_recorder import (
     MetricsRecorder,
     age_ms,
@@ -25,6 +26,12 @@ from target_3d_pkg.metrics_recorder import (
     write_summary_csv,
     _round,
 )
+
+
+# the columns of the tool tag in the performance CSV (fixed by its first row: every row has them,
+# with tool_tag)
+TAG_KEYS = (['tag_valid', 'tag_reason', 'tag_ms', 'tag_window', 'tag_reproj_px', 'tag_ambiguity'] +
+            [f'tag_{n}_{a}' for n in ('pnp', 'depth') for a in 'xyz'])
 
 
 # ===== Pinhole helpers (no distortion: D435i color/depth are rectified, d=0) =====
@@ -205,6 +212,19 @@ class PickTarget3DNode(Node):
         # once live mismatch count stays 0.
         self.declare_parameter('epipolar_ab_check', False)
 
+        # The tool tag (D-22, A-9): its centre in the color image of each capture, found here so
+        # that it comes from the same image as the object. Off by default: then nothing of the
+        # color stream is subscribed. tag_size_m is the side of the black square (the calibration
+        # tag: 0.065; measure another one). tag_position: 'depth' takes the camera distance of the
+        # tag from the depth image as for the object (the two share its errors), 'pnp' from the
+        # four corners alone; the other one is logged too.
+        self.declare_parameter('tool_tag', False)
+        self.declare_parameter('color_topic', '/camera/camera/color/image_raw')
+        self.declare_parameter('tag_id', 0)
+        self.declare_parameter('tag_size_m', 0.065)
+        self.declare_parameter('tag_position', 'depth')
+        self.declare_parameter('tag_refine', 'apriltag')
+
         # Metrics (off by default): performance CSV per pick + yield tally.
         self.declare_parameter('metrics_csv_path', '')
         self.declare_parameter('metrics_duration_sec', 0.0)
@@ -227,6 +247,19 @@ class PickTarget3DNode(Node):
         self.epipolar_ab_check = bool(
             self.get_parameter('epipolar_ab_check').value
         )
+        self.tool_tag = bool(self.get_parameter('tool_tag').value)
+        self.tag_position = str(self.get_parameter('tag_position').value)
+        if self.tag_position not in ('depth', 'pnp'):
+            raise RuntimeError(f"tag_position {self.tag_position!r}: 'depth' or 'pnp'")
+        self.tag_finder = None
+        if self.tool_tag:
+            self.tag_finder = ToolTagFinder(
+                int(self.get_parameter('tag_id').value),
+                float(self.get_parameter('tag_size_m').value),
+                refine=str(self.get_parameter('tag_refine').value))
+        self.color_buf = deque()   # (stamp_ns, msg): the color images, for the tool tag
+        self.tag_found = 0
+        self.tag_tally = {}
         self.ab_checked = 0
         self.ab_mismatch = 0
         self.last_warn_log_time_ns = {}
@@ -310,6 +343,19 @@ class PickTarget3DNode(Node):
         self.extrinsics_sub = self.create_subscription(
             Extrinsics, extrinsics_topic, self.extrinsics_callback, latched_qos
         )
+        self.color_sub = None
+        if self.tool_tag:
+            # a few deep: the callback only stores, but a pick (with its tag search) can hold the
+            # executor
+            color_qos = QoSProfile(
+                history=HistoryPolicy.KEEP_LAST,
+                depth=5,
+                reliability=ReliabilityPolicy.BEST_EFFORT,
+                durability=DurabilityPolicy.VOLATILE,
+            )
+            self.color_sub = self.create_subscription(
+                Image, str(self.get_parameter('color_topic').value), self.color_callback,
+                color_qos)
 
         self.target_3d_pub = self.create_publisher(
             PickTarget3D, output_topic, 10
@@ -322,6 +368,22 @@ class PickTarget3DNode(Node):
             'pick_target_3d_node started (raw-depth reverse projection): '
             f'{pick_target_topic} + {depth_topic} -> {output_topic}'
         )
+        if self.tool_tag:
+            f = self.tag_finder
+            self.get_logger().info(
+                f'tool tag: 36h11 id {f.tag_id}, black square {1e3 * f.size_m:.1f} mm, '
+                f'its distance from the {self.tag_position}, '
+                f"images of {self.get_parameter('color_topic').value}")
+
+    def color_callback(self, msg: Image):
+        # stored as it comes; the tag is looked for only in the image of a capture that has an
+        # object
+        stamp_ns = stamp_to_ns(msg.header.stamp)
+        self.color_buf.append((stamp_ns, msg))
+        if stamp_ns > 0:
+            cutoff = stamp_ns - self.depth_hist_ns
+            while self.color_buf and self.color_buf[0][0] < cutoff:
+                self.color_buf.popleft()
 
     def depth_callback(self, msg: Image):
         # Store only — conversion/validation happens at pick time (~16 Hz),
@@ -398,6 +460,8 @@ class PickTarget3DNode(Node):
         self.c_fy = float(msg.k[4])
         self.c_cx = float(msg.k[2])
         self.c_cy = float(msg.k[5])
+        if self.tag_finder is not None:
+            self.tag_finder.set_camera(list(msg.k), list(msg.d))
 
     def extrinsics_callback(self, msg: Extrinsics):
         # rs2 extrinsics rotation is COLUMN-major: R[i, j] = rotation[i + 3*j].
@@ -462,6 +526,9 @@ class PickTarget3DNode(Node):
         out.x = 0.0
         out.y = 0.0
         out.z = 0.0
+        out.mode = msg.mode
+        out.tag_valid = False
+        self._tag_row = None
 
         # Bound before the first early return so every _emit below can report
         # which depth frame was (or would have been) used.
@@ -567,8 +634,69 @@ class PickTarget3DNode(Node):
         out.x = float(point[0])
         out.y = float(point[1])
         out.z = float(point[2])
+        if self.tool_tag:
+            self.find_tag(out, capture_stamp, depth_img, eff_scale, depth_msg.encoding)
 
         self._emit(out, capture_stamp, compute_start_ns, in_age, depth_msg)
+
+    def find_tag(self, out, capture_stamp, depth_img, eff_scale, encoding):
+        """The tool tag in the color image of capture_stamp, into out.tag_* in the frame of out."""
+        t0 = time.perf_counter_ns()
+        reason, res, p_pnp, p_depth = '', None, None, None
+        capture_ns = stamp_to_ns(capture_stamp)
+        # the image itself, not the nearest one: the tag and the object must be of one capture
+        entry = next((e for e in reversed(self.color_buf)
+                      if abs(e[0] - capture_ns) < 1_000_000), None)
+        if entry is None:
+            reason = 'no_color_image'
+        elif self.R_cd is None:
+            reason = 'no_extrinsics'
+        else:
+            img = entry[1]
+            gray = gray_of_image(img.data, img.height, img.width, img.step, img.encoding)
+            if gray is None:
+                reason = 'color_encoding'
+            else:
+                res = self.tag_finder.find(gray, 1e-9 * capture_ns)
+                reason = res.reason
+        if res is not None and res.found:
+            p_pnp = self.R_cd @ res.p_cam + self.t_cd          # color -> depth frame
+            # the depth image at the tag centre, found as for the object (color pixel -> depth
+            # pixel)
+            u = self.c_fx * res.p_cam[0] / res.p_cam[2] + self.c_cx
+            v = self.c_fy * res.p_cam[1] / res.p_cam[2] + self.c_cy
+            found = color_pixel_to_depth_pixel(
+                u, v, depth_img, eff_scale, self.min_depth_m, self.max_depth_m,
+                self.d_fx, self.d_fy, self.d_cx, self.d_cy,
+                self.c_fx, self.c_fy, self.c_cx, self.c_cy,
+                self.R_cd, self.t_cd, self.R_dc, self.t_dc)
+            if found is not None:
+                z_m = self.get_depth_m_from_patch(depth_img, found[0], found[1], encoding)
+                if z_m is not None:
+                    p_depth = deproject(self.d_fx, self.d_fy, self.d_cx, self.d_cy,
+                                        found[0], found[1], z_m)
+            p = p_depth if self.tag_position == 'depth' else p_pnp
+            if p is None:
+                reason = 'no_tag_depth'
+            else:
+                out.tag_valid = True
+                out.tag_x, out.tag_y, out.tag_z = (float(p[0]), float(p[1]), float(p[2]))
+        if out.tag_valid:
+            self.tag_found += 1
+        else:
+            self.tag_tally[reason] = self.tag_tally.get(reason, 0) + 1
+        self._tag_row = {
+            'tag_valid': int(out.tag_valid),
+            'tag_reason': reason,
+            'tag_ms': _round((time.perf_counter_ns() - t0) / 1e6),
+            'tag_window': int(bool(res is not None and res.found and res.window)),
+            'tag_reproj_px': _round(res.reproj_px) if res is not None and res.found else None,
+            'tag_ambiguity': _round(res.ambiguity) if res is not None and res.found else None,
+        }
+        for name, q in (('pnp', p_pnp), ('depth', p_depth)):
+            for k, axis in enumerate('xyz'):
+                self._tag_row[f'tag_{name}_{axis}'] = (
+                    _round(float(q[k]), 5) if q is not None else None)
 
     def get_depth_m_from_patch(self, depth_img, u, v, encoding):
         r = self.patch_radius
@@ -634,6 +762,8 @@ class PickTarget3DNode(Node):
                 'depth_vs_color_skew_ms': _round(skew),
                 'skew_if_latest_ms': _round(skew_latest),
                 'depth_valid': int(out.depth_valid),
+                'mode': int(out.mode),
+                **((self._tag_row or dict.fromkeys(TAG_KEYS)) if self.tool_tag else {}),
             })
         self.target_3d_pub.publish(out)
 
@@ -650,6 +780,10 @@ class PickTarget3DNode(Node):
         }
         for reason, count in sorted(self.fail_tally.items()):
             row[f'fail_{reason}'] = count
+        if self.tool_tag:
+            row['tag_found'] = self.tag_found
+            for reason, count in sorted(self.tag_tally.items()):
+                row[f'tag_lost_{reason}'] = count
         write_summary_csv(self.get_logger(), self.yield_csv_path, [row])
 
     def log_warn_throttled(self, key, message):

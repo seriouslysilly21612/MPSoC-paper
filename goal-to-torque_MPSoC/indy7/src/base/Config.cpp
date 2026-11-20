@@ -77,6 +77,7 @@ stConfigSystem::stConfigSystem()
 	nServoOnTimeoutMs = 2000;
 	strCalibDir = "calib_data";
 	nAppBridge = 0;
+	nAppResultFormat = 0;
 	vAppGoalBox = {0.30, 0.94, -0.37, 0.63, 0.10, 0.50};
 	dAppGoalRMax = 0.92;
 	dAppGoalFloor = 0.25;
@@ -536,6 +537,12 @@ CConfig::Parse()
 	cF.Double(S, "APP_GAP_S", s.dAppGapS);
 	cF.Double(S, "APP_LOSS_S", s.dAppLossS);
 	cF.Double(S, "APP_DURATION_S", s.dAppDurationS);
+	{
+		TSTRING str = "base";
+		cF.String(S, "APP_RESULT_FORMAT", str);
+		s.nAppResultFormat = (str.empty() || strcasecmp(str.c_str(), "base") == 0) ? 0 :
+		                     (strcasecmp(str.c_str(), "tag") == 0) ? 1 : -1;
+	}
 	cF.Int(S, "SIM_CAM", s.nSimCam);
 	cF.List(S, "SIM_CAM_OBJECT_M", s.vSimCamObject);
 	cF.Double(S, "SIM_CAM_HZ", s.dSimCamHz);

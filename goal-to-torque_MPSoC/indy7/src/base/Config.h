@@ -128,6 +128,7 @@ typedef struct stConfigSystem
 	TSTRING	strCalibDir;
 	/* the camera application ('p', 'y' 8) */
 	INT32	nAppBridge;
+	INT32	nAppResultFormat;			// APP_RESULT_FORMAT: 0 base, 1 tag (the tool tag of the image), -1 neither
 	std::vector<double> vAppGoalBox;
 	double	dAppGoalRMax, dAppGoalFloor, dAppHover, dAppKappa, dAppGapS, dAppLossS, dAppDurationS;
 	/* the camera of the simulation (sim/SimCamera.h) */

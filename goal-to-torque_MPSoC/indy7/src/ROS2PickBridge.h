@@ -69,6 +69,8 @@ public:
 		                                // instead of the average and the slot; NULL: M1
 		const volatile obs_status_region_t* pStatus;   // the status of the control task, published for the
 		                                // detector of the camera pipeline; NULL: M1
+		bool bTagFormat;                // the methods with the mailbox, APP_RESULT_FORMAT=tag: the object minus
+		                                // the tool tag of its image (pick_target_3d_node tool_tag:=true)
 	};
 	enum { JS_MAX = 8 };
 
@@ -136,6 +138,7 @@ private:
 
 	/* executor -> worker */
 	std::atomic<long>   m_nSamples{0}, m_nWritten{0}, m_nRestarts{0};
+	std::atomic<long>   m_anMode[2]{}, m_nTagLost{0};   // the mailbox: samples by mode, valid ones without the tag
 	std::atomic<long>   m_anRejected[CGoalFilter::eVerdicts]{};
 	std::atomic<int>    m_nLastReject{-1};
 	std::atomic<double> m_dLastAcceptS{-1.0};
