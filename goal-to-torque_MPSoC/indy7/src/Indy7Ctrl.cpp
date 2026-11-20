@@ -1008,8 +1008,8 @@ CRobotIndy7::PrintRtSummary() const
 		       "a period not taken (the tasks here came late: periods that the logs miss)\n", c.nReports,
 		       c.nStateReports, c.nStateMissed);
 		printf("[S2] commands: %ld written, %ld refused by the R5, %ld dropped here (it did not answer); goals "
-		       "written: %ld, taken by the R5 so far: %u\n", c.nCommands, c.nRefused, c.nQueueFull, c.nGoals,
-		       m_pS2->HasReport() ? (unsigned)r.n_goals : 0u);
+		       "written: %ld, taken by the R5 in this run: %ld\n", c.nCommands, c.nRefused, c.nQueueFull, c.nGoals,
+		       c.nGoalsTaken);
 		printf("[S2] time on the R5, in the reports taken: high-level controller mean %.1f us, max %.1f us (%ld "
 		       "periods); control law mean %.1f us, max %.1f us (%ld periods)\n",
 		       c.nTraj > 0 ? c.dTrajNsSum / (double)c.nTraj * 1e-3 : 0.0, (double)c.uTrajNsMax * 1e-3, c.nTraj,

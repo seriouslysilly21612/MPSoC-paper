@@ -465,10 +465,10 @@ are refused beside a bus). `tools/s2_keys_sim.py --bench BUS` runs the sessions 
 firmware, and one more in which the application is killed in a motion and started again. With the arm on the bus
 of the R5 a report that the tasks here do not take in its period is lost to the logs, and counted.
 
-The tasks follow the period of the R5 `WAKE_DELAY_S2_US` behind (`[R5_LINK]`; 500 is a first value: the control
-task of the R5 must have ended by then, and its time on the board is not measured yet). The run ends with the
+The tasks follow the period of the R5 `WAKE_DELAY_S2_US` behind (`[R5_LINK]`, 640: the control
+task of the R5 must have ended by then, at most 458 us after its release on the idle bench and 690 us under pressure). The run ends with the
 `[S2]` lines: the reports taken and those of a period with a state that were not, the commands written, refused by
-the R5 and dropped here, the goals written and taken, the times of the two parts on the R5, its periods without a
+the R5 and dropped here, the goals written and those the R5 took in this run, the times of the two parts on the R5, its periods without a
 state and its planner in this run, and what the run leaves on it. The shared region is layout 6 (the report has the
 counts of the high-level controller and the target of its IK). Not run with the real R5 yet (2026-11-20).
 

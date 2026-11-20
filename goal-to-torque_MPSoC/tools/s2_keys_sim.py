@@ -126,7 +126,7 @@ def timing_log(cfg, out):
     if len(logs) != 1:
         raise RuntimeError('%d timing logs of the session' % len(logs))
     head = ts.read_log(logs[0])[0]
-    behind = int(round(float(jp.cfg_get(cfg, 'R5_LINK', 'WAKE_DELAY_S2_US', '500') or 500) * 1000))
+    behind = int(round(float(jp.cfg_get(cfg, 'R5_LINK', 'WAKE_DELAY_S2_US', '640') or 640) * 1000))
     if head.get('arch') != 'S2' or head.get('wake_delay_ns') != str(behind):
         raise RuntimeError('the timing log has arch=%s, wake_delay_ns=%s; S2 follows the R5 %d ns behind'
                            % (head.get('arch'), head.get('wake_delay_ns'), behind))

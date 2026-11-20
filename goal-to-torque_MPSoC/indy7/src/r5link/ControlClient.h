@@ -58,7 +58,8 @@ public:
 		long	nDriveStops;		// ... and its stops of the drives (a dropout, a servo on that ran out) ...
 		long	nNoState;			// ... its periods without a state of the arm ...
 		long	nPlans, nIks;		// ... the plans and the IK of its planner ...
-		long	nPlanLate;			// ... and its plans that were not back in their period
+		long	nPlanLate;			// ... its plans that were not back in their period ...
+		long	nGoalsTaken;		// ... and the goals it took
 		uint32_t uPlanUsMax, uIkUsMax;	// the longest plan and IK among those of the reports taken [us]
 		long	nTraj, nLaw;		// reports with the high-level step, with the law
 		double	dTrajNsSum, dLawNsSum;
@@ -68,7 +69,7 @@ public:
 	CControlClient() : m_pLink(NULL), m_dTs(1e-3), m_nQueued(0), m_uSent(0), m_uSentCmd(IPC_CMD_NONE), m_uAnswered(0),
 	                   m_bAnswer(false), m_bReport(false), m_bSample(false), m_uMotion(0), m_uStates(0), m_bStates(false),
 	                   m_bStatesSim(false), m_uStatePeriod(0), m_uFaults0(0), m_uStops0(0), m_uNoState0(0), m_uPlans0(0),
-	                   m_uIks0(0), m_uPlanLate0(0),
+	                   m_uIks0(0), m_uPlanLate0(0), m_uGoals0(0),
 	                   m_pGoalSlot(NULL), m_uGoalSeen(0)
 	{
 		memset(&m_stReport, 0, sizeof(m_stReport));
@@ -176,6 +177,7 @@ public:
 			m_uPlans0 = r.n_plans;
 			m_uIks0 = r.n_iks;
 			m_uPlanLate0 = r.n_plan_late;
+			m_uGoals0 = r.n_goals;
 		}
 		else
 		{
@@ -192,6 +194,7 @@ public:
 		m_stCounts.nPlans = (long)(uint32_t)(r.n_plans - m_uPlans0);
 		m_stCounts.nIks = (long)(uint32_t)(r.n_iks - m_uIks0);
 		m_stCounts.nPlanLate = (long)(uint32_t)(r.n_plan_late - m_uPlanLate0);
+		m_stCounts.nGoalsTaken = (long)(uint32_t)(r.n_goals - m_uGoals0);
 		m_stReport = r;
 		m_bReport = true;
 	}
@@ -336,7 +339,7 @@ private:
 	bool			m_bStatesSim;		// ... counted as steps of the arm simulated here
 	uint32_t		m_uStatePeriod;		// StatePeriod()
 	uint32_t		m_uFaults0, m_uStops0;		// what the R5 had counted at the first report
-	uint32_t		m_uNoState0, m_uPlans0, m_uIks0, m_uPlanLate0;
+	uint32_t		m_uNoState0, m_uPlans0, m_uIks0, m_uPlanLate0, m_uGoals0;
 	const CGoalSlot* m_pGoalSlot;
 	unsigned int	m_uGoalSeen;
 	double			m_adGoalOffset[3];

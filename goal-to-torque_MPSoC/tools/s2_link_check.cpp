@@ -836,14 +836,14 @@ int main(int argc, char** argv)
 		// what the R5 has counted since its own start, and the time of its last plan and IK [us]; then what the
 		// client has of this run after the report
 		struct { uint32_t uNoState, uPlans, uPlanUs, uIks, uIkUs, uLate; long nNoState, nPlans, nIks, nLate;
-		         uint32_t uPlanMax, uIkMax; } const ast[] = {
-			{ 5000, 40, 900, 12, 3000, 3,   0, 0, 0, 0,     0,   0 },	// the first report: of before this run, the times too
-			{ 5001, 40, 900, 12, 3000, 3,   1, 0, 0, 0,     0,   0 },	// a period without a state
-			{ 5001, 41, 300, 12, 3000, 3,   1, 1, 0, 0,   300,   0 },	// a plan of this run
-			{ 5001, 41, 300, 13,  700, 3,   1, 1, 1, 0,   300, 700 },	// an IK
-			{ 5001, 42, 250, 13,  700, 4,   1, 2, 1, 1,   300, 700 },	// a shorter plan, which was late
-			{ 5003, 43, 450, 14,  600, 4,   3, 3, 2, 1,   450, 700 },	// a longer plan, a shorter IK
-			{ 5003, 43, 990, 14,  990, 4,   3, 3, 2, 1,   450, 700 },	// no new plan and no new IK: no new times
+		         uint32_t uPlanMax, uIkMax, uGoals; long nGoals; } const ast[] = {
+			{ 5000, 40, 900, 12, 3000, 3,   0, 0, 0, 0,     0,   0,   574, 0 },	// the first report: of before this run, the times too
+			{ 5001, 40, 900, 12, 3000, 3,   1, 0, 0, 0,     0,   0,   574, 0 },	// a period without a state
+			{ 5001, 41, 300, 12, 3000, 3,   1, 1, 0, 0,   300,   0,   575, 1 },	// a plan of this run
+			{ 5001, 41, 300, 13,  700, 3,   1, 1, 1, 0,   300, 700,   575, 1 },	// an IK
+			{ 5001, 42, 250, 13,  700, 4,   1, 2, 1, 1,   300, 700,   577, 3 },	// a shorter plan, which was late
+			{ 5003, 43, 450, 14,  600, 4,   3, 3, 2, 1,   450, 700,   577, 3 },	// a longer plan, a shorter IK
+			{ 5003, 43, 990, 14,  990, 4,   3, 3, 2, 1,   450, 700,   578, 4 },	// no new plan and no new IK: no new times
 		};
 		bool bRun = true;
 		for (size_t k = 0; k < sizeof(ast) / sizeof(ast[0]); k++)
@@ -854,20 +854,22 @@ int main(int argc, char** argv)
 			r.n_iks = ast[k].uIks;
 			r.ik_us = ast[k].uIkUs;
 			r.n_plan_late = ast[k].uLate;
+			r.n_goals = ast[k].uGoals;
 			r.plan_max_us = 5000;		// the longest since the start of the R5: not those of the run
 			r.ik_max_us = 9000;
 			cRun.Take(r);
 			const CControlClient::Counts& c = cRun.GetCounts();
 			if (c.nNoState != ast[k].nNoState || c.nPlans != ast[k].nPlans || c.nIks != ast[k].nIks ||
-			    c.nPlanLate != ast[k].nLate || c.uPlanUsMax != ast[k].uPlanMax || c.uIkUsMax != ast[k].uIkMax)
+			    c.nPlanLate != ast[k].nLate || c.uPlanUsMax != ast[k].uPlanMax || c.uIkUsMax != ast[k].uIkMax ||
+			    c.nGoalsTaken != ast[k].nGoals)
 			{
 				bRun = false;
 				printf("  report %u: %ld periods without a state, %ld plans (longest %u us), %ld IK (longest %u us), %ld "
-				       "plans late\n", (unsigned)k, c.nNoState, c.nPlans, (unsigned)c.uPlanUsMax, c.nIks, (unsigned)c.uIkUsMax,
-				       c.nPlanLate);
+				       "plans late, %ld goals taken\n", (unsigned)k, c.nNoState, c.nPlans, (unsigned)c.uPlanUsMax, c.nIks,
+				       (unsigned)c.uIkUsMax, c.nPlanLate, c.nGoalsTaken);
 			}
 		}
-		Expect(bRun, "the periods without a state, the plans, the IK and the late plans that the R5 counts are told from the "
+		Expect(bRun, "the periods without a state, the plans, the IK, the late plans and the goals that the R5 counts are told from the "
 		             "first report of the run on, and the longest plan and IK are those of the run");
 	}
 

@@ -166,7 +166,7 @@ typedef struct stConfigR5Link
 	INT32	nSimStaleLimit;		// SIM_STALE_LIMIT: -s, the simulated R5 switches the servo off after this many periods
 								// in a row without a new Torque slot (TORQUE_STALE_LIMIT of the firmware)
 
-	stConfigR5Link() : nWakeDelayNs(150000), nWakeDelayS2Ns(500000), nSimStaleLimit(10) {}
+	stConfigR5Link() : nWakeDelayNs(150000), nWakeDelayS2Ns(640000), nSimStaleLimit(10) {}
 } ST_CONFIG_R5_LINK;
 
 typedef std::vector<ST_CONFIG_TASK>			VEC_TASK_CONF;
