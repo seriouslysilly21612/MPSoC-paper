@@ -9,6 +9,7 @@ summary of tools/timing_summary.py (the row of Table 6).
   python3 tools/run_timing.py --condition idle|stress|perception|pressure [--pressure 0|25|50|75|100]
                               [--duration 600] [--cfg indy7/INDY7.cfg] [--bus FILE] [--out DIR] [--settle 30]
                               [--direct] [--no-hl-log] [--arch P0|S1|S2] [--shadow]
+                              [--method M1|M2|A2|A3|FULL] [--desired-class CLASS]
 
   --bus FILE  another bus than that of the cfg (indy7 -B FILE, e.g. indy7/bench/L7N3_bus.cfg, the L7N
               bench); the arm and everything else stay those of the cfg; FILE is copied into OUT
@@ -26,6 +27,12 @@ summary of tools/timing_summary.py (the row of Table 6).
               the two parts of its control task and its t_w + t_e in place of a chain here (tools/
               timing_summary.py). With --shadow a controller here repeats every period of the R5 from its report
               (the console: [S2] the control of the R5 a second time here)
+  --method M  --method of the controller and method:= of the camera pipeline (default M1). With another method
+              the results of the camera go through the mailbox to the control task (with S2 the R5's); they come
+              only for an object of --desired-class
+  --desired-class CLASS
+              desired_class:= of the camera pipeline: the class it follows (perception, pressure). Without it the
+              pipeline publishes no valid target, and the mailbox stays empty
   --no-hl-log HL_LOG=0 in the copy of the cfg: the high-level test is not logged (the 30-min runs of
               tools/run_batch.py; the log takes about 0.7 kB per period)
 
@@ -61,6 +68,7 @@ import argparse
 import glob
 import os
 import re
+import shlex
 import shutil
 import signal
 import subprocess
@@ -228,13 +236,14 @@ def vision_missing():
     return [p for p in PERCEPTION if subprocess.run(['pgrep', '-f', p], capture_output=True).returncode]
 
 
-def start_vision(out):
+def start_vision(out, method='M1', desired_class=''):
     """the camera pipeline in a process group of its own; None if it runs already (it is then left running)"""
     if not vision_missing():
-        print('run_timing: the camera pipeline runs already; it is left running')
+        print('run_timing: the camera pipeline runs already; it is left running (its method and class are its own)')
         return None
     log = os.path.join(out, 'vision.txt')
-    p = subprocess.Popen(['bash', '-c', VISION], stdout=open(log, 'w'), stderr=subprocess.STDOUT,
+    launch = VISION + ' method:=%s' % method + (' desired_class:=%s' % shlex.quote(desired_class) if desired_class else '')
+    p = subprocess.Popen(['bash', '-c', launch], stdout=open(log, 'w'), stderr=subprocess.STDOUT,
                          start_new_session=True, env=dict(os.environ, PYTHONUNBUFFERED='1'))
     for _ in range(150):
         time.sleep(1.0)
@@ -338,6 +347,9 @@ def main():
     ap.add_argument('--no-hl-log', action='store_true', help='HL_LOG=0: the high-level test not logged')
     ap.add_argument('--arch', default='P0', choices=('P0', 'S1', 'S2'),
                     help='where the EtherCAT task runs (S1: on the R5; S2: the control task there too)')
+    ap.add_argument('--method', default='M1', choices=('M1', 'M2', 'A2', 'A3', 'FULL'),
+                    help='--method of the controller and method:= of the camera pipeline')
+    ap.add_argument('--desired-class', default='', help='desired_class:= of the camera pipeline')
     ap.add_argument('--shadow', action='store_true',
                     help='the control computation a second time: with --arch S1 on the R5, with S2 here')
     a = ap.parse_args()
@@ -345,6 +357,8 @@ def main():
         ap.error('--pressure goes with --condition pressure, and only with it')
     if a.shadow and a.arch == 'P0':
         ap.error('--shadow goes with --arch S1 or S2')
+    if a.desired_class and a.condition not in ('perception', 'pressure'):
+        ap.error('--desired-class goes with the camera pipeline: --condition perception or pressure')
 
     src = os.path.abspath(a.cfg)
     rt_cpu = int(float(jp.cfg_get(src, 'TASK0', 'CPU', '3') or 3))
@@ -361,7 +375,7 @@ def main():
     code = 0
     try:
         if a.condition in ('perception', 'pressure'):
-            vision = start_vision(out)
+            vision = start_vision(out, a.method, a.desired_class)
         elif len(vision_missing()) < len(PERCEPTION):
             warn('the camera pipeline runs: this is not the condition %s' % a.condition)
         if a.condition == 'stress':
@@ -390,6 +404,8 @@ def main():
             cmd += ['--arch', a.arch]
         if a.shadow:
             cmd += ['--shadow']
+        if a.method != 'M1':
+            cmd += ['--method', a.method]
         if a.arch != 'P0':
             r5rec = start_r5rec(out)
         print('run_timing: %s (in %s)' % (' '.join(cmd), APP))
