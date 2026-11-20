@@ -96,6 +96,9 @@ def test_other_ids_and_no_tag():
     assert finder().find(np.full((H, W), 255, np.uint8)).reason == 'not_found'
     res = finder(tag_id=0).find(render([(5, 0.065, rot(0, 0, 0), np.array([0.0, 0.0, 0.8]))]))
     assert not res.found and res.reason == 'other_id'
+    f = finder(tag_id=0)
+    f.find(render([(5, 0.065, rot(0, 0, 0), np.array([0.0, 0.0, 0.8]))]))
+    assert f.seen_ids == (5,)
 
 
 def test_the_tool_tag_among_others():

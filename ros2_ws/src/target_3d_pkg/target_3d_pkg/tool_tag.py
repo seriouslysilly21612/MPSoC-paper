@@ -87,6 +87,7 @@ class ToolTagFinder:
         self.D = None
         self._last_box = None  # (u0, v0, u1, v1) of the corners the last time
         self._last_t = None
+        self.seen_ids = ()  # the ids of the last image with tags but not ours (to find tag_id)
 
     def set_camera(self, k, d):
         """k: the 9 values of camera_info.k, d: camera_info.d (any length; none: no distortion)."""
@@ -110,6 +111,7 @@ class ToolTagFinder:
                 return None, 'several'  # two tags with our id: which one is the tool's is unknown
             if not mine:
                 reason = 'other_id'
+                self.seen_ids = tuple(sorted({int(i) for i in ids}))
                 continue
             return (
                 np.asarray(mine[0], np.float64).reshape(4, 2) + np.array([u0, v0], np.float64),

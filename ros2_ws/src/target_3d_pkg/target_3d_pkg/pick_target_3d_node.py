@@ -260,6 +260,7 @@ class PickTarget3DNode(Node):
         self.color_buf = deque()   # (stamp_ns, msg): the color images, for the tool tag
         self.tag_found = 0
         self.tag_tally = {}
+        self.tag_ids_told = set()   # id sets already logged (other_id)
         self.ab_checked = 0
         self.ab_mismatch = 0
         self.last_warn_log_time_ns = {}
@@ -659,6 +660,13 @@ class PickTarget3DNode(Node):
             else:
                 res = self.tag_finder.find(gray, 1e-9 * capture_ns)
                 reason = res.reason
+                seen = self.tag_finder.seen_ids
+                if reason == 'other_id' and seen not in self.tag_ids_told:
+                    # once per id set: says which tag_id the tags in view have
+                    self.tag_ids_told.add(seen)
+                    self.get_logger().info(
+                        f'tool tag: ids in view {list(seen)}, tag_id is '
+                        f'{self.tag_finder.tag_id}')
         if res is not None and res.found:
             p_pnp = self.R_cd @ res.p_cam + self.t_cd          # color -> depth frame
             # the depth image at the tag centre, found as for the object (color pixel -> depth

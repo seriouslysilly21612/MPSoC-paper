@@ -228,6 +228,16 @@ def test_no_tag_in_view():
     assert not node.published[-1].tag_valid and node.tag_tally == {'not_found': 1}
 
 
+def test_another_id_in_view_is_told_once():
+    node = make_node(tool_tag=True)
+    img = render_lib.render([(7, 0.065, render_lib.rot(0, 0, 0), np.array([0.0, 0.0, 0.8]))])
+    for _ in range(2):
+        node.depth_callback(depth_msg(0.8, T_NS))
+        node.color_callback(color_msg(img, T_NS))
+        node.pick_target_callback(target(T_NS))
+    assert node.tag_tally == {'other_id': 2} and node.tag_ids_told == {(7,)}
+
+
 def test_off_by_default():
     node = make_node()
     out = run(node, np.array([0.0, 0.0, 0.8]), 0.8)
