@@ -122,6 +122,9 @@ static void print_event(const event_t *e)
                        " | payloads missed so far %d, lines of the controller not printed %d\r\n",
                        (int)e->value[1], (int)e->value[2], (int)e->value[3], (int)e->value[5], (int)e->value[4],
                        (int)e->value[6]);
+            xil_printf("[shadow] planner task: plans %d (longest %d us), IK %d (longest %d us)"
+                       " | plans not back in their period so far %d\r\n",
+                       (int)e->value[7], (int)e->value[8], (int)e->value[9], (int)e->value[10], (int)e->value[11]);
         }
         break;
     case EVENT_SLAVE_AL_STATUS: {

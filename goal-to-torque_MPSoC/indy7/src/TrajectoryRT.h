@@ -3,9 +3,11 @@
 *	Description: The two motions of the high-level controller, TRACK and
 *	HOME (paper, Sec. IV-C), as the Trajectory task runs them: in every
 *	period, the latest goal of the goal slot and the measured state of the
-*	State slot go into CHighLevelRT (goal admission, IK, trajectory
-*	generation, lead bound), and the joint reference (q_ref, qd_ref,
+*	State slot go into CHighLevelRT (goal admission, the reference of the
+*	plan in use, lead bound), and the joint reference (q_ref, qd_ref,
 *	qdd_ref) comes out, for the Reference slot that the Dynamics task reads.
+*	The IK of a goal and the plans are calculated by the planner of the
+*	controller, which the planner task runs (ServePlanner(), HighLevelLink.h).
 *	The Dynamics task runs computed torque control on that reference; this
 *	class never computes a torque.
 *
@@ -28,6 +30,7 @@
 
 #include "base/Common.h"
 #include "HighLevelRT.h"
+#include "HighLevelLink.h"
 #include "GoalSlot.h"
 
 class CTrajectoryRT
@@ -120,8 +123,18 @@ public:
 	Sample&	GetSample		(	) { return m_sample; }
 	const Sample& GetSample	(	) const { return m_sample; }
 
+	/* the planner of the high-level controller (HighLevelLink.h), for the one task that runs it, the planner
+	 * task; a tool without one calls it after Update(). TRUE: it did something, call again. */
+	BOOL	ServePlanner	(	) { return m_link.Serve(m_planner) ? TRUE : FALSE; }
+	/* for the summary, from any task: what the planner has done (false: nothing yet), and from the task of
+	 * Update(): the plans that were not back in their period, over all motions */
+	bool	GetPlannerStats	(CHlLink::Stats& astStats) const { return m_link.GetStats(astStats); }
+	long	PlansLate		(	) const { return m_nPlansLate; }
+
 private:
 	CHighLevelRT		m_hl;
+	CHlPlanner			m_planner;		// used by ServePlanner() only
+	CHlLink				m_link;			// between m_hl and m_planner
 	const CGoalSlot*	m_pGoalSlot;
 	double				m_adGoalOffset[3];
 	eState				m_eState;
@@ -135,6 +148,7 @@ private:
 	Sample				m_sample;
 	BOOL				m_bSample;
 	StartCall			m_start;
+	long				m_nPlansLate, m_nLateSeen;		// plans not back in their period: over all motions, of this one
 };
 
 #endif // G2T_TRAJECTORY_RT_H

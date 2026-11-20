@@ -15,6 +15,16 @@
 *	            after the update of the period as on the APU; every update
 *	            gets the measured state, the goal, the goal threshold and
 *	            the ready posture of the APU's update
+*	  planner   the IK of a goal is the APU's: an update takes it when the
+*	            APU's did, so the two do not depend on how long each
+*	            planner needs for it. The plans are this controller's own,
+*	            from the requests of its own high-level controller, and its
+*	            planner solves every goal as well: for the time that takes,
+*	            and its solution is compared with the APU's (ik_diff of the
+*	            answer), once per goal and only while this controller
+*	            follows. The planner runs where ServePlanner() is called:
+*	            on the R5 in a task below the EtherCAT task, so the time of
+*	            Step() is that of the 1 ms part
 *	  law       the mode, the hold switch and whether the reference is
 *	            followed are those of the APU's period; the reference is
 *	            this controller's own
@@ -22,7 +32,9 @@
 *	            gave none: shadow/ShadowWriter.h), or a start that is not
 *	            told, leaves this controller's motion behind the APU's: the
 *	            answers say so (IPC_SHADOW_OUT_APART) until the next start,
-*	            which sets both to the same state again
+*	            which sets both to the same state again. So does a plan
+*	            that comes into use in one of the two only (the planner of
+*	            the other was late with it)
 *	  not followed: a JOINT TEST (it starts with arguments of its own), a
 *	            gain changed at the console, a torque fault injected there
 *
@@ -39,6 +51,7 @@
 
 #include "FullDynControllerRT.h"
 #include "HighLevelRT.h"
+#include "HighLevelLink.h"
 #include "ipc/ipc_layout.h"
 
 /* the constants of the controller, as CRobotIndy7::InitController and InitTrajectory take them from the
@@ -54,7 +67,7 @@ enum
 	SHADOW_N_TAU_MAX = SHADOW_N_ROTOR + IPC_CTRL_DOF,
 	SHADOW_N_READY = SHADOW_N_TAU_MAX + IPC_CTRL_DOF,
 	SHADOW_N_FF_GATE = SHADOW_N_READY + IPC_CTRL_DOF,
-	SHADOW_N_DELTA, SHADOW_N_LAMBDA, SHADOW_N_STEP_MAX, SHADOW_N_TOL, SHADOW_N_ITER_CYCLE, SHADOW_N_ITER_MAX,
+	SHADOW_N_DELTA, SHADOW_N_LAMBDA, SHADOW_N_STEP_MAX, SHADOW_N_TOL, SHADOW_N_PLAN_AHEAD, SHADOW_N_ITER_MAX,
 	SHADOW_N_VEL_MAX, SHADOW_N_ACC_MAX, SHADOW_N_JERK_MAX, SHADOW_N_MARGIN, SHADOW_N_LEAD, SHADOW_N_STEP_REF,
 	SHADOW_NUMBERS
 };
@@ -82,12 +95,25 @@ public:
 
 	/* one period of the control task: its payload -> the answer. No allocation. */
 	void	Step		(const ipc_shadow_in_t& astIn, ipc_shadow_out_t* apOut);
+	/* the planner of the high-level controller (HighLevelLink.h), for the one task that runs it: the planner task
+	 * of the firmware; on a PC whoever calls Step(), after it. Only once Init() has returned TRUE. TRUE: it did
+	 * something, call again. No allocation. */
+	BOOL	ServePlanner(	) { return m_cLink.Serve(m_cPlanner) ? TRUE : FALSE; }
 
 private:
 	void	StartMotion	(const ipc_shadow_in_t& astIn);
 
 	CControllerFullDynamicsRT*	m_pCtl;
 	CHighLevelRT				m_cHl;
+	CHlPlanner					m_cPlanner;		// used by ServePlanner() only
+	CHlLink						m_cLink;		// between m_cHl and m_cPlanner
+	long						m_nPlansLate, m_nLateSeen;	// plans not back in their period: so far, of this motion
+	CHlLink::Stats				m_stPlanner;	// what its planner had done when that could last be read
+	CHighLevelRT::IkResult		m_stIkOwn;		// the last IK that its planner ran to its end
+	double						m_adIkApu[DOF];	// the APU's solution of the goal of request m_uIkApu
+	uint32_t					m_uIkApu;		// 0: none that waits to be compared
+	uint32_t					m_uIkCompared;	// goals compared so far
+	double						m_dIkDiff;		// the last of them: largest difference over the joints [rad]
 	std::vector<double>			m_vQ, m_vQd, m_vTor, m_vTau;
 	CControllerFullDynamicsRT::Reference m_stRef;	// of the last update of the high-level controller
 	uint32_t	m_uCrc;

@@ -37,7 +37,8 @@ namespace call_timing
 		eIkJac,			// IK, per iteration: CalcPointJacobian, J_p(q_k)
 		eIkSolve,		// IK, per iteration: J J^T + lambda^2 I, LDLT (3x3), the step dq_k
 		eIkIter,		// IK: one iteration, all of the above
-		eOtg,			// per cycle: Ruckig<N>::update (N = 6: the arm; 7: a hand of the humanoid)
+		eOtg,			// per plan: Ruckig<N>::calculate (N = 6: the arm; 7: a hand of the humanoid), in the planner
+		eOtgAt,			// per cycle: Trajectory<N>::at_time, the reference of the period
 		eCtcKin,		// per cycle: UpdateKinematics of the control law
 		eCtcCrba,		// per cycle: CompositeRigidBodyAlgorithm, M(q)
 		eCtcNle,		// per cycle: NonlinearEffects, h(q, qd)
@@ -86,7 +87,8 @@ namespace call_timing
 	{
 		static const char* const s_apName[eN] = {
 			"IK: UpdateKinematics", "IK: CalcBodyToBaseCoordinates", "IK: CalcPointJacobian",
-			"IK: LDLT step (3x3)", "IK: iteration (all of the above)", "Ruckig<N>::update",
+			"IK: LDLT step (3x3)", "IK: iteration (all of the above)", "Ruckig<N>::calculate (a plan)",
+			"Trajectory<N>::at_time",
 			"CTC: UpdateKinematics", "CTC: CompositeRigidBodyAlgorithm", "CTC: NonlinearEffects",
 			"control law (Update), all" };
 		return (e >= 0 && e < eN) ? s_apName[e] : "?";

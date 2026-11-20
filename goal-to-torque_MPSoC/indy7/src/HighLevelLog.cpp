@@ -109,7 +109,7 @@ HighLevelFormat::Finish(FILE* fp, const char* astrCsv, const Meta& m, const Resu
 		fprintf(fp, "  \"period\": %.9g,\n", m.dPeriod);
 		fprintf(fp, "  \"delta\": %.6g,\n  \"lambda\": %.6g,\n  \"step_max\": %.6g,\n  \"tol\": %.6g,\n",
 		        p.dDelta, p.dLambda, p.dStepMax, p.dTol);
-		fprintf(fp, "  \"iter_cycle\": %d,\n  \"iter_goal\": %d,\n", p.nIterCycle, p.nIterMax);
+		fprintf(fp, "  \"iter_goal\": %d,\n  \"plan_ahead\": %d,\n", p.nIterMax, p.nPlanAhead);
 		fprintf(fp, "  \"vel_max\": %.6g,\n  \"acc_max\": %.6g,\n  \"jerk_max\": %.6g,\n", p.dVelMax, p.dAccMax, p.dJerkMax);
 		fprintf(fp, "  \"margin\": %.6g,\n  \"lead\": %.6g,\n  \"rest_qd\": %.6g,\n  \"rest_cycles\": %d,\n",
 		        p.dMargin, p.dLead, p.dRestQd, p.nRestCyc);

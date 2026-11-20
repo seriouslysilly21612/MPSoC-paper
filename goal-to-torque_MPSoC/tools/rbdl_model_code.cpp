@@ -51,7 +51,7 @@ std::string Header(const Model& am, const char* apcUrdf)
 	         " * not to be edited. Per body: parent, E and r of the joint frame, joint axis, mass, centre of mass,\n"
 	         " * inertia at the centre of mass, name. Per fixed body: moving parent, E and r of its frame, name. */\n"
 	         "#ifndef CTRL_MODEL_DATA_H\n#define CTRL_MODEL_DATA_H\n\n#include \"ctrl_model.h\"\n\n"
-	         "#define CTRL_MODEL_CRC    0x%08Xu\t/* of the numbers and names below */\n"
+	         "#define CTRL_MODEL_CRC    0x%08Xu\t/* of the names below and of the numbers, each on a grid of 2^-40 */\n"
 	         "#define CTRL_MODEL_BODIES %u\n"
 	         "#define CTRL_MODEL_FIXED  %u\n\n"
 	         "static const ctrl_model_body_t CTRL_MODEL_BODY[CTRL_MODEL_BODIES] =\n{\n",

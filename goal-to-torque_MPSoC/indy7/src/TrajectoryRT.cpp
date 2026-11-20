@@ -22,6 +22,8 @@ CTrajectoryRT::CTrajectoryRT()
     , m_nCycle(0)
     , m_dTs(0.001)
     , m_bSample(FALSE)
+    , m_nPlansLate(0)
+    , m_nLateSeen(0)
 {
     for (int k = 0; k < 3; k++)
         m_adGoalOffset[k] = 0.0;
@@ -33,7 +35,7 @@ BOOL
 CTrajectoryRT::Init(const char* astrURDF, double adTs, const CHighLevelRT::Params& astParams)
 {
     m_dTs = adTs;
-    return m_hl.Init(astrURDF, adTs, astParams);
+    return m_hl.Init(astrURDF, adTs, astParams) && m_planner.Init(astrURDF, adTs, astParams);
 }
 
 BOOL
@@ -92,6 +94,7 @@ CTrajectoryRT::Start(bool abHome, const double* adQ, const double* adQd, BOOL ab
     m_uGoalCountSeen  = m_uGoalCountStart;
     m_nGoalAge   = 0;
     m_nCycle     = 0;
+    m_nLateSeen  = 0;           // the count of the high-level controller starts again
     m_ePending   = eRunning;
     m_bFrictionFF = abFrictionFF;
     m_eMotion    = abHome ? eMotionHome : eMotionTrack;
@@ -135,10 +138,14 @@ CTrajectoryRT::Update(const double* adQ, const double* adQd,
     if (bSlot && uCount != m_uGoalCountStart)
         pGoal = adGoal;
 
+    m_link.Before(m_hl);        // what the planner has finished
     const BOOL bOk = m_hl.Update(pGoal, adQ, adQd, adQRef, adQdRef, adQddRef);
+    m_link.After(m_hl);         // what this period asks of it
 
     // the cycle for the log
     const CHighLevelRT::Status& st = m_hl.GetStatus();
+    m_nPlansLate += st.nPlanLate - m_nLateSeen;
+    m_nLateSeen = st.nPlanLate;
     Sample& s = m_sample;
     s.dT = m_nCycle * m_dTs;
     s.nMode = (m_eMotion == eMotionHome) ? 1 : 0;

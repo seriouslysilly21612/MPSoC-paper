@@ -110,7 +110,7 @@ typedef struct stConfigSystem
 	double	dSineV0;
 	/* high-level controller (Table 9) and its tests ('y') */
 	double	dHlDelta, dHlLambda, dHlStepMax, dHlTol;
-	INT32	nHlIterCycle, nHlIterGoal;
+	INT32	nHlPlanAhead, nHlIterGoal;
 	double	dHlVelMax, dHlAccMax, dHlJerkMax, dHlMargin, dHlLead;
 	std::vector<double> vHlReadyQ;
 	std::vector<double> vHlTestGoal, vHlTestJump;

@@ -28,6 +28,7 @@ into modules with new names, without a change in the generated code (below); the
 | `src/oshw/freertos/xemacps*` | Xilinx emacps driver 3.16 (embeddedsw `xilinx_v2022.1`), unchanged | Xilinx, MIT |
 | `src/soem/`, `src/osal/osal.h` | SOEM 1.4.0, unchanged | SOEM, GPL-2.0 with exception, `LICENSE.SOEM` |
 | `src/shadow_link.c`, `.h` | the second controller of `--shadow` in the cycle: after the send, the payload of the control task through the controller of `src/ctrl`, the answer into its slot ("The second controller" below) | own |
+| `src/planner_task.c`, `.h` | the task of its planner, below the EtherCAT task: the inverse kinematics of a goal and the plans, which do not fit the cycle ("The planner task" below) | own |
 | `src/ctrl/` | that controller: the classes of the control task of the APU, copied unchanged, with what they need here in place of Linux, a file system and the URDF reader ("The second controller" below) | the application's (`goal-to-torque_MPSoC/indy7/src`), and own |
 | `src/lscript.ld` | the linker script: code and data in DDR 0x3600_0000–0x362F_FFFF, stack 8 KB, heap 256 KB (8 KB before the second controller, which takes about 80 KB of it when it is built). The last 1 MB of the 4 MB that `rpu_v2.dtbo` reserves stays out of the link: the record ring (0x3630_0000, 960 KB), and in the last 64 KB the stop page (0x363F_B000) and the log ring (0x363F_C000). In the build with `GEM3_BUF_IN_OCM` 0 those 64 KB are a non-cacheable window that also holds the GEM3 descriptor rings (from 0x363F_0000), and the frame buffers are cacheable `.bss` | own, from the Vitis template |
 | `bsp_ref/FreeRTOSConfig.h` | the FreeRTOS configuration the BSP generates from `system.mss` (tick 1000 Hz, heap 256 KB, 8 priorities), to read only | generated |
@@ -346,13 +347,14 @@ anything: the APU keeps the arm, and tells in every period what it did with its 
 with a controller of its own, after its send, and its torque is compared with the APU's and not used.
 
 **What runs.** The classes are those of the application, as they are: `Controller`, `FullDynControllerRT`,
-`HighLevelRT` and `ShadowControl` in `src/ctrl/` are copies (`sh test/check_copies.sh` tells when one is not what
+`HighLevelRT`, `HighLevelLink` and `ShadowControl` in `src/ctrl/` are copies (`sh test/check_copies.sh` tells when one is not what
 the application has now; a copy is updated from the application, never the other way round). What they take from
 Linux is in `src/ctrl/port/`, headers with the application's names that the compiler finds in their place:
 
 | File | In place of |
 |---|---|
 | `port/base/Common.h` | the application's `base/Common.h` (RT-POSIX, a terminal): the types, `read_timer()` and the log lines, which go to `ctrl_port.c` |
+| `port/base/AtomicSlot.h` | the application's single-writer slot (eq. (1) of the paper) on 32-bit words: the R5 has no 64-bit atomic without a lock. On this one core a reader that finds a write under way gives up at once |
 | `port/CallTiming.h` | the call timing of the application: off |
 | `port/sys/mman.h` | `munlockall()`: nothing to unlock |
 | `port/rbdl/addons/urdfreader/urdfreader.h` | the URDF reader: the model comes from `ctrl_model.cpp` |
@@ -362,7 +364,7 @@ Linux is in `src/ctrl/port/`, headers with the application's names that the comp
 |---|---|
 | `ctrl_model.cpp`, `.h`, `ctrl_model_indy7.h` | the RBDL model as numbers: what the URDF reader of the application built from `models/indy7.urdf`, added to an empty model body by body. The header is written by `bin/rbdl_model_code` of the application |
 | `ctrl_numbers_indy7.h` | the 50 constants of the controller from `INDY7.cfg` (gains, torque limits, the parameters of the high-level controller), written by `bin/ctrl_numbers_header` of the application |
-| `shadow_ctrl.cpp`, `.h` | the controller for the C side: built once, then one step per payload; an exception of a library ends as a failed build or a fault answer, never in the firmware |
+| `shadow_ctrl.cpp`, `.h` | the controller for the C side: built once, then one step per payload, and for the planner task one piece of the planner's work per call; an exception of a library ends as a failed build or a fault answer, never in the firmware |
 | `ctrl_port.c`, `.h` | the clock of the classes (the system counter, in ns without a division), their log lines (printed while the controller is built, counted in the loop), and `_gettimeofday()`, which the trajectory generator reads through `std::chrono` and the BSP lacks |
 
 The two generated headers each carry a check value; the check value of the controller is of both and goes back to
@@ -372,7 +374,7 @@ written again (`cd goal-to-torque_MPSoC/indy7 && make tools`, then `./bin/ctrl_n
 ../../rpu_work/r5_freertos/src/ctrl/ctrl_model_indy7.h`) and the firmware is built again.
 
 **In the cycle** (`shadow_link.c`, called from `ecat_cycle()`): after the send returns, one look at the Shadow in
-slot (`ipc/ipc_layout.h`, layout 2). A payload that is new goes through the controller, and the answer (the torque,
+slot (`ipc/ipc_layout.h`, layout 4). A payload that is new goes through the controller, and the answer (the torque,
 its largest difference to the APU's, the reference, the time of the two parts) into the Shadow out slot. The
 payload a cycle finds is that of the period before: the control task is not through with the State of this cycle
 when the send returns. Without a new payload nothing runs, so the firmware is as before while the APU runs without
@@ -382,7 +384,7 @@ when the send returns. Without a new payload nothing runs, so the firmware is as
   are the times of the high-level controller and of the control law, and the overrun rule (`t_w + t_e <= T`) takes
   it in. The send deadline is held by the send, as before: the controller runs after it.
 - The controller is built at the start of the task `ecat`, before the bring-up of the bus. It takes its memory
-  from the C heap then (about 80 KB of the 256 KB of `lscript.ld`) and none in a cycle. If it cannot be built, a
+  from the C heap then (about 95 KB of the 256 KB of `lscript.ld`) and none in a cycle. If it cannot be built, a
   `[shadow] FAIL` line says so and the cycle runs without it.
 - Every status report has a line `[shadow] periods of the control task computed N (apart A, failed F), longest
   L us | payloads missed so far M, lines of the controller not printed K`. "Apart": after a payload that did not
@@ -401,19 +403,49 @@ sources go into the project next to `src/ctrl`:
 | Eigen | 3.4.0 | the directory `Eigen/` of headers into `src/third_party/eigen3/Eigen/` |
 
 1. A new application project on the same platform and domain with the language C++ (template "Empty Application
-   (C++)"), its `src/` replaced by this `src/` with the three libraries in it. The C files are compiled by the C
-   compiler as before, and the link is by `armr5-none-eabi-g++`, which adds the C++ library and `libm`.
-2. Both compilers: `-O2` (the verdict is about optimized code; the firmware ran at `-O0` so far), `-DARMR5`,
-   `-mcpu=cortex-r5 -mfloat-abi=hard -mfpu=vfpv3-d16`, the include paths of "Build" above.
-3. The C++ compiler, in addition: `-std=gnu++17` (not `-std=c++17`: the C library then has no `M_PI`),
-   `-DNDEBUG`, and the include paths `src`, `src/ctrl`, `src/ctrl/port`, `src/third_party/rbdl/include`,
+   (C++)"), its `src/` replaced by this `src/` with the three libraries in it.
+2. Such a project has one compiler tool for `.c` and `.cpp`, "ARM R5 g++ compiler". Its Command is set to
+   `armr5-none-eabi-gcc`, which compiles a file by its extension; as `armr5-none-eabi-g++` it compiles the C files
+   as C++, and SOEM does not compile then (Vitis 2022.1, 2026-11-19). The link stays with `armr5-none-eabi-g++`,
+   which adds the C++ library and `libm`.
+3. That tool: `-O2` (the verdict is about optimized code; the firmware ran at `-O0` before), `-DARMR5`, `-DNDEBUG`,
+   `-mcpu=cortex-r5 -mfloat-abi=hard -mfpu=vfpv3-d16`, `-std=gnu++17` (not `-std=c++17`: the C library then has no
+   `M_PI`; every `.c` gets a warning that the option is not for C, which is harmless), the include paths of
+   "Build" above and `src`, `src/ctrl`, `src/ctrl/port`, `src/third_party/rbdl/include`,
    `src/third_party/ruckig/include`, `src/third_party/eigen3`.
 4. The linker script is `src/lscript.ld` as before; the libraries of the link `-lxil -lfreertos -lgcc -lc
    -lstdc++` in the group.
+5. The ELF of such a build has 100 MB of debug information (`-g3`); `armr5-none-eabi-strip --strip-debug` leaves
+   2.2 MB, and that file goes to the board.
 
 Compiled here at `-O2`, the controller and the two libraries are about 550 KB of code next to the 115 KB of the C
 files, and the C++ library comes on top; the 3 MB that `lscript.ld` links hold it. A firmware of this layout needs
-the application and `r5cmd.py` of the same commit: `IPC_LAYOUT` is 2, and each side refuses the other's 1.
+the application and `r5cmd.py` of the same commit: `IPC_LAYOUT` is 4, and each side refuses another number
+(`test/test_r5cmd.py` compares the number of `r5cmd.py` with the header's).
+
+**The planner task (2026-11-19, D-14).** The run of 2026-11-19 gave a cycle of up to 1481.7 us with the controller
+in it: one iteration of the inverse kinematics takes 70 us here and one calculation of a plan up to 1.1 ms. Since
+then the high-level controller in the cycle only evaluates the plan in use and asks for what it needs; its
+planner runs in a task of its own (`planner_task.c`, priority 2: below `ecat`, above the log task; stack 16 KB),
+in the time that a period leaves, and every cycle interrupts it.
+
+- The task looks for work once per tick, after the cycle of that tick, and works until nothing is asked for: a
+  plan first, then the IK one iteration at a time (`ctrl/HighLevelLink.h`). The requests and the results pass
+  through slots (`port/base/AtomicSlot.h`), so the cycle never waits for the planner.
+- A plan is asked for `HL_PLAN_AHEAD` periods (5) before it is used. One that is not back in its period is
+  counted and asked for again; the second controller is then apart from the APU's until the next start.
+- With `--shadow` the IK of a goal that the reference uses is the APU's (it comes with the payload of the period
+  in which the APU's controller took it, since layout 3), so that the two controllers do not depend on how long
+  each planner needs. The planner here solves every goal all the same: for the time it takes, and as the load it
+  will be when the control task moves here. Its solution is compared with the APU's in the cycle that has both,
+  once per goal and while the controller follows: an answer has the count of the goals compared and the largest
+  difference of the last (the APU's `[SHADOW] the IK of the R5's planner against this one's` line).
+- Every status report has a second line `[shadow] planner task: plans N (longest L us), IK M (longest L us) |
+  plans not back in their period so far K`: the plans and the goals solved in the window of the report, each time
+  from start to end with the cycles that interrupted it, and the late plans since the start. The same numbers go
+  to the APU in every answer (its `[SHADOW] the planner of the R5` line).
+- `[main] caches: instruction cache on, data cache on` at the start: the times are with the caches of the R5,
+  which the boot code of the BSP switches on.
 
 **Checked on a PC**, from this directory (the application built first: `make` and `make tools` in
 `goal-to-torque_MPSoC/indy7`):
@@ -431,25 +463,37 @@ the application and `r5cmd.py` of the same commit: `IPC_LAYOUT` is 2, and each s
   torque, inertia matrix, bias force, tool position, orientation and Jacobian at 1000 random states, bit for bit.
 - `shadow_check` (the application's): a control task in small goes through gravity compensation, HOME, TRACK with
   20 goals, a stop, a joint move and the corner cases of following (12,457 periods), and the second controller
-  gives the torque and the reference of the first bit for bit in every period it follows (12,018 and 10,195).
+  gives the torque and the reference of the first bit for bit in every period it follows (11,504 and 9,781; fewer
+  than before the planner task, because a plan that is late for one of the two leaves them apart). For the 18
+  goals whose IK the first took while the second followed, the planner of the second has the same solution.
 - `shadow_replay.sh`: the controller as this firmware builds it (the port headers, the two generated headers,
-  `shadow_ctrl.cpp`) replays those periods. Built for the PC: 0 difference. Built for the R5 (`arm-none-eabi-g++`
-  13.2, run by `qemu-arm`): the largest torque difference is 5.1e-12 N m, the largest reference difference
-  1.1e-15 rad (the R5 has no fused multiply-add), and no period takes memory.
-- The instructions that the R5 executes per period, counted in that run (`COUNT=N` of `shadow_replay.sh`,
-  `test/count_periods.py`): 9,000 without a motion (the control law alone), 34,600 with one (median), 60,000 to
-  70,000 in the period of a start, and up to 136,000 while the inverse kinematics runs its 10 iterations of a
-  period (61 of the 12,457 periods above 100,000). At 533 MHz that is 65 us for a period of a motion and 256 us for
-  the largest at one cycle per instruction, and three times that at three; cache misses and the pipeline are not in
-  a count, so the board decides.
-- On the emulated R5 the controller takes 60 KB of the heap and 3 KB of stack while it is built, and 5.5 KB of stack
-  in a period; the task `ecat` has 32 KB now.
+  `shadow_ctrl.cpp`) replays those periods, its planner served after every period as the planner task serves it.
+  Built for the PC: 0 difference. Built for the R5 (`arm-none-eabi-g++` 13.2, run by `qemu-arm`): the largest
+  torque difference is 2.5e-13 N m, the largest reference difference 2.2e-16 rad, the largest difference of an IK
+  solution 4.4e-16 rad (the R5 has no fused multiply-add), and neither a period nor the planner takes memory.
+- The instructions that the R5 executes in the cycle per period, counted in that run (`COUNT=N` of
+  `shadow_replay.sh`, `test/count_periods.py`; what the planner task does is not in the count): 9,200 without a
+  motion (the control law alone), 33,900 with one (median; 99 % of the periods at most 34,100), 35,800 in a period
+  that takes an IK, and 43,300 at most, in the 21 periods that take a plan from the planner (a plan is 3.5 KB and
+  is copied three times on that way). With the planner in the cycle the largest was 136,000. On the board a period
+  of a motion took 258 us then (2026-11-19: about 4 cycles per instruction at 533 MHz); at that ratio the largest
+  period of the count is 330 us. Cache misses and the pipeline are not in a count, so the board decides.
+- On the emulated R5 the controller takes 95 KB of the heap and 3 KB of stack while it is built; in a period the
+  part in the cycle takes 3.9 KB of stack and one call of the planner 5.0 KB. The task `ecat` has 32 KB, the
+  planner task 16 KB.
 - Every C file of the firmware compiles for the R5 at `-O2` with the headers of the BSP (embeddedsw
   `xilinx_v2022.1`), and all of it together with the controller and the two libraries leaves nothing undefined but
   the BSP, FreeRTOS and the C and C++ libraries.
 
-Not checked: a Vitis build (its compiler is GCC 11.2; the libraries were also compiled as C++17 here, so nothing of
-C++20 is needed), the link against the BSP, the board. The times above are an estimate.
+On the board (2026-11-19, the build before the planner task; Vitis 2022.1 with GCC 11.2): it builds, starts and
+builds its controller. In 60 s without load a cycle with the controller took up to 1481.7 us (the control law
+177.7 us on average and 200.5 us at most; the high-level controller 80 us in a period without IK and plan), which
+is why the planner left the cycle. The torques were not compared in that run: the URDF reader of the board gives
+four numbers of the model 1.6e-23 away from those of a PC, and the check value of the model took the numbers as
+they were. It takes them on a grid of 2^-40 since.
+
+Not checked: the build with the planner task, in Vitis and on the board. That a cycle interrupts the planner at
+any instruction is true there for the first time: the tests on a PC serve the planner between two periods.
 
 ## The split into modules (2026-11-15)
 

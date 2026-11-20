@@ -68,4 +68,10 @@ assert c.shape_tau([0.01, 0, 0, 0], 0, 3.0) == [0.01, 0, 0, 0]
 assert c.shape_tau([0.01, -0.02, 0, 0], 2.0, 0.0) == [0.0, 0.0, 0.0, 0.0]
 q = c.shape_tau([0.01, -0.02, 0, 0], 2.0, 0.125)
 assert abs(q[0] - 0.01) < 1e-12 and abs(q[1] + 0.02) < 1e-12
+# the numbers of the layout are those of the firmware's header (a firmware with another layout number refuses the tool)
+import re
+hdr = open(os.path.join(os.path.dirname(__file__), "..", "src", "ipc", "ipc_layout.h")).read()
+num = lambda name: int(re.search(r"#define\s+%s\s+(0x[0-9A-Fa-f]+|\d+)u" % name, hdr).group(1), 0)
+assert (num("IPC_LAYOUT"), num("IPC_OFF_STATE"), num("IPC_OFF_TORQUE"), num("IPC_OFF_COMMAND")) == \
+       (c.IPC_LAYOUT, c.OFF_STATE, c.OFF_TORQUE, c.OFF_COMMAND)
 print("test_r5cmd OK")

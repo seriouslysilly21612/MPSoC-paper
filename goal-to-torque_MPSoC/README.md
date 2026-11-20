@@ -74,16 +74,24 @@ controller (`Indy7Ctrl.out`) must not run at the same time (`run.sh` refuses).
 
 ## The architecture in brief (paper, Sec. II, Fig. 1)
 
-The controller is one process with two periodic tasks on one isolated core, released on a common 1-ms
+The controller is one process with three periodic tasks on one isolated core, released on a common 1-ms
 grid (`indy7/src/Indy7Ctrl.h`):
 
 | Task | Priority | In every period |
 |---|---|---|
 | EtherCAT (`TaskEtherCAT.cpp`) | 97 | receive the frame, publish the state (State slot), send the torque of the last period (Torque slot) |
-| Control (`TaskTrajectory.cpp`, then `TaskDynamics.cpp`) | 96 | the trajectory part: take the newest goal (Goal slot), goal admission, bounded IK, jerk-limited reference (Ruckig), publish it (Reference slot); then the dynamics part: computed-torque law (RBDL) on the reference and the state, publish the torque (Torque slot) |
+| Control (`TaskTrajectory.cpp`, then `TaskDynamics.cpp`) | 96 | the trajectory part: take the newest goal (Goal slot), goal admission, the jerk-limited reference of the plan in use, publish it (Reference slot); then the dynamics part: computed-torque law (RBDL) on the reference and the state, publish the torque (Torque slot) |
+| Planner (`TaskPlanner.cpp`) | 95 | when the trajectory part asked for it: the bounded IK of a goal, the plan to a target (Ruckig); it runs when the two tasks above have ended, and they interrupt it |
 
 The paper (Table 3) has the two parts as two tasks, Trajectory (96) and Dynamics (95), which ran in the same order
 on one core; since 2026-11-14 they are one task (the three tasks: commit `4abac4b`).
+
+The planner task (2026-11-19) is not in the cfg: it has the CPU and the grid of the control task and the priority
+below it. On the R5 one plan takes up to 1.1 ms and one IK iteration 70 us (measured 2026-11-19), so neither can
+stay in a 1 ms task there, and the APU runs the same structure. The trajectory part asks for an IK or a plan and
+goes on; the result comes back through atomic slots (`indy7/src/HighLevelLink.h`). A plan is asked for
+`HL_PLAN_AHEAD` periods (5) before it is used, from the state the reference has then; one that is not back in
+time is asked for again and counted (the `planner task` line of the summary).
 
 The tasks exchange data only through single-writer atomic slots (`indy7/src/base/AtomicSlot.h`, eq. (1));
 every payload carries the period in which it was produced. The torque computed in period k is sent in
@@ -374,6 +382,21 @@ not compared. The check value printed at the start (the constants of the cfg, th
 of the firmware's `[shadow]` line; answers with another one are not compared. With `-s` the simulated R5 has the
 second controller as well. The two slots made the shared region layout 2: firmware, application and `r5cmd.py` go
 together, and a side of another layout is not read. Not run with the real R5 yet (2026-11-18).
+
+Layout 3 (2026-11-19, with the planner task): the payload also has the solution of the IK that the update of
+the period took, if it took one, and whether a plan came into use in it. The second controller
+takes that IK in the same period, so the two do not depend on how long each planner needs for it; its plans are
+its own, and a plan that comes into use in one of the two only (a planner was late) leaves them apart until the
+next start.
+
+Layout 4 (2026-11-19): the planner of the second controller has a task of its own on the R5, and an answer has
+what it did so far (plans, the goals it solved beside the APU's planner, the time of the last of each, plans not
+back in their period). Its solution of a goal is not used, so the second controller compares it with the IK that
+came from the APU, once per goal and while it follows, and an answer has the largest difference of the last goal
+compared. The run ends with two more lines, counted from the first answer of the run:
+
+    [SHADOW] the planner of the R5: <n> plans, the longest <t> us from start to end; <n> IK, the longest <t> us from its request to its result; <n> plans not back in their period (asked for again)
+    [SHADOW] the IK of the R5's planner against this one's: <n> goals compared, <n> differ by more than 1e-09 rad, largest difference <d> rad
 
 ## The paper and the code
 

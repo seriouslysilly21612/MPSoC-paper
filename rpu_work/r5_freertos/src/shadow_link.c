@@ -10,10 +10,15 @@
 #include "ctrl/shadow_ctrl.h"
 #include "ctrl/ctrl_port.h"
 
+_Static_assert(EVENT_VALUES >= 12, "the report of shadow_link_report() has 12 values");
+
 static int      built;
 static uint32_t n_steps, n_apart, n_fault;           /* of the window of a report */
 static uint32_t n_missed;                            /* payloads the controller did not get, so far (its count) */
 static uint32_t step_ns_max;                         /* the two parts together, largest of the window */
+/* the planner of the controller (planner_task.c), from the answers: its counts so far, and of the window the
+ * counts at its begin and the longest plan and IK that an answer showed */
+static uint32_t n_plans, n_iks, n_plan_late, n_plans_before, n_iks_before, plan_us_max, ik_us_max;
 
 int shadow_link_start(void)
 {
@@ -47,6 +52,11 @@ int shadow_link_step(int32_t *traj_ns, int32_t *ctrl_ns)
     n_missed = out.n_missed;
     ns = out.traj_ns + out.ctrl_ns;
     if (ns > step_ns_max) step_ns_max = ns;
+    if (out.n_plans != n_plans && out.plan_us > plan_us_max) plan_us_max = out.plan_us;     /* a new plan: its time */
+    if (out.n_iks != n_iks && out.ik_us > ik_us_max) ik_us_max = out.ik_us;
+    n_plans = out.n_plans;
+    n_iks = out.n_iks;
+    n_plan_late = out.n_plan_late;
     return 1;
 }
 
@@ -62,7 +72,13 @@ void shadow_link_report(void)
         e->value[4] = (int32_t)n_missed;
         e->value[5] = (int32_t)(step_ns_max / 1000u);
         e->value[6] = (int32_t)ctrl_port_lines_held();
+        e->value[7] = (int32_t)(n_plans - n_plans_before);
+        e->value[8] = (int32_t)plan_us_max;
+        e->value[9] = (int32_t)(n_iks - n_iks_before);
+        e->value[10] = (int32_t)ik_us_max;
+        e->value[11] = (int32_t)n_plan_late;
         event_publish();
     }
     n_steps = 0u; n_apart = 0u; n_fault = 0u; step_ns_max = 0u;
+    n_plans_before = n_plans; n_iks_before = n_iks; plan_us_max = 0u; ik_us_max = 0u;
 }

@@ -35,7 +35,7 @@ std::string Name(int i)
 		{ SHADOW_N_READY, "ready posture [rad]" } };
 	static const char* const s_apcOne[] = {
 		"gate of the friction feedforward (0, 1)", "goal threshold [m]", "IK damping", "IK step limit [rad]",
-		"IK tolerance [m]", "IK iterations per period", "IK iterations per goal", "speed limit [rad/s]",
+		"IK tolerance [m]", "periods from the request of a plan to its use", "IK iterations per goal", "speed limit [rad/s]",
 		"acceleration limit [rad/s^2]", "jerk limit [rad/s^3]", "limit margin [rad]", "lead bound [rad]",
 		"step baseline (0, 1)" };
 	if (i == SHADOW_N_TS)

@@ -108,7 +108,7 @@ SOURCES := base/Config.cpp base/RtTask.cpp base/ViewStream.cpp base/MallocCount.
            sim/SimArm.cpp sim/SimJoint.cpp sim/SimCamera.cpp sim/SimR5.cpp r5link/R5Link.cpp \
            Controller.cpp FullDynControllerRT.cpp HighLevelRT.cpp TrajectoryRT.cpp shadow/ShadowControl.cpp \
            JointTestLog.cpp HighLevelLog.cpp obs/ObsLog.cpp TimingLog.cpp CalibCapture.cpp $(BRIDGE_SOURCE) \
-           Indy7Ctrl.cpp TaskEtherCAT.cpp TaskTrajectory.cpp TaskDynamics.cpp main.cpp
+           Indy7Ctrl.cpp TaskEtherCAT.cpp TaskTrajectory.cpp TaskDynamics.cpp TaskPlanner.cpp main.cpp
 RTPOSIX_SOURCES := posix_rt.c commons.c
 
 OBJECTS := $(addprefix $(OBJ_DIR)/,$(SOURCES:.cpp=.o)) \
@@ -157,7 +157,8 @@ $(BIN_DIR)/model_check: $(TOOLS_DIR)/model_check.cpp $(TOOL_OBJS)
 	$(CXX) $(CXXFLAGS) $(INCLUDES) -o $@ $< $(TOOL_OBJS) $(LDLIBS)
 
 # the high-level controller on an ideal arm: the reference contract in every period
-$(BIN_DIR)/hl_check: $(TOOLS_DIR)/hl_check.cpp $(TOOL_OBJS)
+$(BIN_DIR)/hl_check: $(TOOLS_DIR)/hl_check.cpp $(TOOL_OBJS) $(SRC_DIR)/HighLevelRT.h $(SRC_DIR)/HighLevelLink.h \
+                     $(SRC_DIR)/base/AtomicSlot.h
 	@mkdir -p $(BIN_DIR)
 	$(CXX) $(CXXFLAGS) $(INCLUDES) -o $@ $< $(TOOL_OBJS) $(LDLIBS)
 
@@ -236,6 +237,7 @@ $(BIN_DIR)/ctrl_numbers_header: $(TOOLS_DIR)/ctrl_numbers_header.cpp $(TOOL_OBJS
 # the controller as the firmware of the R5 builds it
 SHADOW_OBJS := $(OBJ_DIR)/shadow/ShadowControl.o $(OBJ_DIR)/TrajectoryRT.o $(OBJ_DIR)/base/Config.o $(OBJ_DIR)/r5link/R5Link.o
 $(BIN_DIR)/shadow_check: $(TOOLS_DIR)/shadow_check.cpp $(TOOL_OBJS) $(SHADOW_OBJS) $(SRC_DIR)/shadow/ShadowWriter.h \
+                         $(SRC_DIR)/TrajectoryRT.h $(SRC_DIR)/HighLevelLink.h \
                          $(SRC_DIR)/shadow/ShadowTask.h $(SRC_DIR)/shadow/ShadowParams.h \
                          $(SRC_DIR)/shadow/shadow_vectors.h $(SRC_DIR)/sim/SimR5Slots.h
 	@mkdir -p $(BIN_DIR)

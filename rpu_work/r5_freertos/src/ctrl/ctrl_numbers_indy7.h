@@ -3,7 +3,7 @@
 #ifndef CTRL_NUMBERS_H
 #define CTRL_NUMBERS_H
 
-#define CTRL_NUMBERS_CRC   0xACA07C47u	/* of the numbers below */
+#define CTRL_NUMBERS_CRC   0x355B499Du	/* of the numbers below */
 #define CTRL_NUMBERS_COUNT 50
 
 static const double CTRL_NUMBERS[CTRL_NUMBERS_COUNT] =
@@ -50,7 +50,7 @@ static const double CTRL_NUMBERS[CTRL_NUMBERS_COUNT] =
 	0x1.47ae147ae147bp-7,	/* 0.01: IK damping */
 	0x1.999999999999ap-3,	/* 0.2: IK step limit [rad] */
 	0x1.a36e2eb1c432dp-14,	/* 0.0001: IK tolerance [m] */
-	0x1.4p+3,	/* 10: IK iterations per period */
+	0x1.4p+2,	/* 5: periods from the request of a plan to its use */
 	0x1.9p+6,	/* 100: IK iterations per goal */
 	0x1.3333333333333p-1,	/* 0.6: speed limit [rad/s] */
 	0x1p+1,	/* 2: acceleration limit [rad/s^2] */
