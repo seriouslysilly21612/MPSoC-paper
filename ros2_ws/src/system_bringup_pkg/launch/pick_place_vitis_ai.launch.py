@@ -44,6 +44,15 @@ See evidence/metrics/README.md
 MODEL. `model_path:=/abs/path/model.xmodel` runs another xmodel instead of the
 packaged YOLOv3-tiny one; its decode_meta.json must sit in the same directory
 (the worker reads it from there). Empty (the default) = the packaged model.
+`model_path_2:=` a second xmodel of the other input size (its own directory
+with its decode_meta.json): the worker loads both, and the method (M2, A2, A3,
+FULL) picks the mode of each image (D-23). M1 runs model_path only.
+
+TOOL TAG. `tool_tag:=true` makes pick_target_3d_node look for the tool tag
+(AprilTag 36h11 tag_id:=0, black square tag_size_m:=0.065) in the color image
+of each target, so that the control application can take the object from it
+(APP_RESULT_FORMAT=tag; D-22). tag_position:=depth|pnp: its distance from the
+depth image (default) or from its corners.
 """
 import os
 import re
@@ -147,17 +156,40 @@ def launch_setup(context, *args, **kwargs):
         if method_params[key]:
             method_params[key] = os.path.abspath(os.path.expanduser(method_params[key]))
 
-    model_override = LaunchConfiguration('model_path').perform(context).strip()
-    if model_override:
+    def resolved_model(arg):
+        """the xmodel of a launch argument, its decode_meta.json beside it; '' when empty"""
+        given = LaunchConfiguration(arg).perform(context).strip()
+        if not given:
+            return ''
         # `model_path:=~/...` reaches us unexpanded (the shell expands ~ only
         # at the start of a word)
-        model_path = os.path.abspath(os.path.expanduser(model_override))
+        path = os.path.abspath(os.path.expanduser(given))
         # fail before the camera starts: the worker would report a missing
         # file only after the whole pipeline is up
-        for f in (model_path, os.path.join(os.path.dirname(model_path),
-                                           'decode_meta.json')):
+        for f in (path, os.path.join(os.path.dirname(path), 'decode_meta.json')):
             if not os.path.isfile(f):
-                raise RuntimeError(f'model_path: no such file {f}')
+                raise RuntimeError(f'{arg}: no such file {f}')
+        return path
+
+    model_override = resolved_model('model_path')
+    if model_override:
+        model_path = model_override
+    model_path_2 = resolved_model('model_path_2')
+    if model_path_2 and model_override and \
+            os.path.dirname(model_path_2) == os.path.dirname(model_override):
+        raise RuntimeError('model_path_2: in the directory of model_path; each xmodel needs '
+                           'its own decode_meta.json')
+
+    def flag(arg):
+        value = LaunchConfiguration(arg).perform(context).strip().lower()
+        return value in ('true', '1', 'yes', 'on')
+
+    tag_params = {
+        'tool_tag': flag('tool_tag'),
+        'tag_id': int(LaunchConfiguration('tag_id').perform(context)),
+        'tag_size_m': float(LaunchConfiguration('tag_size_m').perform(context)),
+        'tag_position': LaunchConfiguration('tag_position').perform(context).strip(),
+    }
 
     pick_logic_config = PathJoinSubstitution([
         FindPackageShare('system_bringup_pkg'),
@@ -243,7 +275,8 @@ def launch_setup(context, *args, **kwargs):
             name='vitis_ai_detector_node',
             # model_path comes last so it overrides the YAML: it is a resolved
             # path, not a tunable, and must not be edited per machine.
-            parameters=[vitis_ai_detector_config, {'model_path': model_path}, method_params]
+            parameters=[vitis_ai_detector_config,
+                        {'model_path': model_path, 'model_path_2': model_path_2}, method_params]
             + metrics_params('detector'),
             output='screen',
         ),
@@ -272,7 +305,7 @@ def launch_setup(context, *args, **kwargs):
             package='target_3d_pkg',
             executable='pick_target_3d_node',
             name='pick_target_3d_node',
-            parameters=[target_3d_config] + metrics_params('target_3d'),
+            parameters=[target_3d_config, tag_params] + metrics_params('target_3d'),
             output='screen',
         ),
 
@@ -364,6 +397,27 @@ def generate_launch_description():
             description='xmodel to run instead of the packaged YOLOv3-tiny '
                         '(empty = packaged); its decode_meta.json must be in '
                         'the same directory'),
+        DeclareLaunchArgument(
+            'model_path_2', default_value='',
+            description='a second xmodel, of the other input size, in a directory of '
+                        'its own with its decode_meta.json: the methods other than '
+                        'M1 pick the mode of each image (empty = one mode)'),
+        DeclareLaunchArgument(
+            'tool_tag', default_value='false',
+            description='true: pick_target_3d_node finds the tool tag in the color '
+                        'image of each target (APP_RESULT_FORMAT=tag of the control '
+                        'application)'),
+        DeclareLaunchArgument(
+            'tag_id', default_value='0',
+            description='the id of the tool tag (AprilTag 36h11)'),
+        DeclareLaunchArgument(
+            'tag_size_m', default_value='0.065',
+            description='the side of the black square of the tool tag [m]: '
+                        'measure it (the calibration tag: 0.065)'),
+        DeclareLaunchArgument(
+            'tag_position', default_value='depth',
+            description="depth: the tag's distance from the depth image, as for the "
+                        'object; pnp: from its four corners'),
         DeclareLaunchArgument(
             'method', default_value='M1',
             description='M1, M2, A2, A3 or FULL: what the detector does with an '

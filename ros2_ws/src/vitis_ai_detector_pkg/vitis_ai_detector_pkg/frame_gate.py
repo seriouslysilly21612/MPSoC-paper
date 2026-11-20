@@ -68,7 +68,7 @@ class FrameGate:
     """The gate of one run with a method other than M1."""
 
     def __init__(self, method, contract_cfg_path, profile_path, model_path,
-                 response_table_path=''):
+                 response_table_path='', model_path_2=''):
         if method not in METHODS_WITH_SCORE + METHODS_WITH_RULE:
             raise GateError(f'method {method!r} has no gate of this kind ({METHODS})')
         self.method = method
@@ -80,11 +80,16 @@ class FrameGate:
                 else None)
         except (ContractError, admission.ProfileError) as error:
             raise GateError(str(error)) from None
-        mode = mode_of_model(model_path)
-        if mode not in self.profile.modes:
-            raise GateError(
-                f'{profile_path} has no entry for mode {mode}, the mode of {model_path}')
-        self.modes = (mode,)            # one model is loaded: the modes that can run now
+        # the modes of the models the worker loads: those the rule can choose among (D-23)
+        modes = []
+        for path in [model_path] + ([model_path_2] if model_path_2 else []):
+            mode = mode_of_model(path)
+            if mode not in self.profile.modes:
+                raise GateError(f'{profile_path} has no entry for mode {mode}, the mode of {path}')
+            if mode in modes:
+                raise GateError(f'{model_path} and {model_path_2} are of the same mode {mode}')
+            modes.append(mode)
+        self.modes = tuple(modes)
         self.uses_status = method in METHODS_WITH_RULE
         self._status = None
         self.rows = []

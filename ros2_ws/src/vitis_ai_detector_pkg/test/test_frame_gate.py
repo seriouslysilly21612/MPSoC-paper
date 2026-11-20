@@ -186,3 +186,36 @@ def test_every_decision_leaves_a_row_in_the_log(files, tmp_path):
     assert (skipped['skip_age_ms'], skipped['skip_bound_mm']) == ('194.000', '6.0000')
     assert (skipped['skip_in_time'], skipped['skip_within_tolerance']) == ('1', '1')
     assert skipped['m1_age_ms'] == '131.000'        # the run candidate is logged too
+
+
+def two_models(tmp_path, sizes=(416, 320)):
+    paths = []
+    for k, size in enumerate(sizes):
+        d = tmp_path / f'model{k}'
+        d.mkdir()
+        (d / 'decode_meta.json').write_text(json.dumps({'input_size': size}), encoding='utf-8')
+        paths.append(str(d / 'net.xmodel'))
+    return paths
+
+
+def test_two_models_two_modes(files, tmp_path):
+    cfg, profile, _ = files
+    m416, m320 = two_models(tmp_path)
+    gate = FrameGate('FULL', cfg, profile, m416, '', m320)
+    assert gate.modes == (0, 1)
+    gate.on_status(status_of(gate))
+    # with both, the rule can take the faster one (the profile: 80 ms against 100 ms; the cost of the error is
+    # the bound at that age): the mode it chose is one of the two and is in the log
+    decision = gate.decide(NOW - 0.002, NOW)
+    assert decision.action == admission.RUN and decision.mode in (0, 1)
+    assert gate.rows[-1]['mode'] == decision.mode
+    assert {'m0_age_ms', 'm1_age_ms'} <= {k for k, v in gate.rows[-1].items() if v != ''}
+    # M2 and A2 choose by the score, among both
+    assert FrameGate('M2', cfg, profile, m416, '', m320).decide(NOW, NOW).mode in (0, 1)
+
+
+def test_two_models_of_one_mode_are_refused(files, tmp_path):
+    cfg, profile, _ = files
+    a, b = two_models(tmp_path, sizes=(320, 320))
+    with pytest.raises(GateError):
+        FrameGate('FULL', cfg, profile, a, '', b)
