@@ -84,3 +84,34 @@ def test_bad_port_and_bad_file(tmp_path):
     with pytest.raises(SystemExit):
         Q.main(['restore', str(bad)], mem)
     assert mem.port('HP1').read()['rd_issue'] == 16
+
+
+def test_a_second_port_is_added_to_the_saved_file(tmp_path):
+    mem = FakeMem()
+    save = str(tmp_path / 'before.json')
+    assert Q.main(['set', '--port', 'HP1', '--rd-issue', '2', '--save', save], mem) == 0
+    assert Q.main(['set', '--port', 'HPC1,HP1', '--rd-issue', '1', '--rd-qos', '0', '--save', save], mem) == 0
+    saved = json.load(open(save))
+    assert set(saved) == {'HP1', 'HPC1'} and saved['HP1']['rd_issue'] == 16 and saved['HPC1']['rd_qos'] == 7
+    assert Q.main(['restore', save], mem) == 0
+    for name in ('HP1', 'HPC1'):
+        assert mem.port(name).read() == {'rd_fabric': False, 'rd_issue': 16, 'rd_qos': 7, 'wr_fabric': False,
+                                         'wr_issue': 16, 'wr_qos': 0}
+
+
+def test_a_broken_saved_file_stops_before_any_write(tmp_path):
+    mem = FakeMem()
+    for text in ('{not json', json.dumps({'HP1': {'rd_issue': 40}}), json.dumps(['HP1'])):
+        bad = tmp_path / 'bad.json'
+        bad.write_text(text)
+        with pytest.raises(SystemExit):
+            Q.main(['set', '--port', 'HP1', '--rd-issue', '2', '--save', str(bad)], mem)
+        assert mem.port('HP1').read()['rd_issue'] == 16 and bad.read_text() == text
+
+
+def test_the_default_file_is_in_the_home_of_the_sudo_user(monkeypatch):
+    monkeypatch.setenv('SUDO_USER', 'ubuntu')
+    monkeypatch.setattr(Q.pwd, 'getpwnam', lambda user: type('P', (), {'pw_dir': '/home/' + user})())
+    assert Q.default_save() == '/home/ubuntu/hp_qos_before.json'
+    monkeypatch.delenv('SUDO_USER')
+    assert Q.default_save() == os.path.expanduser('~/hp_qos_before.json')

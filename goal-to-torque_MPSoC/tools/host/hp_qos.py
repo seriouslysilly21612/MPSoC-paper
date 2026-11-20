@@ -14,13 +14,15 @@ RDQoS 0x08, WRCTRL 0x14, WRISSUE 0x18, WRQoS 0x1C.
   sudo python3 tools/host/hp_qos.py restore FILE          the values a set saved
 
 set reads every register it changes, keeps its other bits, writes, reads back and prints both; it saves the
-values before it (default ~/hp_qos_before.json, kept if it is there: the first one stays the one to go back
-to). Only these six registers of these seven ports are touched. Standard library only; root (/dev/mem).
+values before it (default hp_qos_before.json in the home of the user who ran sudo). A port already in that
+file keeps its first values there, the ones to go back to; a port not in it yet is added. Only these six
+registers of these seven ports are touched. Standard library only; root (/dev/mem).
 """
 import argparse
 import json
 import mmap
 import os
+import pwd
 import sys
 
 # UG1087: AFIFM0..5 are HPC0, HPC1, HP0..HP3 (FPD), AFIFM6 the LPD port
@@ -77,6 +79,30 @@ def check(values):
     return bad
 
 
+def default_save():
+    """hp_qos_before.json in the home of the user who ran sudo (sudo sets HOME to /root)"""
+    user = os.environ.get('SUDO_USER')
+    if user:
+        try:
+            return os.path.join(pwd.getpwnam(user).pw_dir, 'hp_qos_before.json')
+        except KeyError:
+            pass
+    return os.path.expanduser('~/hp_qos_before.json')
+
+
+def read_saved(path):
+    """{port: values} of a file a set wrote; SystemExit if it is not one"""
+    try:
+        with open(path) as f:
+            saved = json.load(f)
+    except (OSError, ValueError) as e:
+        raise SystemExit(f'hp_qos: {path}: {e}')
+    if not isinstance(saved, dict) or any(name not in PORTS or not isinstance(values, dict) or check(values)
+                                          for name, values in saved.items()):
+        raise SystemExit(f'hp_qos: {path}: not a file of saved ports')
+    return saved
+
+
 def show(name, v):
     def ch(p):
         src = 'from the PL' if v[f'{p}_fabric'] else f'static {v[f"{p}_qos"]}'
@@ -125,7 +151,8 @@ def main(argv=None, mem=None):
     g = s.add_mutually_exclusive_group()
     g.add_argument('--static', action='store_true', help='FABRIC_QOS_EN 0: the static values count')
     g.add_argument('--fabric', action='store_true', help='FABRIC_QOS_EN 1: the PL drives the QoS')
-    s.add_argument('--save', default=os.path.expanduser('~/hp_qos_before.json'))
+    s.add_argument('--save', default=None, help='the file of the values before it (default: '
+                   'hp_qos_before.json in the home of the user who ran sudo)')
     r = sub.add_parser('restore')
     r.add_argument('file')
     a = ap.parse_args(argv)
@@ -137,10 +164,7 @@ def main(argv=None, mem=None):
         return 0
 
     if a.cmd == 'restore':
-        saved = json.load(open(a.file))
-        for name, values in saved.items():
-            if name not in PORTS or check(values):
-                raise SystemExit(f'hp_qos: {a.file}: {name} {values}: not a saved port')
+        saved = read_saved(a.file)
         for name, values in saved.items():
             mem.port(name).write(values)
             print('restored ' + show(name, mem.port(name).read()))
@@ -154,13 +178,18 @@ def main(argv=None, mem=None):
     if bad or not values:
         raise SystemExit('hp_qos: ' + ('; '.join(bad) if bad else 'nothing to set'))
     names = parse_ports(a.port)
+    save = a.save or default_save()
     before = {name: mem.port(name).read() for name in names}
-    if not os.path.exists(a.save):
-        with open(a.save, 'w') as f:
-            json.dump(before, f, indent=1)
-        print(f'saved the values before it: {a.save} (hp_qos.py restore {a.save})')
-    else:
-        print(f'{a.save} is there already: kept (the first values to go back to)')
+    # each port keeps the values it had before its first set: a second set on another port adds that port
+    saved = read_saved(save) if os.path.exists(save) else {}
+    new = [name for name in names if name not in saved]
+    if new:
+        saved.update({name: before[name] for name in new})
+        with open(save, 'w') as f:
+            json.dump(saved, f, indent=1)
+        print(f'saved the values before it of {", ".join(new)}: {save} (hp_qos.py restore {save})')
+    if len(new) < len(names):
+        print(f'{save}: the first values of {", ".join(n for n in names if n not in new)} kept')
     failed = 0
     for name in names:
         port = mem.port(name)
