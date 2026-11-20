@@ -9,7 +9,7 @@ in its place), the timing of every period (-t), and the summary of tools/timing_
   python3 tools/run_timing.py --condition idle|stress|perception|pressure [--pressure 0|25|50|75|100]
                               [--duration 600] [--cfg indy7/INDY7.cfg] [--bus FILE] [--out DIR] [--settle 30]
                               [--direct] [--no-hl-log] [--arch P0|S1|S2] [--shadow]
-                              [--method M1|M2|A2|A3|FULL] [--desired-class CLASS]
+                              [--method M1|M2|A2|A3|FULL] [--desired-class CLASS] [--vision-args 'NAME:=VALUE ...']
 
   --bus FILE  another bus than that of the cfg (indy7 -B FILE, e.g. indy7/bench/L7N3_bus.cfg, the L7N
               bench); the arm and everything else stay those of the cfg; FILE is copied into OUT
@@ -37,6 +37,9 @@ in its place), the timing of every period (-t), and the summary of tools/timing_
               menu is the only way to set it. Without it the goal stream runs, and with a method other than M1
               the mailbox stays empty. The logs of the application (obs_*, hl_app_*) go to OUT/hl_logs, the
               decisions of the detector (A3, FULL) to OUT/decisions.csv
+  --vision-args 'NAME:=VALUE ...'
+              more arguments of the camera launch, after method:= and decision_log:= (a name given twice takes
+              the last value), e.g. model_path_2:= for the second mode of the detector (D-23)
   --no-hl-log HL_LOG=0 in the copy of the cfg: the high-level test is not logged (the 30-min runs of
               tools/run_batch.py; the log takes about 0.7 kB per period)
 
@@ -241,14 +244,27 @@ def vision_missing():
     return [p for p in PERCEPTION if subprocess.run(['pgrep', '-f', p], capture_output=True).returncode]
 
 
-def start_vision(out, method='M1'):
+def vision_args(text):
+    """the name:=value arguments of --vision-args, quoted for bash; ValueError for any other word"""
+    words = shlex.split(text)
+    for w in words:
+        name = w.split(':=', 1)[0]
+        if ':=' not in w or not name.replace('_', '').isalnum():
+            raise ValueError('%r is no name:=value argument of the launch' % w)
+    return [shlex.quote(w) for w in words]
+
+
+def start_vision(out, method='M1', extra=()):
     """the camera pipeline in a process group of its own; None if it runs already (it is then left running)"""
     if not vision_missing():
         print('run_timing: the camera pipeline runs already; it is left running (its method and class are its own)')
+        if extra:
+            warn('--vision-args not used: the running pipeline has its own launch arguments')
         return None
     log = os.path.join(out, 'vision.txt')
     # decision_log: why the detector ran, skipped or rejected each image (A3, FULL; the others write none)
     launch = VISION + ' method:=%s decision_log:=%s' % (shlex.quote(method), shlex.quote(os.path.join(out, 'decisions.csv')))
+    launch += ''.join(' ' + w for w in extra)      # after ours: a name given twice takes the last value
     p = subprocess.Popen(['bash', '-c', launch], stdout=open(log, 'w'), stderr=subprocess.STDOUT,
                          start_new_session=True, env=dict(os.environ, PYTHONUNBUFFERED='1'))
     for _ in range(150):
@@ -386,6 +402,8 @@ def main():
     ap.add_argument('--method', default='M1', choices=('M1', 'M2', 'A2', 'A3', 'FULL'),
                     help='--method of the controller and method:= of the camera pipeline')
     ap.add_argument('--desired-class', default='', help='the camera application following CLASS, not the stream')
+    ap.add_argument('--vision-args', default='',
+                    help="more name:=value arguments of the camera launch, e.g. 'model_path_2:=...'")
     ap.add_argument('--shadow', action='store_true',
                     help='the control computation a second time: with --arch S1 on the R5, with S2 here')
     a = ap.parse_args()
@@ -393,6 +411,12 @@ def main():
         ap.error('--pressure goes with --condition pressure, and only with it')
     if a.shadow and a.arch == 'P0':
         ap.error('--shadow goes with --arch S1 or S2')
+    try:
+        extra = vision_args(a.vision_args)
+    except ValueError as e:
+        ap.error('--vision-args: %s' % e)
+    if extra and a.condition not in ('perception', 'pressure'):
+        ap.error('--vision-args goes with the camera pipeline: --condition perception or pressure')
     if a.desired_class and a.condition not in ('perception', 'pressure'):
         ap.error('--desired-class goes with the camera pipeline: --condition perception or pressure')
 
@@ -411,7 +435,7 @@ def main():
     code = 0
     try:
         if a.condition in ('perception', 'pressure'):
-            vision = start_vision(out, a.method)
+            vision = start_vision(out, a.method, extra)
         elif len(vision_missing()) < len(PERCEPTION):
             warn('the camera pipeline runs: this is not the condition %s' % a.condition)
         if a.condition == 'stress':
