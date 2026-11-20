@@ -2,7 +2,7 @@
 """run_batch.py - the unattended batch of the measurement protocol (D-11): tools/run_timing.py for every
 condition and repetition, with nobody at the board.
 
-  python3 tools/run_batch.py --out DIR [--quick] [--bus FILE] [--arch P0|S1] [--dry-run]
+  python3 tools/run_batch.py --out DIR [--quick] [--bus FILE] [--arch P0|S1|S2] [--dry-run]
 
   (full)     the 7 conditions (idle, stress, perception, pressure 25, 50, 75, 100; perception is pressure 0) x 30 min x 3; each
              repetition is one round of the 7, so that a slow drift (the temperature of the board) falls on every
@@ -10,11 +10,13 @@ condition and repetition, with nobody at the board.
   --quick    idle, stress, perception, pressure 100 for 10 min each, then pressure 100 twice more; about 1.4 h
   --bus FILE the bus of every run (default indy7/bench/L7N3_bus.cfg, the L7N bench)
   --arch S1  every run with the EtherCAT task on the R5 (run_timing.py --arch S1)
+  --arch S2  the control task on the R5 as well (run_timing.py --arch S2; a firmware built with CONTROL_TASK):
+             the same goal stream (M1), so that the runs compare with those of P0 and S1
   --dry-run  the runs and their commands; nothing is run
   --from N   start at run N in an OUT of an earlier batch; the directory of a run done again is kept as
              <nn>_<condition>.before-<time>
 
-Before it: the IgH master running (sudo systemctl start ethercat; with --arch S1 instead the R5 running, its bus
+Before it: the IgH master running (sudo systemctl start ethercat; with --arch S1 or S2 instead the R5 running, its bus
 in OP, and the UIO device of its record there: rpu_work/README_S1.md), NTP off (sudo timedatectl set-ntp false),
 none of the controller, stress-ng and the camera pipeline running, and a terminal that outlives the login (tmux). Every run gets OUT/<nn>_<condition>/
 (the files of run_timing.py, its output in run.txt), the high-level test not logged (--no-hl-log). A run that
@@ -97,7 +99,7 @@ def running(pattern):
 
 def preflight(out, bus, runs, arch):
     errs = []
-    if arch == 'S1':
+    if arch in ('S1', 'S2'):
         errs += rt.r5_missing()
     elif not rt.master_running():        # the master itself: it may be started without systemd (ethercatctl)
         errs.append('the IgH master is not running (sudo systemctl start ethercat)')
@@ -138,7 +140,8 @@ def main():
     ap.add_argument('--out', required=True, help='the directory of the batch')
     ap.add_argument('--quick', action='store_true', help='the short protocol, about 1.4 h')
     ap.add_argument('--bus', default=os.path.join(rt.APP, 'bench', 'L7N3_bus.cfg'), help='the bus of every run')
-    ap.add_argument('--arch', default='P0', choices=('P0', 'S1'), help='where the EtherCAT task runs (S1: on the R5)')
+    ap.add_argument('--arch', default='P0', choices=('P0', 'S1', 'S2'),
+                    help='where the EtherCAT task runs (S1: on the R5; S2: the control task there too)')
     ap.add_argument('--dry-run', action='store_true', help='the runs and their commands only')
     ap.add_argument('--from', dest='first', type=int, default=1, help='start at run N (an earlier batch in OUT)')
     a = ap.parse_args()

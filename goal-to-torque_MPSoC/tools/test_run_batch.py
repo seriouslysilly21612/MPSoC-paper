@@ -102,11 +102,18 @@ def test_arch_reaches_the_run(tmp_path, monkeypatch):
     assert argv[argv.index('--arch') + 1] == 'S1'
 
 
+def test_s2_reaches_the_run_with_the_stream(tmp_path, monkeypatch):
+    argv = run_one(tmp_path, monkeypatch, ['--arch', 'S2'])
+    assert argv[argv.index('--arch') + 1] == 'S2'
+    assert '--method' not in argv and '--desired-class' not in argv      # M1 and the goal stream, as P0 and S1
+
+
 def test_p0_command_as_before(tmp_path, monkeypatch):
     assert '--arch' not in run_one(tmp_path, monkeypatch, [])
 
 
-def test_s1_batch_needs_the_r5(tmp_path, monkeypatch, capsys):
+@pytest.mark.parametrize('arch', ['S1', 'S2'])
+def test_r5_batch_needs_the_r5(tmp_path, monkeypatch, capsys, arch):
     monkeypatch.setattr(rb.rt, 'r5_missing', lambda: ['the R5 is not running'])
     monkeypatch.setattr(rb.rt, 'master_running', lambda: True)
     monkeypatch.setattr(rb.rt, 'ntp_active', lambda: False)
@@ -114,7 +121,7 @@ def test_s1_batch_needs_the_r5(tmp_path, monkeypatch, capsys):
     bus = tmp_path / 'bus.cfg'
     bus.write_text('')
     monkeypatch.setattr(sys, 'argv', ['run_batch.py', '--out', str(tmp_path / 'out'), '--quick', '--bus', str(bus),
-                                      '--arch', 'S1'])
+                                      '--arch', arch])
     try:
         rb.main()
         stopped = None
