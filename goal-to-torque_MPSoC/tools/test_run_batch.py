@@ -299,6 +299,20 @@ def test_a_batch_without_the_camera_does_not_need_the_model(tmp_path, monkeypatc
     assert '--model' not in idle
 
 
+def test_the_runs_with_the_camera_get_the_vision_args(tmp_path, monkeypatch):
+    idle, pressure = batch_argv(tmp_path, monkeypatch, [('idle', None), ('pressure', 100)],
+                                ['--model', 'launch', '--vision-args', 'tool_tag:=true tag_id:=3'])
+    assert '--vision-args' not in idle
+    i = pressure.index('--vision-args')
+    assert pressure[i + 1:i + 3] == ['tool_tag:=true', 'tag_id:=3']
+
+
+def test_a_batch_with_the_camera_stops_before_its_runs_with_a_word_that_is_no_launch_argument(tmp_path, monkeypatch):
+    with pytest.raises(SystemExit) as ex:
+        batch_argv(tmp_path, monkeypatch, [('pressure', 100)], ['--model', 'launch', '--vision-args', 'tool_tag'])
+    assert 'no name:=value argument' in str(ex.value)
+
+
 def test_a_batch_with_pl_qos_needs_the_wrapper(tmp_path, monkeypatch):
     with pytest.raises(SystemExit) as ex:
         batch_argv(tmp_path, monkeypatch, [('idle', None)], ['--pl-qos', '9'])

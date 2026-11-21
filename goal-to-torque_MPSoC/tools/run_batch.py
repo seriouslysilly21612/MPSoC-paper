@@ -3,7 +3,7 @@
 condition and repetition, with nobody at the board.
 
   python3 tools/run_batch.py --out DIR [--quick] [--bus FILE] [--arch P0|S1|S2] [--model PATH|launch]
-                             [--model-2 PATH] [--pl-qos N] [--dry-run]
+                             [--model-2 PATH] [--vision-args 'NAME:=VALUE ...'] [--pl-qos N] [--dry-run]
 
   (full)     the 7 conditions (idle, stress, perception, pressure 25, 50, 75, 100; perception is pressure 0) x 30 min x 3; each
              repetition is one round of the 7, so that a slow drift (the temperature of the board) falls on every
@@ -16,6 +16,8 @@ condition and repetition, with nobody at the board.
   --model PATH, --model-2 PATH
              the models of the detector in the runs with the camera (run_timing.py; default YOLOv5n 416, I-114;
              'launch' for the YOLOv3-tiny of the launch, the batches up to 11-21)
+  --vision-args 'NAME:=VALUE ...'
+             more arguments of the camera launch in the runs with the camera (run_timing.py), e.g. tool_tag:=true
   --pl-qos N every run with the static QoS of the PL ports to the DDR at N (0-15; run_timing.py --pl-qos, C3-4), back
              after each; the root wrapper of tools/host/install_pl_qos.sh must be there
   --dry-run  the runs and their commands; nothing is run
@@ -67,7 +69,7 @@ def name(n, cond, pressure):
     return '%02d_%s' % (n, cond if pressure is None else 'pressure%d' % pressure)
 
 
-def command(run, out, bus, arch, model=rt.MODEL_416, model_2='', pl_qos=None):
+def command(run, out, bus, arch, model=rt.MODEL_416, model_2='', pl_qos=None, vision_args=''):
     n, _, cond, pressure, dur = run
     camera = cond in ('perception', 'pressure')
     return ([sys.executable, os.path.join(HERE, 'run_timing.py'), '--condition', cond] +
@@ -75,6 +77,7 @@ def command(run, out, bus, arch, model=rt.MODEL_416, model_2='', pl_qos=None):
             ['--duration', '%g' % dur, '--out', os.path.join(out, name(n, cond, pressure)), '--no-hl-log',
              '--bus', bus] + (['--arch', arch] if arch != 'P0' else []) +
             (['--model', model] if camera else []) + (['--model-2', model_2] if camera and model_2 else []) +
+            (['--vision-args', vision_args] if camera and vision_args else []) +
             (['--pl-qos', str(pl_qos)] if pl_qos is not None else []))
 
 
@@ -106,7 +109,7 @@ def running(pattern):
     return subprocess.run(['pgrep', '-f', pattern], capture_output=True).returncode == 0
 
 
-def preflight(out, bus, runs, arch, model=rt.MODEL_416, model_2='', pl_qos=None):
+def preflight(out, bus, runs, arch, model=rt.MODEL_416, model_2='', pl_qos=None, vision_args=''):
     errs = []
     refused = rt.pl_qos_before(out, pl_qos)      # the wrapper with --pl-qos; the ports not left raised
     if refused:
@@ -114,6 +117,7 @@ def preflight(out, bus, runs, arch, model=rt.MODEL_416, model_2='', pl_qos=None)
     if any(r[2] in ('perception', 'pressure') for r in runs):
         try:
             rt.model_args(model, model_2)
+            rt.vision_args(vision_args)
         except ValueError as e:
             errs.append(str(e))
     if arch in ('S1', 'S2'):
@@ -162,6 +166,7 @@ def main():
     ap.add_argument('--model', default=rt.MODEL_416,
                     help="the model of the detector in the runs with the camera; 'launch': the launch's own")
     ap.add_argument('--model-2', default='', help='the model of mode 1 in the runs with the camera')
+    ap.add_argument('--vision-args', default='', help="more NAME:=VALUE of the camera launch in the runs with it")
     ap.add_argument('--pl-qos', type=int, choices=range(16), metavar='N',
                     help='every run with the static QoS of the PL ports at N (0-15), back after each')
     ap.add_argument('--dry-run', action='store_true', help='the runs and their commands only')
@@ -174,11 +179,11 @@ def main():
     print('run_batch: %d runs, about %.1f h, into %s' % (len(todo), total / 3600, out))
     if a.dry_run:
         for r in todo:
-            argv = command(r, out, bus, a.arch, a.model, a.model_2, a.pl_qos)
+            argv = command(r, out, bus, a.arch, a.model, a.model_2, a.pl_qos, a.vision_args)
             print('  %-16s %s' % (name(r[0], r[2], r[3]), ' '.join(argv)))
         return 0
     os.makedirs(out, exist_ok=True)
-    preflight(out, bus, todo, a.arch, a.model, a.model_2, a.pl_qos)
+    preflight(out, bus, todo, a.arch, a.model, a.model_2, a.pl_qos, a.vision_args)
     path = os.path.join(out, 'batch.csv')
     new = not os.path.exists(path)
     with open(path, 'a', newline='') as f:
@@ -196,7 +201,8 @@ def main():
             print('run_batch: %d/%d %s (repetition %d) from %s' % (n, len(runs), name(n, cond, pressure), rep,
                                                                      start), flush=True)
             with open(os.path.join(d, 'run.txt'), 'w') as log:
-                p = subprocess.Popen(command(r, out, bus, a.arch, a.model, a.model_2, a.pl_qos), stdout=log,
+                p = subprocess.Popen(command(r, out, bus, a.arch, a.model, a.model_2, a.pl_qos, a.vision_args),
+                                     stdout=log,
                                      stderr=subprocess.STDOUT,
                                      start_new_session=True)
                 try:
