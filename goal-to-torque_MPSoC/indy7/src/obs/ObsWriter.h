@@ -69,6 +69,20 @@ public:
 		return eR;
 	}
 
+	/* what the bridge puts for one target of the camera: with abTagFormat (APP_RESULT_FORMAT=tag) the object minus
+	 * the tool tag of the same image (OBS_Z_TAG), and OBS_TAG_LOST when that image had no tag: the control task
+	 * then refuses it (state_unrecoverable) and does not take the object of another frame; otherwise the object
+	 * itself (OBS_Z_BASE). adObject, adTag [m]: the base frame. adZ: the z to Put; returns its flags. */
+	static unsigned FormatOf(bool abTagFormat, const double* adObject, bool abTag, const double* adTag, double* adZ)
+	{
+		const bool bDiff = abTagFormat && abTag;
+		for (int k = 0; k < 3; k++)
+			adZ[k] = bDiff ? adObject[k] - adTag[k] : adObject[k];
+		if (!abTagFormat)
+			return OBS_Z_BASE;
+		return abTag ? (unsigned)OBS_Z_TAG : (unsigned)(OBS_Z_TAG | OBS_TAG_LOST);
+	}
+
 	/* the operator picked another object: the estimate of the control task starts again (any thread) */
 	void NextTarget() { m_uTarget.fetch_add(1, std::memory_order_relaxed); }
 

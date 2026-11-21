@@ -229,3 +229,11 @@ def test_s2_a_controller_that_a_killed_run_left_on_is_switched_off_before_the_ke
     # with S1 nothing reports: the keys as before
     timing_run(tmp_path, monkeypatch, ['--arch', 'S1'], first='another line\n', waits=1)
     assert FakeConsole.made[0].keys[:2] == ['r', 'g'] and FakeConsole.made[0].waited[0] == rt.CTRL_ON
+
+
+def test_vision_args_are_launch_arguments_quoted_for_bash():
+    assert rt.vision_args("model_path_2:=~/m/x.xmodel 'tag_id:=3'") == ["'model_path_2:=~/m/x.xmodel'", 'tag_id:=3']
+    assert rt.vision_args('a:=$(reboot)') == ["'a:=$(reboot)'"]      # quoted: bash runs nothing
+    for bad in ('foo', ':=1', '$(x):=1', 'a b:=1'):
+        with pytest.raises(ValueError):
+            rt.vision_args(bad)

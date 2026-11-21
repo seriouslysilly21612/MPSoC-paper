@@ -3,6 +3,10 @@
 #
 #     bash tools/host/kv260_rt_setup.sh                 check every item (no root needed)
 #     sudo bash tools/host/kv260_rt_setup.sh --apply    apply what differs (backups *.g2t.bak), then reboot
+#     ... --final [--apply]   the final configuration instead: no isolated core. With the control task on the R5
+#                             (--arch S2) nothing on the APU has a deadline, and CPU 3 goes back to the camera
+#                             pipeline. Only the boot line differs (no isolcpus, nohz_full, rcu_nocbs,
+#                             irqaffinity); without --final it is the isolated one again
 #
 #   the paper (NUC)                                 the KV260
 #   PREEMPT_RT, HRT, HZ_1000, NO_HZ_FULL,           kernel 5.15.199-rt91-rt-kv260c: the same (checked)
@@ -24,10 +28,19 @@
 # /etc/sysctl.d/90-g2t-rt.conf, timedatectl set-ntp true, rtprio back in the limits file; reboot.
 set -u
 CMDLINE="skew_tick=1 isolcpus=domain,managed_irq,3 nohz_full=3 rcu_nocbs=3 irqaffinity=0-2 nohlt"
+ABSENT=""; WHAT="the paper's configuration"
 FK=/etc/default/flash-kernel
 SYSCTL=/etc/sysctl.d/90-g2t-rt.conf
 LIMITS=/etc/security/limits.d/99-realtime.conf
-APPLY=0; [ "${1:-}" = "--apply" ] && APPLY=1
+APPLY=0
+for a in "$@"; do
+    case "$a" in
+        --apply) APPLY=1 ;;
+        --final) CMDLINE="skew_tick=1 nohlt"; ABSENT="isolcpus nohz_full rcu_nocbs irqaffinity"
+                 WHAT="the final configuration (no isolated core)" ;;
+        *) echo "usage: $0 [--final] [--apply]" >&2; exit 2 ;;
+    esac
+done
 if [ $APPLY = 1 ] && [ "$(id -u)" != 0 ]; then echo "--apply needs root (sudo)" >&2; exit 1; fi
 
 bad=0
@@ -45,6 +58,9 @@ done
 for t in $CMDLINE; do
     grep -qw -- "$t" /proc/cmdline; item "boot $t" $((1 - $?)) ""
 done
+for t in $ABSENT; do
+    grep -qw -- "$t" /proc/cmdline; item "boot without $t" $? "$(grep -ow -- "$t=[^ ]*" /proc/cmdline)"
+done
 item "configured cmdline ($FK)" "$(grep -q "^LINUX_KERNEL_CMDLINE=\"$CMDLINE\"" $FK && echo 1 || echo 0)" \
      "$(grep '^LINUX_KERNEL_CMDLINE=' $FK)"
 tm=$(cat /proc/sys/kernel/timer_migration); item "kernel.timer_migration=0" "$([ "$tm" = 0 ] && echo 1 || echo 0)" "$tm"
@@ -59,7 +75,7 @@ if [ -r $A/in_temp0_ps_temp_raw ] && [ -r $P/in_power2_raw ]; then
          -v s=$(cat $A/in_temp0_ps_temp_scale) 'BEGIN{printf "%.1f C", (r+o)*s/1000}'), board $(awk \
          -v r=$(cat $P/in_power2_raw) -v s=$(cat $P/in_power2_scale) 'BEGIN{printf "%.2f W", r*s/1000}')"
 fi
-echo "$bad item(s) differ from the paper's configuration"
+echo "$bad item(s) differ from $WHAT"
 [ $APPLY = 1 ] || exit $((bad > 0))
 
 echo "== applying"
@@ -67,7 +83,13 @@ if ! grep -q "^LINUX_KERNEL_CMDLINE=\"$CMDLINE\"" $FK; then
     cp -n $FK $FK.g2t.bak
     sed -i "s|^LINUX_KERNEL_CMDLINE=.*|LINUX_KERNEL_CMDLINE=\"$CMDLINE\"|" $FK
     flash-kernel || { echo "flash-kernel failed: $FK.g2t.bak holds the old line" >&2; exit 1; }
-    grep -aq "nohlt" /boot/firmware/boot.scr.uimg && echo "boot script updated: reboot to use it"
+    # the boot script must hold the new line and nothing of the other one
+    if grep -aq "nohlt" /boot/firmware/boot.scr.uimg &&
+       { grep -aq "isolcpus" /boot/firmware/boot.scr.uimg; [ $? = "$([ -n "$ABSENT" ] && echo 1 || echo 0)" ]; }; then
+        echo "boot script updated: reboot to use it"
+    else
+        echo "the boot script does not hold the new line: $FK.g2t.bak holds the old one" >&2; exit 1
+    fi
 fi
 echo "kernel.timer_migration = 0" > $SYSCTL && sysctl -q -p $SYSCTL
 timedatectl set-ntp false

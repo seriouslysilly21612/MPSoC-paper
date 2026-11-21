@@ -14,6 +14,10 @@
 #     (conf = sig(obj)*sig(cls) <= sig(obj) 이므로 안전한 필요조건)
 #
 # 응답 좌표는 source 해상도 픽셀 기준 (center_x, center_y, width, height).
+#
+# mode (D-23): --model을 둘 주면(입력 416과 320, 각자의 폴더에 decode_meta.json)
+# 둘 다 올리고, 요청의 "mode"(0 = 416, 1 = 320, mailbox의 번호)로 고른다. 없으면
+# 첫 model. 응답에 돌린 mode를 적는다. 두 model의 class 이름은 같아야 한다.
 # =============================================================================
 
 import argparse
@@ -43,6 +47,8 @@ CLASS_THRESHOLDS_BY_NAME = {
     #   default 0.50으로 충분. (초기 apple:0.40은 'apple 0.462'가 실은 peach였다는 D13 오판 기반)
     # person 로직은 2026-09 앱 전환(추종/접근)으로 파이프라인에서 제거됨 — 모델만 6-class 유지
 }
+# the mode numbers of the mailbox (obs_mailbox.h, admission.py)
+MODE_OF_INPUT_SIZE = {416: 0, 320: 1}
 NMS_THRESHOLD = 0.45  # YOLOv5 기본값
 KEEP_TOP_K = 100  # 최대 100개 검출 결과 반환
 PAD_VALUE = 114  # yolov5 letterbox 기본 회색
@@ -377,6 +383,30 @@ class YoloWorker:
         return detections[:KEEP_TOP_K]
 
 
+def load_models(model_paths, meta_paths, log_file=None, make=None):
+    """{mode: worker} for the xmodels, in the order given; the first is the default.
+    make(model, meta, log) builds one worker (YoloWorker; a stand-in in the tests)."""
+    make = make or YoloWorker
+    workers, first, names = {}, None, None
+    for model_path, meta_path in zip(model_paths, meta_paths):
+        w = make(model_path, meta_path, log_file)
+        mode = MODE_OF_INPUT_SIZE.get(int(w.input_size))
+        if mode is None:
+            if len(model_paths) > 1:
+                raise RuntimeError(f"{model_path}: input size {w.input_size} is no mode "
+                                   f"({sorted(MODE_OF_INPUT_SIZE)})")
+            # one model of another size (M1): its results count as mode 0
+            mode = 0
+        if mode in workers:
+            raise RuntimeError(f"{model_path}: a second model of mode {mode}")
+        if names is not None and list(w.names) != names:
+            raise RuntimeError(f"{model_path}: other class names than the first model")
+        names = list(w.names)
+        workers[mode] = w
+        first = mode if first is None else first
+    return workers, first
+
+
 def write_response(response):
     sys.stdout.buffer.write(json.dumps(response).encode("utf-8") + b"\n")
     sys.stdout.buffer.flush()
@@ -384,29 +414,41 @@ def write_response(response):
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--model", required=True)
+    parser.add_argument("--model", required=True, action="append",
+                        help="xmodel; twice for two modes (416, 320), each in its own directory")
     parser.add_argument("--meta", default=None,
-                        help="decode_meta.json (기본: model과 같은 폴더)")
+                        help="decode_meta.json (기본: model과 같은 폴더). model이 하나일 때만")
     parser.add_argument("--log-file", default=None)
     args = parser.parse_args()
 
-    meta_path = args.meta or os.path.join(
-        os.path.dirname(os.path.abspath(args.model)), "decode_meta.json")
-    if not os.path.exists(meta_path):
-        write_response({
-            "status": "error",
-            "error": f"decode_meta.json not found: {meta_path}",
-        })
+    if args.meta and len(args.model) > 1:
+        write_response({"status": "error", "error": "--meta goes with one --model only"})
         sys.exit(1)
+    meta_paths = [args.meta or os.path.join(os.path.dirname(os.path.abspath(m)),
+                                            "decode_meta.json")
+                  for m in args.model]
+    for meta_path in meta_paths:
+        if not os.path.exists(meta_path):
+            write_response({
+                "status": "error",
+                "error": f"decode_meta.json not found: {meta_path}",
+            })
+            sys.exit(1)
 
     if args.log_file:
         with open(args.log_file, "w", encoding="utf-8") as f:
             f.write("worker log start (yolo)\n")
 
-    worker = YoloWorker(args.model, meta_path, args.log_file)
+    try:
+        workers, first = load_models(args.model, meta_paths, args.log_file)
+    except Exception as exc:
+        write_response({"status": "error", "error": str(exc)})
+        sys.exit(1)
+    worker = workers[first]
     write_response({
         "status": "ready",
         "input_shape": list(worker.input_shape),
+        "modes": sorted(workers),
     })
     worker.log("ready sent")
 
@@ -440,6 +482,10 @@ def main():
 
             source_width = int(request.get("source_width", width))  # 지금은 노드에서 resize를 하지 않으므로 둘이 같음
             source_height = int(request.get("source_height", height))  # 지금은 노드에서 resize를 하지 않으므로 둘이 같음
+            mode = int(request.get("mode", first))
+            if mode not in workers:
+                raise RuntimeError(f"mode {mode} is not loaded (modes {sorted(workers)})")
+            worker = workers[mode]
             detections = worker.detect(
                 image,
                 output_width=source_width,
@@ -448,6 +494,7 @@ def main():
             write_response({
                 "detections": detections,
                 "timing": worker.last_timing,
+                "mode": mode,
                 "error": None,
             })
         except Exception as exc:

@@ -24,7 +24,7 @@ from sensor_msgs.msg import Image
 from my_interfaces.msg import ContractStatus, Detection, DetectionArray
 
 from vitis_ai_detector_pkg import admission
-from vitis_ai_detector_pkg.frame_gate import FrameGate, GateError, METHODS
+from vitis_ai_detector_pkg.frame_gate import FrameGate, GateError, METHODS, mode_of_model
 from vitis_ai_detector_pkg.shm_frame import ShmFrameWriter
 
 
@@ -109,6 +109,9 @@ class VitisAiDetectorNode(Node):
         super().__init__("vitis_ai_detector_node")
 
         self.declare_parameter("model_path", _default_model_path())
+        # a second xmodel of the other input size (D-23): the methods other than M1 pick the mode
+        # per image. Empty: one mode. Its decode_meta.json sits in its own directory.
+        self.declare_parameter("model_path_2", "")
         self.declare_parameter("worker_script_path", _default_worker_script_path())
         self.declare_parameter("detector_mode", "worker")
         self.declare_parameter("worker_log_path", "")
@@ -193,6 +196,17 @@ class VitisAiDetectorNode(Node):
         if self.method not in METHODS:
             raise RuntimeError(f"method: {self.method!r} is none of {METHODS}")
         # M1은 gate 객체가 없다: should_process_frame()이 그대로 돈다.
+        self.model_path_2 = str(self.get_parameter("model_path_2").value)
+        if self.model_path_2 and self.method == "M1":
+            # M1 is the fixed gate of the earlier system: one model, no choice of mode
+            self.get_logger().warn("method M1: model_path_2 is not loaded (M1 runs one model)")
+            self.model_path_2 = ""
+        # the mode of model_path: what M1 (no gate) runs, and the mode of the worker's default
+        try:
+            self.first_mode = mode_of_model(self.model_path)
+        except GateError:
+            # an input size of no mode (M1 with another model): counted as 416
+            self.first_mode = 0
         self.frame_gate = None
         if self.method != "M1":
             try:
@@ -202,6 +216,7 @@ class VitisAiDetectorNode(Node):
                     str(self.get_parameter("mode_profile_path").value),
                     self.model_path,
                     str(self.get_parameter("response_table_path").value),
+                    self.model_path_2,
                 )
             except GateError as error:
                 raise RuntimeError(f"method {self.method}: {error}") from None
@@ -336,14 +351,15 @@ class VitisAiDetectorNode(Node):
         ))
 
     def frame_passes_gate(self, msg):
-        # 이 frame을 추론할지. M1은 고정 gate, 나머지는 방법의 gate(frame_gate.py)가 정한다.
+        # 이 frame을 추론할지, 한다면 어느 mode로. None: 하지 않는다.
+        # M1은 고정 gate(first_mode), 나머지는 방법의 gate(frame_gate.py)가 정한다.
         if self.frame_gate is None:
-            return self.should_process_frame()
+            return self.first_mode if self.should_process_frame() else None
         decision = self.frame_gate.decide(
             stamp_to_seconds(msg.header.stamp),
             1e-9 * self.get_clock().now().nanoseconds,
         )
-        return decision.action == admission.RUN
+        return decision.mode if decision.action == admission.RUN else None
 
     def worker_loop(self):
         # 전용 스레드: 프레임을 쉬지 않고 처리해 DPU worker가 다음 구독 콜백을
@@ -362,13 +378,14 @@ class VitisAiDetectorNode(Node):
             # (vitis_ai_detector.yaml에서 process_period_sec: 0.030 = 30ms.
             #  33ms가 아니다 — color 프레임 도착 주기 33.3ms '안쪽'에 여유를 두고
             #  들어가야 jitter로 2프레임 주기(15Hz)로 되돌아가지 않는다. YAML 주석 참고)
-            if not self.frame_passes_gate(msg):
+            mode = self.frame_passes_gate(msg)
+            if mode is None:
                 self.frames_gate_skipped += 1
                 continue
             self.frames_processed += 1
-            self.process_frame(msg)
+            self.process_frame(msg, mode)
 
-    def process_frame(self, msg):
+    def process_frame(self, msg, mode=None):
         processing_start_ns = time.perf_counter_ns()
         # 처리를 시작하는 시점의 프레임 나이 = 카메라 촬영 -> 여기까지
         # (USB + realsense 노드 + DDS + 구독 큐 + 핸드오프). processing_ms보다
@@ -380,12 +397,14 @@ class VitisAiDetectorNode(Node):
             image_ready_ns = time.perf_counter_ns()
 
             # worker 프로세스(vitis_ai_worker_yolo.py)를 통해 객체 검출 수행
-            detections = self.detect_with_worker(image)
+            mode = self.first_mode if mode is None else int(mode)
+            detections = self.detect_with_worker(image, mode)
             detection_done_ns = time.perf_counter_ns()
 
             out_msg = DetectionArray()
             out_msg.header = msg.header  # 컬러 이미지의 타임스탬프 및 프레임 ID
             out_msg.detections = detections  # 검출 결과
+            out_msg.mode = mode  # 이 검출을 낸 mode (0 = 416, 1 = 320): 하류가 mailbox까지 나른다
 
             if len(detections) == 0:
                 self.frames_empty_out += 1
@@ -548,6 +567,8 @@ class VitisAiDetectorNode(Node):
             "--model",
             self.model_path,
         ]
+        if self.model_path_2:
+            command.extend(["--model", self.model_path_2])
 
         # 현재 log path 설정 없음
         if self.worker_log_path:
@@ -584,9 +605,13 @@ class VitisAiDetectorNode(Node):
             raise RuntimeError(f"Invalid worker input shape: {input_shape}")
         self.worker_input_height = int(input_shape[1])
         self.worker_input_width = int(input_shape[2])
+        modes = ready.get("modes", [self.first_mode])
+        if self.frame_gate is not None and sorted(modes) != sorted(self.frame_gate.modes):
+            raise RuntimeError(f"the worker runs the modes {modes}, the gate chooses among "
+                               f"{sorted(self.frame_gate.modes)}")
 
         self.get_logger().info(
-            f"Vitis-AI worker ready: input_shape={input_shape}"
+            f"Vitis-AI worker ready: input_shape={input_shape}, modes {modes}"
         )
 
     def stop_worker(self):
@@ -653,7 +678,7 @@ class VitisAiDetectorNode(Node):
         return json.loads(line.decode("utf-8"))
 
     # 프레임 한 장을 worker에 보내고 검출 결과를 받는다. worker가 죽었으면 재시작 후 다시 시도한다
-    def detect_with_worker(self, image):
+    def detect_with_worker(self, image, mode=None):
         # 이미지가 연속 메모리 배열인지 확인하고, 아니라면 연속 메모리 배열로 변환
         image = np.ascontiguousarray(image, dtype=np.uint8)
         if image.ndim != 3 or image.shape[2] != 3:  # 3차원 배열인지 확인
@@ -688,6 +713,7 @@ class VitisAiDetectorNode(Node):
         worker_image = np.ascontiguousarray(worker_image, dtype=np.uint8)
         height, width, channels = worker_image.shape
         request = {
+            "mode": self.first_mode if mode is None else int(mode),
             "height": int(height),
             "width": int(width),
             "channels": int(channels),

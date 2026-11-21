@@ -117,6 +117,7 @@ class PickLogicNode(Node):
         )
         self.yield_csv_path = str(self.get_parameter('yield_csv_path').value)
         self.frames_total = 0
+        self._mode = 0      # the inference mode of the detections at hand (DetectionArray.mode)
         self.frames_accepted = 0
         self.frames_empty = 0
         self.reject_tally = {}
@@ -148,6 +149,7 @@ class PickLogicNode(Node):
         # 전파). 모든 PickTarget에 실어 보내야 하류 노드가 진짜 E2E 지연을
         # 계산할 수 있다.
         capture_stamp = msg.header.stamp
+        self._mode = int(msg.mode)
         in_age = (age_ms(self.get_clock().now().nanoseconds, capture_stamp)
                   if self.metrics.enabled else None)
         self.frames_total += 1
@@ -334,6 +336,7 @@ class PickLogicNode(Node):
 
     def publish_invalid_target(self, reason, capture_stamp, det=None):
         target = PickTarget()
+        target.mode = self._mode
         target.target_valid = False
         target.capture_stamp = capture_stamp
 
@@ -356,6 +359,7 @@ class PickLogicNode(Node):
 
     def make_pick_target(self, msg: Detection):
         target = PickTarget()
+        target.mode = self._mode
         target.class_id = msg.class_id
         target.class_name = msg.class_name
         target.confidence = msg.confidence

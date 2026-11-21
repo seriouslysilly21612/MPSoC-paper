@@ -590,6 +590,21 @@ void BothEnds()
 	       strcmp(CObsWriter::Name((CObsWriter::eResult)-1), "?") == 0, "the names of the verdicts and of the outcomes");
 }
 
+/* the bridge's format of a result (CObsWriter::FormatOf): base, tag, tag without the tag in the image */
+void Formats()
+{
+	const double adObj[3] = {0.60, 0.10, 0.12}, adTag[3] = {0.50, -0.05, 0.40};
+	double adZ[3];
+	Expect(CObsWriter::FormatOf(false, adObj, true, adTag, adZ) == OBS_Z_BASE && adZ[0] == 0.60 && adZ[1] == 0.10 &&
+	       adZ[2] == 0.12, "the base format: the object itself, whatever the tag");
+	Expect(CObsWriter::FormatOf(true, adObj, true, adTag, adZ) == OBS_Z_TAG && fabs(adZ[0] - 0.10) < 1e-12 &&
+	       fabs(adZ[1] - 0.15) < 1e-12 && fabs(adZ[2] + 0.28) < 1e-12, "the tag format: the object minus the tag");
+	Expect(CObsWriter::FormatOf(true, adObj, false, adTag, adZ) == (unsigned)(OBS_Z_TAG | OBS_TAG_LOST) &&
+	       std::isfinite(adZ[0]) && std::isfinite(adZ[1]) && std::isfinite(adZ[2]),
+	       "the tag format without the tag: marked lost, its z finite (it is written, not dropped as not finite)");
+	// such a result is refused by the control task (state_unrecoverable): WithTheTag() above
+}
+
 } // namespace
 
 int main()
@@ -603,6 +618,7 @@ int main()
 	Status();
 	CameraSide();
 	BothEnds();
+	Formats();
 	printf("%s: %d check(s) failed\n", g_nFailed == 0 ? "PASS" : "FAIL", g_nFailed);
 	return g_nFailed == 0 ? 0 : 1;
 }
