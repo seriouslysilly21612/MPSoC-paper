@@ -3,7 +3,8 @@
 condition and repetition, with nobody at the board.
 
   python3 tools/run_batch.py --out DIR [--quick] [--bus FILE] [--arch P0|S1|S2] [--model PATH|launch]
-                             [--model-2 PATH] [--vision-args 'NAME:=VALUE ...'] [--pl-qos N] [--dry-run]
+                             [--model-2 PATH] [--vision-args 'NAME:=VALUE ...'] [--pl-qos N] [--memrate-mbs N]
+                             [--dry-run]
 
   (full)     the 7 conditions (idle, stress, perception, pressure 25, 50, 75, 100; perception is pressure 0) x 30 min x 3; each
              repetition is one round of the 7, so that a slow drift (the temperature of the board) falls on every
@@ -20,6 +21,9 @@ condition and repetition, with nobody at the board.
              more arguments of the camera launch in the runs with the camera (run_timing.py), e.g. tool_tag:=true
   --pl-qos N every run with the static QoS of the PL ports to the DDR at N (0-15; run_timing.py --pl-qos, C3-4), back
              after each; the root wrapper of tools/host/install_pl_qos.sh must be there
+  --memrate-mbs N
+             with --quick: its pressure runs bounded to N MB/s per memrate worker in place of 100 % (run_timing.py
+             --memrate-mbs; the same load on every configuration, I-108); their directories <nn>_pressure<N>MBps
   --dry-run  the runs and their commands; nothing is run
   --from N   start at run N in an OUT of an earlier batch; the directory of a run done again is kept as
              <nn>_<condition>.before-<time>
@@ -65,16 +69,32 @@ def plan(quick):
     return runs
 
 
-def name(n, cond, pressure):
+def name(n, cond, pressure, mbs=None):
+    if cond == 'pressure' and mbs is not None:
+        return '%02d_pressure%dMBps' % (n, mbs)
     return '%02d_%s' % (n, cond if pressure is None else 'pressure%d' % pressure)
 
 
-def command(run, out, bus, arch, model=rt.MODEL_416, model_2='', pl_qos=None, vision_args=''):
+def load_args(cond, pressure, mbs=None):
+    """the memory pressure of a run for run_timing.py: its %, or with mbs its bound per worker"""
+    if cond == 'pressure' and mbs is not None:
+        return ['--memrate-mbs', str(mbs)]
+    return ['--pressure', str(pressure)] if pressure is not None else []
+
+
+def pressure_cell(cond, pressure, mbs=None):
+    """the pressure column of batch.csv and timing_tables.csv: the %, or the bound per worker"""
+    if cond == 'pressure' and mbs is not None:
+        return '%d MB/s' % mbs
+    return '' if pressure is None else pressure
+
+
+def command(run, out, bus, arch, model=rt.MODEL_416, model_2='', pl_qos=None, vision_args='', mbs=None):
     n, _, cond, pressure, dur = run
     camera = cond in ('perception', 'pressure')
     return ([sys.executable, os.path.join(HERE, 'run_timing.py'), '--condition', cond] +
-            (['--pressure', str(pressure)] if pressure is not None else []) +
-            ['--duration', '%g' % dur, '--out', os.path.join(out, name(n, cond, pressure)), '--no-hl-log',
+            load_args(cond, pressure, mbs) +
+            ['--duration', '%g' % dur, '--out', os.path.join(out, name(n, cond, pressure, mbs)), '--no-hl-log',
              '--bus', bus] + (['--arch', arch] if arch != 'P0' else []) +
             (['--model', model] if camera else []) + (['--model-2', model_2] if camera and model_2 else []) +
             (['--vision-args', vision_args] if camera and vision_args else []) +
@@ -139,17 +159,17 @@ def preflight(out, bus, runs, arch, model=rt.MODEL_416, model_2='', pl_qos=None,
         print('run_batch: WARNING: not inside tmux or screen: the batch ends when the login does')
 
 
-def tables(out, runs):
+def tables(out, runs, mbs=None):
     """the timing_table.csv of every run in one file"""
     head, rows = None, []
     for n, rep, cond, pressure, _ in runs:
         try:
-            r = list(csv.reader(open(os.path.join(out, name(n, cond, pressure), 'timing_table.csv'))))
+            r = list(csv.reader(open(os.path.join(out, name(n, cond, pressure, mbs), 'timing_table.csv'))))
         except OSError:
             continue
         if len(r) >= 2:
             head = head or ['run', 'repetition', 'condition', 'pressure'] + r[0]
-            rows.append([n, rep, cond, '' if pressure is None else pressure] + r[1])
+            rows.append([n, rep, cond, pressure_cell(cond, pressure, mbs)] + r[1])
     if head:
         with open(os.path.join(out, 'timing_tables.csv'), 'w', newline='') as f:
             csv.writer(f).writerows([head] + rows)
@@ -169,9 +189,13 @@ def main():
     ap.add_argument('--vision-args', default='', help="more NAME:=VALUE of the camera launch in the runs with it")
     ap.add_argument('--pl-qos', type=int, choices=range(16), metavar='N',
                     help='every run with the static QoS of the PL ports at N (0-15), back after each')
+    ap.add_argument('--memrate-mbs', type=int, metavar='N',
+                    help='with --quick: its pressure runs at N MB/s per memrate worker in place of 100 %%')
     ap.add_argument('--dry-run', action='store_true', help='the runs and their commands only')
     ap.add_argument('--from', dest='first', type=int, default=1, help='start at run N (an earlier batch in OUT)')
     a = ap.parse_args()
+    if a.memrate_mbs is not None and not (a.quick and 1 <= a.memrate_mbs <= 100000):
+        ap.error('--memrate-mbs goes with --quick (its pressure runs are one condition), 1 to 100000 MB/s')
     out, bus = os.path.abspath(os.path.expanduser(a.out)), os.path.abspath(a.bus)
     runs = plan(a.quick)
     todo = [r for r in runs if r[0] >= a.first]
@@ -179,8 +203,8 @@ def main():
     print('run_batch: %d runs, about %.1f h, into %s' % (len(todo), total / 3600, out))
     if a.dry_run:
         for r in todo:
-            argv = command(r, out, bus, a.arch, a.model, a.model_2, a.pl_qos, a.vision_args)
-            print('  %-16s %s' % (name(r[0], r[2], r[3]), ' '.join(argv)))
+            argv = command(r, out, bus, a.arch, a.model, a.model_2, a.pl_qos, a.vision_args, a.memrate_mbs)
+            print('  %-16s %s' % (name(r[0], r[2], r[3], a.memrate_mbs), ' '.join(argv)))
         return 0
     os.makedirs(out, exist_ok=True)
     preflight(out, bus, todo, a.arch, a.model, a.model_2, a.pl_qos, a.vision_args)
@@ -193,15 +217,16 @@ def main():
                         'ps_temp_max_C', 'killed_after'])
         for r in todo:
             n, rep, cond, pressure, dur = r
-            d = os.path.join(out, name(n, cond, pressure))
+            d = os.path.join(out, name(n, cond, pressure, a.memrate_mbs))
             if os.path.exists(d):
                 os.rename(d, d + '.before-' + time.strftime('%H%M%S'))
             os.makedirs(d, exist_ok=True)
             start = time.strftime('%Y-%m-%d %H:%M:%S')
-            print('run_batch: %d/%d %s (repetition %d) from %s' % (n, len(runs), name(n, cond, pressure), rep,
-                                                                     start), flush=True)
+            print('run_batch: %d/%d %s (repetition %d) from %s' % (n, len(runs), name(n, cond, pressure, a.memrate_mbs),
+                                                                     rep, start), flush=True)
             with open(os.path.join(d, 'run.txt'), 'w') as log:
-                p = subprocess.Popen(command(r, out, bus, a.arch, a.model, a.model_2, a.pl_qos, a.vision_args),
+                p = subprocess.Popen(command(r, out, bus, a.arch, a.model, a.model_2, a.pl_qos, a.vision_args,
+                                             a.memrate_mbs),
                                      stdout=log,
                                      stderr=subprocess.STDOUT,
                                      start_new_session=True)
@@ -221,14 +246,15 @@ def main():
                 rt.pl_qos_note(d, 'pl-qos restore (run_batch, after the run)', rt.pl_qos('restore')[1])
             rate, tmax = rt.run_extras(d)
             code = why(d, code)
-            w.writerow([n, rep, cond, '' if pressure is None else pressure, start,
+            w.writerow([n, rep, cond, pressure_cell(cond, pressure, a.memrate_mbs), start,
                         time.strftime('%Y-%m-%d %H:%M:%S'), code, '' if rate is None else '%.0f' % rate,
                         '' if tmax is None else '%.1f' % tmax, ' '.join(killed)])
             f.flush()
-            print('run_batch: %s exit %s%s' % (name(n, cond, pressure), code,
+            print('run_batch: %s exit %s%s' % (name(n, cond, pressure, a.memrate_mbs), code,
                                                '; killed after it: ' + ' '.join(killed) if killed else ''), flush=True)
             time.sleep(10)
-    print('run_batch: done; %d timing tables in %s' % (tables(out, runs), os.path.join(out, 'timing_tables.csv')))
+    print('run_batch: done; %d timing tables in %s' % (tables(out, runs, a.memrate_mbs),
+                                                       os.path.join(out, 'timing_tables.csv')))
     return 0
 
 

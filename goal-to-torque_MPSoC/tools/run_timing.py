@@ -6,7 +6,7 @@ stream (high-level test 5: newly sampled reachable goals, unreachable goals, rep
 intervals, 1-mm perturbations every 67 periods) for --duration s (with --desired-class the camera application
 in its place), the timing of every period (-t), and the summary of tools/timing_summary.py (the row of Table 6).
 
-  python3 tools/run_timing.py --condition idle|stress|perception|pressure [--pressure 0|25|50|75|100]
+  python3 tools/run_timing.py --condition idle|stress|perception|pressure [--pressure 0|25|50|75|100 | --memrate-mbs N]
                               [--duration 600] [--cfg indy7/INDY7.cfg] [--bus FILE] [--out DIR] [--settle 30]
                               [--direct] [--no-hl-log] [--arch P0|S1|S2] [--shadow]
                               [--method M1|M2|A2|A3|FULL] [--desired-class CLASS] [--vision-args 'NAME:=VALUE ...']
@@ -63,7 +63,9 @@ in its place), the timing of every period (-t), and the summary of tools/timing_
   pressure    perception + memory pressure (D-11): stress-ng --taskset OTHERS --memrate 3, its read
               and write rates bounded so that its time-averaged rate is about --pressure % of its unbounded
               rate beside the camera pipeline (MEMRATE_CAP; 0: no memrate, i.e. perception; 100: unbounded);
-              the rates it reached in OUT/memrate.txt. Without the stress load: beside it the workers got about
+              the rates it reached in OUT/memrate.txt. --memrate-mbs N in place of --pressure: each worker bounded
+              to N MB/s read and write, the same load whatever runs beside it (I-108: with CPU3 given back the
+              unbounded 100 % was 4.8 instead of 3.5 GB/s). Without the stress load: beside it the workers got about
               a third of the CPUs and reached about 2 GB/s whatever the bound, so 50, 75 and 100 % were the
               same (11-15)
 
@@ -470,12 +472,21 @@ def run_extras(out):
     return memrate_rate(os.path.join(out, 'memrate.txt')), tmax
 
 
+def memrate_args(pressure, mbs=None):
+    """the stress-ng arguments of the memory pressure: unbounded at 100 %, bounded per worker at a % or at mbs"""
+    cap = mbs if mbs is not None else MEMRATE_CAP.get(pressure)
+    return MEMRATE_ARGS + (['--memrate-rd-mbs', str(cap), '--memrate-wr-mbs', str(cap)] if cap else [])
+
+
 def main():
     sys.stdout.reconfigure(line_buffering=True)     # in order with the output of the programs it runs (run.txt)
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument('--condition', required=True, choices=('idle', 'stress', 'perception', 'pressure'))
     ap.add_argument('--pressure', type=int, choices=(0, 25, 50, 75, 100),
                     help='[%%] of the largest memory rate, with --condition pressure')
+    ap.add_argument('--memrate-mbs', type=int, metavar='N',
+                    help='[MB/s] the read and write bound of each memrate worker, with --condition pressure, in '
+                         'place of --pressure: the same load on every configuration')
     ap.add_argument('--duration', type=float, default=600.0, help='[s] of the goal stream (Table 6: 600)')
     ap.add_argument('--cfg', default=os.path.join(APP, 'INDY7.cfg'))
     ap.add_argument('--out', help='results (default ./timing_<condition>_<date>)')
@@ -499,8 +510,10 @@ def main():
     ap.add_argument('--pl-qos', type=int, choices=range(16), metavar='N',
                     help='the static QoS of the PL ports to the DDR at N (0-15) for the run (C3-4)')
     a = ap.parse_args()
-    if (a.condition == 'pressure') != (a.pressure is not None):
-        ap.error('--pressure goes with --condition pressure, and only with it')
+    if (a.condition == 'pressure') != ((a.pressure is not None) + (a.memrate_mbs is not None) == 1):
+        ap.error('--condition pressure goes with one of --pressure and --memrate-mbs, and they only with it')
+    if a.memrate_mbs is not None and not 1 <= a.memrate_mbs <= 100000:
+        ap.error('--memrate-mbs: 1 to 100000 MB/s')
     if a.shadow and a.arch == 'P0':
         ap.error('--shadow goes with --arch S1 or S2')
     try:
@@ -547,9 +560,8 @@ def main():
         if a.condition == 'stress':
             load = subprocess.Popen(['stress-ng', '--taskset', a.others] + STRESS_ARGS)
             print('run_timing: stress-ng --taskset %s %s' % (a.others, ' '.join(STRESS_ARGS)))
-        if a.condition == 'pressure' and a.pressure:
-            cap = MEMRATE_CAP.get(a.pressure)
-            margs = MEMRATE_ARGS + (['--memrate-rd-mbs', str(cap), '--memrate-wr-mbs', str(cap)] if cap else [])
+        if a.condition == 'pressure' and (a.pressure or a.memrate_mbs):
+            margs = memrate_args(a.pressure, a.memrate_mbs)
             mem = subprocess.Popen(['stress-ng', '--taskset', a.others] + margs,
                                    stdout=open(os.path.join(out, 'memrate.txt'), 'w'), stderr=subprocess.STDOUT)
             print('run_timing: stress-ng --taskset %s %s' % (a.others, ' '.join(margs)))

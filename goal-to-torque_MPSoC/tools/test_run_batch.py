@@ -384,3 +384,49 @@ def test_pl_qos_refused_or_failing(tmp_path, monkeypatch, capsys):
     assert 'stopped: pl-qos set 9 failed' in capsys.readouterr().out and FakeConsole.made == []
     with pytest.raises(SystemExit):
         qos_run(tmp_path, monkeypatch, ['--pl-qos', '16'], FakePlQos())
+
+
+def test_the_memory_pressure_by_its_percent_or_by_its_bound_per_worker():
+    assert rt.memrate_args(100) == rt.MEMRATE_ARGS
+    assert rt.memrate_args(75)[-4:] == ['--memrate-rd-mbs', '800', '--memrate-wr-mbs', '800']
+    assert rt.memrate_args(None, 1200)[-4:] == ['--memrate-rd-mbs', '1200', '--memrate-wr-mbs', '1200']
+
+
+@pytest.mark.parametrize('args', [['--memrate-mbs', '800'],                               # not with idle
+                                  ['--condition', 'pressure', '--pressure', '75', '--memrate-mbs', '800'],
+                                  ['--condition', 'pressure', '--memrate-mbs', '0']])
+def test_memrate_mbs_goes_with_the_pressure_alone_and_in_its_range(tmp_path, monkeypatch, capsys, args):
+    with pytest.raises(SystemExit):
+        timing_run(tmp_path, monkeypatch, args)
+    assert '--memrate-mbs' in capsys.readouterr().err
+
+
+def test_a_quick_batch_with_memrate_mbs_bounds_its_pressure_runs(tmp_path, monkeypatch):
+    conds = [('idle', None), ('pressure', 100)]
+    tools = tmp_path / 'tools'
+    tools.mkdir()
+    (tools / 'run_timing.py').write_text(FAKE_RUN)
+    bus = tmp_path / 'bus.cfg'
+    bus.write_text('')
+    monkeypatch.setattr(rb, 'HERE', str(tools))
+    monkeypatch.setattr(rb, 'QUICK', conds)
+    monkeypatch.setattr(rb, 'LEFTOVERS', ())
+    monkeypatch.setattr(rb.rt, 'r5_missing', lambda: [])
+    monkeypatch.setattr(rb.rt, 'master_running', lambda: True)
+    monkeypatch.setattr(rb.rt, 'ntp_active', lambda: False)
+    monkeypatch.setattr(rb.time, 'sleep', lambda s: None)
+    monkeypatch.setattr(sys, 'argv', ['run_batch.py', '--out', str(tmp_path / 'out'), '--quick', '--bus', str(bus),
+                                      '--model', 'launch', '--memrate-mbs', '800'])
+    assert rb.main() == 0
+    idle = (tmp_path / 'out' / '01_idle' / 'argv.txt').read_text().split()
+    pressure = (tmp_path / 'out' / '02_pressure800MBps' / 'argv.txt').read_text().split()
+    assert '--memrate-mbs' not in idle and '--pressure' not in idle
+    assert pressure[pressure.index('--memrate-mbs') + 1] == '800' and '--pressure' not in pressure
+    rows = (tmp_path / 'out' / 'batch.csv').read_text().splitlines()
+    assert rows[2].split(',')[3] == '800 MB/s'
+
+
+def test_memrate_mbs_goes_with_a_quick_batch(tmp_path, monkeypatch):
+    monkeypatch.setattr(sys, 'argv', ['run_batch.py', '--out', str(tmp_path / 'out'), '--memrate-mbs', '800'])
+    with pytest.raises(SystemExit):
+        rb.main()
