@@ -71,7 +71,7 @@ public:
 	                   m_bAnswer(false), m_bReport(false), m_bSample(false), m_uMotion(0), m_uStates(0), m_bStates(false),
 	                   m_bStatesSim(false), m_uStatePeriod(0), m_uFaults0(0), m_uStops0(0), m_uNoState0(0), m_uPlans0(0),
 	                   m_uIks0(0), m_uPlanLate0(0), m_uGoals0(0),
-	                   m_pGoalSlot(NULL), m_uGoalSeen(0)
+	                   m_pGoalSlot(NULL), m_uGoalSeen(0), m_uGoalSeenAtStart(0)
 	{
 		memset(&m_stReport, 0, sizeof(m_stReport));
 		memset(&m_stSample, 0, sizeof(m_stSample));
@@ -238,6 +238,8 @@ public:
 			return;
 		m_uSentCmd = m_astQueue[0].cmd;
 		m_stLastSent = m_astQueue[0];
+		if (m_uSentCmd == IPC_CMD_START)
+			m_uGoalSeenAtStart = m_uGoalSeen;	// SendAgain: the goals after it go again
 		m_uSent = m_pLink->SendControlCommand(m_astQueue[0]);
 		m_nQueued--;
 		for (int n = 0; n < m_nQueued; n++)
@@ -246,10 +248,12 @@ public:
 	}
 	bool IsSettled() const { return m_nQueued == 0 && m_uSent == m_uAnswered; }
 	/* the command written last, with its numbers, again at the head of the queue (after its answer: a refusal
-	 * that one period can cause, such as IPC_REFUSED_NO_STATE). false: none written yet, or the queue is full */
+	 * that one period can cause, such as IPC_REFUSED_NO_STATE). A start: the goal of the slot leaves again behind
+	 * it, as TRACK on the R5 counts the goals that arrive from its start on (I-127). false: none written yet, its
+	 * answer not there yet, or the queue is full */
 	bool SendAgain()
 	{
-		if (m_uSent == 0 || m_nQueued >= (int)QUEUE)
+		if (m_uSent == 0 || m_uSent != m_uAnswered || m_nQueued >= (int)QUEUE)
 			return false;
 		for (int n = m_nQueued; n > 0; n--)
 			m_astQueue[n] = m_astQueue[n - 1];
@@ -257,7 +261,10 @@ public:
 		m_nQueued++;
 		m_stCounts.nSentAgain++;
 		if (m_stLastSent.cmd == IPC_CMD_START)		// as Queue(): the counts of the motion begin again
+		{
 			m_auHlCounts[0] = m_auHlCounts[1] = m_auHlCounts[2] = m_auHlCounts[3] = 0;
+			m_uGoalSeen = m_uGoalSeenAtStart;
+		}
 		return true;
 	}
 	/* once per command: TRUE with the command and what the R5 did with it (IPC_DONE_OK or IPC_REFUSED_*); the
@@ -316,7 +323,7 @@ public:
 	void UseGoalSlot(const CGoalSlot* apSlot, const double* adOffset)
 	{
 		m_pGoalSlot = apSlot;
-		m_uGoalSeen = apSlot->Count();
+		m_uGoalSeen = m_uGoalSeenAtStart = apSlot->Count();
 		for (int k = 0; k < 3; k++)
 			m_adGoalOffset[k] = adOffset[k];
 	}
@@ -366,6 +373,7 @@ private:
 	uint32_t		m_uNoState0, m_uPlans0, m_uIks0, m_uPlanLate0, m_uGoals0;
 	const CGoalSlot* m_pGoalSlot;
 	unsigned int	m_uGoalSeen;
+	unsigned int	m_uGoalSeenAtStart;	// m_uGoalSeen when the last start was written (SendAgain)
 	double			m_adGoalOffset[3];
 	Counts			m_stCounts;
 };

@@ -510,7 +510,8 @@ def main():
     ap.add_argument('--pl-qos', type=int, choices=range(16), metavar='N',
                     help='the static QoS of the PL ports to the DDR at N (0-15) for the run (C3-4)')
     a = ap.parse_args()
-    if (a.condition == 'pressure') != ((a.pressure is not None) + (a.memrate_mbs is not None) == 1):
+    loads = (a.pressure is not None) + (a.memrate_mbs is not None)     # idle with both was let through (I-127)
+    if loads != (1 if a.condition == 'pressure' else 0):
         ap.error('--condition pressure goes with one of --pressure and --memrate-mbs, and they only with it')
     if a.memrate_mbs is not None and not 1 <= a.memrate_mbs <= 100000:
         ap.error('--memrate-mbs: 1 to 100000 MB/s')

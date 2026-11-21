@@ -28,7 +28,7 @@ def test_the_table_has_the_largest_response_of_each_run(tmp_path, monkeypatch):
                                                                         ('1', 'pressure800', '693.5')]
 
 
-@pytest.mark.parametrize('item', ['x:idle:/tmp', '0:bad level:/tmp', '0:idle'])
+@pytest.mark.parametrize('item', ['x:idle:/tmp', '7:idle:/tmp', '0:bad level:/tmp', '0:idle'])
 def test_bad_items(item):
     with pytest.raises(ValueError):
         R.parse_item(item)

@@ -393,6 +393,7 @@ def test_the_memory_pressure_by_its_percent_or_by_its_bound_per_worker():
 
 
 @pytest.mark.parametrize('args', [['--memrate-mbs', '800'],                               # not with idle
+                                  ['--pressure', '75', '--memrate-mbs', '800'],          # nor both with it
                                   ['--condition', 'pressure', '--pressure', '75', '--memrate-mbs', '800'],
                                   ['--condition', 'pressure', '--memrate-mbs', '0']])
 def test_memrate_mbs_goes_with_the_pressure_alone_and_in_its_range(tmp_path, monkeypatch, capsys, args):

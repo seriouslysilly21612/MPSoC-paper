@@ -58,11 +58,11 @@
 
 namespace
 {
-	// what the control task keeps from one cycle to the next with --arch S2
-	// shortcut: one controller per process, as in TaskTrajectory.cpp
 	// how often a start that the R5 refused for a period without a state of the arm is written again
 	const int S2_START_AGAIN = 3;
 
+	// what the control task keeps from one cycle to the next with --arch S2
+	// shortcut: one controller per process, as in TaskTrajectory.cpp
 	struct ST_S2_KEEP
 	{
 		unsigned int udof;

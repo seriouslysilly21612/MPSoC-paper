@@ -4,10 +4,11 @@ response of the control task (S2: t_w + t_e of the R5 with the control computati
 
   python3 -B tools/response_table.py --out response.csv MODE:LEVEL:RUN_DIR [...]
 
-MODE is the mode number of the mailbox (0 = 416, 1 = 320) that the run's detector ran alone (M1 with that model);
-LEVEL names the load (e.g. pressure800); RUN_DIR has the timing_summary.txt of tools/run_timing.py. The detector's
-launch takes the file as response_table:= (admission.load_response_table: the worst row of a mode counts); its
-mode_profile.yaml has the margin. Standard library only.
+MODE is the mode number of the mailbox (0 = 416, 1 = 320) of the one model the run's detector had (any method:
+with one model FULL runs that mode alone); LEVEL names the load (e.g. pressure800); RUN_DIR has the
+timing_summary.txt of tools/run_timing.py. The detector's launch takes the file as response_table:=
+(admission.load_response_table: the worst row of a mode counts); its mode_profile.yaml has the margin. Standard
+library only.
 """
 import argparse
 import csv
@@ -15,6 +16,7 @@ import os
 import re
 import sys
 
+MODES = ('0', '1')                 # admission.MODE_OF_INPUT_SIZE: 416 -> 0, 320 -> 1
 LARGEST = re.compile(r'^largest t_w \+ t_e of the R5 with the control computation: ([0-9.]+) us', re.M)
 
 
@@ -31,8 +33,9 @@ def largest_response_us(run_dir):
 def parse_item(item):
     """MODE:LEVEL:RUN_DIR -> (mode, level, run_dir)"""
     parts = item.split(':', 2)
-    if len(parts) != 3 or not parts[0].isdigit() or not re.fullmatch(r'[A-Za-z0-9_.-]+', parts[1]):
-        raise ValueError('%r: MODE:LEVEL:RUN_DIR (mode a number, level a word)' % item)
+    # a mode the mailbox does not have would leave the real ones without a row: FULL rejects them all (I-127)
+    if len(parts) != 3 or parts[0] not in MODES or not re.fullmatch(r'[A-Za-z0-9_.-]+', parts[1]):
+        raise ValueError('%r: MODE:LEVEL:RUN_DIR (mode 0 or 1, level a word)' % item)
     return int(parts[0]), parts[1], parts[2]
 
 

@@ -3,9 +3,10 @@
 The tag is the AprilTag (36h11) of the hand-eye calibration, moved to the flange. Its centre in the
 camera frame comes from the four corners and the side of its black square (solvePnP, IPPE_SQUARE),
 as in goal-to-torque_MPSoC/calib/calib_cpo.py, whose tag poses made the calibration: the same
-corner order, the same model of the marker. pick_target_3d_node looks for it in the color image of
-each capture the detector found the object in; the control task adds the object minus the tag to
-the tag position that the joint angles of that capture give.
+corner order, the same model of the marker. vitis_ai_detector_node looks for it in each image that
+it runs (TagSearch), pick_target_3d_node pairs the result with the object of the same capture
+(TagResults); the control task adds the object minus the tag to the tag position that the joint
+angles of that capture give.
 
   ToolTagFinder.find(gray, t_s)   the tag in a grayscale image: first in a window around where it
                                   was last seen (it moves little between two captures), then in the
@@ -25,8 +26,10 @@ Tests: python3 -m pytest src/target_3d_pkg/test/test_tool_tag.py (OpenCV with ar
 
 from collections import OrderedDict
 from dataclasses import dataclass
+import sys
 import threading
 import time
+import traceback
 
 import cv2
 import numpy as np
@@ -229,8 +232,9 @@ class TagSearch:
     offer(key, stamp_ns, image): image (BGR or grayscale, not written to afterwards) taken at
     stamp_ns; key goes back with its result. done(key, result, search_ms) is called from the
     thread. An image offered while another one waits replaces it, and the replaced one gets
-    done(key, TagResult(False, 'busy'), 0.0): every image offered gets one result, so the side
-    that pairs them never waits for a result that will not come.
+    done(key, TagResult(False, 'busy'), 0.0) from the caller of offer(): every image offered gets
+    one result, so the side that pairs them never waits for a result that will not come. A search
+    that raises gives 'search_error' and the thread goes on (I-127).
     """
 
     def __init__(self, finder, done):
@@ -239,6 +243,7 @@ class TagSearch:
         self._cv = threading.Condition()
         self._next = None  # (key, stamp_ns, image) waiting for the thread
         self._stop = False
+        self._told = set()  # the kinds of error already printed: one traceback each
         self._thread = threading.Thread(target=self._loop, name='tool_tag_search', daemon=True)
         self._thread.start()
 
@@ -265,12 +270,23 @@ class TagSearch:
                 key, stamp_ns, image = self._next
                 self._next = None
             t0 = time.perf_counter_ns()
-            gray = image if image.ndim == 2 else cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
             try:
+                gray = image if image.ndim == 2 else cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
                 res = self.finder.find(gray, 1e-9 * stamp_ns)
-            except cv2.error:
+            except Exception:  # one bad image must not end the search of every later one
+                self._tell('search')
                 res = TagResult(False, 'search_error')
-            self.done(key, res, (time.perf_counter_ns() - t0) / 1e6)
+            try:
+                self.done(key, res, (time.perf_counter_ns() - t0) / 1e6)
+            except Exception:  # e.g. a publish while the node shuts down
+                self._tell('done')
+
+    def _tell(self, where):
+        if where not in self._told:
+            self._told.add(where)
+            print(f'tool_tag: the {where} of an image raised (once per kind; the thread goes on):',
+                  file=sys.stderr)
+            traceback.print_exc()
 
 
 class TagResults:

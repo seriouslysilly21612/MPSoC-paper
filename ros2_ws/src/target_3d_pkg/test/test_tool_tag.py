@@ -247,6 +247,32 @@ def test_an_image_offered_while_one_waits_replaces_it_and_the_replaced_one_is_to
     assert dict(got)['third'] in ('not_found', 'not_searched')
 
 
+def test_a_search_that_raises_gives_search_error_and_the_thread_goes_on(capsys):
+    # I-127: before, any error but cv2.error ended the thread, and every later capture went
+    # without its result
+    class Raises:
+        def __init__(self):
+            self.n = 0
+
+        def find(self, gray, t_s):
+            self.n += 1
+            if self.n == 2:
+                raise ValueError('a bad image')
+            return finder().find(gray, t_s)
+
+    got = []
+    s = TagSearch(Raises(), lambda key, res, ms: got.append((key, res.reason)))
+    img = render([])
+    for k in range(4):
+        s.offer(k, k, img)
+        deadline = time.monotonic() + 5.0
+        while len(got) <= k and time.monotonic() < deadline:   # one at a time: none is busy
+            time.sleep(0.01)
+    s.stop()
+    assert [k for k, _ in got] == [0, 1, 2, 3] and got[1][1] == 'search_error'
+    assert capsys.readouterr().err.count('ValueError: a bad image') == 1   # one traceback
+
+
 def test_the_result_of_a_capture_is_waited_for_and_found_by_its_stamp():
     r = TagResults(keep_s=1.0)
     threading.Timer(0.05, lambda: r.put(5_000_000_300, 'tag')).start()   # 0.3 us off: the same
