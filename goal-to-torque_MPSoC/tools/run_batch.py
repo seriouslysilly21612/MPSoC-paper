@@ -2,7 +2,8 @@
 """run_batch.py - the unattended batch of the measurement protocol (D-11): tools/run_timing.py for every
 condition and repetition, with nobody at the board.
 
-  python3 tools/run_batch.py --out DIR [--quick] [--bus FILE] [--arch P0|S1|S2] [--dry-run]
+  python3 tools/run_batch.py --out DIR [--quick] [--bus FILE] [--arch P0|S1|S2] [--model PATH|launch]
+                             [--model-2 PATH] [--pl-qos N] [--dry-run]
 
   (full)     the 7 conditions (idle, stress, perception, pressure 25, 50, 75, 100; perception is pressure 0) x 30 min x 3; each
              repetition is one round of the 7, so that a slow drift (the temperature of the board) falls on every
@@ -12,6 +13,11 @@ condition and repetition, with nobody at the board.
   --arch S1  every run with the EtherCAT task on the R5 (run_timing.py --arch S1)
   --arch S2  the control task on the R5 as well (run_timing.py --arch S2; a firmware built with CONTROL_TASK):
              the same goal stream (M1), so that the runs compare with those of P0 and S1
+  --model PATH, --model-2 PATH
+             the models of the detector in the runs with the camera (run_timing.py; default YOLOv5n 416, I-114;
+             'launch' for the YOLOv3-tiny of the launch, the batches up to 11-21)
+  --pl-qos N every run with the static QoS of the PL ports to the DDR at N (0-15; run_timing.py --pl-qos, C3-4), back
+             after each; the root wrapper of tools/host/install_pl_qos.sh must be there
   --dry-run  the runs and their commands; nothing is run
   --from N   start at run N in an OUT of an earlier batch; the directory of a run done again is kept as
              <nn>_<condition>.before-<time>
@@ -61,12 +67,15 @@ def name(n, cond, pressure):
     return '%02d_%s' % (n, cond if pressure is None else 'pressure%d' % pressure)
 
 
-def command(run, out, bus, arch):
+def command(run, out, bus, arch, model=rt.MODEL_416, model_2='', pl_qos=None):
     n, _, cond, pressure, dur = run
+    camera = cond in ('perception', 'pressure')
     return ([sys.executable, os.path.join(HERE, 'run_timing.py'), '--condition', cond] +
             (['--pressure', str(pressure)] if pressure is not None else []) +
             ['--duration', '%g' % dur, '--out', os.path.join(out, name(n, cond, pressure)), '--no-hl-log',
-             '--bus', bus] + (['--arch', arch] if arch != 'P0' else []))
+             '--bus', bus] + (['--arch', arch] if arch != 'P0' else []) +
+            (['--model', model] if camera else []) + (['--model-2', model_2] if camera and model_2 else []) +
+            (['--pl-qos', str(pl_qos)] if pl_qos is not None else []))
 
 
 def estimate(run):
@@ -97,8 +106,16 @@ def running(pattern):
     return subprocess.run(['pgrep', '-f', pattern], capture_output=True).returncode == 0
 
 
-def preflight(out, bus, runs, arch):
+def preflight(out, bus, runs, arch, model=rt.MODEL_416, model_2='', pl_qos=None):
     errs = []
+    refused = rt.pl_qos_before(out, pl_qos)      # the wrapper with --pl-qos; the ports not left raised
+    if refused:
+        errs.append(refused)
+    if any(r[2] in ('perception', 'pressure') for r in runs):
+        try:
+            rt.model_args(model, model_2)
+        except ValueError as e:
+            errs.append(str(e))
     if arch in ('S1', 'S2'):
         errs += rt.r5_missing()
     elif not rt.master_running():        # the master itself: it may be started without systemd (ethercatctl)
@@ -142,6 +159,11 @@ def main():
     ap.add_argument('--bus', default=os.path.join(rt.APP, 'bench', 'L7N3_bus.cfg'), help='the bus of every run')
     ap.add_argument('--arch', default='P0', choices=('P0', 'S1', 'S2'),
                     help='where the EtherCAT task runs (S1: on the R5; S2: the control task there too)')
+    ap.add_argument('--model', default=rt.MODEL_416,
+                    help="the model of the detector in the runs with the camera; 'launch': the launch's own")
+    ap.add_argument('--model-2', default='', help='the model of mode 1 in the runs with the camera')
+    ap.add_argument('--pl-qos', type=int, choices=range(16), metavar='N',
+                    help='every run with the static QoS of the PL ports at N (0-15), back after each')
     ap.add_argument('--dry-run', action='store_true', help='the runs and their commands only')
     ap.add_argument('--from', dest='first', type=int, default=1, help='start at run N (an earlier batch in OUT)')
     a = ap.parse_args()
@@ -152,10 +174,11 @@ def main():
     print('run_batch: %d runs, about %.1f h, into %s' % (len(todo), total / 3600, out))
     if a.dry_run:
         for r in todo:
-            print('  %-16s %s' % (name(r[0], r[2], r[3]), ' '.join(command(r, out, bus, a.arch))))
+            argv = command(r, out, bus, a.arch, a.model, a.model_2, a.pl_qos)
+            print('  %-16s %s' % (name(r[0], r[2], r[3]), ' '.join(argv)))
         return 0
     os.makedirs(out, exist_ok=True)
-    preflight(out, bus, todo, a.arch)
+    preflight(out, bus, todo, a.arch, a.model, a.model_2, a.pl_qos)
     path = os.path.join(out, 'batch.csv')
     new = not os.path.exists(path)
     with open(path, 'a', newline='') as f:
@@ -173,7 +196,8 @@ def main():
             print('run_batch: %d/%d %s (repetition %d) from %s' % (n, len(runs), name(n, cond, pressure), rep,
                                                                      start), flush=True)
             with open(os.path.join(d, 'run.txt'), 'w') as log:
-                p = subprocess.Popen(command(r, out, bus, a.arch), stdout=log, stderr=subprocess.STDOUT,
+                p = subprocess.Popen(command(r, out, bus, a.arch, a.model, a.model_2, a.pl_qos), stdout=log,
+                                     stderr=subprocess.STDOUT,
                                      start_new_session=True)
                 try:
                     code = p.wait(timeout=estimate(r) + 900)

@@ -20,6 +20,12 @@ FAKE_RUN = ("import os, sys\n"
             "open(os.path.join(out, 'argv.txt'), 'w').write(' '.join(sys.argv[1:]))\n")
 
 
+@pytest.fixture(autouse=True)
+def no_pl_qos_wrapper(tmp_path, monkeypatch):
+    # on a board with tools/host/install_pl_qos.sh done, the runs here must not call the real wrapper
+    monkeypatch.setattr(rt, 'PL_QOS', str(tmp_path / 'no-pl-qos-wrapper'))
+
+
 def fake_sys(root, state, uio_names):
     os.makedirs(os.path.join(root, 'class/remoteproc/remoteproc0'))
     if state is not None:
@@ -237,3 +243,116 @@ def test_vision_args_are_launch_arguments_quoted_for_bash():
     for bad in ('foo', ':=1', '$(x):=1', 'a b:=1'):
         with pytest.raises(ValueError):
             rt.vision_args(bad)
+
+
+def test_model_args_are_the_files_of_the_models_quoted_for_bash(tmp_path):
+    m416, m320 = tmp_path / 'a 416.xmodel', tmp_path / 'b.xmodel'
+    m416.write_text('')
+    m320.write_text('')
+    assert rt.model_args(str(m416)) == ["'model_path:=%s'" % m416]
+    assert rt.model_args(str(m416), str(m320))[1] == 'model_path_2:=%s' % m320
+    assert rt.model_args('launch') == [] and rt.model_args('launch', str(m320)) == ['model_path_2:=%s' % m320]
+    for bad in ((str(tmp_path / 'none.xmodel'),), (str(m416), str(tmp_path))):
+        with pytest.raises(ValueError):
+            rt.model_args(*bad)
+
+
+def batch_argv(tmp_path, monkeypatch, conds, args):
+    """the arguments of run_timing.py of each run of a batch of conds, with run_one's stand-ins"""
+    tools = tmp_path / 'tools'
+    tools.mkdir()
+    (tools / 'run_timing.py').write_text(FAKE_RUN)
+    bus = tmp_path / 'bus.cfg'
+    bus.write_text('')
+    monkeypatch.setattr(rb, 'HERE', str(tools))
+    monkeypatch.setattr(rb, 'QUICK', conds)
+    monkeypatch.setattr(rb, 'LEFTOVERS', ())
+    monkeypatch.setattr(rb.rt, 'r5_missing', lambda: [])
+    monkeypatch.setattr(rb.rt, 'master_running', lambda: True)
+    monkeypatch.setattr(rb.rt, 'ntp_active', lambda: False)
+    monkeypatch.setattr(rb.time, 'sleep', lambda s: None)
+    monkeypatch.setattr(sys, 'argv', ['run_batch.py', '--out', str(tmp_path / 'out'), '--quick', '--bus', str(bus)]
+                        + args)
+    assert rb.main() == 0
+    return [(tmp_path / 'out' / rb.name(n, c, p) / 'argv.txt').read_text().split()
+            for n, (c, p) in enumerate(conds, 1)]
+
+
+def test_the_runs_with_the_camera_get_the_model(tmp_path, monkeypatch):
+    m = tmp_path / 'v5n_416.xmodel'
+    m.write_text('')
+    idle, perception, pressure = batch_argv(tmp_path, monkeypatch, [('idle', None), ('perception', None),
+                                                                    ('pressure', 100)], ['--model', str(m)])
+    assert '--model' not in idle
+    for argv in (perception, pressure):
+        assert argv[argv.index('--model') + 1] == str(m) and '--model-2' not in argv
+
+
+def test_a_batch_with_the_camera_stops_before_its_runs_without_the_model(tmp_path, monkeypatch, capsys):
+    with pytest.raises(SystemExit) as ex:
+        batch_argv(tmp_path, monkeypatch, [('perception', None)], ['--model', str(tmp_path / 'none.xmodel')])
+    assert 'no such model file' in str(ex.value)
+
+
+def test_a_batch_without_the_camera_does_not_need_the_model(tmp_path, monkeypatch):
+    (idle,) = batch_argv(tmp_path, monkeypatch, [('idle', None)], ['--model', str(tmp_path / 'none.xmodel')])
+    assert '--model' not in idle
+
+
+def test_a_batch_with_pl_qos_needs_the_wrapper(tmp_path, monkeypatch):
+    with pytest.raises(SystemExit) as ex:
+        batch_argv(tmp_path, monkeypatch, [('idle', None)], ['--pl-qos', '9'])
+    assert 'install_pl_qos.sh' in str(ex.value)
+
+
+class FakePlQos:
+    """in place of sudo -n pl-qos: records the calls; show answers SHOW, set answers SET"""
+    def __init__(self, show=(0, 'HP1 ... QoS static 0'), set_=(0, 'after HP1 ... QoS static 9')):
+        self.calls, self.show, self.set_ = [], show, set_
+
+    def __call__(self, *args):
+        self.calls.append(args)
+        return {'show': self.show, 'set': self.set_}.get(args[0], (0, 'restored'))
+
+
+def qos_run(tmp_path, monkeypatch, args, fake):
+    wrapper = tmp_path / 'pl-qos'
+    wrapper.write_text('')
+    monkeypatch.setattr(rt, 'PL_QOS', str(wrapper))
+    monkeypatch.setattr(rt, 'pl_qos', fake)
+    return timing_run(tmp_path, monkeypatch, args)
+
+
+def test_pl_qos_is_set_before_the_run_and_restored_once_after(tmp_path, monkeypatch, capsys):
+    fake = FakePlQos()
+    assert qos_run(tmp_path, monkeypatch, ['--pl-qos', '9'], fake) == 1      # the fake controller exits at once
+    assert fake.calls == [('show',), ('set', '9'), ('restore',)]
+    out = capsys.readouterr().out
+    assert 'QoS of HPC0-1 and HP0-3 at 9' in out and 'back to their values before' in out
+    record = (tmp_path / 'out' / 'pl_qos.txt').read_text()
+    assert 'pl-qos show' in record and 'pl-qos set 9' in record and 'pl-qos restore' in record
+
+
+def test_without_pl_qos_the_run_records_the_ports_and_sets_nothing(tmp_path, monkeypatch):
+    fake = FakePlQos()
+    qos_run(tmp_path, monkeypatch, [], fake)
+    assert fake.calls == [('show',)] and 'QoS static 0' in (tmp_path / 'out' / 'pl_qos.txt').read_text()
+
+
+def test_ports_left_raised_by_a_run_before_stop_the_run(tmp_path, monkeypatch):
+    fake = FakePlQos(show=(0, 'HP1 ... QoS static 9\npl-qos: raised since 2026-11-21 18:00:00 and not restored'))
+    with pytest.raises(SystemExit) as ex:
+        qos_run(tmp_path, monkeypatch, [], fake)
+    assert 'left raised' in str(ex.value) and FakeConsole.made == [] and fake.calls == [('show',)]
+
+
+def test_pl_qos_refused_or_failing(tmp_path, monkeypatch, capsys):
+    with pytest.raises(SystemExit) as ex:                          # no password-less sudo for it
+        qos_run(tmp_path, monkeypatch, ['--pl-qos', '9'], FakePlQos(show=(1, 'sudo: a password is required')))
+    assert 'a password is required' in str(ex.value) and FakeConsole.made == []
+    fake = FakePlQos(set_=(1, 'hp_qos: 1 value(s) did not read back as written'))
+    assert qos_run(tmp_path, monkeypatch, ['--pl-qos', '9'], fake) == 1
+    assert fake.calls == [('show',), ('set', '9')]                 # nothing raised: nothing to restore
+    assert 'stopped: pl-qos set 9 failed' in capsys.readouterr().out and FakeConsole.made == []
+    with pytest.raises(SystemExit):
+        qos_run(tmp_path, monkeypatch, ['--pl-qos', '16'], FakePlQos())

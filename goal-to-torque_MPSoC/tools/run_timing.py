@@ -10,6 +10,7 @@ in its place), the timing of every period (-t), and the summary of tools/timing_
                               [--duration 600] [--cfg indy7/INDY7.cfg] [--bus FILE] [--out DIR] [--settle 30]
                               [--direct] [--no-hl-log] [--arch P0|S1|S2] [--shadow]
                               [--method M1|M2|A2|A3|FULL] [--desired-class CLASS] [--vision-args 'NAME:=VALUE ...']
+                              [--model PATH|launch] [--model-2 PATH] [--pl-qos N]
 
   --bus FILE  another bus than that of the cfg (indy7 -B FILE, e.g. indy7/bench/L7N3_bus.cfg, the L7N
               bench); the arm and everything else stay those of the cfg; FILE is copied into OUT
@@ -37,9 +38,18 @@ in its place), the timing of every period (-t), and the summary of tools/timing_
               menu is the only way to set it. Without it the goal stream runs, and with a method other than M1
               the mailbox stays empty. The logs of the application (obs_*, hl_app_*) go to OUT/hl_logs, the
               decisions of the detector (A3, FULL) to OUT/decisions.csv
+  --model PATH the model of the detector (model_path:= of the camera launch; default YOLOv5n 416, MODEL_416 below,
+              mode 0); 'launch' leaves the default of the launch (YOLOv3-tiny 416: the runs up to 11-21)
+  --model-2 PATH
+              the model of mode 1 (model_path_2:=, e.g. MODEL_320; D-23): only the gate of A3 and FULL chooses it
   --vision-args 'NAME:=VALUE ...'
               more arguments of the camera launch, after method:= and decision_log:= (a name given twice takes
               the last value), e.g. model_path_2:= for the second mode of the detector (D-23)
+  --pl-qos N  the static read and write QoS of the PL ports to the DDR (HPC0-1, HP0-3) to N (0-15) for the run, and
+              back to their values before at its end (C3-4: the DPU raised against the R5). Through the root wrapper
+              /usr/local/sbin/pl-qos (sudo bash tools/host/install_pl_qos.sh, once). With the wrapper there, every
+              run writes the QoS of the ports into OUT/pl_qos.txt, and stops before it starts when a run before
+              left them raised
   --no-hl-log HL_LOG=0 in the copy of the cfg: the high-level test is not logged (the 30-min runs of
               tools/run_batch.py; the log takes about 0.7 kB per period)
 
@@ -73,6 +83,7 @@ The console of the controller is saved as OUT/console.txt. The high-level log of
 per period (OUT/hl_logs), the timing log 60 bytes per period. Standard library only.
 """
 import argparse
+import atexit
 import glob
 import os
 import re
@@ -97,6 +108,9 @@ VISION = ('source /opt/ros/humble/setup.bash && source "$HOME/ros2_ws/install/se
 # the line of vitis_ai_detector_node once its worker has loaded the model; the loads start only after it: under
 # them the worker missed the node's 30 s startup limit (11-15, run 04 of the quick batch)
 VISION_READY = 'Vitis-AI worker ready'
+# the models of the timing runs (I-114): YOLOv5n, the model of the paper, as mode 0 (416) and mode 1 (320)
+MODEL_416 = '~/models/compiled_pickplace_v5n_5class_hswish_real_416/yolov5n_5class_416.xmodel'
+MODEL_320 = '~/models/compiled_pickplace_v5n_5class_hswish_real_320/yolov5n_5class_320.xmodel'
 # The memory pressure, read and write bounds [MB/s] of each of the three memrate workers. A worker runs the 17
 # methods of a round over its buffer in turn, so its time-averaged rate is the harmonic mean of their rates.
 # Beside the camera pipeline the three reached 2.87 GB/s unbounded (2026-11-15, the quick batch, runs 04-06); by
@@ -109,6 +123,8 @@ B_READY = r'\(CRobotIndy7\) \S+: the bus of the robot \(drives off\) beside the 
 # --arch S2: what the control task of the R5 has when this run takes its first report
 FIRST_REPORT = r'\[R5\] the control task of the R5 reports \(its period \d+\): controller (on|off)'
 R5REC = os.path.normpath(os.path.join(HERE, '..', '..', 'rpu_work', 'r5_freertos', 'r5rec.py'))
+PL_QOS = '/usr/local/sbin/pl-qos'           # the root wrapper of tools/host/install_pl_qos.sh
+PL_QOS_RAISED = 'not restored'              # in its show: a set without its restore
 
 
 def warn(text):
@@ -162,6 +178,61 @@ def r5_missing(sys_root='/sys', root=None):
     if not os.path.isfile(R5REC):
         missing.append('no %s, which takes that record' % R5REC)
     return missing
+
+
+def pl_qos(*args):
+    """sudo -n pl-qos ARGS -> (exit code, its output)"""
+    try:
+        r = subprocess.run(['sudo', '-n', PL_QOS] + list(args), capture_output=True, text=True, timeout=30)
+    except (OSError, subprocess.TimeoutExpired) as e:
+        return 1, str(e)
+    return r.returncode, (r.stdout + r.stderr).strip()
+
+
+def pl_qos_note(out, what, text):
+    with open(os.path.join(out, 'pl_qos.txt'), 'a') as f:
+        f.write('# %s %s\n%s\n' % (time.strftime('%H:%M:%S'), what, text))
+
+
+def pl_qos_before(out, level):
+    """the QoS of the PL ports before the run, into OUT/pl_qos.txt; an error text if the run must not start: the
+    wrapper missing or refused with --pl-qos, or the ports left raised by a run before"""
+    if not os.path.exists(PL_QOS):
+        return ('no %s: sudo bash tools/host/install_pl_qos.sh' % PL_QOS) if level is not None else None
+    code, text = pl_qos('show')
+    pl_qos_note(out, 'pl-qos show', text)
+    if code:
+        return 'sudo -n %s show failed (%s): sudo bash tools/host/install_pl_qos.sh' % (
+            PL_QOS, (text.splitlines() or ['no output'])[-1])
+    if PL_QOS_RAISED in text:
+        return 'the QoS of the PL ports was left raised by a run before (pl_qos.txt): sudo %s restore' % PL_QOS
+    return None
+
+
+class PlQos:
+    """--pl-qos N for one run: set before the loads, restored once (at the end, or at the exit of the program)"""
+
+    def __init__(self, out, level):
+        self.out, self.level, self.raised = out, level, False
+
+    def set(self):
+        code, text = pl_qos('set', str(self.level))
+        pl_qos_note(self.out, 'pl-qos set %d' % self.level, text)
+        if code:
+            raise RuntimeError('pl-qos set %d failed (pl_qos.txt)' % self.level)
+        self.raised = True
+        print('run_timing: the static QoS of HPC0-1 and HP0-3 at %d for this run (pl_qos.txt)' % self.level)
+
+    def restore(self):
+        if not self.raised:
+            return
+        self.raised = False
+        code, text = pl_qos('restore')
+        pl_qos_note(self.out, 'pl-qos restore', text)
+        if code:
+            warn('the QoS of the PL ports NOT restored (pl_qos.txt): sudo %s restore' % PL_QOS)
+        else:
+            print('run_timing: the QoS of the PL ports back to their values before the run')
 
 
 def start_r5rec(out):
@@ -254,17 +325,32 @@ def vision_args(text):
     return [shlex.quote(w) for w in words]
 
 
+def model_args(model, model_2=''):
+    """model_path:= (and model_path_2:=) of the camera launch, quoted for bash; 'launch' as model: none of the first.
+    ValueError for a model that is not a file"""
+    words = []
+    for name, path in (('model_path', model), ('model_path_2', model_2)):
+        if not path or (name == 'model_path' and path == 'launch'):
+            continue
+        full = os.path.abspath(os.path.expanduser(path))
+        if not os.path.isfile(full):
+            raise ValueError('%s: no such model file' % full)
+        words.append(shlex.quote('%s:=%s' % (name, full)))
+    return words
+
+
 def start_vision(out, method='M1', extra=()):
     """the camera pipeline in a process group of its own; None if it runs already (it is then left running)"""
     if not vision_missing():
         print('run_timing: the camera pipeline runs already; it is left running (its method and class are its own)')
         if extra:
-            warn('--vision-args not used: the running pipeline has its own launch arguments')
+            warn('--model and --vision-args not used: the running pipeline has its own launch arguments')
         return None
     log = os.path.join(out, 'vision.txt')
     # decision_log: why the detector ran, skipped or rejected each image (A3, FULL; the others write none)
     launch = VISION + ' method:=%s decision_log:=%s' % (shlex.quote(method), shlex.quote(os.path.join(out, 'decisions.csv')))
     launch += ''.join(' ' + w for w in extra)      # after ours: a name given twice takes the last value
+    print('run_timing: the camera launch: %s' % launch[launch.index('ros2 launch'):])
     p = subprocess.Popen(['bash', '-c', launch], stdout=open(log, 'w'), stderr=subprocess.STDOUT,
                          start_new_session=True, env=dict(os.environ, PYTHONUNBUFFERED='1'))
     for _ in range(150):
@@ -404,8 +490,13 @@ def main():
     ap.add_argument('--desired-class', default='', help='the camera application following CLASS, not the stream')
     ap.add_argument('--vision-args', default='',
                     help="more name:=value arguments of the camera launch, e.g. 'model_path_2:=...'")
+    ap.add_argument('--model', default=MODEL_416,
+                    help="model_path:= of the camera launch (default YOLOv5n 416); 'launch': the launch's own")
+    ap.add_argument('--model-2', default='', help='model_path_2:= of the camera launch: the model of mode 1')
     ap.add_argument('--shadow', action='store_true',
                     help='the control computation a second time: with --arch S1 on the R5, with S2 here')
+    ap.add_argument('--pl-qos', type=int, choices=range(16), metavar='N',
+                    help='the static QoS of the PL ports to the DDR at N (0-15) for the run (C3-4)')
     a = ap.parse_args()
     if (a.condition == 'pressure') != (a.pressure is not None):
         ap.error('--pressure goes with --condition pressure, and only with it')
@@ -419,6 +510,13 @@ def main():
         ap.error('--vision-args goes with the camera pipeline: --condition perception or pressure')
     if a.desired_class and a.condition not in ('perception', 'pressure'):
         ap.error('--desired-class goes with the camera pipeline: --condition perception or pressure')
+    if a.model_2 and a.condition not in ('perception', 'pressure'):
+        ap.error('--model-2 goes with the camera pipeline: --condition perception or pressure')
+    if a.condition in ('perception', 'pressure'):
+        try:
+            extra = model_args(a.model, a.model_2) + extra      # before --vision-args: those win
+        except ValueError as e:
+            ap.error('--model: %s' % e)
 
     src = os.path.abspath(a.cfg)
     rt_cpu = int(float(jp.cfg_get(src, 'TASK0', 'CPU', '3') or 3))
@@ -427,6 +525,11 @@ def main():
     checks(a, rt_cpu)
     cfg = os.path.join(out, 'INDY7.cfg')
     cfg_copy(src, cfg, out, a.duration, hl_log=not a.no_hl_log)
+    refused = pl_qos_before(out, a.pl_qos)
+    if refused:
+        sys.exit('run_timing: %s' % refused)
+    qos = PlQos(out, a.pl_qos)
+    atexit.register(qos.restore)      # also when an error this program does not catch ends it
 
     stop = threading.Event()
     sampler = threading.Thread(target=sample, args=(os.path.join(out, 'temp_power.csv'), stop), daemon=True)
@@ -434,6 +537,8 @@ def main():
     vision = load = mem = c = r5rec = r5_log = None
     code = 0
     try:
+        if a.pl_qos is not None:
+            qos.set()                 # before the loads: their warm-up runs with it
         if a.condition in ('perception', 'pressure'):
             vision = start_vision(out, a.method, extra)
         elif len(vision_missing()) < len(PERCEPTION):
@@ -548,6 +653,7 @@ def main():
     if load is not None or mem is not None:
         subprocess.run(['pkill', '-f', '^stress-ng'], capture_output=True)
     stop_vision(vision)
+    qos.restore()
     stop.set()
     sampler.join()
     rate, tmax = run_extras(out)
