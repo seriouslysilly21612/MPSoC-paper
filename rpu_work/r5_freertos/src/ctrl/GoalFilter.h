@@ -7,10 +7,11 @@
 *	A sample is the position of the object in the base frame [m] with the
 *	validity flag of the pipeline (an object of the selected class and a
 *	valid depth at its center). The goal of a sample is the point at the
-*	hover height above it; the high-level controller adds that height to
-*	every position that it reads from the goal slot
-*	(CTrajectoryRT::SetGoalOffset), so the slot carries the object position
-*	and the checks here use the goal.
+*	hover height above it, moved by the horizontal hover offset (the tool
+*	out of the line of sight of the camera, I-114); the high-level
+*	controller adds that offset to every position that it reads from the
+*	goal slot (CTrajectoryRT::SetGoalOffset), so the slot carries the object
+*	position and the checks here use the goal.
 *	A sample is rejected when it is invalid, not finite, its goal below the
 *	goal floor, or its goal outside the workspace box (x, y, z ranges and
 *	the distance from the vertical axis of the base). Accepted samples are
@@ -36,7 +37,16 @@ public:
 		double dHover;     // hover height: goal = object + (0, 0, dHover) [m]
 		double dKappa;     // weight of the newest sample (0 < kappa <= 1)
 		double dGapS;      // restart after this gap between accepted samples [s]
+		double adHoverXY[2];   // horizontal hover offset: goal = object + (x, y, dHover) [m]; last, so that an
+		                       // aggregate initializer without it gives 0 0
 	};
+	// the largest horizontal hover offset [m] (APP_HOVER_XY_M): further the goal is no longer over the object
+	static constexpr double HOVER_XY_MAX = 0.20;
+	static bool HoverXYOk(const double* adXY)
+	{
+		return std::isfinite(adXY[0]) && std::isfinite(adXY[1]) && std::fabs(adXY[0]) <= HOVER_XY_MAX &&
+		       std::fabs(adXY[1]) <= HOVER_XY_MAX;
+	}
 	enum eVerdict { eAccepted = 0, eInvalid, eNotFinite, eBelowFloor, eOutsideBox, eVerdicts };
 
 	CGoalFilter() { Reset(); }
@@ -88,7 +98,7 @@ public:
 			return eInvalid;
 		if (!std::isfinite(adP[0]) || !std::isfinite(adP[1]) || !std::isfinite(adP[2]))
 			return eNotFinite;
-		const double dGx = adP[0], dGy = adP[1], dGz = adP[2] + m_stP.dHover;
+		const double dGx = adP[0] + m_stP.adHoverXY[0], dGy = adP[1] + m_stP.adHoverXY[1], dGz = adP[2] + m_stP.dHover;
 		if (dGz < m_stP.dFloor)
 			return eBelowFloor;
 		const double* b = m_stP.adBox;

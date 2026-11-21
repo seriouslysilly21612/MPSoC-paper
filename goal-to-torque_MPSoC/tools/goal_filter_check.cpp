@@ -178,6 +178,23 @@ int main()
 		Check(f.Restarted(), "2 s of rejected samples count as a gap", "");
 	}
 
+	{
+		// the hover point beside the object (APP_HOVER_XY_M, I-114): the box checks the goal, not the object
+		CGoalFilter::Params q = TestParams();
+		const double adEdge[3] = {0.32, 0.10, 0.20};       // 2 cm inside x0 = 0.30
+		CGoalFilter g;
+		g.SetParams(q);
+		Check(g.Check(true, adEdge) == CGoalFilter::eAccepted, "no hover offset: an object 2 cm inside x0 is taken", "");
+		q.adHoverXY[0] = -0.05;
+		g.SetParams(q);
+		Check(g.Check(true, adEdge) == CGoalFilter::eOutsideBox, "hover 5 cm towards the base: its goal leaves the box",
+		      "");
+		const double adIn2[3] = {0.40, 0.10, 0.20};
+		Check(g.Check(true, adIn2) == CGoalFilter::eAccepted, "an object further out: its goal inside", "");
+		const double adOk[2] = {-0.05, 0.0}, adFar[2] = {0.0, 0.25}, adNan[2] = {NAN, 0.0};
+		Check(CGoalFilter::HoverXYOk(adOk) && !CGoalFilter::HoverXYOk(adFar) && !CGoalFilter::HoverXYOk(adNan),
+		      "hover offsets: -0.05 0 taken, 0.25 and NaN not", "");
+	}
 	printf("%s: %d check(s) failed\n", g_nFail ? "FAIL" : "PASS", g_nFail);
 	return g_nFail ? 1 : 0;
 }

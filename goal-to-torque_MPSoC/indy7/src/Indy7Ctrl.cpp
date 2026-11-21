@@ -455,6 +455,8 @@ CRobotIndy7::AppFilter() const
 	stP.dRMax  = stSys.dAppGoalRMax;
 	stP.dFloor = stSys.dAppGoalFloor;
 	stP.dHover = stSys.dAppHover;
+	for (int k = 0; k < 2; k++)
+		stP.adHoverXY[k] = stSys.adAppHoverXY[k];
 	stP.dKappa = stSys.dAppKappa;
 	stP.dGapS  = stSys.dAppGapS;
 	return stP;
@@ -627,6 +629,8 @@ CRobotIndy7::InitBridge()
 {
 	const ST_CONFIG_SYSTEM& stSys = m_pConfig->System();
 	m_dAppHover = stSys.dAppHover;
+	for (int k = 0; k < 2; k++)
+		m_adAppHoverXY[k] = stSys.adAppHoverXY[k];
 	m_dAppT = stSys.dAppDurationS;
 	if (stSys.nAppBridge == 0 || m_pSimCam != NULL)		// the camera of the simulation is the only source then
 		return;
@@ -639,6 +643,11 @@ CRobotIndy7::InitBridge()
 	if (stSys.nAppResultFormat < 0)
 	{
 		printf("[APP] APP_RESULT_FORMAT is neither base nor tag - no bridge\n");
+		return;
+	}
+	if (!stSys.bAppHoverXYOk)
+	{
+		printf("[APP] APP_HOVER_XY_M is not x y within %.2f m - no bridge\n", CGoalFilter::HOVER_XY_MAX);
 		return;
 	}
 	m_pBridge = new CROS2PickBridge();
@@ -1906,11 +1915,12 @@ CRobotIndy7::DoInput()
 			printf("[HL] high-level tests - press 1-%d, any other key closes:\n"
 			       "     1 fixed goal   2 goal jump   3 goal noise (delta)   4 goal noise (delta = 0)\n"
 			       "     5 reference check   6 HOME   7 record q_r (this session)\n"
-			       "     8 camera application: goals from the camera through the bridge (%s), hover %.2f m\n"
+			       "     8 camera application: goals from the camera through the bridge (%s), hover %.2f m, "
+			       "beside the object x %+.2f y %+.2f m\n"
 			       "     goal [%.3f %.3f %.3f] m from the tool at q_r; jump [%.3f %.3f %.3f] m at %.2f m; "
 			       "noise %.1f mm at %.0f Hz for %.0f s; delta %.1f mm; friction FF %s\n",
 			       (int)HL_MENU, m_pSimCam != NULL ? "here: the camera of the simulation" :
-			       m_pBridge != NULL ? "up" : "not running", m_dAppHover,
+			       m_pBridge != NULL ? "up" : "not running", m_dAppHover, m_adAppHoverXY[0], m_adAppHoverXY[1],
 			       m_adHlGoalOff[0], m_adHlGoalOff[1], m_adHlGoalOff[2],
 			       m_adHlJump[0], m_adHlJump[1], m_adHlJump[2], m_dHlTrigger,
 			       m_dHlNoise * 1e3, m_dHlNoiseHz, m_dHlNoiseT, m_dHlDelta * 1e3, m_bHlFF ? "on" : "off");

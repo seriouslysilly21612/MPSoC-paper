@@ -537,9 +537,10 @@ CRobotIndy7::StartHighLevelTrack(const task_slots::ST_STATE_SLOT& astState,
 {
 	/* The slot of this run: that of the test program, or, for the camera
 	 * application, that of the bridge, whose positions get the hover height
-	 * (paper, Sec. V-C) */
+	 * (paper, Sec. V-C) and the horizontal hover offset (I-114) */
 	const bool bApp = (m_nHlSel == HL_APP);
-	const double adOff[3] = {0.0, 0.0, bApp ? m_dAppHover : 0.0};
+	const double adOff[3] = {bApp ? m_adAppHoverXY[0] : 0.0, bApp ? m_adAppHoverXY[1] : 0.0,
+	                         bApp ? m_dAppHover : 0.0};
 	UseGoalSlot(bApp ? &m_appGoalSlot : &m_goalSlot, adOff);
 	m_cTraj.HighLevel().SetDelta(m_nHlSel == 4 ? 0.0 : m_dHlDelta);
 	char acWhy[192];

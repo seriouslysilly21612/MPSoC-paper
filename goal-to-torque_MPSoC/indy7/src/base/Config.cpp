@@ -3,8 +3,10 @@
 *	Description: The configuration file of the controller. See Config.h.
 *****************************************************************************/
 #include "Config.h"
+#include "GoalFilter.h"
 
 #include <cctype>
+#include <cmath>
 #include <cerrno>
 #include <climits>
 #include <cstdlib>
@@ -82,6 +84,8 @@ stConfigSystem::stConfigSystem()
 	dAppGoalRMax = 0.92;
 	dAppGoalFloor = 0.25;
 	dAppHover = 0.05;
+	adAppHoverXY[0] = adAppHoverXY[1] = 0.0;
+	bAppHoverXYOk = true;
 	dAppKappa = 0.4;
 	dAppGapS = 1.0;
 	dAppLossS = 1.0;
@@ -533,6 +537,16 @@ CConfig::Parse()
 	cF.Double(S, "APP_GOAL_RMAX_M", s.dAppGoalRMax);
 	cF.Double(S, "APP_GOAL_FLOOR_M", s.dAppGoalFloor);
 	cF.Double(S, "APP_HOVER_M", s.dAppHover);
+	{
+		std::vector<double> v = {0.0, 0.0, NAN};   // a third number: more than x and y
+		cF.List(S, "APP_HOVER_XY_M", v);
+		s.bAppHoverXYOk = std::isnan(v[2]) && CGoalFilter::HoverXYOk(v.data());
+		for (int k = 0; k < 2; k++)
+			s.adAppHoverXY[k] = s.bAppHoverXYOk ? v[k] : 0.0;
+		if (!s.bAppHoverXYOk)
+			fprintf(stderr, "[cfg] APP_HOVER_XY_M is not x y within %.2f m: 0 0, and no bridge\n",
+			        CGoalFilter::HOVER_XY_MAX);
+	}
 	cF.Double(S, "APP_EMA_KAPPA", s.dAppKappa);
 	cF.Double(S, "APP_GAP_S", s.dAppGapS);
 	cF.Double(S, "APP_LOSS_S", s.dAppLossS);

@@ -15,7 +15,8 @@ and, when the place of the object is known (--object, or --cfg with SIM_CAM_OBJE
 simulation), against that place
   object      the error of the object of the results used: largest, mean [mm]
   goal        the largest error of the goal that the high-level controller read [mm]
-  tool        the distance of the tool to the hover point above the object at the end of the run [mm]
+  tool        the distance of the tool to the hover point of the object (the object plus the goal offset of
+              the run: APP_HOVER_XY_M, APP_HOVER_M) at the end of the run [mm]
 Then, for a method with the mailbox: the verdicts of the results, their age when they were used, and for a
 method without the contract (M2, A3) the error of each object against the way of the tool between the capture and
 the joint angles that the control task used for it. (The tag sits 85 mm from the tool point: the two ways differ
@@ -117,10 +118,10 @@ def analyze(hl_path, obj):
     out = {'log': os.path.basename(hl_path), 'method': meta.get('method', 'M1'), 'run': meta.get('run'),
            'goals': meta.get('accepted'), 'result': meta.get('result'), 'faults': meta.get('timing_faults', 0)}
     out['first'], out['rest'] = goal_times(rows)
-    hover = (meta.get('goal_offset') or [0.0, 0.0, 0.0])[2]
+    off = meta.get('goal_offset') or [0.0, 0.0, 0.0]      # the hover point: beside (x, y) and above (z) (I-114)
     tool = [xyz(r, 'tool') for r in rows]
     if obj and rows:
-        point = (obj[0], obj[1], obj[2] + hover)
+        point = tuple(o + d for o, d in zip(obj, off))
         errs = [math.dist(xyz(r, 'goal'), point) for r in rows if r['goal_x'] != '']
         out['goal_err'] = max(errs) if errs else float('nan')
         out['tool_err'] = math.dist(tool[-1], point)
