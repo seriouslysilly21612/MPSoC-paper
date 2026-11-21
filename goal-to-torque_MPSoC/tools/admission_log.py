@@ -12,6 +12,8 @@ With the log of the camera results of the control application of the same run (o
   arrival     how many of the run images reached the control task, and their verdicts there
   realized    the period that took the result against the first use that the rule predicted: the rule holds its
               promise when the result is there no later than predicted
+  profile     per mode, capture -> release and release -> publication in the mailbox: the numbers of
+              mode_profile.yaml (acquisition_ms, release_to_publication_ms) as the run measured them
 
 Usage:
   python3 tools/admission_log.py DECISIONS.csv [OBS.csv]
@@ -125,6 +127,25 @@ def report(decisions, obs_path=None, out=sys.stdout):
              '%+.1f ms, largest %+.1f ms; later than predicted: %d of %d' % (
                  quantile(late, 0.5) * 1e3, quantile(late, 0.9) * 1e3, max(late) * 1e3,
                  sum(1 for x in late if x > 0), len(late)))
+    for line_text in profile_lines(arrived, start_s):
+        line(line_text)
+
+
+def profile_lines(arrived, start_s):
+    """the numbers of mode_profile.yaml as this run measured them (I-122 2): per mode, capture -> release
+    (acquisition_ms) and release -> publication in the mailbox (release_to_publication_ms)"""
+    lines = []
+    for mode in sorted(set(row['mode'] for row, result in arrived if result.get('f', '') != '')):
+        rows = [(row, result) for row, result in arrived if row['mode'] == mode and result.get('f', '') != '']
+        acq = [float(row['release_s']) - float(row['capture_s']) for row, _ in rows]
+        r2p = [start_s + float(result['f']) -
+               (float(row['release_s']) + float(row['capture_task_s']) - float(row['capture_s']))
+               for row, result in rows]
+        lines.append('  mode %s (%d results): capture -> release median %.1f, p90 %.1f ms; release -> publication '
+                     'median %.1f, p90 %.1f, p99 %.1f ms' % (
+                         mode, len(rows), quantile(acq, 0.5) * 1e3, quantile(acq, 0.9) * 1e3,
+                         quantile(r2p, 0.5) * 1e3, quantile(r2p, 0.9) * 1e3, quantile(r2p, 0.99) * 1e3))
+    return lines
 
 
 def main():

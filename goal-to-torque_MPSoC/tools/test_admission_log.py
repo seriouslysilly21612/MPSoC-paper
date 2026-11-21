@@ -105,3 +105,14 @@ def test_an_s2_log_starts_on_the_clock_of_the_decisions(tmp_path):
     start_s, results = admission_log.results_by_capture(path)
     assert abs(start_s - RUN_START) < 1e-6
     assert abs(results[0][0] - 600.0) < 1e-6
+
+
+def test_the_profile_of_each_mode_from_the_joined_results():
+    # released 60 ms after the capture (task clock = system clock here), published 120 ms after the release
+    row = decision('run', 600.0)
+    row['capture_s'], row['release_s'] = '600.000000', '600.060000'
+    result = {'t_e': '%.6f' % (600.0 - RUN_START), 'f': '%.6f' % (600.18 - RUN_START), 'verdict': 'accepted'}
+    lines = admission_log.profile_lines([(row, result)], RUN_START)
+    assert len(lines) == 1 and 'capture -> release median 60.0' in lines[0]
+    assert 'release -> publication median 120.0' in lines[0]
+    assert admission_log.profile_lines([(row, {'t_e': '0', 'verdict': 'accepted'})], RUN_START) == []
