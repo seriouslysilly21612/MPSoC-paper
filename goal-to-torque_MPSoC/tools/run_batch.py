@@ -217,6 +217,8 @@ def main():
             killed = [x.lstrip('^') for x in LEFTOVERS if running(x)]
             for x in LEFTOVERS:
                 subprocess.run(['pkill', '-KILL', '-f', x], capture_output=True)
+            if a.pl_qos is not None:        # a run killed before its own restore leaves the ports raised (I-116)
+                rt.pl_qos_note(d, 'pl-qos restore (run_batch, after the run)', rt.pl_qos('restore')[1])
             rate, tmax = rt.run_extras(d)
             code = why(d, code)
             w.writerow([n, rep, cond, '' if pressure is None else pressure, start,

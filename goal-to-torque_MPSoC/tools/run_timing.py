@@ -216,11 +216,12 @@ class PlQos:
         self.out, self.level, self.raised = out, level, False
 
     def set(self):
+        # before the call: a set that fails may have saved and written some ports (I-116); restore undoes those
+        self.raised = True
         code, text = pl_qos('set', str(self.level))
         pl_qos_note(self.out, 'pl-qos set %d' % self.level, text)
         if code:
             raise RuntimeError('pl-qos set %d failed (pl_qos.txt)' % self.level)
-        self.raised = True
         print('run_timing: the static QoS of HPC0-1 and HP0-3 at %d for this run (pl_qos.txt)' % self.level)
 
     def restore(self):

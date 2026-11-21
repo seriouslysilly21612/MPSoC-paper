@@ -319,6 +319,19 @@ def test_a_batch_with_pl_qos_needs_the_wrapper(tmp_path, monkeypatch):
     assert 'install_pl_qos.sh' in str(ex.value)
 
 
+def test_a_batch_with_pl_qos_restores_after_every_run(tmp_path, monkeypatch):
+    # a run killed before its own restore must not leave the ports raised for the next (I-116)
+    wrapper = tmp_path / 'pl-qos'
+    wrapper.write_text('')
+    fake = FakePlQos()
+    monkeypatch.setattr(rt, 'PL_QOS', str(wrapper))
+    monkeypatch.setattr(rt, 'pl_qos', fake)
+    idle, stress = batch_argv(tmp_path, monkeypatch, [('idle', None), ('stress', None)], ['--pl-qos', '9'])
+    assert idle[idle.index('--pl-qos') + 1] == '9'
+    assert fake.calls == [('show',), ('restore',), ('restore',)]
+    assert 'restore (run_batch' in (tmp_path / 'out' / '01_idle' / 'pl_qos.txt').read_text()
+
+
 class FakePlQos:
     """in place of sudo -n pl-qos: records the calls; show answers SHOW, set answers SET"""
     def __init__(self, show=(0, 'HP1 ... QoS static 0'), set_=(0, 'after HP1 ... QoS static 9')):
@@ -366,7 +379,8 @@ def test_pl_qos_refused_or_failing(tmp_path, monkeypatch, capsys):
     assert 'a password is required' in str(ex.value) and FakeConsole.made == []
     fake = FakePlQos(set_=(1, 'hp_qos: 1 value(s) did not read back as written'))
     assert qos_run(tmp_path, monkeypatch, ['--pl-qos', '9'], fake) == 1
-    assert fake.calls == [('show',), ('set', '9')]                 # nothing raised: nothing to restore
+    # a set that fails may have saved and written some ports: the run restores what was saved (I-116)
+    assert fake.calls == [('show',), ('set', '9'), ('restore',)]
     assert 'stopped: pl-qos set 9 failed' in capsys.readouterr().out and FakeConsole.made == []
     with pytest.raises(SystemExit):
         qos_run(tmp_path, monkeypatch, ['--pl-qos', '16'], FakePlQos())
