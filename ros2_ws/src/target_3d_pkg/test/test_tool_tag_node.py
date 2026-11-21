@@ -263,6 +263,17 @@ def test_off_by_default():
     )  # no subscription, no search
 
 
+def test_the_tag_corners_follow_the_position_unless_given():
+    # depth uses the centre pixel only: subpix (cheaper); pnp needs the AprilTag corners (I-112)
+    assert make_node(tool_tag=True).tag_refine == 'subpix'
+    assert make_node(tool_tag=True, tag_position='pnp').tag_refine == 'apriltag'
+    node = make_node(tool_tag=True, tag_refine='apriltag')
+    assert node.tag_refine == 'apriltag' and node.tag_finder.fine is not None
+    assert make_node(tool_tag=True).tag_finder.fine is None
+    with pytest.raises(ValueError):
+        make_node(tool_tag=True, tag_refine='fast')
+
+
 def test_bad_tag_position():
     with pytest.raises(RuntimeError):
         make_node(tool_tag=True, tag_position='both')

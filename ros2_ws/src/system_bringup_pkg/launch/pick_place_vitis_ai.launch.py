@@ -53,8 +53,9 @@ TOOL TAG. `tool_tag:=true` makes pick_target_3d_node look for the tool tag
 of each target, so that the control application can take the object from it
 (APP_RESULT_FORMAT=tag; D-22). tag_position:=depth|pnp: its distance from the
 depth image (default) or from its corners. tag_refine:=apriltag|subpix: the
-corners in the window around the tag; the whole image always gets the plain
-detector (subpix is cheaper and gives the depth mode the same centre pixel).
+corners in the window around the tag; by default subpix with depth (cheaper,
+the same centre pixel) and apriltag with pnp. The whole image always gets the
+plain detector.
 """
 import os
 import re
@@ -422,9 +423,10 @@ def generate_launch_description():
             description="depth: the tag's distance from the depth image, as for the "
                         'object; pnp: from its four corners'),
         DeclareLaunchArgument(
-            'tag_refine', default_value='apriltag',
+            'tag_refine', default_value='',
             description='the tag corners in the window around it: apriltag (as the '
-                        'calibration; for tag_position:=pnp) or subpix (cheaper)'),
+                        'calibration) or subpix (cheaper); empty: subpix with '
+                        'tag_position:=depth, apriltag with pnp'),
         DeclareLaunchArgument(
             'method', default_value='M1',
             description='M1, M2, A2, A3 or FULL: what the detector does with an '

@@ -217,13 +217,16 @@ class PickTarget3DNode(Node):
         # color stream is subscribed. tag_size_m is the side of the black square (the calibration
         # tag: 0.065; measure another one). tag_position: 'depth' takes the camera distance of the
         # tag from the depth image as for the object (the two share its errors), 'pnp' from the
-        # four corners alone; the other one is logged too.
+        # four corners alone; the other one is logged too. tag_refine: the corners in the window
+        # around the tag; '' follows tag_position: subpix for depth (it takes the centre pixel
+        # only: on the board 7 ms against 20, the same x and y), apriltag for pnp (its depth came
+        # 1.6 mm from the depth image against 6.5 with subpix; I-112).
         self.declare_parameter('tool_tag', False)
         self.declare_parameter('color_topic', '/camera/camera/color/image_raw')
         self.declare_parameter('tag_id', 0)
         self.declare_parameter('tag_size_m', 0.065)
         self.declare_parameter('tag_position', 'depth')
-        self.declare_parameter('tag_refine', 'apriltag')
+        self.declare_parameter('tag_refine', '')
 
         # Metrics (off by default): performance CSV per pick + yield tally.
         self.declare_parameter('metrics_csv_path', '')
@@ -251,12 +254,14 @@ class PickTarget3DNode(Node):
         self.tag_position = str(self.get_parameter('tag_position').value)
         if self.tag_position not in ('depth', 'pnp'):
             raise RuntimeError(f"tag_position {self.tag_position!r}: 'depth' or 'pnp'")
+        self.tag_refine = str(self.get_parameter('tag_refine').value).strip() or (
+            'subpix' if self.tag_position == 'depth' else 'apriltag')
         self.tag_finder = None
         if self.tool_tag:
             self.tag_finder = ToolTagFinder(
                 int(self.get_parameter('tag_id').value),
                 float(self.get_parameter('tag_size_m').value),
-                refine=str(self.get_parameter('tag_refine').value))
+                refine=self.tag_refine)
         self.color_buf = deque()   # (stamp_ns, msg): the color images, for the tool tag
         self.tag_found = 0
         self.tag_tally = {}
@@ -374,7 +379,7 @@ class PickTarget3DNode(Node):
             self.get_logger().info(
                 f'tool tag: 36h11 id {f.tag_id}, black square {1e3 * f.size_m:.1f} mm, '
                 f'its distance from the {self.tag_position}, '
-                f"corners {self.get_parameter('tag_refine').value} in the window, "
+                f'corners {self.tag_refine} in the window, '
                 f"images of {self.get_parameter('color_topic').value}")
 
     def color_callback(self, msg: Image):
