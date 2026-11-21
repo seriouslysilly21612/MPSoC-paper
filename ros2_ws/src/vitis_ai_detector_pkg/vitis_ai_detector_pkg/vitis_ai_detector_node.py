@@ -19,9 +19,9 @@ from rclpy.qos import DurabilityPolicy
 from rclpy.qos import HistoryPolicy
 from rclpy.qos import QoSProfile
 from rclpy.qos import ReliabilityPolicy
-from sensor_msgs.msg import Image
+from sensor_msgs.msg import CameraInfo, Image
 
-from my_interfaces.msg import ContractStatus, Detection, DetectionArray
+from my_interfaces.msg import ContractStatus, Detection, DetectionArray, ToolTag
 
 from vitis_ai_detector_pkg import admission
 from vitis_ai_detector_pkg.frame_gate import FrameGate, GateError, METHODS, mode_of_model
@@ -34,6 +34,11 @@ STATUS_TOPIC = "/contract_status"   # 제어 앱의 bridge(ROS2PickBridge.cpp)�
 def stamp_to_seconds(stamp):
     """ROS 시각(builtin_interfaces/Time)을 초로."""
     return float(stamp.sec) + 1e-9 * float(stamp.nanosec)
+
+
+def stamp_to_ns(stamp):
+    """ROS 시각을 정수 ns로 (같은 촬영을 짝짓는 열쇠)."""
+    return int(stamp.sec) * 1_000_000_000 + int(stamp.nanosec)
 
 
 def _default_model_path():
@@ -151,6 +156,15 @@ class VitisAiDetectorNode(Node):
         self.declare_parameter("mode_profile_path", "")     # mode_profile.yaml
         self.declare_parameter("response_table_path", "")   # 검사 3의 표. 비우면 검사 3을 끈다
         self.declare_parameter("decision_log_path", "")     # A3, FULL의 결정 기록. 비우면 쓰지 않는다
+        # the tool tag (D-22, I-122): searched here, in the image that runs, in a thread of its own
+        # beside the inference, and published for pick_target_3d_node (my_interfaces/ToolTag), so
+        # that the search is not on the path of the result. Off by default.
+        self.declare_parameter("tool_tag", False)
+        self.declare_parameter("tag_id", 0)
+        self.declare_parameter("tag_size_m", 0.065)
+        self.declare_parameter("tag_refine", "subpix")
+        self.declare_parameter("color_info_topic", "/camera/camera/color/camera_info")
+        self.declare_parameter("tag_topic", "/tool_tag")
 
         self.model_path = self.get_parameter("model_path").value
         self.worker_script_path = self.get_parameter("worker_script_path").value
@@ -284,6 +298,26 @@ class VitisAiDetectorNode(Node):
                 1,
             )
 
+        self.tag_search = None
+        self.tag_counts = {}           # found / the reasons, for the yield summary
+        self.tag_ids_told = set()      # id sets in view already logged (other_id)
+        if bool(self.get_parameter("tool_tag").value):
+            from target_3d_pkg.tool_tag import TagSearch, ToolTagFinder
+            self.tag_finder = ToolTagFinder(
+                int(self.get_parameter("tag_id").value),
+                float(self.get_parameter("tag_size_m").value),
+                refine=str(self.get_parameter("tag_refine").value))
+            # every result is paired with the object of its capture: none may be dropped on the way
+            self.tag_pub = self.create_publisher(
+                ToolTag, str(self.get_parameter("tag_topic").value),
+                QoSProfile(history=HistoryPolicy.KEEP_LAST, depth=10,
+                           reliability=ReliabilityPolicy.RELIABLE,
+                           durability=DurabilityPolicy.VOLATILE))
+            self.color_info_sub = self.create_subscription(
+                CameraInfo, str(self.get_parameter("color_info_topic").value),
+                self.color_info_callback, 10)
+            self.tag_search = TagSearch(self.tag_finder, self.publish_tag)
+
         # worker 모드만 지원한다. 다른 모드(in-process, one-shot)는 각각
         # execute_async에서 segfault, test용으로 쓰던 것이라 지금은 사용하지 않음.
         if self.detector_mode != "worker":
@@ -322,6 +356,37 @@ class VitisAiDetectorNode(Node):
                 f"0x{gate.contract.crc():08X}, response check "
                 f"{'on' if gate.response_table is not None else 'off'}"
             )
+
+    def color_info_callback(self, msg):
+        # the intrinsics of the color image, once: the tag's corners -> its centre (PnP)
+        if not self.tag_finder.ready():
+            self.tag_finder.set_camera(list(msg.k), list(msg.d))
+            f = self.tag_finder
+            self.get_logger().info(
+                f"tool tag: 36h11 id {f.tag_id}, black square {1e3 * f.size_m:.1f} mm, searched "
+                f"beside the inference in every image that runs -> {self.tag_pub.topic_name}")
+
+    def publish_tag(self, header, res, search_ms):
+        # TagSearch's thread: the result of one image, found or not (every image that runs has one)
+        out = ToolTag()
+        out.header = header
+        out.found = bool(res.found)
+        out.reason = res.reason
+        if res.found:
+            out.x, out.y, out.z = (float(v) for v in res.p_cam)
+            out.window = bool(res.window)
+            out.reproj_px = float(res.reproj_px)
+            out.ambiguity = float(res.ambiguity)
+        out.search_ms = float(search_ms)
+        self.tag_pub.publish(out)
+        key = "found" if res.found else res.reason
+        self.tag_counts[key] = self.tag_counts.get(key, 0) + 1
+        seen = self.tag_finder.seen_ids
+        if res.reason == "other_id" and seen not in self.tag_ids_told:
+            # once per id set: says which tag_id the tags in view have
+            self.tag_ids_told.add(seen)
+            self.get_logger().info(
+                f"tool tag: ids in view {list(seen)}, tag_id is {self.tag_finder.tag_id}")
 
     # 최신 프레임만 "self.latest_msg"에 저장
     def image_callback(self, msg):
@@ -394,6 +459,9 @@ class VitisAiDetectorNode(Node):
         log_this_frame = self.should_log()  # 터미널에 출력되는 로그 주기 설정
         try:
             image = ros_image_to_bgr(msg)  # 이미지 메시지를 OpenCV BGR 형식으로 변환
+            if self.tag_search is not None:
+                # the tag of the same image, in the search thread while the DPU runs (I-122)
+                self.tag_search.offer(msg.header, stamp_to_ns(msg.header.stamp), image)
             image_ready_ns = time.perf_counter_ns()
 
             # worker 프로세스(vitis_ai_worker_yolo.py)를 통해 객체 검출 수행
@@ -848,6 +916,8 @@ class VitisAiDetectorNode(Node):
         if self.worker_thread is not None:
             self.worker_thread.join(timeout=3.0)
             self.worker_thread = None
+        if self.tag_search is not None:
+            self.tag_search.stop()
 
     def save_decision_log(self):
         # A3, FULL: frame마다의 결정을 종료 시 한 번 쓴다(frame마다 I/O 없음).
@@ -890,6 +960,8 @@ class VitisAiDetectorNode(Node):
             "worker_timeout_count": self.worker_timeout_count,
             "worker_slow_count": self.worker_slow_count,
         }
+        for key, count in sorted(self.tag_counts.items()):
+            row[f"tag_{key}"] = count
         directory = os.path.dirname(self.yield_csv_path)
         if directory:
             os.makedirs(directory, exist_ok=True)

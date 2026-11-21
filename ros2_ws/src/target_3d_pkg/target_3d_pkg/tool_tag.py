@@ -15,10 +15,18 @@ the tag position that the joint angles of that capture give.
                                   whole_image_period_s: a result then has no tag ('not_searched')
   gray_of_image(...)              a grayscale view of a sensor_msgs/Image's fields (rgb8, bgr8,
                                   mono8)
+  TagSearch(finder, done)         the search beside the inference (I-122): vitis_ai_detector_node
+                                  offers each image that it runs; a thread of its own finds the tag
+                                  in it while the DPU runs, and done() publishes the result
+  TagResults(keep_s)              those results by capture, for pick_target_3d_node: the object of
+                                  a capture waits a bounded time for the tag of the same capture
 
 Tests: python3 -m pytest src/target_3d_pkg/test/test_tool_tag.py (OpenCV with aruco, numpy)."""
 
+from collections import OrderedDict
 from dataclasses import dataclass
+import threading
+import time
 
 import cv2
 import numpy as np
@@ -213,3 +221,93 @@ def gray_of_image(data, height, width, step, encoding):
         img = rows[:, : width * 3].reshape(height, width, 3)
         return cv2.cvtColor(img, cv2.COLOR_RGB2GRAY if encoding == 'rgb8' else cv2.COLOR_BGR2GRAY)
     return None
+
+
+class TagSearch:
+    """The tag search in a thread of its own, one image at a time (I-122).
+
+    offer(key, stamp_ns, image): image (BGR or grayscale, not written to afterwards) taken at
+    stamp_ns; key goes back with its result. done(key, result, search_ms) is called from the
+    thread. An image offered while another one waits replaces it, and the replaced one gets
+    done(key, TagResult(False, 'busy'), 0.0): every image offered gets one result, so the side
+    that pairs them never waits for a result that will not come.
+    """
+
+    def __init__(self, finder, done):
+        self.finder = finder
+        self.done = done
+        self._cv = threading.Condition()
+        self._next = None  # (key, stamp_ns, image) waiting for the thread
+        self._stop = False
+        self._thread = threading.Thread(target=self._loop, name='tool_tag_search', daemon=True)
+        self._thread.start()
+
+    def offer(self, key, stamp_ns, image):
+        with self._cv:
+            replaced, self._next = self._next, (key, stamp_ns, image)
+            self._cv.notify()
+        if replaced is not None:
+            self.done(replaced[0], TagResult(False, 'busy'), 0.0)
+
+    def stop(self, timeout_s=1.0):
+        with self._cv:
+            self._stop = True
+            self._cv.notify()
+        self._thread.join(timeout_s)
+
+    def _loop(self):
+        while True:
+            with self._cv:
+                while self._next is None and not self._stop:
+                    self._cv.wait()
+                if self._stop:
+                    return
+                key, stamp_ns, image = self._next
+                self._next = None
+            t0 = time.perf_counter_ns()
+            gray = image if image.ndim == 2 else cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+            try:
+                res = self.finder.find(gray, 1e-9 * stamp_ns)
+            except cv2.error:
+                res = TagResult(False, 'search_error')
+            self.done(key, res, (time.perf_counter_ns() - t0) / 1e6)
+
+
+class TagResults:
+    """The tag results by capture stamp (pick_target_3d_node): put() from the subscription,
+    wait() from the callback of the object, in another thread. Results older than keep_s behind
+    the newest are dropped."""
+
+    def __init__(self, keep_s=1.0, same_capture_ns=1_000_000):
+        self.keep_ns = int(keep_s * 1e9)
+        self.same_ns = int(same_capture_ns)  # two images are 33 ms apart: within this, the same
+        self._cv = threading.Condition()
+        self._by_stamp = OrderedDict()  # stamp_ns -> value, in the order they came
+
+    def put(self, stamp_ns, value):
+        with self._cv:
+            self._by_stamp[int(stamp_ns)] = value
+            newest = int(stamp_ns)
+            while self._by_stamp:
+                oldest = next(iter(self._by_stamp))
+                if newest - oldest <= self.keep_ns:
+                    break
+                del self._by_stamp[oldest]
+            self._cv.notify_all()
+
+    def _find(self, stamp_ns):
+        for s in reversed(self._by_stamp):
+            if abs(s - stamp_ns) < self.same_ns:
+                return self._by_stamp[s]
+        return None
+
+    def wait(self, stamp_ns, timeout_s):
+        """the result of the capture at stamp_ns, waiting at most timeout_s for it; None: none"""
+        deadline = time.monotonic() + max(0.0, timeout_s)
+        with self._cv:
+            while True:
+                value = self._find(int(stamp_ns))
+                left = deadline - time.monotonic()
+                if value is not None or left <= 0.0:
+                    return value
+                self._cv.wait(left)

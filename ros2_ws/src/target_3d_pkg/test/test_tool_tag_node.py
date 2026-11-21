@@ -1,7 +1,6 @@
-# pick_target_3d_node with tool_tag:=true on a rendered color image and a flat depth image: the tag
-# of the
-# capture's own image, in the frame of the object, both ways of its distance, the CSV row, the
-# yield counts.
+# pick_target_3d_node with tool_tag:=true: the detector's result for a rendered color image (found
+# here with the finder the detector runs, I-122) and a flat depth image: the tag of the capture's
+# own image, in the frame of the object, both ways of its distance, the CSV row, the yield counts.
 # Runs without ROS: rclpy and the message packages are stand-ins here (they are not on the PC; on
 # the board
 # the real ones are imported instead).
@@ -49,7 +48,7 @@ def stub_ros():
             return Msg(value=self._params[name])
 
         def create_subscription(self, *a, **k):
-            return object()
+            return Msg(topic_name=a[1] if len(a) > 1 else '')
 
         def create_publisher(self, *a, **k):
             return Msg(publish=self.published.append)
@@ -75,6 +74,8 @@ def stub_ros():
         'rclpy': types.ModuleType('rclpy'),
         'rclpy.node': types.ModuleType('rclpy.node'),
         'rclpy.qos': types.ModuleType('rclpy.qos'),
+        'rclpy.callback_groups': types.ModuleType('rclpy.callback_groups'),
+        'rclpy.executors': types.ModuleType('rclpy.executors'),
         'sensor_msgs': types.ModuleType('sensor_msgs'),
         'sensor_msgs.msg': types.ModuleType('sensor_msgs.msg'),
         'realsense2_camera_msgs': types.ModuleType('realsense2_camera_msgs'),
@@ -83,6 +84,8 @@ def stub_ros():
         'my_interfaces.msg': types.ModuleType('my_interfaces.msg'),
     }
     mods['rclpy.node'].Node = Node
+    mods['rclpy.callback_groups'].MutuallyExclusiveCallbackGroup = object
+    mods['rclpy.executors'].MultiThreadedExecutor = Msg
     q = mods['rclpy.qos']
     q.QoSProfile = lambda **k: k
     q.DurabilityPolicy = q.HistoryPolicy = q.ReliabilityPolicy = Msg(
@@ -92,6 +95,7 @@ def stub_ros():
     mods['realsense2_camera_msgs.msg'].Extrinsics = Msg
     mods['my_interfaces.msg'].PickTarget = Msg
     mods['my_interfaces.msg'].PickTarget3D = lambda: Msg(header=Msg(stamp=None, frame_id=''))
+    mods['my_interfaces.msg'].ToolTag = Msg
     for name in (
         'rclpy.duration',
         'geometry_msgs',
@@ -122,7 +126,7 @@ T_NS = 1_700_000_000_123_456_789
 
 def make_node(**params):
     PARAMS.clear()
-    PARAMS.update(params)
+    PARAMS.update({'tag_wait_ms': 0.0}, **params)   # the result is there before the target here
     import target_3d_pkg.pick_target_3d_node as mod
 
     mod = importlib.reload(mod)
@@ -136,16 +140,24 @@ def make_node(**params):
     return node
 
 
-def color_msg(img_gray, ns):
-    rgb = np.repeat(img_gray[:, :, None], 3, axis=2)
-    h, w = img_gray.shape
+FINDER = {}
+
+
+def tag_msg(img_gray, ns, finder_key='0'):
+    """the ToolTag that the detector publishes for this image (its finder: subpix corners)"""
+    f = FINDER.setdefault(finder_key, render_lib.finder())
+    res = f.find(img_gray, 1e-9 * ns)
     return Msg(
         header=Msg(stamp=Stamp(ns)),
-        data=rgb.tobytes(),
-        height=h,
-        width=w,
-        step=3 * w,
-        encoding='rgb8',
+        found=res.found,
+        reason=res.reason,
+        x=float(res.p_cam[0]) if res.found else 0.0,
+        y=float(res.p_cam[1]) if res.found else 0.0,
+        z=float(res.p_cam[2]) if res.found else 0.0,
+        window=bool(res.window),
+        reproj_px=float(res.reproj_px),
+        ambiguity=float(res.ambiguity),
+        search_ms=7.0,
     )
 
 
@@ -178,11 +190,10 @@ def target(ns, u=200.0, v=300.0, mode=1):
 
 
 def run(node, tag_t, plane_z, color_ns=T_NS, target_ns=T_NS):
+    FINDER.clear()
     node.depth_callback(depth_msg(plane_z, T_NS))
-    node.color_callback(
-        color_msg(
-            render_lib.render([(0, 0.065, render_lib.rot(0.05, 0.05, 0.0), tag_t)]), color_ns
-        )
+    node.tag_callback(
+        tag_msg(render_lib.render([(0, 0.065, render_lib.rot(0.05, 0.05, 0.0), tag_t)]), color_ns)
     )
     node.pick_target_callback(target(target_ns))
     return node.published[-1]
@@ -217,26 +228,51 @@ def test_not_another_capture():
         node, np.array([0.0, 0.0, 0.8]), 0.8, color_ns=T_NS + 33_000_000
     )  # the next image only
     assert out.depth_valid and not out.tag_valid
-    assert node.tag_tally == {'no_color_image': 1}
+    assert node.tag_tally == {'no_tag_result': 1}
 
 
 def test_no_tag_in_view():
+    FINDER.clear()
     node = make_node(tool_tag=True)
     node.depth_callback(depth_msg(0.8, T_NS))
-    node.color_callback(color_msg(np.full((render_lib.H, render_lib.W), 255, np.uint8), T_NS))
+    node.tag_callback(tag_msg(np.full((render_lib.H, render_lib.W), 255, np.uint8), T_NS))
     node.pick_target_callback(target(T_NS))
     assert not node.published[-1].tag_valid and node.tag_tally == {'not_found': 1}
 
 
-def test_another_id_in_view_is_told_once():
+def test_the_reasons_of_the_detector_are_kept():
+    FINDER.clear()
     node = make_node(tool_tag=True)
     img = render_lib.render([(7, 0.065, render_lib.rot(0, 0, 0), np.array([0.0, 0.0, 0.8]))])
     # 0, 0.1 and 0.3 s: the whole image is searched again only 0.2 s after one without the tag
     for ns in (T_NS, T_NS + 100_000_000, T_NS + 300_000_000):
         node.depth_callback(depth_msg(0.8, ns))
-        node.color_callback(color_msg(img, ns))
+        node.tag_callback(tag_msg(img, ns))
         node.pick_target_callback(target(ns))
-    assert node.tag_tally == {'other_id': 2, 'not_searched': 1} and node.tag_ids_told == {(7,)}
+    assert node.tag_tally == {'other_id': 2, 'not_searched': 1}
+
+
+def test_the_pick_waits_for_the_tag_of_its_capture():
+    # the result comes 30 ms after the target (another thread): it waits for it, within tag_wait_ms
+    import threading
+    import time
+
+    FINDER.clear()
+    node = make_node(tool_tag=True, tag_wait_ms=200.0)
+    node.depth_callback(depth_msg(0.8, T_NS))
+    msg = tag_msg(render_lib.render([(0, 0.065, render_lib.rot(0.05, 0.05, 0.0),
+                                      np.array([0.0, 0.0, 0.8]))]), T_NS)
+    threading.Timer(0.03, node.tag_callback, args=(msg,)).start()
+    t0 = time.monotonic()
+    node.pick_target_callback(target(T_NS))
+    waited = time.monotonic() - t0
+    assert node.published[-1].tag_valid and 0.02 < waited < 0.15
+    node2 = make_node(tool_tag=True, tag_wait_ms=20.0)    # none comes: 20 ms, then without it
+    node2.depth_callback(depth_msg(0.8, T_NS))
+    t0 = time.monotonic()
+    node2.pick_target_callback(target(T_NS))
+    assert not node2.published[-1].tag_valid and node2.tag_tally == {'no_tag_result': 1}
+    assert 0.015 < time.monotonic() - t0 < 0.15
 
 
 def test_the_tag_goes_from_the_color_to_the_depth_frame():
@@ -259,24 +295,15 @@ def test_off_by_default():
     node = make_node()
     out = run(node, np.array([0.0, 0.0, 0.8]), 0.8)
     assert (
-        out.depth_valid and not out.tag_valid and node.color_sub is None
-    )  # no subscription, no search
+        out.depth_valid and not out.tag_valid and node.tag_sub is None
+    )  # no subscription, no pairing
 
 
-def test_the_tag_corners_follow_the_position_unless_given():
-    # depth uses the centre pixel only: subpix (cheaper); pnp needs the AprilTag corners (I-112)
-    assert make_node(tool_tag=True).tag_refine == 'subpix'
-    assert make_node(tool_tag=True, tag_position='pnp').tag_refine == 'apriltag'
-    node = make_node(tool_tag=True, tag_refine='apriltag')
-    assert node.tag_refine == 'apriltag' and node.tag_finder.fine is not None
-    assert make_node(tool_tag=True).tag_finder.fine is None
-    with pytest.raises(ValueError):
-        make_node(tool_tag=True, tag_refine='fast')
-
-
-def test_bad_tag_position():
+def test_bad_tag_position_and_wait():
     with pytest.raises(RuntimeError):
         make_node(tool_tag=True, tag_position='both')
+    with pytest.raises(RuntimeError):
+        make_node(tool_tag=True, tag_wait_ms=-1.0)
 
 
 def test_the_csv_rows_have_the_tag_columns(tmp_path):
@@ -290,6 +317,7 @@ def test_the_csv_rows_have_the_tag_columns(tmp_path):
     )
     assert second['tag_valid'] == 1 and abs(second['tag_depth_z'] - 0.75) < 1e-6
     assert abs(second['tag_pnp_z'] - 0.75) < 12e-3 and second['tag_reason'] == ''
+    assert second['tag_search_ms'] == 7.0 and second['tag_wait_ms'] is not None
 
 
 def test_the_base_node_moves_the_tag_with_the_object():

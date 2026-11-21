@@ -1,13 +1,16 @@
 # The tool tag in rendered images of a known pose (target_3d_pkg/tool_tag.py). No ROS.
 import os
 import sys
+import threading
+import time
 
 import cv2
 import numpy as np
 import pytest
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
-from target_3d_pkg.tool_tag import ToolTagFinder, gray_of_image, marker_points  # noqa: E402
+from target_3d_pkg.tool_tag import (  # noqa: E402
+    TagResults, TagSearch, ToolTagFinder, gray_of_image, marker_points)
 
 W, H = 848, 480
 K = np.array(
@@ -193,3 +196,70 @@ def test_gray_of_image():
     assert gray_of_image(b'\x01\x02\x03\x04', 2, 2, 2, 'mono8').tolist() == [[1, 2], [3, 4]]
     assert gray_of_image(b'\x00' * 8, 2, 2, 4, '16UC1') is None
     assert gray_of_image(b'\x00' * 3, 2, 2, 2, 'mono8') is None  # short data
+
+
+# ----- the search beside the inference (I-122) -----
+
+
+def test_the_search_thread_finds_the_tag_of_each_image_it_is_offered():
+    got, done = [], threading.Event()
+
+    def on_done(key, res, ms):
+        got.append((key, res.found, ms))
+        if len(got) == 2:
+            done.set()
+
+    s = TagSearch(finder(), on_done)
+    img = render([(0, 0.065, rot(0.1, 0.0, 0.0), np.array([0.0, 0.0, 0.8]))])
+    s.offer('a', 1_000_000_000, img)
+    deadline = time.monotonic() + 5.0
+    while not got and time.monotonic() < deadline:    # the first done before the second comes
+        time.sleep(0.01)
+    s.offer('b', 1_033_000_000, np.repeat(img[:, :, None], 3, axis=2))   # BGR too
+    assert done.wait(5.0)
+    s.stop()
+    assert [(k, f) for k, f, _ in got] == [('a', True), ('b', True)]
+    assert all(ms > 0 for _, _, ms in got)
+
+
+def test_an_image_offered_while_one_waits_replaces_it_and_the_replaced_one_is_told_busy():
+    gate, got = threading.Event(), []
+
+    class Slow:
+        def find(self, gray, t_s):
+            gate.wait(5.0)
+            return finder().find(gray, t_s)
+
+    s = TagSearch(Slow(), lambda key, res, ms: got.append((key, res.reason)))
+    img = render([])
+    s.offer('first', 1, img)          # the thread takes it and waits in find
+    time.sleep(0.1)
+    s.offer('second', 2, img)         # waits ...
+    s.offer('third', 3, img)          # ... and is replaced: every image gets one result
+    assert ('second', 'busy') in got
+    gate.set()
+    deadline = time.monotonic() + 5.0
+    while len(got) < 3 and time.monotonic() < deadline:
+        time.sleep(0.01)
+    s.stop()
+    assert sorted(k for k, _ in got) == ['first', 'second', 'third']
+    assert dict(got)['first'] == 'not_found'
+    assert dict(got)['third'] in ('not_found', 'not_searched')
+
+
+def test_the_result_of_a_capture_is_waited_for_and_found_by_its_stamp():
+    r = TagResults(keep_s=1.0)
+    threading.Timer(0.05, lambda: r.put(5_000_000_300, 'tag')).start()   # 0.3 us off: the same
+    t0 = time.monotonic()
+    assert r.wait(5_000_000_000, 1.0) == 'tag' and time.monotonic() - t0 < 0.5
+    assert r.wait(5_033_000_000, 0.0) is None          # the next image: none, at once
+    t0 = time.monotonic()
+    assert r.wait(5_033_000_000, 0.05) is None and time.monotonic() - t0 >= 0.045
+
+
+def test_old_results_are_dropped():
+    r = TagResults(keep_s=0.5)
+    r.put(1_000_000_000, 'old')
+    r.put(1_400_000_000, 'mid')
+    r.put(1_600_000_000, 'new')        # 0.6 s after the first
+    assert r.wait(1_000_000_000, 0.0) is None and r.wait(1_400_000_000, 0.0) == 'mid'

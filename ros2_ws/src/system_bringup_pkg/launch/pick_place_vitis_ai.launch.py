@@ -48,14 +48,15 @@ packaged YOLOv3-tiny one; its decode_meta.json must sit in the same directory
 with its decode_meta.json): the worker loads both, and the method (M2, A2, A3,
 FULL) picks the mode of each image (D-23). M1 runs model_path only.
 
-TOOL TAG. `tool_tag:=true` makes pick_target_3d_node look for the tool tag
-(AprilTag 36h11 tag_id:=0, black square tag_size_m:=0.065) in the color image
-of each target, so that the control application can take the object from it
-(APP_RESULT_FORMAT=tag; D-22). tag_position:=depth|pnp: its distance from the
-depth image (default) or from its corners. tag_refine:=apriltag|subpix: the
-corners in the window around the tag; by default subpix with depth (cheaper,
-the same centre pixel) and apriltag with pnp. The whole image always gets the
-plain detector.
+TOOL TAG. `tool_tag:=true` makes the detector look for the tool tag (AprilTag
+36h11 tag_id:=0, black square tag_size_m:=0.065) in every image that it runs,
+in a thread beside the inference (I-122), and pick_target_3d_node pair it with
+the object of the same capture (waiting at most tag_wait_ms:=40 for it), so that
+the control application can take the object from it (APP_RESULT_FORMAT=tag;
+D-22). tag_position:=depth|pnp: its distance from the depth image (default) or
+from its corners. tag_refine:=apriltag|subpix: the corners in the window around
+the tag; by default subpix with depth (cheaper, the same centre pixel) and
+apriltag with pnp. The whole image always gets the plain detector.
 """
 import os
 import re
@@ -187,12 +188,20 @@ def launch_setup(context, *args, **kwargs):
         value = LaunchConfiguration(arg).perform(context).strip().lower()
         return value in ('true', '1', 'yes', 'on')
 
-    tag_params = {
+    # the tag: searched by the detector, paired with the object by pick_target_3d_node (I-122)
+    tag_position = LaunchConfiguration('tag_position').perform(context).strip()
+    tag_refine = LaunchConfiguration('tag_refine').perform(context).strip() or (
+        'subpix' if tag_position == 'depth' else 'apriltag')
+    detector_tag_params = {
         'tool_tag': flag('tool_tag'),
         'tag_id': int(LaunchConfiguration('tag_id').perform(context)),
         'tag_size_m': float(LaunchConfiguration('tag_size_m').perform(context)),
-        'tag_position': LaunchConfiguration('tag_position').perform(context).strip(),
-        'tag_refine': LaunchConfiguration('tag_refine').perform(context).strip(),
+        'tag_refine': tag_refine,
+    }
+    target_3d_tag_params = {
+        'tool_tag': flag('tool_tag'),
+        'tag_position': tag_position,
+        'tag_wait_ms': float(LaunchConfiguration('tag_wait_ms').perform(context)),
     }
 
     pick_logic_config = PathJoinSubstitution([
@@ -280,7 +289,8 @@ def launch_setup(context, *args, **kwargs):
             # model_path comes last so it overrides the YAML: it is a resolved
             # path, not a tunable, and must not be edited per machine.
             parameters=[vitis_ai_detector_config,
-                        {'model_path': model_path, 'model_path_2': model_path_2}, method_params]
+                        {'model_path': model_path, 'model_path_2': model_path_2}, method_params,
+                        detector_tag_params]
             + metrics_params('detector'),
             output='screen',
         ),
@@ -309,7 +319,7 @@ def launch_setup(context, *args, **kwargs):
             package='target_3d_pkg',
             executable='pick_target_3d_node',
             name='pick_target_3d_node',
-            parameters=[target_3d_config, tag_params] + metrics_params('target_3d'),
+            parameters=[target_3d_config, target_3d_tag_params] + metrics_params('target_3d'),
             output='screen',
         ),
 
@@ -408,8 +418,9 @@ def generate_launch_description():
                         'M1 pick the mode of each image (empty = one mode)'),
         DeclareLaunchArgument(
             'tool_tag', default_value='false',
-            description='true: pick_target_3d_node finds the tool tag in the color '
-                        'image of each target (APP_RESULT_FORMAT=tag of the control '
+            description='true: the detector finds the tool tag in every image it '
+                        'runs, pick_target_3d_node pairs it with the target of the '
+                        'same capture (APP_RESULT_FORMAT=tag of the control '
                         'application)'),
         DeclareLaunchArgument(
             'tag_id', default_value='0',
@@ -422,6 +433,10 @@ def generate_launch_description():
             'tag_position', default_value='depth',
             description="depth: the tag's distance from the depth image, as for the "
                         'object; pnp: from its four corners'),
+        DeclareLaunchArgument(
+            'tag_wait_ms', default_value='40',
+            description='how long pick_target_3d_node waits for the tag of a '
+                        "target's capture [ms]; then the target goes without it"),
         DeclareLaunchArgument(
             'tag_refine', default_value='',
             description='the tag corners in the window around it: apriltag (as the '

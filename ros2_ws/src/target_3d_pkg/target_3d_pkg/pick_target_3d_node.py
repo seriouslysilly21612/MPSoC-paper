@@ -6,6 +6,8 @@ from collections import deque
 import numpy as np
 
 import rclpy
+from rclpy.callback_groups import MutuallyExclusiveCallbackGroup
+from rclpy.executors import MultiThreadedExecutor
 from rclpy.node import Node
 from rclpy.qos import (
     DurabilityPolicy,
@@ -17,8 +19,8 @@ from rclpy.qos import (
 from sensor_msgs.msg import Image, CameraInfo
 from realsense2_camera_msgs.msg import Extrinsics
 
-from my_interfaces.msg import PickTarget, PickTarget3D
-from target_3d_pkg.tool_tag import ToolTagFinder, gray_of_image
+from my_interfaces.msg import PickTarget, PickTarget3D, ToolTag
+from target_3d_pkg.tool_tag import TagResults
 from target_3d_pkg.metrics_recorder import (
     MetricsRecorder,
     age_ms,
@@ -30,7 +32,8 @@ from target_3d_pkg.metrics_recorder import (
 
 # the columns of the tool tag in the performance CSV (fixed by its first row: every row has them,
 # with tool_tag)
-TAG_KEYS = (['tag_valid', 'tag_reason', 'tag_ms', 'tag_window', 'tag_reproj_px', 'tag_ambiguity'] +
+TAG_KEYS = (['tag_valid', 'tag_reason', 'tag_ms', 'tag_wait_ms', 'tag_search_ms', 'tag_window',
+             'tag_reproj_px', 'tag_ambiguity'] +
             [f'tag_{n}_{a}' for n in ('pnp', 'depth') for a in 'xyz'])
 
 
@@ -212,21 +215,17 @@ class PickTarget3DNode(Node):
         # once live mismatch count stays 0.
         self.declare_parameter('epipolar_ab_check', False)
 
-        # The tool tag (D-22, A-9): its centre in the color image of each capture, found here so
-        # that it comes from the same image as the object. Off by default: then nothing of the
-        # color stream is subscribed. tag_size_m is the side of the black square (the calibration
-        # tag: 0.065; measure another one). tag_position: 'depth' takes the camera distance of the
-        # tag from the depth image as for the object (the two share its errors), 'pnp' from the
-        # four corners alone; the other one is logged too. tag_refine: the corners in the window
-        # around the tag; '' follows tag_position: subpix for depth (it takes the centre pixel
-        # only: on the board 7 ms against 20, the same x and y), apriltag for pnp (its depth came
-        # 1.6 mm from the depth image against 6.5 with subpix; I-112).
+        # The tool tag (D-22, A-9): its centre in the color image of each capture. The
+        # detector searches it in the image that it runs, beside the inference (I-122;
+        # vitis_ai_detector_node tool_tag:=true), and publishes the result on tag_topic; here it
+        # is paired with the object of the same capture, waiting at most tag_wait_ms for it. Off
+        # by default: then nothing of the tag is subscribed. tag_position: 'depth' takes the
+        # camera distance of the tag from the depth image as for the object (the two share its
+        # errors), 'pnp' from the four corners alone; the other one is logged too.
         self.declare_parameter('tool_tag', False)
-        self.declare_parameter('color_topic', '/camera/camera/color/image_raw')
-        self.declare_parameter('tag_id', 0)
-        self.declare_parameter('tag_size_m', 0.065)
+        self.declare_parameter('tag_topic', '/tool_tag')
+        self.declare_parameter('tag_wait_ms', 40.0)
         self.declare_parameter('tag_position', 'depth')
-        self.declare_parameter('tag_refine', '')
 
         # Metrics (off by default): performance CSV per pick + yield tally.
         self.declare_parameter('metrics_csv_path', '')
@@ -254,18 +253,12 @@ class PickTarget3DNode(Node):
         self.tag_position = str(self.get_parameter('tag_position').value)
         if self.tag_position not in ('depth', 'pnp'):
             raise RuntimeError(f"tag_position {self.tag_position!r}: 'depth' or 'pnp'")
-        self.tag_refine = str(self.get_parameter('tag_refine').value).strip() or (
-            'subpix' if self.tag_position == 'depth' else 'apriltag')
-        self.tag_finder = None
-        if self.tool_tag:
-            self.tag_finder = ToolTagFinder(
-                int(self.get_parameter('tag_id').value),
-                float(self.get_parameter('tag_size_m').value),
-                refine=self.tag_refine)
-        self.color_buf = deque()   # (stamp_ns, msg): the color images, for the tool tag
+        self.tag_wait_s = 1e-3 * float(self.get_parameter('tag_wait_ms').value)
+        if not 0.0 <= self.tag_wait_s <= 1.0:
+            raise RuntimeError(f'tag_wait_ms {1e3 * self.tag_wait_s:g}: 0 to 1000')
+        self.tag_results = TagResults(keep_s=1.0)   # the detector's results, by capture
         self.tag_found = 0
         self.tag_tally = {}
-        self.tag_ids_told = set()   # id sets already logged (other_id)
         self.ab_checked = 0
         self.ab_mismatch = 0
         self.last_warn_log_time_ns = {}
@@ -349,19 +342,16 @@ class PickTarget3DNode(Node):
         self.extrinsics_sub = self.create_subscription(
             Extrinsics, extrinsics_topic, self.extrinsics_callback, latched_qos
         )
-        self.color_sub = None
+        self.tag_sub = None
         if self.tool_tag:
-            # a few deep: the callback only stores, but a pick (with its tag search) can hold the
-            # executor
-            color_qos = QoSProfile(
-                history=HistoryPolicy.KEEP_LAST,
-                depth=5,
-                reliability=ReliabilityPolicy.BEST_EFFORT,
-                durability=DurabilityPolicy.VOLATILE,
-            )
-            self.color_sub = self.create_subscription(
-                Image, str(self.get_parameter('color_topic').value), self.color_callback,
-                color_qos)
+            # a group of its own: the results come in (main() spins two threads) while the pick of
+            # the same capture waits for its tag; every one is paired, so reliable and a few deep
+            self.tag_sub = self.create_subscription(
+                ToolTag, str(self.get_parameter('tag_topic').value), self.tag_callback,
+                QoSProfile(history=HistoryPolicy.KEEP_LAST, depth=10,
+                           reliability=ReliabilityPolicy.RELIABLE,
+                           durability=DurabilityPolicy.VOLATILE),
+                callback_group=MutuallyExclusiveCallbackGroup())
 
         self.target_3d_pub = self.create_publisher(
             PickTarget3D, output_topic, 10
@@ -375,22 +365,14 @@ class PickTarget3DNode(Node):
             f'{pick_target_topic} + {depth_topic} -> {output_topic}'
         )
         if self.tool_tag:
-            f = self.tag_finder
             self.get_logger().info(
-                f'tool tag: 36h11 id {f.tag_id}, black square {1e3 * f.size_m:.1f} mm, '
-                f'its distance from the {self.tag_position}, '
-                f'corners {self.tag_refine} in the window, '
-                f"images of {self.get_parameter('color_topic').value}")
+                f'tool tag: the results of the detector on {self.tag_sub.topic_name}, '
+                f'its distance from the {self.tag_position}, waiting at most '
+                f'{1e3 * self.tag_wait_s:.0f} ms for the tag of a capture')
 
-    def color_callback(self, msg: Image):
-        # stored as it comes; the tag is looked for only in the image of a capture that has an
-        # object
-        stamp_ns = stamp_to_ns(msg.header.stamp)
-        self.color_buf.append((stamp_ns, msg))
-        if stamp_ns > 0:
-            cutoff = stamp_ns - self.depth_hist_ns
-            while self.color_buf and self.color_buf[0][0] < cutoff:
-                self.color_buf.popleft()
+    def tag_callback(self, msg: ToolTag):
+        # the detector's result for one image: kept for the object of the same capture
+        self.tag_results.put(stamp_to_ns(msg.header.stamp), msg)
 
     def depth_callback(self, msg: Image):
         # Store only — conversion/validation happens at pick time (~16 Hz),
@@ -467,8 +449,6 @@ class PickTarget3DNode(Node):
         self.c_fy = float(msg.k[4])
         self.c_cx = float(msg.k[2])
         self.c_cy = float(msg.k[5])
-        if self.tag_finder is not None:
-            self.tag_finder.set_camera(list(msg.k), list(msg.d))
 
     def extrinsics_callback(self, msg: Extrinsics):
         # rs2 extrinsics rotation is COLUMN-major: R[i, j] = rotation[i + 3*j].
@@ -647,38 +627,27 @@ class PickTarget3DNode(Node):
         self._emit(out, capture_stamp, compute_start_ns, in_age, depth_msg)
 
     def find_tag(self, out, capture_stamp, depth_img, eff_scale, encoding):
-        """The tool tag in the color image of capture_stamp, into out.tag_* in the frame of out."""
+        """The tool tag of the capture of capture_stamp (the detector's result), into out.tag_* in
+        the frame of out."""
         t0 = time.perf_counter_ns()
-        reason, res, p_pnp, p_depth = '', None, None, None
-        capture_ns = stamp_to_ns(capture_stamp)
-        # the image itself, not the nearest one: the tag and the object must be of one capture
-        entry = next((e for e in reversed(self.color_buf)
-                      if abs(e[0] - capture_ns) < 1_000_000), None)
-        if entry is None:
-            reason = 'no_color_image'
+        reason, p_pnp, p_depth = '', None, None
+        # the result of this very image, not the nearest one: the tag and the object must be of
+        # one capture
+        tag = self.tag_results.wait(stamp_to_ns(capture_stamp), self.tag_wait_s)
+        wait_ms = (time.perf_counter_ns() - t0) / 1e6
+        if tag is None:
+            reason = 'no_tag_result'   # not there within tag_wait_ms (or the detector had none)
+        elif not tag.found:
+            reason = tag.reason
         elif self.R_cd is None:
             reason = 'no_extrinsics'
         else:
-            img = entry[1]
-            gray = gray_of_image(img.data, img.height, img.width, img.step, img.encoding)
-            if gray is None:
-                reason = 'color_encoding'
-            else:
-                res = self.tag_finder.find(gray, 1e-9 * capture_ns)
-                reason = res.reason
-                seen = self.tag_finder.seen_ids
-                if reason == 'other_id' and seen not in self.tag_ids_told:
-                    # once per id set: says which tag_id the tags in view have
-                    self.tag_ids_told.add(seen)
-                    self.get_logger().info(
-                        f'tool tag: ids in view {list(seen)}, tag_id is '
-                        f'{self.tag_finder.tag_id}')
-        if res is not None and res.found:
-            p_pnp = self.R_cd @ res.p_cam + self.t_cd          # color -> depth frame
+            p_cam = np.array([tag.x, tag.y, tag.z], dtype=np.float64)
+            p_pnp = self.R_cd @ p_cam + self.t_cd          # color -> depth frame
             # the depth image at the tag centre, found as for the object (color pixel -> depth
             # pixel)
-            u = self.c_fx * res.p_cam[0] / res.p_cam[2] + self.c_cx
-            v = self.c_fy * res.p_cam[1] / res.p_cam[2] + self.c_cy
+            u = self.c_fx * p_cam[0] / p_cam[2] + self.c_cx
+            v = self.c_fy * p_cam[1] / p_cam[2] + self.c_cy
             found = color_pixel_to_depth_pixel(
                 u, v, depth_img, eff_scale, self.min_depth_m, self.max_depth_m,
                 self.d_fx, self.d_fy, self.d_cx, self.d_cy,
@@ -699,13 +668,16 @@ class PickTarget3DNode(Node):
             self.tag_found += 1
         else:
             self.tag_tally[reason] = self.tag_tally.get(reason, 0) + 1
+        found_tag = tag is not None and tag.found
         self._tag_row = {
             'tag_valid': int(out.tag_valid),
             'tag_reason': reason,
             'tag_ms': _round((time.perf_counter_ns() - t0) / 1e6),
-            'tag_window': int(bool(res is not None and res.found and res.window)),
-            'tag_reproj_px': _round(res.reproj_px) if res is not None and res.found else None,
-            'tag_ambiguity': _round(res.ambiguity) if res is not None and res.found else None,
+            'tag_wait_ms': _round(wait_ms),
+            'tag_search_ms': _round(tag.search_ms) if tag is not None else None,
+            'tag_window': int(bool(found_tag and tag.window)),
+            'tag_reproj_px': _round(tag.reproj_px) if found_tag else None,
+            'tag_ambiguity': _round(tag.ambiguity) if found_tag else None,
         }
         for name, q in (('pnp', p_pnp), ('depth', p_depth)):
             for k, axis in enumerate('xyz'):
@@ -824,8 +796,15 @@ def main(args=None):
 
     signal.signal(signal.SIGTERM, _on_sigterm)
 
+    # with the tool tag a second thread takes its results while a pick waits for the one of its
+    # capture (tag_callback has a group of its own); without it, one thread as before
+    executor = MultiThreadedExecutor(num_threads=2) if node.tool_tag else None
     try:
-        rclpy.spin(node)
+        if executor is None:
+            rclpy.spin(node)
+        else:
+            executor.add_node(node)
+            executor.spin()
     except KeyboardInterrupt:
         pass
     finally:
