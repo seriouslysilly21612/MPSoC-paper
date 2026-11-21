@@ -1052,9 +1052,9 @@ CRobotIndy7::PrintRtSummary() const
 		printf("[S2] reports of the R5's control task: %ld taken, %ld of a period with a state of the arm; %ld of such "
 		       "a period not taken (the tasks here came late: periods that the logs miss)\n", c.nReports,
 		       c.nStateReports, c.nStateMissed);
-		printf("[S2] commands: %ld written, %ld refused by the R5, %ld dropped here (it did not answer); goals "
-		       "written: %ld, taken by the R5 in this run: %ld\n", c.nCommands, c.nRefused, c.nQueueFull, c.nGoals,
-		       c.nGoalsTaken);
+		printf("[S2] commands: %ld written, %ld refused by the R5, %ld written again after a refusal for a period "
+		       "without a state, %ld dropped here (it did not answer); goals written: %ld, taken by the R5 in this run: "
+		       "%ld\n", c.nCommands, c.nRefused, c.nSentAgain, c.nQueueFull, c.nGoals, c.nGoalsTaken);
 		if (m_pObsRingR5 != NULL)		// the goals of the application are the receiver's there
 			printf("[S2] the receiver of the camera results on the R5 (since it started): %u results taken, %u object "
 			       "positions written (the goals of a run of the application); %u of its log entries were "

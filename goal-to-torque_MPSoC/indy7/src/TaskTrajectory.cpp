@@ -623,6 +623,7 @@ CRobotIndy7::StartHighLevelTrack(const task_slots::ST_STATE_SLOT& astState,
 		stO.nRun = stM.nRun;
 		stO.tStart = (m_pObsRingR5 != NULL ? m_cObsClock.TicksOf(astState.tRelease) : (uint64_t)astState.tRelease) +
 		             stO.stSet.period_ticks;
+		stO.tStartMonotonicNs = m_pObsRingR5 != NULL ? (uint64_t)m_cObsClock.MonotonicOf(stO.tStart) : stO.tStart;
 		ObsCounts(m_stObsAt0);
 		m_uObsLost0 = m_stObsRing.lost;
 		for (int w = 0; w < (int)CObsWriter::eResults; w++)

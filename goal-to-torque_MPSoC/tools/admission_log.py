@@ -57,7 +57,11 @@ def results_by_capture(obs_path):
     """the results of the control application's log: [(capture on the clock of the tasks [s], row)], sorted"""
     with open(os.path.splitext(obs_path)[0] + '.json') as f:
         meta = json.load(f)
-    start_s = meta['t_start_ticks'] / meta['ticks_per_s']
+    # with S2 the ticks are the R5's counter, not the clock of the decision log (I-119): its start on that clock
+    if 't_start_monotonic_ns' in meta:
+        start_s = meta['t_start_monotonic_ns'] * 1e-9
+    else:
+        start_s = meta['t_start_ticks'] / meta['ticks_per_s']
     return start_s, sorted((start_s + float(row['t_e']), row) for row in read_rows(obs_path))
 
 

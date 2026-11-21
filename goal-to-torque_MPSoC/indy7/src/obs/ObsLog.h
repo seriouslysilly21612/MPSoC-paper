@@ -37,6 +37,7 @@ struct ObsFormat
 		int				nRun;				// the run of the high-level log
 		BOOL			bSim;
 		uint64_t		tStart;				// the release of the first period of TRACK [ticks]: t = 0
+		uint64_t		tStartMonotonicNs;	// ... on CLOCK_MONOTONIC [ns]: the ticks are the R5's with S2 (I-119)
 		obs_settings_t	stSet;
 		double			dTolM;
 		int				nStateAge;

@@ -6,7 +6,7 @@ does is decided in the DDR controller, port by port. For the reads (PCFGQOS0_n) 
 into three regions, each mapped to a traffic class (LPR low priority, VPR variable priority, HPR high priority);
 for the writes (PCFGWQOS0_n) one level splits them into two (NPW normal, VPW variable priority). The port
 arbiter also takes the value itself as the priority of the port (UG1087). This prints, for every port, whether
-it is enabled and the class of QoS 0 and of QoS 15, with the raw registers, and the PORT_TYPE register of the
+it is enabled and the class of every QoS value, with the raw registers, and the PORT_TYPE register of the
 DDR QoS controller. Nothing is written.
 
   sudo python3 -I -B tools/host/ddr_qos.py
@@ -36,9 +36,13 @@ def field(v, lo, width):
 
 
 def read_class(qos0, q):
-    """the read class of AxQoS q under PCFGQOS0: region 0 up to level1, region 1 up to level2, region 2 above"""
+    """the read class of AxQoS q under PCFGQOS0: region 0 up to level1, region 1 up to level2, region 2 above.
+    level2 <= level1 means a port with one read queue: two regions, region 1 above level1 (I-119)"""
     level1, level2 = field(qos0, 0, 4), field(qos0, 8, 4)
-    region = 0 if q <= level1 else 1 if q <= level2 else 2
+    if level2 <= level1:
+        region = 0 if q <= level1 else 1
+    else:
+        region = 0 if q <= level1 else 1 if q <= level2 else 2
     c = field(qos0, 16 + 4 * region, 2)
     return READ_CLASS.get(c, '?%d' % c)
 
@@ -50,6 +54,16 @@ def write_class(wqos0, q):
     return WRITE_CLASS.get(c, '?%d' % c)
 
 
+def class_map(cls):
+    """the 16 AxQoS values grouped by class: cls(q) -> name; '0-3 LPR, 4-15 VPR'"""
+    runs, start = [], 0
+    for q in range(1, 17):
+        if q == 16 or cls(q) != cls(start):
+            runs.append('%s %s' % ('%d' % start if q - 1 == start else '%d-%d' % (start, q - 1), cls(start)))
+            start = q
+    return ', '.join(runs)
+
+
 def report(ddrc, qosc):
     """the lines for the word reader of each page: ddrc(off), qosc(off) -> the 32-bit value at that offset"""
     lines = ['PCCFG 0x%08X; PORT_TYPE (DDR QoS controller) 0x%08X: port 3 %d, port 4 %d, port 5 %d '
@@ -58,9 +72,9 @@ def report(ddrc, qosc):
     for n, who in enumerate(PORTS):
         r = {name: ddrc(off + PORT_STEP * n) for name, off in PORT_REGS.items()}
         q0, w0 = r['PCFGQOS0'], r['PCFGWQOS0']
-        lines.append('port %d (%s): enabled %d; read QoS 0 %s, 15 %s (levels %d %d); write QoS 0 %s, 15 %s (level %d)'
-                     % (n, who, r['PCTRL'] & 1, read_class(q0, 0), read_class(q0, 15), field(q0, 0, 4),
-                        field(q0, 8, 4), write_class(w0, 0), write_class(w0, 15), field(w0, 0, 4)))
+        lines.append('port %d (%s): enabled %d; read %s (levels %d %d); write %s (level %d)'
+                     % (n, who, r['PCTRL'] & 1, class_map(lambda q: read_class(q0, q)), field(q0, 0, 4),
+                        field(q0, 8, 4), class_map(lambda q: write_class(w0, q)), field(w0, 0, 4)))
         lines.append('  ' + ' '.join('%s 0x%08X' % (name, v) for name, v in r.items()))
     return lines
 

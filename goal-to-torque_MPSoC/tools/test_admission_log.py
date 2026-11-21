@@ -93,3 +93,15 @@ def test_report_without_the_log_of_the_control_application():
     out = io.StringIO()
     admission_log.report([decision('reject', 600.0, reason='no_status')], None, out)
     assert out.getvalue() == '1 decisions: 0 run, 0 skipped, 1 rejected\n  rejected: 1 no_status\n'
+
+
+def test_an_s2_log_starts_on_the_clock_of_the_decisions(tmp_path):
+    # --arch S2 (I-119): the ticks of the log are the R5's counter; t_start_monotonic_ns is the same start on the
+    # clock of the decision log, and the join goes by it
+    path = write_obs(tmp_path, [result(600.0, 0.15)])
+    with open(path[:-4] + '.json', 'w') as f:
+        json.dump({'t_start_ticks': 123456789012, 'ticks_per_s': 99999000.0,
+                   't_start_monotonic_ns': int(RUN_START * 1e9)}, f)
+    start_s, results = admission_log.results_by_capture(path)
+    assert abs(start_s - RUN_START) < 1e-6
+    assert abs(results[0][0] - 600.0) < 1e-6

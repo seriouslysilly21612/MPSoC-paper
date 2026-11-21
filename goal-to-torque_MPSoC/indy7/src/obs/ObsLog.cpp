@@ -63,8 +63,8 @@ ObsFormat::Finish(FILE* fp, const char* astrCsv, const Meta& m, const Result& r,
 		fprintf(fp, "  \"method\": \"%s\",\n  \"run\": %d,\n", m.acMethod, m.nRun);
 		fprintf(fp, "  \"platform\": \"%s\",\n", m.bSim ? "simulation" : "robot");
 		fprintf(fp, "  \"policy\": \"%s\",\n", m.stSet.policy == OBS_CONTRACT ? "contract" : "max_age");
-		fprintf(fp, "  \"ticks_per_s\": %.9g,\n  \"t_start_ticks\": %llu,\n", m.stSet.ticks_per_s,
-		        (unsigned long long)m.tStart);
+		fprintf(fp, "  \"ticks_per_s\": %.9g,\n  \"t_start_ticks\": %llu,\n  \"t_start_monotonic_ns\": %llu,\n",
+		        m.stSet.ticks_per_s, (unsigned long long)m.tStart, (unsigned long long)m.tStartMonotonicNs);
 		fprintf(fp, "  \"period\": %.9g,\n  \"age_cap\": %.9g,\n", (double)m.stSet.period_ticks / m.stSet.ticks_per_s,
 		        (double)m.stSet.age_cap_ticks / m.stSet.ticks_per_s);
 		fprintf(fp, "  \"delta\": %.6g,\n  \"e0\": %.6g,\n  \"g\": %.6g,\n  \"eps_v\": %.6g,\n  \"a_max\": %.6g,\n"

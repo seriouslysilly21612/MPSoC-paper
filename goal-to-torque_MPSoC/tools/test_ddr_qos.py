@@ -29,5 +29,14 @@ def test_report_reads_every_port_at_its_offsets():
     lines = D.report(lambda off: regs.get(off, 0), lambda off: (2 << 10) if off == 0 else 0)
     assert len(lines) == 1 + 2 * 6
     assert 'port 3 2' in lines[0]
-    assert lines[7].startswith('port 3 (HP0, DisplayPort): enabled 1; read QoS 0 LPR, 15 HPR (levels 3 11)')
+    assert lines[7].startswith('port 3 (HP0, DisplayPort): enabled 1; read 0-3 LPR, 4-11 VPR, 12-15 HPR (levels 3 11)')
     assert 'PCFGQOS0 0x02100B03' in lines[8]
+
+
+def test_a_port_with_one_read_queue_has_two_regions():
+    # the board (I-119): HP ports 0x00100003 (0-3 LPR, 4-15 VPR), RPU 0x0020000B (0-11 LPR, 12-15 HPR)
+    assert D.class_map(lambda q: D.read_class(0x00100003, q)) == '0-3 LPR, 4-15 VPR'
+    assert D.class_map(lambda q: D.read_class(0x0020000B, q)) == '0-11 LPR, 12-15 HPR'
+    assert D.class_map(lambda q: D.write_class(0x00100003, q)) == '0-3 NPW, 4-15 VPW'
+    assert D.class_map(lambda q: D.read_class(0x02000B03, q)) == '0-11 LPR, 12-15 HPR'   # CCI: three regions
+    assert D.class_map(lambda q: D.read_class(0x02000E00, q)) == '0-14 LPR, 15 HPR'

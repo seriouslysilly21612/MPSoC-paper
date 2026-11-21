@@ -60,6 +60,9 @@ namespace
 {
 	// what the control task keeps from one cycle to the next with --arch S2
 	// shortcut: one controller per process, as in TaskTrajectory.cpp
+	// how often a start that the R5 refused for a period without a state of the arm is written again
+	const int S2_START_AGAIN = 3;
+
 	struct ST_S2_KEEP
 	{
 		unsigned int udof;
@@ -76,6 +79,7 @@ namespace
 		uint32_t uServoPeriod;		// ... the period of the R5 that took it
 		uint32_t uServoOnPeriods;	// SERVO_ON_TIMEOUT_MS in periods
 		bool     bStopSent;			// the servo off of the end of the application
+		int      nStartAgain;		// the start written again after IPC_REFUSED_NO_STATE (S2_START_AGAIN)
 		uint32_t uLastPeriod;
 		task_slots::ST_TORQUE_SLOT stTorque;
 	} g_stS2;
@@ -166,14 +170,26 @@ s2_take_report(CRobotIndy7* pRobot)
 	{
 		char acWhy[192];
 		c.ResultText(uResult, acWhy, sizeof(acWhy));
+		if (uCmd == IPC_CMD_START && uResult == IPC_DONE_OK)
+			g_stS2.nStartAgain = 0;
 		if (uCmd == IPC_CMD_SERVO_ON && uResult == IPC_DONE_OK)
 		{
 			g_stS2.bServoWait = true;
 			g_stS2.uServoPeriod = r.in.period;
 		}
+		else if (uCmd == IPC_CMD_START && uResult == IPC_REFUSED_NO_STATE && g_stS2.nStartAgain < S2_START_AGAIN &&
+		         c.SendAgain())
+		{
+			// a period without a state of the arm is one period (the simulated arm late under load, I-121): the
+			// same start once more; m_cTraj keeps the motion as started
+			g_stS2.nStartAgain++;
+			printf("[HL] the R5 had no state of the arm in the period of the start: the start again (%d of %d)\n",
+			       g_stS2.nStartAgain, S2_START_AGAIN);
+		}
 		else if (uCmd == IPC_CMD_START && uResult != IPC_DONE_OK)
 		{
 			// the motion that this side took for started never ran
+			g_stS2.nStartAgain = 0;
 			printf("[HL] the R5 refused the start - %s\n", acWhy);
 			pRobot->m_cTraj.End(T::eAborted);
 		}

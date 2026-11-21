@@ -443,6 +443,29 @@ int main(int argc, char** argv)
 		Expect(b.UntilAnswered(a) && (a.stRep.in.flags & IPC_SHADOW_HOLD), "the hold is on again");
 	}
 
+	/* --- a start that the R5 reads in a period without a state of the arm: refused for it, then the same start
+	 * once more from the client (SendAgain; the application does it, I-121) --- */
+	{
+		const long nRefused = a.cClient.GetCounts().nRefused;
+		a.cClient.Queue(IPC_CMD_START, IPC_START_HOME | IPC_START_FRICTION_FF, &stStart);
+		b.Period(a);								// the start is written at the end of this cycle ...
+		volatile uint32_t* const pGen = &b.auRegion[IPC_OFF_SIM_STATE / 4 + IPC_SLOT_GEN];
+		*pGen = *pGen | 1u;							// ... and the R5 reads it while the state is being written
+		b.Period(a);
+		*pGen = *pGen + 1u;
+		Expect(b.UntilAnswered(a) && a.uLastCmd == IPC_CMD_START && a.uLastResult == IPC_REFUSED_NO_STATE &&
+		       a.cClient.GetCounts().nRefused == nRefused + 1 && a.stRep.traj_state != (uint32_t)CTrajectoryRT::eRunning,
+		       "a start in a period without a state of the arm is refused for that, and no motion runs");
+		Expect(a.cClient.SendAgain() && a.cClient.GetCounts().nSentAgain == 1 && !a.cClient.IsSettled(),
+		       "the same start waits again at the head of the queue");
+		Expect(b.UntilAnswered(a) && a.uLastCmd == IPC_CMD_START && a.uLastResult == IPC_DONE_OK &&
+		       a.stRep.traj_state == (uint32_t)CTrajectoryRT::eRunning && a.stRep.motion == (uint32_t)CTrajectoryRT::eMotionHome,
+		       "... and runs: the same numbers (HOME)");
+		a.cClient.Queue(IPC_CMD_MOTION_STOP);
+		Expect(b.UntilAnswered(a) && a.stRep.traj_state != (uint32_t)CTrajectoryRT::eRunning, "stopped again");
+		b.Periods(a, 5);
+	}
+
 	/* --- HOME to its end, TRACK to a goal, across the slots --- */
 	a.cClient.Queue(IPC_CMD_START, IPC_START_HOME | IPC_START_FRICTION_FF, &stStart);
 	Expect(b.UntilAnswered(a) && a.stRep.start_result == IPC_DONE_OK && a.stRep.traj_state == (uint32_t)CTrajectoryRT::eRunning &&
