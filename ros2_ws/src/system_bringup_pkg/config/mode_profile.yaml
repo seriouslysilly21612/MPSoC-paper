@@ -13,8 +13,10 @@
 # is one value per mode for every load. The values change the load they are
 # measured under: a rule that admits more keeps the detector busy, and the
 # images are older when it decides (I-133), so a value is checked in a run
-# with itself. The energy and the DDR traffic of a mode are not measured yet
-# (0, and their weights 0).
+# with itself. The energy and the DDR bytes of an inference (I-136): runs of
+# FULL with one model, no load, tools/mode_energy.py (the power of the board
+# and the DDR ports S1-S5 while it infers, against the same run before its
+# first inference); their weights stay 0.
 
 # time between two images of the camera
 frame_period_ms: 33.35
@@ -53,12 +55,16 @@ modes:
     # 4.97 % of its results later than predicted and a p99 of 137.1 (s2b_p99_416);
     # with 138, 0.64 % later and a p99 of 133.4 (s2b_p138_416, I-133)
     release_to_publication_ms: 138.0
-    energy_j: 0.0
-    ddr_bytes: 0.0
+    # 26.3 and 29.1 mJ (s2c_en_416b, s2c_en_416), 27.2 against a run of its own
+    energy_j: 0.027
+    # 59 MB (s2c_en_416b; the DDR of s2c_en_416 was lost to a second recording)
+    ddr_bytes: 59000000.0
   1:
     name: "320"
     # p99 96.8 (p90 75.8) of s2a_m1_p800, under the old rule (threshold 79 ms),
     # not measured again: probably low by the same bias as 117 for 416 (I-133)
     release_to_publication_ms: 97.0
-    energy_j: 0.0
-    ddr_bytes: 0.0
+    # 18.1 mJ (s2c_en_320), 17.3 against a run of its own
+    energy_j: 0.018
+    # 42 MB (s2c_en_320)
+    ddr_bytes: 42000000.0

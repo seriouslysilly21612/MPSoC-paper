@@ -14,9 +14,14 @@ into the mailbox); not the camera, ROS or the control task, which run in both. I
 and arch in all the runs. With OUT/apm.csv in the runs (tools/host/ddr_apm.py during the run) the DDR bytes of
 an inference too, the same way (ddr_bytes): the bytes a second of the ports S1-S5 above the base, per inference.
 
+Without --base, the base of a mode's run is its own time before its first inference: from its first decision + 5 s
+(the pipeline is up and rejects every image for want of a status) to 2 s before its first inference. On the board
+(2026-11-22, I-136) that agreed with a run of its own within 0.05 W and 5 MB/s, and it leaves out the differences
+between runs.
+
 Usage:
-  python3 tools/mode_energy.py --base DIR MODE:DIR [MODE:DIR ...] [--skip-s 60] [--tail-s 10]
-  e.g. --base ~/timing_logs/en_base 0:~/timing_logs/en_416 1:~/timing_logs/en_320
+  python3 tools/mode_energy.py [--base DIR] MODE:DIR [MODE:DIR ...] [--skip-s 60] [--tail-s 10]
+  e.g. 0:~/timing_logs/en_416 1:~/timing_logs/en_320
 Prints per mode the two powers, the rate and energy_j, and the lines to put into mode_profile.yaml.
 Standard library only.
 """
@@ -89,6 +94,23 @@ def ddr_rate(run_dir, skip_s, tail_s, span=None):
     return sum(b for _, b in inside) / seconds
 
 
+def before_first(run_dir):
+    """(from, to) [unix s] of a run with no inference yet: its first decision + 5 s to 2 s before its first one run"""
+    path = os.path.join(run_dir, 'decisions.csv')
+    try:
+        with open(path, newline='') as f:
+            rows = [(float(r['release_s']), r['action']) for r in csv.DictReader(f)]
+    except (OSError, KeyError, ValueError) as ex:
+        raise ValueError('%s: %s' % (path, ex)) from None
+    runs = [t for t, act in rows if act == 'run']
+    if not rows or not runs:
+        raise ValueError('%s: no decisions, or no image run' % path)
+    lo, hi = min(t for t, _ in rows) + 5.0, min(runs) - 2.0
+    if hi - lo < 10.0:
+        raise ValueError('%s: %.0f s before the first inference, less than 10' % (path, hi - lo))
+    return lo, hi
+
+
 def energy(base_w, mode_w, rate):
     """[J] of one inference"""
     return (mode_w - base_w) / rate
@@ -96,7 +118,8 @@ def energy(base_w, mode_w, rate):
 
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument('--base', required=True, help='the run without inference (M1, detect_period_s:=1000)')
+    ap.add_argument('--base', help='a run without inference (FULL with a table that passes no mode); default: the '
+                                   'time of each run before its first inference')
     ap.add_argument('modes', nargs='+', metavar='MODE:DIR')
     ap.add_argument('--skip-s', type=float, default=60.0)
     ap.add_argument('--tail-s', type=float, default=10.0)
@@ -104,10 +127,11 @@ def main():
     if not a.skip_s >= 0 or not a.tail_s >= 0:
         sys.exit('mode_energy: --skip-s and --tail-s not negative')
     try:
-        base_w, base_n = mean_power(os.path.expanduser(a.base), a.skip_s, a.tail_s)
-        base_ddr = ddr_rate(os.path.expanduser(a.base), a.skip_s, a.tail_s)
-        print('base %s: %.3f W (%d samples)%s' % (a.base, base_w, base_n, '' if base_ddr is None else
-                                                  ', DDR %.1f MB/s' % (base_ddr / 1e6)))
+        if a.base:
+            base_w, base_n = mean_power(os.path.expanduser(a.base), a.skip_s, a.tail_s)
+            base_ddr = ddr_rate(os.path.expanduser(a.base), a.skip_s, a.tail_s)
+            print('base %s: %.3f W (%d samples)%s' % (a.base, base_w, base_n, '' if base_ddr is None else
+                                                      ', DDR %.1f MB/s' % (base_ddr / 1e6)))
         lines = []
         for item in a.modes:
             mode, sep, run_dir = item.partition(':')
@@ -115,6 +139,12 @@ def main():
                 sys.exit('mode_energy: %r is not MODE:DIR' % item)
             run_dir = os.path.expanduser(run_dir)
             rate, k, span = inference_rate(run_dir)
+            if not a.base:
+                pre = before_first(run_dir)
+                base_w, base_n = mean_power(run_dir, 0.0, 0.0, pre)
+                base_ddr = ddr_rate(run_dir, 0.0, 0.0, pre)
+                print('mode %s, before its first inference: %.3f W (%d samples)%s' % (
+                    mode, base_w, base_n, '' if base_ddr is None else ', DDR %.1f MB/s' % (base_ddr / 1e6)))
             w, n = mean_power(run_dir, a.skip_s, a.tail_s, span)
             e = energy(base_w, w, rate)
             print('mode %s %s: %.3f W (%d samples), %d inferences, %.2f a second: %+.3f W, energy_j %.4f'
@@ -126,7 +156,7 @@ def main():
             if ddr is not None and base_ddr is not None:
                 per = (ddr - base_ddr) / rate
                 print('  DDR %.1f MB/s: %+.1f MB/s, ddr_bytes %.4g' % (ddr / 1e6, (ddr - base_ddr) / 1e6, per))
-                lines.append('  %s: ddr_bytes: %.4g' % (mode, per))
+                lines.append('  %s: ddr_bytes: %.1f' % (mode, per))       # a plain float: YAML 1.1 reads 4e+07 as text
     except ValueError as ex:
         sys.exit('mode_energy: %s' % ex)
     print('mode_profile.yaml, modes:\n' + '\n'.join(lines))

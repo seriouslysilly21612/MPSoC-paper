@@ -39,6 +39,20 @@ def test_the_energy_is_the_power_above_the_base_per_inference(tmp_path):
     assert 'energy_j 0.0500' in out and '0: energy_j: 0.0500' in out
 
 
+def test_without_a_base_run_the_time_before_the_first_inference_is_the_base(tmp_path):
+    m416 = run_dir(tmp_path / 'm416', 7.6, runs_per_s=12.0)
+    path = os.path.join(m416, 'decisions.csv')
+    with open(path, 'a') as f:                       # rejected images from unix 960 on: the pipeline is up
+        f.write(''.join('%.3f,%.3f,reject\n' % (960 + i / 30, 960.05 + i / 30) for i in range(1200)))
+    rows = ['t_s,ps_lpd_C,ps_fpd_C,board_W,unix_s']
+    rows += ['%d,40.0,40.0,%.2f,%.3f' % (t, 7.0 if 950 + t < 1000 else 7.6, 950.0 + t) for t in range(250)]
+    (tmp_path / 'm416' / 'temp_power.csv').write_text('\n'.join(rows) + '\n')
+    assert E.before_first(m416) == (pytest.approx(965.05), pytest.approx(998.05))
+    out = subprocess.run([sys.executable, '-B', os.path.join(HERE, 'mode_energy.py'), '0:' + m416],
+                         capture_output=True, text=True, check=True).stdout
+    assert 'before its first inference: 7.000 W' in out and 'energy_j 0.0500' in out
+
+
 def test_runs_that_cannot_give_a_number_are_refused(tmp_path):
     base = run_dir(tmp_path / 'base', 7.0)
     with pytest.raises(ValueError, match='too few'):
@@ -73,7 +87,8 @@ def test_the_ddr_bytes_of_an_inference_with_the_monitor_logs(tmp_path):
     assert E.ddr_rate(m416, 60, 10, span) == pytest.approx(520e6)     # the time of the inferences only
     out = subprocess.run([sys.executable, '-B', os.path.join(HERE, 'mode_energy.py'), '--base', base, '0:' + m416],
                          capture_output=True, text=True, check=True).stdout
-    assert '0: ddr_bytes: 1e+07' in out                                  # 120 MB/s over 12 a second
+    value = out.split('0: ddr_bytes: ')[1].split()[0]                       # a plain float for YAML
+    assert 'e' not in value and float(value) == pytest.approx(1e7, rel=1e-4)  # 120 MB/s over 12 a second
 
 
 def test_the_selectors_and_the_wrap_of_the_ddr_monitor():
@@ -109,3 +124,12 @@ def test_the_ddr_monitor_puts_its_registers_back(tmp_path):
     assert regs.r == {A.CR: 0x0, A.MSR[0]: 0x11, A.MSR[1]: 0x22, A.MSR[2]: 0x33}
     assert seconds > 0 and all(t > 0 for t in total)
     assert open(tmp_path / 'apm.csv').readline().strip().endswith('s5_wr_B')
+
+
+def test_the_ddr_monitor_records_one_at_a_time(tmp_path):
+    sys.path.insert(0, os.path.join(HERE, 'host'))
+    import ddr_apm as A
+    first = A.take_lock(str(tmp_path / 'l'))
+    assert first is not None and A.take_lock(str(tmp_path / 'l')) is None
+    first.close()
+    assert A.take_lock(str(tmp_path / 'l')) is not None

@@ -13,12 +13,16 @@ The metric numbers 2 (write bytes) and 3 (read bytes) are those of the AXI Perfo
 checked on this board yet: check them with a known load first (memrate at a set rate: S1-S2 should carry about
 that rate). --probe only reads the registers.
 
+One recording at a time (a lock file): a second one would clear the counters of the first, and the first, when it
+ends, would put back the registers as they were before it, stopping the second (2026-11-22, I-136).
+
 Usage (on the board, root for /dev/mem):
   sudo python3 tools/host/ddr_apm.py --probe
   sudo python3 tools/host/ddr_apm.py --out OUT/apm.csv [--period 0.25] [--duration S]     (Ctrl-C or SIGTERM ends)
 Standard library only.
 """
 import argparse
+import fcntl
 import mmap
 import os
 import signal
@@ -34,6 +38,18 @@ WRITE_BYTES, READ_BYTES = 2, 3
 PORTS = (1, 2, 3, 4, 5)
 COUNTERS = [(p, m) for p in PORTS for m in (READ_BYTES, WRITE_BYTES)]          # counter i: (port, metric)
 NAMES = ['s%d_%s_B' % (p, 'rd' if m == READ_BYTES else 'wr') for p, m in COUNTERS]
+LOCK = '/run/lock/ddr_apm.lock' if os.path.isdir('/run/lock') else '/tmp/ddr_apm.lock'
+
+
+def take_lock(path):
+    """an open file holding the lock of one recording, or None while another one holds it"""
+    f = open(path, 'a')
+    try:
+        fcntl.flock(f, fcntl.LOCK_EX | fcntl.LOCK_NB)
+    except OSError:
+        f.close()
+        return None
+    return f
 
 
 class Regs:
@@ -123,6 +139,9 @@ def main():
         sys.exit('ddr_apm: --probe or --out')
     if not 0.05 <= a.period <= 1.0 or (a.duration is not None and not a.duration > 0):
         sys.exit('ddr_apm: --period 0.05 .. 1 s, --duration above 0')
+    lock = None if a.probe else take_lock(LOCK)
+    if not a.probe and lock is None:
+        sys.exit('ddr_apm: another recording runs (%s): wait for its end' % LOCK)
     try:
         regs = Regs(BASE, write=not a.probe)
     except OSError as ex:
