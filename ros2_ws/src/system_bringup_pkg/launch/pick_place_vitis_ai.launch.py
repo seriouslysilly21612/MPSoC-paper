@@ -201,8 +201,8 @@ def launch_setup(context, *args, **kwargs):
     tag_position = LaunchConfiguration('tag_position').perform(context).strip()
     tag_refine = LaunchConfiguration('tag_refine').perform(context).strip() or (
         'subpix' if tag_position == 'depth' else 'apriltag')
-    # the energy of the modes (tools/mode_energy.py): a long period leaves the pipeline up without
-    # inference, the base of the difference
+    # the energy of the modes (tools/mode_energy.py): M1 with a long period leaves the pipeline up
+    # without inference, the base of the difference
     detect_period = LaunchConfiguration('detect_period_s').perform(context).strip()
     detector_period_params = {'process_period_sec': float(detect_period)} if detect_period else {}
     detector_tag_params = {
@@ -453,8 +453,9 @@ def generate_launch_description():
                         "target's capture [ms]; then the target goes without it"),
         DeclareLaunchArgument(
             'detect_period_s', default_value='',
-            description='process_period_sec of the detector (empty: its YAML, 0.030); e.g. 1000 '
-                        'for the pipeline without inference (tools/mode_energy.py)'),
+            description='process_period_sec of the detector, the gate of M1 (empty: its YAML, '
+                        '0.030; the rule of the other methods does not use it); M1 with 1000: the '
+                        'pipeline without inference (tools/mode_energy.py)'),
         DeclareLaunchArgument(
             'tag_whole_scale', default_value='0.5',
             description='the whole image is searched for the tag at this size (0.25 to 1; '

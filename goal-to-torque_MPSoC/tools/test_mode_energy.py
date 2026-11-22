@@ -11,10 +11,11 @@ import mode_energy as E  # noqa: E402
 
 
 def run_dir(d, watts, runs_per_s=0.0, seconds=200):
-    """a run: power `watts` every second (10 W in the first 30 s, the start), decisions at runs_per_s"""
+    """a run from unix 1000 - 50: power `watts` every second (10 W in the first 30 s, the start), decisions at
+    runs_per_s from unix 1000 to its end"""
     d.mkdir(parents=True)
-    rows = ['t_s,ps_lpd_C,ps_fpd_C,board_W']
-    rows += ['%d,40.0,40.0,%.2f' % (t, 10.0 if t < 30 else watts) for t in range(seconds)]
+    rows = ['t_s,ps_lpd_C,ps_fpd_C,board_W,unix_s']
+    rows += ['%d,40.0,40.0,%.2f,%.3f' % (t, 10.0 if t < 30 else watts, 950.0 + t) for t in range(seconds + 50)]
     (d / 'temp_power.csv').write_text('\n'.join(rows) + '\n')
     lines = ['capture_s,release_s,action']
     if runs_per_s > 0:
@@ -28,9 +29,10 @@ def run_dir(d, watts, runs_per_s=0.0, seconds=200):
 def test_the_energy_is_the_power_above_the_base_per_inference(tmp_path):
     base = run_dir(tmp_path / 'base', 7.0)
     m416 = run_dir(tmp_path / 'm416', 7.6, runs_per_s=12.0)
-    assert E.mean_power(base, 60, 10) == (pytest.approx(7.0), 130)
-    rate, k = E.inference_rate(m416)
+    assert E.mean_power(base, 60, 10) == (pytest.approx(7.0), 180)
+    rate, k, span = E.inference_rate(m416)
     assert k == 2400 and rate == pytest.approx(12.0, rel=1e-4)       # stamps in ms
+    assert span[0] == pytest.approx(1000.05) and E.mean_power(m416, 0, 5, span)[1] == 189
     assert E.energy(7.0, 7.6, 12.0) == pytest.approx(0.05)
     out = subprocess.run([sys.executable, '-B', os.path.join(HERE, 'mode_energy.py'), '--base', base, '0:' + m416],
                          capture_output=True, text=True, check=True).stdout
@@ -42,7 +44,7 @@ def test_runs_that_cannot_give_a_number_are_refused(tmp_path):
     with pytest.raises(ValueError, match='too few'):
         E.inference_rate(base)                                   # no image run
     with pytest.raises(ValueError, match='fewer than 10'):
-        E.mean_power(run_dir(tmp_path / 'short', 7.0, seconds=65), 60, 10)
+        E.mean_power(run_dir(tmp_path / 'short', 7.0, seconds=15), 60, 10)
     with pytest.raises(ValueError):
         E.mean_power(str(tmp_path / 'none'), 60, 10)
     res = subprocess.run([sys.executable, '-B', os.path.join(HERE, 'mode_energy.py'), '--base', base, 'x:' + base],

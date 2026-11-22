@@ -451,9 +451,9 @@ def sample(path, stop):
         return
     t0 = time.monotonic()
     with open(path, 'w') as f:
-        f.write('t_s,ps_lpd_C,ps_fpd_C,board_W\n')
+        f.write('t_s,ps_lpd_C,ps_fpd_C,board_W,unix_s\n')      # unix_s: against the decisions (mode_energy.py)
         while True:
-            f.write('%.0f,%.1f,%.1f,%.2f\n' % tuple([time.monotonic() - t0] + read_sensors()))
+            f.write('%.0f,%.1f,%.1f,%.2f,%.3f\n' % tuple([time.monotonic() - t0] + read_sensors() + [time.time()]))
             f.flush()
             if stop.wait(1.0):
                 return
