@@ -1,0 +1,103 @@
+"""pytest: tools/mode_energy.py on stand-in runs of run_timing."""
+import os
+import subprocess
+import sys
+
+import pytest
+
+HERE = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, HERE)
+import mode_energy as E  # noqa: E402
+
+
+def run_dir(d, watts, runs_per_s=0.0, seconds=200):
+    """a run: power `watts` every second (10 W in the first 30 s, the start), decisions at runs_per_s"""
+    d.mkdir(parents=True)
+    rows = ['t_s,ps_lpd_C,ps_fpd_C,board_W']
+    rows += ['%d,40.0,40.0,%.2f' % (t, 10.0 if t < 30 else watts) for t in range(seconds)]
+    (d / 'temp_power.csv').write_text('\n'.join(rows) + '\n')
+    lines = ['capture_s,release_s,action']
+    if runs_per_s > 0:
+        n = int(seconds * runs_per_s)
+        lines += ['%.3f,%.3f,%s' % (1000 + i / runs_per_s, 1000.05 + i / runs_per_s, 'run') for i in range(n)]
+        lines += ['1000.0,1000.0,reject']
+    (d / 'decisions.csv').write_text('\n'.join(lines) + '\n')
+    return str(d)
+
+
+def test_the_energy_is_the_power_above_the_base_per_inference(tmp_path):
+    base = run_dir(tmp_path / 'base', 7.0)
+    m416 = run_dir(tmp_path / 'm416', 7.6, runs_per_s=12.0)
+    assert E.mean_power(base, 60, 10) == (pytest.approx(7.0), 130)
+    rate, k = E.inference_rate(m416)
+    assert k == 2400 and rate == pytest.approx(12.0, rel=1e-4)       # stamps in ms
+    assert E.energy(7.0, 7.6, 12.0) == pytest.approx(0.05)
+    out = subprocess.run([sys.executable, '-B', os.path.join(HERE, 'mode_energy.py'), '--base', base, '0:' + m416],
+                         capture_output=True, text=True, check=True).stdout
+    assert 'energy_j 0.0500' in out and '0: energy_j: 0.0500' in out
+
+
+def test_runs_that_cannot_give_a_number_are_refused(tmp_path):
+    base = run_dir(tmp_path / 'base', 7.0)
+    with pytest.raises(ValueError, match='too few'):
+        E.inference_rate(base)                                   # no image run
+    with pytest.raises(ValueError, match='fewer than 10'):
+        E.mean_power(run_dir(tmp_path / 'short', 7.0, seconds=65), 60, 10)
+    with pytest.raises(ValueError):
+        E.mean_power(str(tmp_path / 'none'), 60, 10)
+    res = subprocess.run([sys.executable, '-B', os.path.join(HERE, 'mode_energy.py'), '--base', base, 'x:' + base],
+                         capture_output=True, text=True)
+    assert res.returncode != 0 and 'Traceback' not in res.stderr
+
+
+def apm_log(d, mb_per_s, seconds=200):
+    rows = ['unix_s,dt_s,s1_rd_B,s1_wr_B']
+    rows += ['%d,0.25,%d,%d' % (t, mb_per_s * 1e6 * 0.25 / 2, mb_per_s * 1e6 * 0.25 / 2) for t in range(seconds * 4)]
+    (d / 'apm.csv').write_text('\n'.join(rows) + '\n')
+
+
+def test_the_ddr_bytes_of_an_inference_with_the_monitor_logs(tmp_path):
+    base = run_dir(tmp_path / 'base', 7.0)
+    m416 = run_dir(tmp_path / 'm416', 7.6, runs_per_s=12.0)
+    assert E.ddr_rate(base, 60, 10) is None
+    apm_log(tmp_path / 'base', 400)
+    apm_log(tmp_path / 'm416', 520)
+    assert E.ddr_rate(base, 60, 10) == pytest.approx(400e6)
+    out = subprocess.run([sys.executable, '-B', os.path.join(HERE, 'mode_energy.py'), '--base', base, '0:' + m416],
+                         capture_output=True, text=True, check=True).stdout
+    assert '0: ddr_bytes: 1e+07' in out                                  # 120 MB/s over 12 a second
+
+
+def test_the_selectors_and_the_wrap_of_the_ddr_monitor():
+    sys.path.insert(0, os.path.join(HERE, 'host'))
+    import ddr_apm as A
+    words = A.selectors(A.COUNTERS)
+    # counter 0: S1 read bytes (slot 1, metric 3) -> 0x23; counter 1: S1 write bytes -> 0x22
+    assert words[0] & 0xFFFF == 0x2223 and (words[2] >> 8) & 0xFF == (5 << 5 | A.WRITE_BYTES)
+    assert len(A.NAMES) == 10 and A.NAMES[0] == 's1_rd_B' and A.NAMES[-1] == 's5_wr_B'
+    assert A.increase(5, 0xFFFFFFFE) == 7 and A.increase(10, 3) == 7
+
+
+def test_the_ddr_monitor_puts_its_registers_back(tmp_path):
+    sys.path.insert(0, os.path.join(HERE, 'host'))
+    import ddr_apm as A
+
+    class Fake:
+        def __init__(self):
+            self.r = {A.CR: 0x0, A.MSR[0]: 0x11, A.MSR[1]: 0x22, A.MSR[2]: 0x33}
+            self.reads = 0
+
+        def read(self, off):
+            if A.MCR0 <= off < A.MCR0 + A.MCR_STEP * len(A.COUNTERS):
+                self.reads += 1
+                return (self.reads * 1000) & 0xFFFFFFFF
+            return self.r.get(off, 0)
+
+        def write(self, off, v):
+            self.r[off] = v
+
+    regs = Fake()
+    total, seconds = A.record(regs, str(tmp_path / 'apm.csv'), 0.05, 0.2, [])
+    assert regs.r == {A.CR: 0x0, A.MSR[0]: 0x11, A.MSR[1]: 0x22, A.MSR[2]: 0x33}
+    assert seconds > 0 and all(t > 0 for t in total)
+    assert open(tmp_path / 'apm.csv').readline().strip().endswith('s5_wr_B')

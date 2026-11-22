@@ -201,6 +201,10 @@ def launch_setup(context, *args, **kwargs):
     tag_position = LaunchConfiguration('tag_position').perform(context).strip()
     tag_refine = LaunchConfiguration('tag_refine').perform(context).strip() or (
         'subpix' if tag_position == 'depth' else 'apriltag')
+    # the energy of the modes (tools/mode_energy.py): a long period leaves the pipeline up without
+    # inference, the base of the difference
+    detect_period = LaunchConfiguration('detect_period_s').perform(context).strip()
+    detector_period_params = {'process_period_sec': float(detect_period)} if detect_period else {}
     detector_tag_params = {
         'tool_tag': flag('tool_tag'),
         'tag_id': int(LaunchConfiguration('tag_id').perform(context)),
@@ -300,7 +304,7 @@ def launch_setup(context, *args, **kwargs):
             # path, not a tunable, and must not be edited per machine.
             parameters=[vitis_ai_detector_config,
                         {'model_path': model_path, 'model_path_2': model_path_2}, method_params,
-                        detector_tag_params]
+                        detector_tag_params, detector_period_params]
             + metrics_params('detector'),
             output='screen',
         ),
@@ -447,6 +451,10 @@ def generate_launch_description():
             'tag_wait_ms', default_value='40',
             description='how long pick_target_3d_node waits for the tag of a '
                         "target's capture [ms]; then the target goes without it"),
+        DeclareLaunchArgument(
+            'detect_period_s', default_value='',
+            description='process_period_sec of the detector (empty: its YAML, 0.030); e.g. 1000 '
+                        'for the pipeline without inference (tools/mode_energy.py)'),
         DeclareLaunchArgument(
             'tag_whole_scale', default_value='0.5',
             description='the whole image is searched for the tag at this size (0.25 to 1; '
