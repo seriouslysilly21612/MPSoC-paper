@@ -300,7 +300,7 @@ private:
 	CROS2PickBridge* m_pBridge{NULL};
 	CGoalSlot     m_appGoalSlot;
 	// -s with SIM_CAM=1: a camera of the simulation in place of the bridge
-	// (sim/SimCamera.h); 'y', 8 starts the application on its one object
+	// (sim/SimCamera.h); 'y', 8 starts the application on the next place of its object
 	CSimCamera*   m_pSimCam{NULL};
 	BOOL          InitSimCamera           (	);
 	// the methods other than M1 (--method, obs/ObsMethod.h): the camera side

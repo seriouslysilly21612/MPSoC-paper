@@ -48,6 +48,8 @@ struct HighLevelFormat
 		BOOL	bSim, bSimFriction;
 		int		nSimStateDelay, nSimTorqueDelay;
 		double	adSimTauS[MAX_DOF];
+		bool	bObject;				// the application: the place of the object is known apart from the camera
+		double	adObject[3];			// (the camera of the simulation: the place of this run) [m, base frame]
 	};
 	struct Result {
 		long	nTimingFaults;			// robot, and --arch S1: nLate + nOverruns + nMissed; simulation: 0

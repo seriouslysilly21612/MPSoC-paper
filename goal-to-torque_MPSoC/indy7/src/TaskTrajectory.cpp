@@ -505,6 +505,16 @@ CRobotIndy7::StartHighLevelMenu(int anSel, const task_slots::ST_STATE_SLOT& astS
 		printf("[HL] refused - %s\n", acWhy);
 		return FALSE;
 	}
+	if (anSel == HL_APP && m_pSimCam != NULL)
+	{
+		/* the next place of the object (D-25), before HOME: the results of the place before are on their way
+		 * for SIM_CAM_LATENCY_MS only, much less than HOME */
+		double adObj[3];
+		const int nPlace = m_pSimCam->SetPlace((unsigned)m_anHlRuns[HL_APP - 1], adObj);
+		if (m_pSimCam->Places() > 1)
+			printf("[SIMCAM] run %d of the application: the object at place %d of %d, (%.3f, %.3f, %.3f) m\n",
+			       m_anHlRuns[HL_APP - 1] + 1, nPlace + 1, m_pSimCam->Places(), adObj[0], adObj[1], adObj[2]);
+	}
 	m_nHlSel = anSel;
 	m_eHlTest = eHlTestHoming;
 	m_bHlTrackPending = false;
@@ -597,6 +607,11 @@ CRobotIndy7::StartHighLevelTrack(const task_slots::ST_STATE_SLOT& astState,
 		stM.adJump[k] = m_adHlJumpRun[k];
 	}
 	stM.dTrigger = m_dHlTriggerRun;
+	stM.bObject = bApp && m_pSimCam != NULL;
+	for (int k = 0; k < 3; k++)
+		stM.adObject[k] = 0.0;
+	if (stM.bObject)
+		m_pSimCam->Place(stM.adObject);
 	stM.nGoal = bRandom ? m_nHlGoalIdx : bRandJump ? m_nHlJumpIdx : -1;
 	stM.nGoals = bRandom ? m_nHlGoals : bRandJump ? m_nHlJumps : 0;
 	stM.dNoise = (m_nHlSel >= 3 && m_nHlSel <= 5) ? m_dHlNoise : 0.0;

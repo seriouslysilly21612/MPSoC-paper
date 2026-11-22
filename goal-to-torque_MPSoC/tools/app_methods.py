@@ -11,8 +11,8 @@ for a method with the mailbox, the log of the camera results of the same run (ob
               the accepted one)
   first       the time of the first goal [s]: how long the arm waited for the camera
   rest        the time at which the arm came to rest after its last goal [s]
-and, when the place of the object is known (--object, or --cfg with SIM_CAM_OBJECT_M: the camera of the
-simulation), against that place
+and, when the place of the object is known ("object" in the .json of the run: the camera of the simulation
+writes the place of that run; else --object, or --cfg with one place in SIM_CAM_OBJECT_M), against that place
   object      the error of the object of the results used: largest, mean [mm]
   goal        the largest error of the goal that the high-level controller read [mm]
   tool        the distance of the tool to the hover point of the object (the object plus the goal offset of
@@ -115,8 +115,10 @@ def quantile(vals, q):
 
 def analyze(hl_path, obj):
     meta, rows = load(hl_path)
+    obj = tuple(meta['object']) if meta.get('object') else obj      # the place of this run, when the log has it
     out = {'log': os.path.basename(hl_path), 'method': meta.get('method', 'M1'), 'run': meta.get('run'),
-           'goals': meta.get('accepted'), 'result': meta.get('result'), 'faults': meta.get('timing_faults', 0)}
+           'goals': meta.get('accepted'), 'result': meta.get('result'), 'faults': meta.get('timing_faults', 0),
+           'object': obj}
     out['first'], out['rest'] = goal_times(rows)
     off = meta.get('goal_offset') or [0.0, 0.0, 0.0]      # the hover point: beside (x, y) and above (z) (I-114)
     tool = [xyz(r, 'tool') for r in rows]
@@ -170,17 +172,20 @@ def main():
     a = ap.parse_args()
     obj = tuple(a.object) if a.object else None
     if obj is None and a.cfg:
-        obj = tuple(float(x) for x in (jp.cfg_get(a.cfg, 'SYSTEM', 'SIM_CAM_OBJECT_M') or '').split()[:3])
-        if len(obj) != 3:
-            sys.exit('app_methods: no SIM_CAM_OBJECT_M in %s' % a.cfg)
-    if a.check is not None and obj is None:
-        sys.exit('app_methods: --check needs the place of the object (--object or --cfg)')
+        vals = (jp.cfg_get(a.cfg, 'SYSTEM', 'SIM_CAM_OBJECT_M') or '').split()
+        if len(vals) != 3:              # several places: the .json of every run has its own
+            sys.exit('app_methods: SIM_CAM_OBJECT_M of %s is not one place (%d numbers)' % (a.cfg, len(vals)))
+        obj = tuple(float(x) for x in vals)
     paths = []
     for p in a.logs:
         paths += sorted(glob.glob(os.path.join(p, 'hl_app_*.csv'))) if os.path.isdir(p) else [p]
     if not paths:
         sys.exit('app_methods: no hl_app_*.csv in %s' % ', '.join(a.logs))
     runs = [analyze(p, obj) for p in paths]
+    known = all(r['object'] for r in runs)
+    if a.check is not None and not known:
+        sys.exit('app_methods: --check needs the place of the object (in the .json of the runs, --object or --cfg)')
+    obj = obj or (runs[0]['object'] if known else None)          # below: only whether a place is known
 
     mm = lambda v: '%8.3f' % (v * 1e3) if v is not None and v == v else '       -'
     sec = lambda v: '%.3f' % v if v is not None else 'never'

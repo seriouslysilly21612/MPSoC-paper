@@ -119,6 +119,10 @@ HighLevelFormat::Finish(FILE* fp, const char* astrCsv, const Meta& m, const Resu
 		testlog::PrintVec(fp, "lim_hi", p.adLimHi, nN, "%.12g");
 		testlog::PrintVec(fp, "p0", m.adP0, 3, "%.9g");
 		testlog::PrintVec(fp, "goal_offset", m.adGoalOffset, 3, "%.9g");
+		if (m.bObject)                  // the judge of a trial (tools/trials.py): not from the camera
+			testlog::PrintVec(fp, "object", m.adObject, 3, "%.9g");
+		else
+			fprintf(fp, "  \"object\": null,\n");
 		fprintf(fp, "  \"goal_index\": %d,\n  \"goals\": %d,\n", m.nGoal, m.nGoals);
 		testlog::PrintVec(fp, "jump", m.adJump, 3, "%.9g");
 		fprintf(fp, "  \"trigger\": %.6g,\n  \"noise\": %.6g,\n  \"noise_hz\": %.6g,\n  \"duration\": %.6g,\n",

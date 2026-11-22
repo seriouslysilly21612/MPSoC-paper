@@ -598,9 +598,19 @@ CRobotIndy7::InitSimCamera()
 	stC.dLatencyS = stSys.dSimCamLatencyS;
 	stC.dNoiseM = stSys.dSimCamNoiseM;
 	stC.bTagFormat = (stSys.nSimCamFormat == 0);
+	const std::vector<double>& vObj = stSys.vSimCamObject;
+	if (vObj.empty() || vObj.size() % 3 != 0 || vObj.size() / 3 > (size_t)CSimCamera::PLACES)
+	{
+		DBG_LOG_ERROR("(CRobotIndy7) SIM_CAM_OBJECT_M: three numbers a place, 1 to %d places (%zu numbers)",
+		              (int)CSimCamera::PLACES, vObj.size());
+		return FALSE;
+	}
+	stC.nPlaces = (int)(vObj.size() / 3);
+	for (int p = 0; p < stC.nPlaces; p++)
+		for (int k = 0; k < 3; k++)
+			stC.aadObject[p][k] = vObj[3 * p + k];
 	for (int k = 0; k < 3; k++)
 	{
-		stC.adObject[k] = stSys.vSimCamObject[k];
 		stC.adBias[k] = stSys.vSimCamBias[k];
 		stC.adTagOffset[k] = m_pConfig->Contract().vTagOffset[k];
 	}

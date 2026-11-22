@@ -135,7 +135,7 @@ typedef struct stConfigSystem
 	bool	bAppHoverXYOk;				// it is two finite numbers within CGoalFilter::HOVER_XY_MAX
 	/* the camera of the simulation (sim/SimCamera.h) */
 	INT32	nSimCam;					// SIM_CAM: 1 in place of the bridge (-s only)
-	std::vector<double> vSimCamObject;	// the object [m, base frame]
+	std::vector<double> vSimCamObject;	// the places of the object, three numbers each [m, base frame]
 	double	dSimCamHz, dSimCamLatencyS, dSimCamNoiseM;
 	INT32	nSimCamFormat;				// SIM_CAM_FORMAT: 0 tag, 1 base, -1 neither
 	std::vector<double> vSimCamBias;	// SIM_CAM_BIAS_MM [m]
