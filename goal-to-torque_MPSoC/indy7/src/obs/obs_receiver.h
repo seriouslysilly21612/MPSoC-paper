@@ -31,6 +31,10 @@
 *
 *	The work of a period is bounded: 8 slots, 8 held results, 3 pairs of
 *	states per result. No lock, no allocation, no system call.
+*
+*	  cost     with a clock (obs_receiver_set_clock: the R5), what the
+*	           reader's work of a period took (eq. (6)): the look at the B
+*	           slots by the results taken, the choice by the results held.
 *****************************************************************************/
 #ifndef G2T_OBS_RECEIVER_H
 #define G2T_OBS_RECEIVER_H
@@ -93,6 +97,17 @@ typedef struct
 	int			verdict;
 } obs_record_t;
 
+/* eq. (6) as measured: ticks of the clock of obs_receiver_set_clock, since obs_receiver_start */
+typedef struct
+{
+	uint32_t	slots;							/* B of the last period: the slots looked at */
+	uint32_t	periods;						/* periods measured */
+	uint32_t	drain_max[OBS_SLOTS + 1];		/* [k]: the longest look at the slots of a period that took k results */
+	uint32_t	drain_periods[OBS_SLOTS + 1];	/* [k]: periods that took k results */
+	uint32_t	select_max[OBS_HELD + 1];		/* [h]: the longest choice of the result with h results held */
+	uint32_t	total_max;						/* the longest of the two together in one period */
+} obs_cost_t;
+
 typedef struct
 {
 	obs_settings_t	set;
@@ -106,6 +121,8 @@ typedef struct
 	unsigned		n_rec;
 	uint32_t		count[OBS_VERDICTS];	/* verdicts since the start */
 	uint32_t		taken;					/* results out of the mailbox since the start */
+	uint64_t		(*now)(void);			/* the clock of the cost; NULL: not measured */
+	obs_cost_t		cost;
 } obs_receiver_t;
 
 /* the control task starts (before its first obs_step; its side of the mailbox: obs_reader_start).
@@ -118,6 +135,36 @@ static inline int obs_receiver_start(obs_receiver_t* r, const obs_settings_t* se
 	memset(r, 0, sizeof(*r));
 	r->set = *set;
 	return 1;
+}
+
+/* the clock of the cost (after obs_receiver_start, which clears it); NULL: none */
+static inline void obs_receiver_set_clock(obs_receiver_t* r, uint64_t (*now)(void))
+{
+	r->now = now;
+}
+
+/* one period of the cost: the look at the slots from t0 to t1 with `taken` results, the choice from t1 on with
+ * `held` results held */
+static inline void obs_cost_add(obs_receiver_t* r, uint64_t t0, uint64_t t1, unsigned slots, unsigned taken,
+                                unsigned held)
+{
+	obs_cost_t* c = &r->cost;
+	const uint64_t t2 = r->now();
+	const uint32_t drain = (uint32_t)(t1 - t0), select = (uint32_t)(t2 - t1), total = (uint32_t)(t2 - t0);
+
+	c->slots = slots;
+	c->periods++;
+	if (taken > (unsigned)OBS_SLOTS)
+		taken = OBS_SLOTS;
+	if (held > (unsigned)OBS_HELD)
+		held = OBS_HELD;
+	c->drain_periods[taken]++;
+	if (drain > c->drain_max[taken])
+		c->drain_max[taken] = drain;
+	if (select > c->select_max[held])
+		c->select_max[held] = select;
+	if (total > c->total_max)
+		c->total_max = total;
 }
 
 /* the state of period k: the joint angles q[OBS_DOF] and the time t (> 0) they belong to. Consecutive periods
@@ -190,15 +237,18 @@ static inline const obs_held_t* obs_step(obs_receiver_t* r, volatile obs_mailbox
                                          int* fresh)
 {
 	obs_held_t h, *p;
-	unsigned b, i, pos, keep = 0, use = OBS_HELD;
+	unsigned b, i, pos, keep = 0, use = OBS_HELD, taken = 0, held;
 	int st, ok;
 	double e;
+	const uint64_t t_drain = r->now != NULL ? r->now() : 0u;
+	const unsigned slots = obs_slots_used(mb);
+	uint64_t t_select;
 
 	r->n_rec = 0;
 	*fresh = 0;
 
 	/* Alg. 1, lines 2-5: what the mailbox holds, each result checked once */
-	for (b = 0; b < OBS_SLOTS; b++)
+	for (b = 0; b < slots; b++)
 	{
 		memset(&h, 0, sizeof(h));
 		st = obs_take(mb, b, &h.d);
@@ -207,6 +257,7 @@ static inline const obs_held_t* obs_step(obs_receiver_t* r, volatile obs_mailbox
 		if (st == OBS_EMPTY)
 			continue;
 		r->taken++;
+		taken++;
 		h.t_in = t_k;
 		for (i = 0; i < r->n_held; i++)
 			if (r->held[i].d.n == h.d.n && r->held[i].d.epoch == h.d.epoch)
@@ -267,6 +318,8 @@ static inline const obs_held_t* obs_step(obs_receiver_t* r, volatile obs_mailbox
 	}
 
 	/* Alg. 1, lines 6-8: the newest capture that this period may use; the list closes up over what goes */
+	t_select = r->now != NULL ? r->now() : 0u;
+	held = r->n_held;
 	for (i = 0; i < r->n_held; i++)
 	{
 		p = &r->held[i];
@@ -296,16 +349,16 @@ static inline const obs_held_t* obs_step(obs_receiver_t* r, volatile obs_mailbox
 		keep++;
 	}
 	r->n_held = keep;
-	if (use == OBS_HELD)
-		return NULL;
-	p = &r->held[use];
-	if (!p->accepted)
+	p = (use == OBS_HELD) ? NULL : &r->held[use];
+	if (p != NULL && !p->accepted)
 	{
 		p->accepted = 1;
 		r->t_used = p->d.t_e;
 		*fresh = 1;
 		obs_verdict(r, p, OBS_V_ACCEPTED, t_k);
 	}
+	if (r->now != NULL)
+		obs_cost_add(r, t_drain, t_select, slots, taken, held);
 	return p;
 }
 

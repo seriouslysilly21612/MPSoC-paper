@@ -41,6 +41,10 @@ int      control_ctrl_build(volatile uint32_t *region, double ticks_per_s)
 }
 uint32_t control_ctrl_check_value(void) { return 0xC0FFEE02u; }
 uint32_t control_ctrl_obs_check_value(void) { return 0x0B5C0FFEu; }
+static uint64_t (*obs_clock_set)(void);
+static obs_cost_t a_cost;
+void     control_ctrl_set_obs_clock(uint64_t (*now)(void)) { obs_clock_set = now; }
+int      control_ctrl_obs_cost(obs_cost_t *out) { *out = a_cost; return 1; }
 void     control_ctrl_step(const control_in_t *in, control_out_t *out, ipc_report_t *r)
 {
     steps++;
@@ -169,6 +173,18 @@ int main(void)
           an_event.value[6] == 2);
     CHECK(an_event.value[7] == 1 && an_event.value[8] == 900 && an_event.value[9] == 1 && an_event.value[10] == 7000 &&
           an_event.value[11] == 0 && an_event.value[12] == 1 && an_event.value[15] == 1);
+    /* the receiver's cost: the clock is set at the start; a report once it has measured periods (ticks -> ns) */
+    CHECK(obs_clock_set != NULL);
+    a_cost.slots = 4u; a_cost.periods = 3u; a_cost.total_max = 1000u; a_cost.drain_max[0] = 100u;
+    a_cost.drain_max[2] = 300u; a_cost.drain_max[5] = 500u; a_cost.drain_periods[2] = 1u; a_cost.drain_periods[5] = 1u;
+    a_cost.select_max[3] = 70u; a_cost.select_max[8] = 90u;
+    control_link_report();
+    CHECK(events == 3 && an_event.id == EVENT_OBS_COST_REPORT && an_event.value[0] == 4 && an_event.value[1] == 3 &&
+          an_event.value[2] == (int32_t)(1000ull * 1000000000ull / SYSCNT_HZ) && an_event.value[5] > an_event.value[3] &&
+          an_event.value[7] == (int32_t)(500ull * 1000000000ull / SYSCNT_HZ) && an_event.value[6] == 0 &&
+          an_event.value[10] == (int32_t)(70ull * 1000000000ull / SYSCNT_HZ) && an_event.value[12] > an_event.value[10] &&
+          an_event.value[13] == 2 && an_event.value[14] == 5);
+    memset(&a_cost, 0, sizeof(a_cost));
 
     /* no simulated arm (the run of the APU that is up has written none) */
     sim_result = -1;
@@ -200,7 +216,7 @@ int main(void)
     CHECK(servo_calls == 1 && input_usable == 0 && input_tau[0] == 0.0);
     }
     control_link_report();
-    CHECK(events == 2 && an_event.value[3] == 1 && an_event.value[4] == 1 && an_event.value[13] == 2 &&
+    CHECK(events == 4 && an_event.value[3] == 1 && an_event.value[4] == 1 && an_event.value[13] == 2 &&
           an_event.value[14] == 3 && an_event.value[15] == 0 && an_event.value[12] == 0);
 
     /* from the arm of the bus to a simulated one: the drives off, and nothing of the controller reaches them, neither

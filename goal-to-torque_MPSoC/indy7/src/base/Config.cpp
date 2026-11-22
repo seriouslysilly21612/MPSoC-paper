@@ -79,6 +79,7 @@ stConfigSystem::stConfigSystem()
 	nServoOnTimeoutMs = 2000;
 	strCalibDir = "calib_data";
 	nAppBridge = 0;
+	nAppObsSlots = 8;
 	nAppResultFormat = 0;
 	vAppGoalBox = {0.30, 0.94, -0.37, 0.63, 0.10, 0.50};
 	dAppGoalRMax = 0.92;
@@ -554,6 +555,7 @@ CConfig::Parse()
 
 	cF.String(S, "CALIB_DIR", s.strCalibDir);
 	cF.Int(S, "APP_BRIDGE", s.nAppBridge);
+	cF.Int(S, "APP_OBS_SLOTS", s.nAppObsSlots);
 	cF.List(S, "APP_GOAL_BOX_M", s.vAppGoalBox);
 	cF.Double(S, "APP_GOAL_RMAX_M", s.dAppGoalRMax);
 	cF.Double(S, "APP_GOAL_FLOOR_M", s.dAppGoalFloor);

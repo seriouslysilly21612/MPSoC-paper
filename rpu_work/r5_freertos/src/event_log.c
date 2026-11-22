@@ -128,6 +128,14 @@ static void print_event(const event_t *e)
                        (int)e->value[7], (int)e->value[8], (int)e->value[9], (int)e->value[10], (int)e->value[11]);
         }
         break;
+    case EVENT_OBS_COST_REPORT:     /* eq. (6): the reader of the mailbox, since the start of the receiver's run */
+        xil_printf("[obs] reader cost, B = %d slots, %d periods: longest %d ns | the look at the slots with 0/1/2/3/4+"
+                   " results taken %d/%d/%d/%d/%d ns | the choice with 0/1/2-3/4-7/8 held %d/%d/%d/%d/%d ns | periods"
+                   " with a result %d, the most in one %d\r\n", (int)e->value[0], (int)e->value[1], (int)e->value[2],
+                   (int)e->value[3], (int)e->value[4], (int)e->value[5], (int)e->value[6], (int)e->value[7],
+                   (int)e->value[8], (int)e->value[9], (int)e->value[10], (int)e->value[11], (int)e->value[12],
+                   (int)e->value[13], (int)e->value[14]);
+        break;
     case EVENT_SHADOW_REPORT:
         if (e->value[0] == 0) {
             xil_printf("[shadow] the controller is not built\r\n");

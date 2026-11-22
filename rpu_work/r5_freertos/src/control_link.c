@@ -15,6 +15,8 @@
 
 _Static_assert(EVENT_VALUES >= 16, "the report of control_link_report() has 16 values");
 
+static uint64_t obs_clock(void) { return sys_counter_now(); }      /* the clock of the receiver's cost (eq. (6)) */
+
 /* the bus has the joints of the controller (the Indy7).  An expression, not a condition of the preprocessor:
    IPC_CTRL_DOF is an enumerator, which #if takes for 0 */
 #define BUS_IS_ARM  (AXIS_COUNT == IPC_CTRL_DOF)
@@ -33,6 +35,8 @@ static uint32_t n_plans, n_iks, n_plan_late, n_plans_before, n_iks_before, plan_
 int control_link_start(void)
 {
     built = control_ctrl_build((volatile uint32_t *)OCM_LINK_BASE, (double)SYSCNT_HZ);
+    if (built)
+        control_ctrl_set_obs_clock(obs_clock);
     ctrl_port_loop();                                /* from here the classes print nothing */
     if (built == 2) {
         xil_printf("[control] the receiver of the camera results cannot use its numbers of this build ([CONTRACT],"
@@ -172,6 +176,49 @@ int control_link_step(uint32_t period, int bus_state, uint64_t release, int32_t 
     return 1;
 }
 
+static int32_t ticks_ns(uint32_t ticks)
+{
+    return (int32_t)((uint64_t)ticks * 1000000000ull / SYSCNT_HZ);
+}
+
+/* the receiver's cost (eq. (6)) of its run so far, once it has measured periods: B, the periods, the longest period;
+ * the longest look at the slots by the results taken (0, 1, 2, 3, 4 or more); the longest choice by the results held
+ * (0, 1, 2-3, 4-7, 8); the periods that took a result; the most results taken in one period.  [ns] */
+static void obs_cost_report(void)
+{
+    obs_cost_t c;
+    event_t *e;
+    uint32_t i, more = 0u, held47 = 0u, taken_periods = 0u, most = 0u;
+
+    if (!control_ctrl_obs_cost(&c) || c.periods == 0u)
+        return;
+    e = event_reserve(EVENT_OBS_COST_REPORT, 0);
+    if (e == NULL)
+        return;
+    for (i = 4u; i <= (uint32_t)OBS_SLOTS; i++)
+        if (c.drain_max[i] > more) more = c.drain_max[i];
+    for (i = 4u; i < (uint32_t)OBS_HELD; i++)
+        if (c.select_max[i] > held47) held47 = c.select_max[i];
+    for (i = 1u; i <= (uint32_t)OBS_SLOTS; i++) {
+        taken_periods += c.drain_periods[i];
+        if (c.drain_periods[i] != 0u) most = i;
+    }
+    e->value[0] = (int32_t)c.slots;
+    e->value[1] = (int32_t)c.periods;
+    e->value[2] = ticks_ns(c.total_max);
+    for (i = 0u; i < 4u; i++)
+        e->value[3 + i] = ticks_ns(c.drain_max[i]);
+    e->value[7] = ticks_ns(more);
+    e->value[8] = ticks_ns(c.select_max[0]);
+    e->value[9] = ticks_ns(c.select_max[1]);
+    e->value[10] = ticks_ns(c.select_max[2] > c.select_max[3] ? c.select_max[2] : c.select_max[3]);
+    e->value[11] = ticks_ns(held47);
+    e->value[12] = ticks_ns(c.select_max[OBS_HELD]);
+    e->value[13] = (int32_t)taken_periods;
+    e->value[14] = (int32_t)most;
+    event_publish();
+}
+
 void control_link_report(void)
 {
     event_t *e = event_reserve(EVENT_CONTROL_REPORT, 0);
@@ -195,6 +242,7 @@ void control_link_report(void)
         e->value[15] = sim_arm;
         event_publish();
     }
+    obs_cost_report();
     n_steps = 0u; n_no_state = 0u; n_commands = 0u; n_refused = 0u; step_ns_max = 0u;
     n_plans_before = n_plans; n_iks_before = n_iks; plan_us_max = 0u; ik_us_max = 0u; n_goals_before = n_goals;
 }

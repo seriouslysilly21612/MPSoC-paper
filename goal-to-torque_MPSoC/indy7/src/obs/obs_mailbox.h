@@ -5,7 +5,9 @@
 *	D-18). C, one file for the writer (the bridge) and the reader (the
 *	control task, on CPU3 now and on the R5 later).
 *
-*	  slot     8 of them, one descriptor of 64 bytes each.
+*	  slot     8 of them, one descriptor of 64 bytes each. The writer uses
+*	           the first B (slots_used of the head, 1 .. 8; eq. (6) is
+*	           measured with B = 2, 4, 8), the reader looks at those B.
 *	  state    one word per slot: FREE -> WRITING -> READY (the writer),
 *	           READY -> READING -> FREE (the reader). Every state has one
 *	           side that may change it, so plain loads and stores do: no CAS.
@@ -34,7 +36,8 @@ extern "C" {
 #endif
 
 #define OBS_MAGIC	0x3153424Fu		/* "OBS1" */
-#define OBS_LAYOUT	2u				/* + 1 with every change of this file */
+#define OBS_LAYOUT	2u				/* + 1 with every change of this file; not for slots_used (B), which was
+									 * reserved: a reader without it looks at all 8, right for every B */
 /* where the mailbox lies in the region that the APU and the R5 share (ipc_layout.h), once its reader is on the R5:
  * behind the slots. One number for both sides. */
 #define OBS_OFF_MAILBOX	0x500u
@@ -70,7 +73,8 @@ typedef struct
 	uint32_t	n_last;				/* n of the last result written in this epoch */
 	uint32_t	dropped_full;		/* results of this epoch dropped: no FREE slot */
 	uint32_t	dropped_expired;	/* results of this epoch not written: past t_valid_until */
-	uint32_t	reserved[10];
+	uint32_t	slots_used;			/* B: the first B slots carry results (obs_slots_used) */
+	uint32_t	reserved[9];
 	uint32_t	state[OBS_SLOTS][2];	/* [b][0]; [b][1] unused: one state per 8-byte ECC word of the OCM */
 	uint32_t	slot[OBS_SLOTS][OBS_DESC_WORDS];
 } obs_mailbox_t;
@@ -94,8 +98,16 @@ enum
 	OBS_EXPIRED			/* writer: past t_valid_until; not written, counted */
 };
 
-/* the writer starts (before its first obs_put). Returns its epoch. */
-static inline uint32_t obs_writer_start(volatile obs_mailbox_t* mb)
+/* B of the head: 1 .. OBS_SLOTS; any other word (a writer of no such field, garbage) counts as all of them */
+static inline unsigned obs_slots_used(const volatile obs_mailbox_t* mb)
+{
+	const uint32_t n = ipc_load32(&mb->slots_used);
+	return (n >= 1u && n <= (uint32_t)OBS_SLOTS) ? (unsigned)n : (unsigned)OBS_SLOTS;
+}
+
+/* the writer starts (before its first obs_put) with the first `slots` slots (1 .. OBS_SLOTS; else all). Returns its
+ * epoch. */
+static inline uint32_t obs_writer_start_slots(volatile obs_mailbox_t* mb, unsigned slots)
 {
 	uint32_t epoch, st;
 	unsigned b;
@@ -115,10 +127,15 @@ static inline uint32_t obs_writer_start(volatile obs_mailbox_t* mb)
 	ipc_store32(&mb->n_last, 0u);
 	ipc_store32(&mb->dropped_full, 0u);
 	ipc_store32(&mb->dropped_expired, 0u);
+	ipc_store32(&mb->slots_used, (slots >= 1u && slots <= (unsigned)OBS_SLOTS) ? (uint32_t)slots : (uint32_t)OBS_SLOTS);
 	ipc_store32(&mb->layout, OBS_LAYOUT);
 	ipc_barrier();
 	ipc_store32(&mb->magic, OBS_MAGIC);
 	return epoch;
+}
+static inline uint32_t obs_writer_start(volatile obs_mailbox_t* mb)
+{
+	return obs_writer_start_slots(mb, OBS_SLOTS);
 }
 
 /* the reader starts (before its first obs_take) */
@@ -137,16 +154,17 @@ static inline int obs_put(volatile obs_mailbox_t* mb, obs_desc_t* d, uint64_t (*
 {
 	uint32_t w[OBS_DESC_WORDS];
 	unsigned b, i;
+	const unsigned used = obs_slots_used(mb);
 
 	if (now() > d->t_valid_until)
 	{
 		ipc_store32(&mb->dropped_expired, ipc_load32(&mb->dropped_expired) + 1u);
 		return OBS_EXPIRED;
 	}
-	for (b = 0; b < OBS_SLOTS; b++)
+	for (b = 0; b < used; b++)
 		if (ipc_load32(&mb->state[b][0]) == OBS_FREE)
 			break;
-	if (b == OBS_SLOTS)
+	if (b == used)
 	{
 		ipc_store32(&mb->dropped_full, ipc_load32(&mb->dropped_full) + 1u);
 		return OBS_FULL;

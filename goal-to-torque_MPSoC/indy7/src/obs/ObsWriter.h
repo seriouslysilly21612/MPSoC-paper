@@ -43,6 +43,7 @@ public:
 		float	afEps[2];		// measurement error of the modes 0 (416) and 1 (320) [m]
 		uint64_t (*pTicks)() = NULL;	// the system counter (r5link/LinkClock.h), for a receiver on the R5; NULL: ns
 		uint64_t uTicksPerS = 0;		// ... its frequency
+		unsigned uSlots = OBS_SLOTS;	// B: the first B slots of the mailbox (APP_OBS_SLOTS; eq. (6))
 	};
 	enum eResult { eWritten = 0, eInvalid, eNotFinite, eAge, eFull, eExpired, eClock, eResults };
 	enum { PAIR_MAX_NS = 20000, PAIR_TRIES = 4 };
@@ -56,7 +57,7 @@ public:
 		m_uCapTicks = (astCfg.pTicks != NULL) ? TicksOfNs((uint64_t)m_tCap) : (uint64_t)m_tCap;
 		for (int r = 0; r < eResults; r++)
 			m_anCount[r].store(0, std::memory_order_relaxed);
-		obs_writer_start(apBox);
+		obs_writer_start_slots(apBox, astCfg.uSlots);
 	}
 
 	/* one result. adZ [m]: the object in the base frame (auFormat OBS_Z_BASE)

@@ -530,7 +530,14 @@ CRobotIndy7::InitObs()
 		return FALSE;
 	}
 	const bool bR5 = (m_nArch == arch::eS2);
+	if (stSys.nAppObsSlots < 1 || stSys.nAppObsSlots > (int)OBS_SLOTS)
+	{
+		DBG_LOG_ERROR("(CRobotIndy7) APP_OBS_SLOTS %d: the slots of the mailbox in use, 1 to %d", (int)stSys.nAppObsSlots,
+		              (int)OBS_SLOTS);
+		return FALSE;
+	}
 	CObsWriter::Config stW = { stC.dAgeCapS, { (float)stC.vEpsM[0], (float)stC.vEpsM[1] } };
+	stW.uSlots = (unsigned)stSys.nAppObsSlots;
 	volatile obs_mailbox_t* pBox = &m_obsBox;
 	if (bR5)
 	{
@@ -562,8 +569,9 @@ CRobotIndy7::InitObs()
 	stM.nStateAge = stG.nStateAge;
 	for (int k = 0; k < 3; k++)
 		stM.adTagOffset[k] = m_adTagOffset[k];
-	printf("[APP] method %s: the camera results go through the mailbox%s; the control task uses one for at most %.0f ms "
-	       "after its capture%s\n", pcMethod, bR5 ? " to the R5" : "", stC.dAgeCapS * 1e3,
+	printf("[APP] method %s: the camera results go through the mailbox%s (%d of its %d slots); the control task uses "
+	       "one for at most %.0f ms after its capture%s\n", pcMethod, bR5 ? " to the R5" : "", (int)stSys.nAppObsSlots,
+	       (int)OBS_SLOTS, stC.dAgeCapS * 1e3,
 	       stG.stSet.policy == OBS_CONTRACT ? ", with the joint angles of the capture and the error bound of eq. (7)" :
 	       ", with the joint angles of its arrival");
 	if (stG.stSet.policy == OBS_CONTRACT)
