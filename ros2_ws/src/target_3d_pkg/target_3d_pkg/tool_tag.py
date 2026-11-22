@@ -113,6 +113,7 @@ class ToolTagFinder:
         self._last_box = None  # (u0, v0, u1, v1) of the corners the last time
         self._last_t = None
         self._miss_t = None  # when the whole image last had no tag of ours
+        self._full_next = False  # the copy missed: the next whole image at full size
         self.seen_ids = ()  # the ids of the last image with tags but not ours (to find tag_id)
 
     def set_camera(self, k, d):
@@ -170,21 +171,23 @@ class ToolTagFinder:
         """the corners in the whole image by the plain detector, or a reason; at whole_scale < 1
         in a smaller copy, then again at full size in the window around them. A tag that the
         window misses is not found: the corners of the copy are too coarse for its pose (I-135
-        C8). A tag too small for the copy (far, steep) is missed although the full size would
-        find it (rendered 80 mm tag: from about 1.2 m at 55 degrees)"""
+        C8). The copy misses a small tag (OpenCV 4.5.4 of the board, rendered: below about
+        36 px across in the full image, a 65 mm tag from 1.1 m, 80 mm from 1.4 m), so after a
+        miss the next whole image is searched at full size, and after that at the copy again"""
         s = self.whole_scale
-        if s >= 1.0:
+        if s >= 1.0 or self._full_next:
+            self._full_next = False
             return self._corners_in(gray, (0, 0, w, h), [self.coarse])
         sw, sh = max(16, round(w * s)), max(16, round(h * s))
         small = cv2.resize(gray, (sw, sh), interpolation=cv2.INTER_AREA)
         pts, reason = self._corners_in(small, (0, 0, sw, sh), [self.coarse])
-        if pts is None:
-            return None, reason
-        pts = (pts + 0.5) * np.array([w / sw, h / sh]) - 0.5  # pixel centres of the copy -> full
-        box = self._window(self._corner_box(pts), w, h)
-        if box is None:
-            return None, 'not_found'
-        return self._corners_in(gray, box, [self.coarse])
+        if pts is not None:
+            pts = (pts + 0.5) * np.array([w / sw, h / sh]) - 0.5  # pixel centres: copy -> full
+            box = self._window(self._corner_box(pts), w, h)
+            pts, reason = (self._corners_in(gray, box, [self.coarse]) if box
+                           else (None, 'not_found'))
+        self._full_next = pts is None
+        return pts, reason
 
     def find(self, gray, t_s=None):
         """TagResult for one grayscale image taken at t_s [s] (for the window and the wait after

@@ -177,7 +177,7 @@ def test_after_a_whole_image_without_the_tag_the_next_one_waits():
     assert finder().find(blank).reason == 'not_found'
 
 
-@pytest.mark.parametrize('z', [0.55, 0.80, 1.10])
+@pytest.mark.parametrize('z', [0.55, 0.80, 1.00])     # the board's OpenCV 4.5.4: up to about 1 m
 def test_the_whole_image_at_half_size_then_the_corners_at_full_size(z):
     # the search of I-134: the copy is a quarter of the pixels; the corners come from the full
     # image, so the centre is as good as with the whole image at full size
@@ -194,6 +194,31 @@ def test_the_whole_image_at_half_size_then_the_corners_at_full_size(z):
     assert seen[0] == (H // 2, W // 2) and seen[1][0] < H / 2      # the copy, then a window
     assert np.linalg.norm(res.p_cam - full.p_cam) < 1e-3
     assert f.find(np.full((H, W), 255, np.uint8), t_s=5.0).reason == 'not_found'
+
+
+def test_a_tag_too_small_for_the_copy_is_searched_at_full_size_next():
+    # the detector of the board's OpenCV misses a small tag in the copy (I-135): here it misses
+    # every tag there, whatever the OpenCV of this machine reads
+    f = finder(scale=0.5)
+    seen = []
+    inner = f.coarse
+
+    def coarse(gray):
+        seen.append(gray.shape)
+        return (None, None) if gray.shape[0] < H else inner(gray)
+
+    f.coarse = coarse
+    f.in_window = [f.fine, f.coarse]
+    t = np.array([0.05, -0.03, 1.00])
+    img = render([(0, 0.065, rot(0.2, -0.3, 0.1), t)])
+    first = f.find(img, t_s=0.0)
+    assert not first.found and first.reason == 'not_found' and seen == [(H // 2, W // 2)]
+    assert f.find(img, t_s=0.1).reason == 'not_searched'            # the wait after a miss
+    second = f.find(img, t_s=0.25)
+    assert second.found and seen[-1] == (H, W)                      # the full size this time
+    assert np.linalg.norm(second.p_cam - t) < 12e-3
+    f.find(np.full((H, W), 255, np.uint8), t_s=5.0)                 # no tag: the copy again
+    assert seen[-1] == (H // 2, W // 2)
 
 
 def test_no_camera_info_and_bad_size():
