@@ -601,7 +601,7 @@ CRobotIndy7::InitSimCamera()
 		return FALSE;
 	}
 	const bool bMailbox = obs_method::UsesMailbox(m_nMethod);
-	CSimCamera::Config stC;
+	CSimCamera::Config stC{};		// the places past nPlaces are copied too
 	stC.dHz = stSys.dSimCamHz;
 	stC.dLatencyS = stSys.dSimCamLatencyS;
 	stC.dNoiseM = stSys.dSimCamNoiseM;

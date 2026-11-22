@@ -18,10 +18,12 @@ setup(
         # *.xml picks up fastdds_shm_profile.xml, which the launch file points
         # FASTRTPS_DEFAULT_PROFILES_FILE at. It must be installed, not just
         # present in src/, so a plain `git clone && colcon build` gets SHM
-        # transport with no shell setup.
+        # transport with no shell setup. *.csv: the measured responses of
+        # the control task (check 3 of the admission rule).
         (os.path.join('share', package_name, 'config'),
             glob(os.path.join('config', '*.yaml'))
-            + glob(os.path.join('config', '*.xml'))),
+            + glob(os.path.join('config', '*.xml'))
+            + glob(os.path.join('config', '*.csv'))),
     ],
     install_requires=['setuptools'],
     zip_safe=True,

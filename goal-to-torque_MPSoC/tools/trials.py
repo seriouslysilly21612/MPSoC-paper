@@ -15,14 +15,16 @@ Per method:
   the times of the successful trials (median, p90), the largest final distance of a failed one
   with --power (tools/host/power_log.py on the board, or resource/run.csv of the camera pipeline with
   metrics:=true): the mean power over the trials and the energy per success
-A run that did not end as 'completed' (stopped, a fault) counts as a failed trial and is named.
+A run that did not end as 'completed' (stopped, a fault), or whose .json is missing (it died before writing
+it; its method is the name of its directory then), counts as a failed trial and is named. With --planned N
+(tools/trial_batch.py: places x rounds) a method with another number of trials is named too.
 
 Usage:
   python3 tools/trials.py LOG_OR_DIR [...] [--tol-mm MM | --cfg CFG] [--hold-s S] [--limit-s S]
-                          [--object X Y Z] [--power CSV] [--out CSV]
-  TOL default: [CONTRACT] DELTA_MM of --cfg (the task tolerance delta), else 10 mm. HOLD default 0.5 s. LIMIT
-  default: the length of the run (APP_DURATION_S). All first values (D-25: set after the errors are measured).
-  --out: one row per trial. Standard library only.
+                          [--object X Y Z] [--power CSV] [--planned N] [--out CSV]
+  TOL default: [CONTRACT] DELTA_MM of --cfg (the task tolerance delta), else 10 mm; a TOL that is not above 0
+  is refused. HOLD default 0.5 s. LIMIT default: the length of the run (APP_DURATION_S). All first values
+  (D-25: set after the errors are measured). --out: one row per trial. Standard library only.
   The start of a trial in wall time is the stamp of its log name (whole seconds, the local time of the machine
   that wrote it), against the power samples: run this on that machine, or with its TZ (TZ=UTC python3 ...).
 """
@@ -38,7 +40,7 @@ import time
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
-import jt_predict as jp  # noqa: E402
+import cfgset  # noqa: E402
 
 STAMP = re.compile(r'_r(\d+)_(\d{8})_(\d{6})\.csv$')
 Z95 = 1.959964
@@ -90,15 +92,23 @@ def judge(times, dists, tol, hold, limit):
 
 def trial(path, tol, hold, limit=None, obj=None):
     """the trial of one high-level log of the application"""
-    with open(os.path.splitext(path)[0] + '.json') as f:
-        meta = json.load(f)
     with open(path, newline='') as f:
         rows = list(csv.DictReader(f))
+    try:
+        with open(os.path.splitext(path)[0] + '.json') as f:
+            meta = json.load(f)
+    except (OSError, ValueError):
+        # the run died before its .json: a failed trial of the method of its directory (tools/trial_batch.py)
+        method = os.path.basename(os.path.dirname(os.path.abspath(path)))
+        meta = {'method': method if method in ORDER else '?', 'result': 'no .json'}
     out = {'log': os.path.basename(path), 'method': meta.get('method') or 'M1', 'run': meta.get('run'),
            'result': meta.get('result'), 'faults': meta.get('timing_faults', 0), 'start_unix': start_unix(path)}
     place = meta.get('object') or obj
     length = len(rows) * float(meta.get('period') or 0.001)
     out['limit'] = limit if limit is not None else length
+    if out['result'] == 'no .json':
+        out.update(success=False, time=out['limit'], why='no .json beside it: the run died before its end')
+        return out
     if place is None:
         out.update(success=False, time=out['limit'], why='no place of the object (the .json has none: --object)')
         return out
@@ -122,8 +132,11 @@ class Power:
     pipeline (resource/run.csv of metrics:=true: wall_time_s, ina260_u14_power1_input [uW])"""
 
     def __init__(self, path):
-        with open(path, newline='') as f:
-            rows = list(csv.DictReader(f))
+        try:
+            with open(path, newline='') as f:
+                rows = list(csv.DictReader(f))
+        except OSError as ex:
+            sys.exit('trials: --power: %s' % ex)
         if rows and 'power_w' in rows[0]:
             self.t = [num(r['unix_s']) for r in rows]
             self.w = [num(r['power_w']) for r in rows]
@@ -186,18 +199,31 @@ def main():
     ap.add_argument('--limit-s', type=float)
     ap.add_argument('--object', nargs=3, type=float, metavar=('X', 'Y', 'Z'))
     ap.add_argument('--power', help='CSV of tools/host/power_log.py, or resource/run.csv of the camera pipeline')
+    ap.add_argument('--planned', type=int, help='the trials each method should have (places x rounds)')
     ap.add_argument('--out', help='CSV, one row per trial')
     a = ap.parse_args()
     tol_mm = a.tol_mm
     if tol_mm is None and a.cfg:
-        tol_mm = num(jp.cfg_get(a.cfg, 'CONTRACT', 'DELTA_MM'))
-    if tol_mm is None or not tol_mm > 0:
+        try:
+            tol_mm = num(cfgset.values(a.cfg, ['CONTRACT.DELTA_MM'])['CONTRACT.DELTA_MM'])
+        except OSError as ex:
+            sys.exit('trials: --cfg: %s' % ex)
+        if not tol_mm > 0:
+            sys.exit('trials: [CONTRACT] DELTA_MM of %s is not a tolerance above 0' % a.cfg)
+    if tol_mm is None:
         tol_mm = 10.0
+    if not tol_mm > 0:
+        sys.exit('trials: --tol-mm above 0')
     if not a.hold_s >= 0 or (a.limit_s is not None and not a.limit_s > 0):
         sys.exit('trials: --hold-s not negative, --limit-s above 0')
+    if a.planned is not None and a.planned < 1:
+        sys.exit('trials: --planned at least 1')
     paths = []
     for p in a.logs:
-        paths += sorted(glob.glob(os.path.join(p, '**', 'hl_app_*.csv'), recursive=True)) if os.path.isdir(p) else [p]
+        found = sorted(glob.glob(os.path.join(p, '**', 'hl_app_*.csv'), recursive=True)) if os.path.isdir(p) else [p]
+        if not found:
+            print('trials: no hl_app_*.csv in %s' % p)
+        paths += found
     if not paths:
         sys.exit('trials: no hl_app_*.csv in %s' % ', '.join(a.logs))
     trials = [trial(p, tol_mm * 1e-3, a.hold_s, a.limit_s, a.object) for p in paths]
@@ -220,6 +246,9 @@ def main():
                   % (s['power_w'], s['power_samples'], s['power_trials'], s['trials'], s['energy_per_success_j']))
         if s['not_completed']:
             print('       not completed (failed trials): %s' % ', '.join(s['not_completed']))
+        if a.planned is not None and s['trials'] != a.planned:
+            print('       %d trials of %d planned: a run is missing or another batch is mixed in'
+                  % (s['trials'], a.planned))
     if a.out:
         keys = ['method', 'run', 'log', 'success', 'time', 'limit', 'final_mm', 'result', 'faults', 'object']
         with open(a.out, 'w', newline='') as f:

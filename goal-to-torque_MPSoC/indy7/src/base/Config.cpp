@@ -268,13 +268,13 @@ public:
 			pcCur = pcEnd;
 		}
 	}
-	/* a list of any length: every number in the file, up to the first entry that is not one (none in the
-	 * file: avOut stays) */
-	void ListAll(const char* apcSec, const char* apcKey, std::vector<double>& avOut)
+	/* a list of any length: every number in the file (none in the file: avOut stays). FALSE: text that is
+	 * not a number is left (a comma; a ';' starts a comment, so the rest of the line is gone before this) */
+	BOOL ListAll(const char* apcSec, const char* apcKey, std::vector<double>& avOut)
 	{
 		const TSTRING* p = Get(apcSec, apcKey);
 		if (p == NULL || p->empty())
-			return;
+			return TRUE;
 		std::vector<double> vRead;
 		const char* pcCur = p->c_str();
 		for (;;)
@@ -286,8 +286,13 @@ public:
 			vRead.push_back(dVal);
 			pcCur = pcEnd;
 		}
+		while (isspace((unsigned char)*pcCur))
+			pcCur++;
+		if (*pcCur != '\0')
+			return FALSE;
 		if (!vRead.empty())
 			avOut = vRead;
+		return TRUE;
 	}
 	/* a list of anN numbers: the values in the file, the rest 0 */
 	void ListN(const char* apcSec, const char* apcKey, std::vector<double>& avOut, int anN)
@@ -581,7 +586,11 @@ CConfig::Parse()
 		                     (strcasecmp(str.c_str(), "tag") == 0) ? 1 : -1;
 	}
 	cF.Int(S, "SIM_CAM", s.nSimCam);
-	cF.ListAll(S, "SIM_CAM_OBJECT_M", s.vSimCamObject);		// three numbers a place (sim/SimCamera.h)
+	if (FALSE == cF.ListAll(S, "SIM_CAM_OBJECT_M", s.vSimCamObject))	// three numbers a place (sim/SimCamera.h)
+	{
+		DBG_LOG_ERROR("(CConfig) [SYSTEM] SIM_CAM_OBJECT_M: numbers separated by spaces only, three a place");
+		return FALSE;
+	}
 	cF.Double(S, "SIM_CAM_HZ", s.dSimCamHz);
 	cF.Double(S, "SIM_CAM_LATENCY_MS", s.dSimCamLatencyS, 1e-3);
 	cF.Double(S, "SIM_CAM_NOISE_MM", s.dSimCamNoiseM, 1e-3);

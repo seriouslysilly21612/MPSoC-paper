@@ -60,6 +60,8 @@ def test_a_trial_is_judged_against_the_place_in_its_log(tmp_path):
     q = hl_log(tmp_path, 'hl_app_sim_r02_20261122_150010.csv', [30.0] * 10 + [2.0] * 20, obj=(0.60, 0.15, 0.10))
     tr = T.trial(q, 0.010, 0.5)
     assert not tr['success'] and tr['time'] == pytest.approx(3.0)
+    # the place in the log wins over --object (which is for logs without one)
+    assert T.trial(p, 0.010, 0.5, obj=(0.60, 0.15, 0.10))['success']
 
 
 def test_a_run_that_did_not_complete_or_has_no_place_fails(tmp_path):
@@ -69,6 +71,27 @@ def test_a_run_that_did_not_complete_or_has_no_place_fails(tmp_path):
     q = hl_log(tmp_path / 'b', 'hl_app_robot_r01_20261122_150000.csv', [2.0] * 30, obj=None)
     assert not T.trial(q, 0.010, 0.5)['success']
     assert T.trial(q, 0.010, 0.5, obj=(0.55, 0.15, 0.10))['success']        # --object for one place
+
+
+def test_a_log_without_its_json_is_a_failed_trial_of_its_folder(tmp_path):
+    p = hl_log(tmp_path / 'A3', 'hl_app_sim_r01_20261122_150000.csv', [2.0] * 30)
+    os.remove(p.replace('.csv', '.json'))
+    tr = T.trial(p, 0.010, 0.5, limit=3.0)
+    assert (tr['method'], tr['success'], tr['time']) == ('A3', False, 3.0) and '.json' in tr['why']
+
+
+def run_trials(*args):
+    return subprocess.run([sys.executable, '-B', os.path.join(HERE, 'trials.py')] + [str(x) for x in args],
+                          capture_output=True, text=True)
+
+
+def test_the_judge_refuses_what_it_cannot_use_and_counts_against_the_plan(tmp_path):
+    hl_log(tmp_path / 'FULL', 'hl_app_sim_r01_20261122_150000.csv', [2.0] * 30)
+    assert run_trials(tmp_path / 'FULL', '--planned', 1).returncode == 0
+    assert 'of 2 planned' in run_trials(tmp_path / 'FULL', '--planned', 2).stdout
+    for bad in (['--tol-mm', '0'], ['--tol-mm', '-3'], ['--power', tmp_path / 'none.csv'], ['--planned', '0']):
+        res = run_trials(tmp_path / 'FULL', *bad)
+        assert res.returncode != 0 and 'Traceback' not in res.stderr, bad
 
 
 def test_the_summary_has_the_throughput_and_the_energy_per_success(tmp_path):
@@ -105,7 +128,7 @@ def test_the_batch_gives_every_method_the_same_sequence_of_places():
     a, b = B.sequence(places, 2, 1), B.sequence(places, 2, 1)
     assert a == b and len(a) == 10
     assert sorted(a[:5]) == sorted(places) and sorted(a[5:]) == sorted(places)     # each round every place once
-    assert a[:5] != a[5:] or B.sequence(places, 2, 2) != a                         # the order changes
+    assert a[:5] != a[5:] and B.sequence(places, 2, 3) != a                        # the order changes
     with pytest.raises(ValueError):
         B.parse_places('0.5 0.1')
     assert B.parse_places('0.5 0.1 0.1; 0.6 0 0.1') == [(0.5, 0.1, 0.1), (0.6, 0.0, 0.1)]
@@ -122,6 +145,26 @@ def test_the_batch_cfg_has_the_places_and_the_limit(tmp_path):
     assert v['TASK0.CPU'] == v['TASK1.CPU'] == '1'
     with pytest.raises(ValueError):
         B.write_cfg(CFG, str(dst), [('NO_SUCH_KEY', '1')])
+
+
+def test_the_batch_refuses_a_folder_with_logs_of_a_batch_before(tmp_path):
+    hl_log(tmp_path / 'FULL', 'hl_app_sim_r01_20261122_150000.csv', [2.0] * 30)
+    res = subprocess.run([sys.executable, '-B', os.path.join(HERE, 'trial_batch.py'), '--out', str(tmp_path),
+                          '--methods', 'FULL'], capture_output=True, text=True)
+    assert res.returncode != 0 and 'already hold logs' in res.stderr
+
+
+def test_power_log_takes_the_only_ina260_when_the_name_is_not_there(tmp_path):
+    sys.path.insert(0, os.path.join(HERE, 'host'))
+    import power_log as P
+    for name, sensor in (('hwmon0', 'other'), ('hwmon1', 'ina260_x')):
+        (tmp_path / name).mkdir()
+        (tmp_path / name / 'name').write_text(sensor + '\n')
+    assert P.find_sensor(str(tmp_path), 'ina260_u14') == str(tmp_path / 'hwmon1')
+    (tmp_path / 'hwmon2').mkdir()
+    (tmp_path / 'hwmon2' / 'name').write_text('ina260_y\n')
+    assert P.find_sensor(str(tmp_path), 'ina260_u14') is None                    # two: no guess
+    assert P.find_sensor(str(tmp_path), 'ina260_y') == str(tmp_path / 'hwmon2')
 
 
 @pytest.mark.parametrize('files, watts', [({'power1_input': '7500000'}, 7.5),

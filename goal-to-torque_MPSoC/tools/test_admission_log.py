@@ -116,3 +116,14 @@ def test_the_profile_of_each_mode_from_the_joined_results():
     assert len(lines) == 1 and 'capture -> release median 60.0' in lines[0]
     assert 'release -> publication median 120.0' in lines[0]
     assert admission_log.profile_lines([(row, {'t_e': '0', 'verdict': 'accepted'})], RUN_START) == []
+
+
+def test_the_age_when_decided_counts_every_decision_with_a_status():
+    rows = [decision('run', 600.0), decision('reject', 600.033, reason='no_candidate_passes', checks='011'),
+            decision('reject', 600.066, reason='no_status')]
+    for row in rows[:2]:
+        row['status_age_ms'] = '5.000'
+    rows[1]['release_s'] = '%.6f' % (float(rows[1]['capture_s']) + 0.150)     # an image that waited
+    out = io.StringIO()
+    admission_log.report(rows, None, out)
+    assert 'the 2 decisions with a status: median 150.0, p90 150.0, p99 150.0 ms' in out.getvalue()

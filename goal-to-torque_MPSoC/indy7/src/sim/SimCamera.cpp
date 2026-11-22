@@ -46,8 +46,8 @@ CSimCamera::Start(const Config& astCfg, const char* astrURDF, const CHighLevelRT
 	if (!bOk)
 	{
 		DBG_LOG_ERROR("(CSimCamera) SIM_CAM_HZ above 0 up to 1000; SIM_CAM_LATENCY_MS not negative and below %d "
-		              "captures; SIM_CAM_NOISE_MM not negative; SIM_CAM_OBJECT_M three numbers a place, 1 to %d places; "
-		              "SIM_CAM_BIAS_MM three numbers", (int)PENDING - 2, (int)PLACES);
+		              "captures; SIM_CAM_NOISE_MM not negative; SIM_CAM_OBJECT_M three numbers a place, "
+		              "1 to %d places; SIM_CAM_BIAS_MM three numbers", (int)PENDING - 2, (int)PLACES);
 		return FALSE;
 	}
 	if (FALSE == m_cFk.Init(astrURDF, (double)c.tPeriod * 1e-9, astHl))
@@ -67,9 +67,9 @@ CSimCamera::Start(const Config& astCfg, const char* astrURDF, const CHighLevelRT
 	       c.dHz, c.dLatencyS * 1e3, c.dNoiseM * 1e3,
 	       apObs == NULL ? "in the base frame, through the checks and the average of the bridge into the goal slot" :
 	       bTag ? "relative to the tool tag, into the mailbox" : "in the base frame, into the mailbox");
-	if (c.nPlaces > 1)
-		printf("[SIMCAM] %d places of the object (SIM_CAM_OBJECT_M): run r of the application puts it at place "
-		       "(r - 1) mod %d + 1\n", c.nPlaces, c.nPlaces);
+	// always, so that a list cut short in the cfg shows (one place where five were meant)
+	printf("[SIMCAM] %d place%s of the object (SIM_CAM_OBJECT_M): run r of the application puts it at place "
+	       "(r - 1) mod %d + 1\n", c.nPlaces, c.nPlaces == 1 ? "" : "s", c.nPlaces);
 	if (!bTag && (c.adBias[0] != 0.0 || c.adBias[1] != 0.0 || c.adBias[2] != 0.0))
 		printf("[SIMCAM] error of the calibration (%.1f, %.1f, %.1f) mm on every result\n", c.adBias[0] * 1e3,
 		       c.adBias[1] * 1e3, c.adBias[2] * 1e3);

@@ -11,7 +11,9 @@ batch (tools/host/power_log.py, OUT/power.csv). At the end: tools/trials.py over
 (one row per trial) and OUT/summary.txt (the table).
 
 The cfg of the batch is a copy of --cfg next to it (indy7/trial_batch.cfg, the relative paths of the cfg hold),
-written again for every method; its last state is kept as OUT/trial_batch.cfg.
+written again for every method; its last state is kept as OUT/trial_batch.cfg. A method folder of OUT that holds
+logs already is refused (trials.py would judge the old ones with the new): give a new --out for a batch again.
+"place k" below is the k-th place of --places; the application's "place k of n" is the k-th run of the sequence.
 
 Usage (in the repository; the PC or the board):
   python3 tools/trial_batch.py --out DIR [--methods M2,A2,A3,FULL] [--rounds 2] [--places "X Y Z; X Y Z; ..."]
@@ -20,12 +22,14 @@ Usage (in the repository; the PC or the board):
   --cpu N: the two tasks on CPU N (a PC with fewer than 4 CPUs; the cfg has CPU=3). Standard library only.
 """
 import argparse
+import glob
 import os
 import random
 import shutil
 import signal
 import subprocess
 import sys
+import time
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
@@ -116,6 +120,9 @@ def main():
         sys.exit('trial_batch: --limit-s above 0, --hold-s from 0 to below the limit')
     seq = sequence(places, a.rounds, a.seed)
     out = os.path.abspath(a.out)
+    used = [m for m in methods if glob.glob(os.path.join(out, m, '**', 'hl_app_*.csv'), recursive=True)]
+    if used:
+        sys.exit('trial_batch: %s already hold logs in %s: give a new --out' % (', '.join(used), out))
     os.makedirs(out, exist_ok=True)
     src = os.path.abspath(a.cfg)
     batch_cfg = os.path.join(os.path.dirname(src), 'trial_batch.cfg')
@@ -127,6 +134,9 @@ def main():
     if a.power:
         power = subprocess.Popen([sys.executable, '-B', os.path.join(HERE, 'host', 'power_log.py'),
                                   '--out', os.path.join(out, 'power.csv')])
+        time.sleep(1.0)                    # no sensor: it ends at once, before any trial
+        if power.poll() is not None:
+            sys.exit('trial_batch: power_log ended (%d) before the trials: see its message' % power.returncode)
     failed = []
     try:
         for m in methods:
@@ -151,7 +161,7 @@ def main():
             power.send_signal(signal.SIGTERM)
             power.wait(10)
     cmd = [sys.executable, '-B', os.path.join(HERE, 'trials.py')] + [os.path.join(out, m) for m in methods]
-    cmd += ['--cfg', batch_cfg, '--hold-s', str(a.hold_s), '--limit-s', str(a.limit_s),
+    cmd += ['--cfg', batch_cfg, '--hold-s', str(a.hold_s), '--limit-s', str(a.limit_s), '--planned', str(len(seq)),
             '--out', os.path.join(out, 'trials.csv')]
     if power is not None:
         cmd += ['--power', os.path.join(out, 'power.csv')]

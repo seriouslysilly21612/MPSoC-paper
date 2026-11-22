@@ -7,6 +7,9 @@ pipeline): one row per image, with the decision and every candidate that was loo
   checks      of the rejected images with candidates: how many failed the time check, the error check and the
               response check
   prediction  the age at which the rule expected the result of a run image to be used first
+  decided at  the age of the images when the rule decided (capture -> release), of all decisions with a status:
+              acquisition_ms of mode_profile.yaml (the profile lines below have the run images only, which the
+              time check chose by their age, I-132 B3)
 With the log of the camera results of the control application of the same run (obs_<method>_*.csv with its
 .json), the images that were run are joined to the results by their capture time, and it prints
   arrival     how many of the run images reached the control task, and their verdicts there
@@ -101,6 +104,10 @@ def report(decisions, obs_path=None, out=sys.stdout):
         line('  of the %d with candidates, no mode passed: %s' % (
             len(with_candidates), ', '.join('the %s check in %d' % (name, sum(1 for f in failed if f[name]))
                                             for _, name in CHECKS)))
+    decided = [float(row['release_s']) - float(row['capture_s']) for row in decisions if row.get('status_age_ms')]
+    if decided:
+        line('  age of the image when decided, the %d decisions with a status: median %.1f, p90 %.1f, p99 %.1f ms' % (
+            len(decided), quantile(decided, 0.5) * 1e3, quantile(decided, 0.9) * 1e3, quantile(decided, 0.99) * 1e3))
     ran = [row for row in decisions if row['action'] == 'run']
     if ran:
         ages = [run_candidate(row)[1] for row in ran]

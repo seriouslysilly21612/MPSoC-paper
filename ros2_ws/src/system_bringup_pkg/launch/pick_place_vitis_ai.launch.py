@@ -147,13 +147,22 @@ def launch_setup(context, *args, **kwargs):
     ])
     # The method of the run (paper, Table III): the same value as --method of
     # the control application. M1 needs none of the three files below.
+    method = LaunchConfiguration('method').perform(context).strip()
+    # check 3 reads the measured table that ships here unless told otherwise
+    # (I-132 B2: an empty default left it off in every board run)
+    response_table = LaunchConfiguration('response_table').perform(context).strip()
+    if response_table.lower() == 'off':
+        response_table = ''
+    elif not response_table and method.upper() in ('A3', 'FULL'):
+        response_table = os.path.join(FindPackageShare('system_bringup_pkg').perform(context),
+                                      'config', 'response_v5n.csv')
     method_params = {
-        'method': LaunchConfiguration('method').perform(context).strip(),
+        'method': method,
         'contract_cfg_path': os.path.abspath(os.path.expanduser(
             LaunchConfiguration('contract_cfg').perform(context).strip())),
         'mode_profile_path': PathJoinSubstitution([
             FindPackageShare('system_bringup_pkg'), 'config', 'mode_profile.yaml']),
-        'response_table_path': LaunchConfiguration('response_table').perform(context).strip(),
+        'response_table_path': response_table,
         'decision_log_path': LaunchConfiguration('decision_log').perform(context).strip(),
     }
     for key in ('response_table_path', 'decision_log_path'):
@@ -456,7 +465,9 @@ def generate_launch_description():
         DeclareLaunchArgument(
             'response_table', default_value='',
             description='A3, FULL: CSV mode,level,response_us of the measured '
-                        'responses of the control task (empty = that check is off)'),
+                        'responses of the control task (empty = '
+                        'config/response_v5n.csv of this package, off = that '
+                        'check is off)'),
         DeclareLaunchArgument(
             'decision_log', default_value='',
             description='A3, FULL: CSV file for the decision on every image, '

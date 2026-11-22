@@ -4,21 +4,30 @@
 # file. The measurement error of a mode is not here: it is a constant of the
 # contract ([CONTRACT] EPS_M_MM of the control application).
 #
-# MEASURED (2026-11-22, I-129, I-130): YOLOv5n 416 and 320, one model per
-# run (FULL), the tool tag off, the memory pressure of 800 MB/s per worker
+# MEASURED (2026-11-22, I-129, I-130, I-133): YOLOv5n 416 and 320, one model
+# per run (FULL), the tool tag off, the memory pressure of 800 MB/s per worker
 # (run_timing --memrate-mbs 800, the worst load of the batch), the arch S2,
-# admission_log's profile lines. The p99 of that run, so that about one result
-# in a hundred is later than predicted (the rule admits work that is used in
-# time; the receiver on the R5 refuses a late one by its own age cap). The
-# profile is one value per mode for every load. The energy and the DDR traffic
-# of a mode are not measured (0, and their weights 0).
+# admission_log's profile lines. About the p99, so that about one result in a
+# hundred is later than predicted (the rule admits work that is used in time;
+# the receiver on the R5 refuses a late one by its own age cap). The profile
+# is one value per mode for every load. The values change the load they are
+# measured under: a rule that admits more keeps the detector busy, and the
+# images are older when it decides (I-133), so a value is checked in a run
+# with itself. The energy and the DDR traffic of a mode are not measured yet
+# (0, and their weights 0).
 
 # time between two images of the camera
 frame_period_ms: 33.35
 # capture -> the detector has the image: used for the next image of SKIP.
-# The larger of the two p90 of capture -> release under pressure (416 67.6,
-# 320 77.0 ms; admission_log gives no p99 of this part)
-acquisition_ms: 77.0
+# The median age of all decisions in the run with 138 below (s2b_p138_416,
+# 104.3 ms; p90 146.6). Not the capture -> release of the admitted images
+# (416 p90 67.6 ms): the old rule let through only those younger than its
+# threshold. SKIP cannot happen with these values: the result of the next
+# image could be used 33.35 + 104 + 138 + 1 = 276 ms after this capture with
+# 416 alone, past the age cap of 250 ms of any older result; with 320 too,
+# 235 ms, which needs a result in use from an image less than 15 ms older
+# than this one, and images are 33 ms apart.
+acquisition_ms: 104.0
 # a status of the control task older than this is not trusted: no inference
 # by the admission rule
 status_max_age_ms: 100.0
@@ -39,12 +48,17 @@ weights:
 modes:
   0:
     name: "416"
-    # start of the inference -> result in the mailbox (p99; p90 91.6)
-    release_to_publication_ms: 117.0
+    # start of the inference -> result in the mailbox. 138: the run with 117
+    # (the p99 117.4 of a run where the old rule kept the detector idle) had
+    # 4.97 % of its results later than predicted and a p99 of 137.1 (s2b_p99_416);
+    # with 138, 0.64 % later and a p99 of 133.4 (s2b_p138_416, I-133)
+    release_to_publication_ms: 138.0
     energy_j: 0.0
     ddr_bytes: 0.0
   1:
     name: "320"
-    release_to_publication_ms: 97.0     # p99; p90 75.8
+    # p99 96.8 (p90 75.8) of s2a_m1_p800, under the old rule (threshold 79 ms),
+    # not measured again: probably low by the same bias as 117 for 416 (I-133)
+    release_to_publication_ms: 97.0
     energy_j: 0.0
     ddr_bytes: 0.0
