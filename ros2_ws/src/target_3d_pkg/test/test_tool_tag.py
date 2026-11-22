@@ -61,8 +61,8 @@ def render(tags, k=K):
     return cv2.GaussianBlur(img, (3, 3), 0.6)
 
 
-def finder(tag_id=0, size_m=0.065):
-    f = ToolTagFinder(tag_id, size_m)
+def finder(tag_id=0, size_m=0.065, scale=1.0):
+    f = ToolTagFinder(tag_id, size_m, whole_image_scale=scale)
     f.set_camera(K.flatten(), [0.0] * 5)
     return f
 
@@ -75,9 +75,10 @@ def finder(tag_id=0, size_m=0.065):
         ((0.20, 0.05, 0.60), (0.0, 0.5, -1.0)),
     ],
 )
-def test_the_centre_of_a_rendered_tag(t, r):
+@pytest.mark.parametrize('scale', [1.0, 0.5])
+def test_the_centre_of_a_rendered_tag(t, r, scale):
     t = np.array(t)
-    res = finder().find(render([(0, 0.065, rot(*r), t)]))
+    res = finder(scale=scale).find(render([(0, 0.065, rot(*r), t)]))
     assert res.found, res.reason
     assert np.abs(res.p_cam[:2] - t[:2]).max() < 2e-3  # across the view: within 2 mm at 0.6-1.0 m
     # in depth, the weak axis of one tag: a few tenths of a pixel on a 40-65 px square are 1 % of
@@ -176,12 +177,34 @@ def test_after_a_whole_image_without_the_tag_the_next_one_waits():
     assert finder().find(blank).reason == 'not_found'
 
 
+@pytest.mark.parametrize('z', [0.55, 0.80, 1.10])
+def test_the_whole_image_at_half_size_then_the_corners_at_full_size(z):
+    # the search of I-134: the copy is a quarter of the pixels; the corners come from the full
+    # image, so the centre is as good as with the whole image at full size
+    f = finder(scale=0.5)
+    seen = []
+    inner = f.coarse
+    f.coarse = lambda gray: (seen.append(gray.shape), inner(gray))[1]
+    f.in_window = [f.fine, f.coarse]
+    t = np.array([0.08, -0.04, z])
+    img = render([(0, 0.065, rot(0.2, -0.3, 0.1), t)])
+    res = f.find(img, t_s=0.0)
+    full = finder().find(img)
+    assert res.found and full.found and not res.window
+    assert seen[0] == (H // 2, W // 2) and seen[1][0] < H / 2      # the copy, then a window
+    assert np.linalg.norm(res.p_cam - full.p_cam) < 1e-3
+    assert f.find(np.full((H, W), 255, np.uint8), t_s=5.0).reason == 'not_found'
+
+
 def test_no_camera_info_and_bad_size():
     assert ToolTagFinder(0, 0.065).find(np.zeros((H, W), np.uint8)).reason == 'no_camera_info'
     with pytest.raises(ValueError):
         ToolTagFinder(0, 0.0)
     with pytest.raises(ValueError):
         ToolTagFinder(0, 0.065, refine='bogus')
+    for bad in (0.2, 1.5):
+        with pytest.raises(ValueError):
+            ToolTagFinder(0, 0.065, whole_image_scale=bad)
 
 
 def test_gray_of_image():

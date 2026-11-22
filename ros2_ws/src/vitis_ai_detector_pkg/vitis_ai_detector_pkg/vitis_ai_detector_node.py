@@ -163,6 +163,7 @@ class VitisAiDetectorNode(Node):
         self.declare_parameter("tag_id", 0)
         self.declare_parameter("tag_size_m", 0.065)
         self.declare_parameter("tag_refine", "subpix")
+        self.declare_parameter("tag_whole_scale", 1.0)   # < 1: the whole image searched smaller
         self.declare_parameter("color_info_topic", "/camera/camera/color/camera_info")
         self.declare_parameter("tag_topic", "/tool_tag")
 
@@ -306,7 +307,8 @@ class VitisAiDetectorNode(Node):
             self.tag_finder = ToolTagFinder(
                 int(self.get_parameter("tag_id").value),
                 float(self.get_parameter("tag_size_m").value),
-                refine=str(self.get_parameter("tag_refine").value))
+                refine=str(self.get_parameter("tag_refine").value),
+                whole_image_scale=float(self.get_parameter("tag_whole_scale").value))
             # every result is paired with the object of its capture: none may be dropped on the way
             self.tag_pub = self.create_publisher(
                 ToolTag, str(self.get_parameter("tag_topic").value),
@@ -364,7 +366,8 @@ class VitisAiDetectorNode(Node):
             f = self.tag_finder
             self.get_logger().info(
                 f"tool tag: 36h11 id {f.tag_id}, black square {1e3 * f.size_m:.1f} mm, searched "
-                f"beside the inference in every image that runs -> {self.tag_pub.topic_name}")
+                f"beside the inference in every image that runs (the whole image at "
+                f"{f.whole_scale:g} of its size) -> {self.tag_pub.topic_name}")
 
     def publish_tag(self, header, res, search_ms):
         # TagSearch's thread: the result of one image, found or not (every image that runs has one)

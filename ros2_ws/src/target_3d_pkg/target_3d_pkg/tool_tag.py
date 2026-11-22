@@ -13,7 +13,11 @@ angles of that capture give.
                                   whole image, with the plain detector; AprilTag corner refinement
                                   only in a window (on a whole image it takes about 20 times as
                                   long). After a whole image without the tag the next one waits
-                                  whole_image_period_s: a result then has no tag ('not_searched')
+                                  whole_image_period_s: a result then has no tag ('not_searched').
+                                  whole_image_scale < 1: the whole image is searched in a copy
+                                  that much smaller, and the corners found are taken again at full
+                                  size in a window around them (I-129: the whole image is the cost
+                                  under memory pressure)
   gray_of_image(...)              a grayscale view of a sensor_msgs/Image's fields (rgb8, bgr8,
                                   mono8)
   TagSearch(finder, done)         the search beside the inference (I-122): vitis_ai_detector_node
@@ -80,9 +84,11 @@ class ToolTagFinder:
     """Finds one tag (tag_id, black square size_m) in grayscale images of one camera."""
 
     def __init__(self, tag_id, size_m, refine='apriltag', window_margin_px=48, window_keep_s=0.5,
-                 whole_image_period_s=0.2):
+                 whole_image_period_s=0.2, whole_image_scale=1.0):
         if not size_m > 0.0:
             raise ValueError(f'tag size {size_m!r} m: the side of the black square, > 0')
+        if not 0.25 <= whole_image_scale <= 1.0:
+            raise ValueError(f'whole image scale {whole_image_scale!r}: from 0.25 to 1')
         if refine not in ('apriltag', 'subpix', 'none'):
             raise ValueError(f"tag corner refinement {refine!r} is none of apriltag, subpix, none")
         self.tag_id = int(tag_id)
@@ -101,6 +107,7 @@ class ToolTagFinder:
         self.margin = int(window_margin_px)
         self.keep_s = float(window_keep_s)
         self.whole_period_s = float(whole_image_period_s)
+        self.whole_scale = float(whole_image_scale)
         self.K = None
         self.D = None
         self._last_box = None  # (u0, v0, u1, v1) of the corners the last time
@@ -159,6 +166,26 @@ class ToolTagFinder:
         )
         return box if box[2] - box[0] >= 16 and box[3] - box[1] >= 16 else None
 
+    def _whole(self, gray, w, h):
+        """the corners in the whole image by the plain detector, or a reason; at whole_scale < 1
+        in a smaller copy, then again at full size in the window around them (kept from the copy
+        when the window misses them)"""
+        s = self.whole_scale
+        if s >= 1.0:
+            return self._corners_in(gray, (0, 0, w, h), [self.coarse])
+        sw, sh = max(16, round(w * s)), max(16, round(h * s))
+        small = cv2.resize(gray, (sw, sh), interpolation=cv2.INTER_AREA)
+        pts, reason = self._corners_in(small, (0, 0, sw, sh), [self.coarse])
+        if pts is None:
+            return None, reason
+        pts = (pts + 0.5) * np.array([w / sw, h / sh]) - 0.5  # pixel centres of the copy -> full
+        box = self._window(self._corner_box(pts), w, h)
+        if box is not None:
+            full, _ = self._corners_in(gray, box, [self.coarse])
+            if full is not None:
+                return full, ''
+        return pts, ''
+
     def find(self, gray, t_s=None):
         """TagResult for one grayscale image taken at t_s [s] (for the window and the wait after
         a whole image without the tag; None: neither)."""
@@ -184,7 +211,7 @@ class ToolTagFinder:
                 and 0.0 <= t_s - self._miss_t < self.whole_period_s
             ):
                 return TagResult(False, 'not_searched')
-            pts, reason = self._corners_in(gray, (0, 0, w, h), [self.coarse])
+            pts, reason = self._whole(gray, w, h)
             if pts is None:
                 self._miss_t = t_s
                 return TagResult(False, reason)

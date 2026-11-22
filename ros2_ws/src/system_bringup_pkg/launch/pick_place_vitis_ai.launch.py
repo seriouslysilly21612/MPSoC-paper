@@ -206,6 +206,7 @@ def launch_setup(context, *args, **kwargs):
         'tag_id': int(LaunchConfiguration('tag_id').perform(context)),
         'tag_size_m': float(LaunchConfiguration('tag_size_m').perform(context)),
         'tag_refine': tag_refine,
+        'tag_whole_scale': float(LaunchConfiguration('tag_whole_scale').perform(context)),
     }
     target_3d_tag_params = {
         'tool_tag': flag('tool_tag'),
@@ -446,6 +447,10 @@ def generate_launch_description():
             'tag_wait_ms', default_value='40',
             description='how long pick_target_3d_node waits for the tag of a '
                         "target's capture [ms]; then the target goes without it"),
+        DeclareLaunchArgument(
+            'tag_whole_scale', default_value='0.5',
+            description='the whole image is searched for the tag at this size (0.25 to 1; '
+                        '1: as before I-134), the corners then at full size in a window'),
         DeclareLaunchArgument(
             'tag_refine', default_value='',
             description='the tag corners in the window around it: apriltag (as the '
