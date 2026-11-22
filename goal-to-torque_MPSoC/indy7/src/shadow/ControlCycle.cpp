@@ -166,6 +166,8 @@ CControlCycle::ObsCommand(const ipc_command_t& astCommand)
 		}
 		m_uObsMethod = uMethod;
 	}
+	// the cost of eq. (6) is that of this run of the application: the receiver goes on between runs (I-135 C1)
+	m_cObs.ClearCost();
 	return IPC_DONE_OK;
 }
 

@@ -52,9 +52,13 @@ def test_runs_that_cannot_give_a_number_are_refused(tmp_path):
     assert res.returncode != 0 and 'Traceback' not in res.stderr
 
 
-def apm_log(d, mb_per_s, seconds=200):
+def apm_log(d, mb_per_s, seconds=250, before_mb_per_s=None):
+    """samples every 0.25 s from unix 950 (as run_dir): mb_per_s from unix 1000 on, before_mb_per_s before it"""
     rows = ['unix_s,dt_s,s1_rd_B,s1_wr_B']
-    rows += ['%d,0.25,%d,%d' % (t, mb_per_s * 1e6 * 0.25 / 2, mb_per_s * 1e6 * 0.25 / 2) for t in range(seconds * 4)]
+    for i in range(seconds * 4):
+        u = 950.0 + 0.25 * (i + 1)
+        r = mb_per_s if u > 1000.0 or before_mb_per_s is None else before_mb_per_s
+        rows.append('%.3f,0.25,%d,%d' % (u, r * 1e6 * 0.25 / 2, r * 1e6 * 0.25 / 2))
     (d / 'apm.csv').write_text('\n'.join(rows) + '\n')
 
 
@@ -63,8 +67,10 @@ def test_the_ddr_bytes_of_an_inference_with_the_monitor_logs(tmp_path):
     m416 = run_dir(tmp_path / 'm416', 7.6, runs_per_s=12.0)
     assert E.ddr_rate(base, 60, 10) is None
     apm_log(tmp_path / 'base', 400)
-    apm_log(tmp_path / 'm416', 520)
+    apm_log(tmp_path / 'm416', 520, before_mb_per_s=400)            # before the first decision: no inference
     assert E.ddr_rate(base, 60, 10) == pytest.approx(400e6)
+    span = E.inference_rate(m416)[2]
+    assert E.ddr_rate(m416, 60, 10, span) == pytest.approx(520e6)     # the time of the inferences only
     out = subprocess.run([sys.executable, '-B', os.path.join(HERE, 'mode_energy.py'), '--base', base, '0:' + m416],
                          capture_output=True, text=True, check=True).stdout
     assert '0: ddr_bytes: 1e+07' in out                                  # 120 MB/s over 12 a second

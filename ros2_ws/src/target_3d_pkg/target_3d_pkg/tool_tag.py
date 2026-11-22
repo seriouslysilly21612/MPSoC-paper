@@ -168,8 +168,10 @@ class ToolTagFinder:
 
     def _whole(self, gray, w, h):
         """the corners in the whole image by the plain detector, or a reason; at whole_scale < 1
-        in a smaller copy, then again at full size in the window around them (kept from the copy
-        when the window misses them)"""
+        in a smaller copy, then again at full size in the window around them. A tag that the
+        window misses is not found: the corners of the copy are too coarse for its pose (I-135
+        C8). A tag too small for the copy (far, steep) is missed although the full size would
+        find it (rendered 80 mm tag: from about 1.2 m at 55 degrees)"""
         s = self.whole_scale
         if s >= 1.0:
             return self._corners_in(gray, (0, 0, w, h), [self.coarse])
@@ -180,11 +182,9 @@ class ToolTagFinder:
             return None, reason
         pts = (pts + 0.5) * np.array([w / sw, h / sh]) - 0.5  # pixel centres of the copy -> full
         box = self._window(self._corner_box(pts), w, h)
-        if box is not None:
-            full, _ = self._corners_in(gray, box, [self.coarse])
-            if full is not None:
-                return full, ''
-        return pts, ''
+        if box is None:
+            return None, 'not_found'
+        return self._corners_in(gray, box, [self.coarse])
 
     def find(self, gray, t_s=None):
         """TagResult for one grayscale image taken at t_s [s] (for the window and the wait after

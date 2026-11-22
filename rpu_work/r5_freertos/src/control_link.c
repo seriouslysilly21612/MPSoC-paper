@@ -15,7 +15,24 @@
 
 _Static_assert(EVENT_VALUES >= 16, "the report of control_link_report() has 16 values");
 
-static uint64_t obs_clock(void) { return sys_counter_now(); }      /* the clock of the receiver's cost (eq. (6)) */
+/* the clock of the receiver's cost (eq. (6)): the low word, one read (the cost takes differences mod 2^32, a period
+ * is far below its 42.9 s); each mark of the cost holds one read of it, obs_clock_ticks */
+static uint64_t obs_clock(void) { return sys_counter_low(); }
+static uint32_t obs_clock_ticks;
+
+/* one read of the clock: the least of 16 differences of two reads in a row */
+static uint32_t obs_clock_cost(void)
+{
+    uint32_t i, a, d, least = 0xFFFFFFFFu;
+
+    for (i = 0u; i < 16u; i++) {
+        a = sys_counter_low();
+        d = sys_counter_low() - a;
+        if (d < least)
+            least = d;
+    }
+    return least;
+}
 
 /* the bus has the joints of the controller (the Indy7).  An expression, not a condition of the preprocessor:
    IPC_CTRL_DOF is an enumerator, which #if takes for 0 */
@@ -35,8 +52,10 @@ static uint32_t n_plans, n_iks, n_plan_late, n_plans_before, n_iks_before, plan_
 int control_link_start(void)
 {
     built = control_ctrl_build((volatile uint32_t *)OCM_LINK_BASE, (double)SYSCNT_HZ);
-    if (built)
+    if (built) {
+        obs_clock_ticks = obs_clock_cost();
         control_ctrl_set_obs_clock(obs_clock);
+    }
     ctrl_port_loop();                                /* from here the classes print nothing */
     if (built == 2) {
         xil_printf("[control] the receiver of the camera results cannot use its numbers of this build ([CONTRACT],"
@@ -181,9 +200,10 @@ static int32_t ticks_ns(uint32_t ticks)
     return (int32_t)((uint64_t)ticks * 1000000000ull / SYSCNT_HZ);
 }
 
-/* the receiver's cost (eq. (6)) of its run so far, once it has measured periods: B, the periods, the longest period;
- * the longest look at the slots by the results taken (0, 1, 2, 3, 4 or more); the longest choice by the results held
- * (0, 1, 2-3, 4-7, 8); the periods that took a result; the most results taken in one period.  [ns] */
+/* the receiver's cost (eq. (6)) in this run of the application (cleared by each IPC_CMD_OBS of a method with the
+ * mailbox), once it has measured periods: B, the periods, the longest period; the longest look at the slots by the
+ * results taken (0, 1, 2, 3, 4 or more); the longest choice by the results held (0, 1, 2-3, 4-7, 8); the periods that
+ * took a result; the most results taken in one period; one read of the clock, which each of the times holds.  [ns] */
 static void obs_cost_report(void)
 {
     obs_cost_t c;
@@ -216,6 +236,7 @@ static void obs_cost_report(void)
     e->value[12] = ticks_ns(c.select_max[OBS_HELD]);
     e->value[13] = (int32_t)taken_periods;
     e->value[14] = (int32_t)most;
+    e->value[15] = ticks_ns(obs_clock_ticks);
     event_publish();
 }
 

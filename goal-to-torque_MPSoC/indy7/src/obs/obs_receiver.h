@@ -143,6 +143,12 @@ static inline void obs_receiver_set_clock(obs_receiver_t* r, uint64_t (*now)(voi
 	r->now = now;
 }
 
+/* the cost from here on (a new run of the writer's side); the clock stays */
+static inline void obs_cost_clear(obs_receiver_t* r)
+{
+	memset(&r->cost, 0, sizeof(r->cost));
+}
+
 /* one period of the cost: the look at the slots from t0 to t1 with `taken` results, the choice from t1 on with
  * `held` results held */
 static inline void obs_cost_add(obs_receiver_t* r, uint64_t t0, uint64_t t1, unsigned slots, unsigned taken,

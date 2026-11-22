@@ -654,6 +654,9 @@ void SlotsAndCost()
 	p = Step(302, &nFresh);
 	Expect(g_stR.cost.periods == 2 && g_stR.cost.drain_periods[0] == 1 && g_stR.cost.select_max[1] == 7,
 	       "a period with nothing taken and one result held");
+	obs_cost_clear(&g_stR);
+	Expect(g_stR.now == CostClock && g_stR.cost.periods == 0 && g_stR.cost.total_max == 0 && g_stR.n_held == 1,
+	       "obs_cost_clear: a new run of the cost; the clock and the results held stay");
 	obs_receiver_start(&g_stR, &g_stR.set);
 	Expect(g_stR.now == NULL && g_stR.cost.periods == 0, "the start clears the clock and the cost");
 }

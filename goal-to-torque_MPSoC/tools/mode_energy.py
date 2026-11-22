@@ -63,27 +63,30 @@ def inference_rate(run_dir):
     return (len(times) - 1) / (times[-1] - times[0]), len(times), (times[0], times[-1])
 
 
-def ddr_rate(run_dir, skip_s, tail_s):
-    """the DDR bytes a second of a run (tools/host/ddr_apm.py, all its ports) between skip_s from its start and
-    tail_s before its end; None without OUT/apm.csv"""
+def ddr_rate(run_dir, skip_s, tail_s, span=None):
+    """the DDR bytes a second of a run (tools/host/ddr_apm.py, all its ports): the samples that end between skip_s
+    from the first and tail_s before the last, or within span (unix_s, unix_s) less tail_s at each end, as the power;
+    None without OUT/apm.csv"""
     path = os.path.join(run_dir, 'apm.csv')
     if not os.path.exists(path):
         return None
     try:
         with open(path, newline='') as f:
-            rows = [(float(r['dt_s']), sum(float(v) for k, v in r.items() if k.endswith('_B')))
+            rows = [(float(r['unix_s']), float(r['dt_s']), sum(float(v) for k, v in r.items() if k.endswith('_B')))
                     for r in csv.DictReader(f)]
     except (OSError, KeyError, ValueError) as ex:
         raise ValueError('%s: %s' % (path, ex)) from None
-    end = sum(dt for dt, _ in rows) - tail_s
-    t = seconds = byte_sum = 0.0
-    for dt, b in rows:
-        t += dt
-        if skip_s <= t - dt and t <= end:
-            seconds, byte_sum = seconds + dt, byte_sum + b
+    if not rows:
+        raise ValueError('%s: no samples' % path)
+    if span:
+        lo, hi = span[0] + tail_s, span[1] - tail_s
+    else:
+        lo, hi = rows[0][0] + skip_s, rows[-1][0] - tail_s
+    inside = [(dt, b) for u, dt, b in rows if lo <= u - dt and u <= hi]
+    seconds = sum(dt for dt, _ in inside)
     if seconds < 10.0:
-        raise ValueError('%s: %.1f s between %g s and %g s, less than 10' % (path, seconds, skip_s, end))
-    return byte_sum / seconds
+        raise ValueError('%s: %.1f s of samples between %.0f and %.0f, less than 10' % (path, seconds, lo, hi))
+    return sum(b for _, b in inside) / seconds
 
 
 def energy(base_w, mode_w, rate):
@@ -119,7 +122,7 @@ def main():
             if e <= 0:
                 print('  not above the base: the difference is within the noise of the power, or the runs differ')
             lines.append('  %s: energy_j: %.4f' % (mode, e))
-            ddr = ddr_rate(run_dir, a.skip_s, a.tail_s)
+            ddr = ddr_rate(run_dir, a.skip_s, a.tail_s, span)
             if ddr is not None and base_ddr is not None:
                 per = (ddr - base_ddr) / rate
                 print('  DDR %.1f MB/s: %+.1f MB/s, ddr_bytes %.4g' % (ddr / 1e6, (ddr - base_ddr) / 1e6, per))

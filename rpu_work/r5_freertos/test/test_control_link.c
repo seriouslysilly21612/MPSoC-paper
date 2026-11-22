@@ -183,7 +183,7 @@ int main(void)
           an_event.value[2] == (int32_t)(1000ull * 1000000000ull / SYSCNT_HZ) && an_event.value[5] > an_event.value[3] &&
           an_event.value[7] == (int32_t)(500ull * 1000000000ull / SYSCNT_HZ) && an_event.value[6] == 0 &&
           an_event.value[10] == (int32_t)(70ull * 1000000000ull / SYSCNT_HZ) && an_event.value[12] > an_event.value[10] &&
-          an_event.value[13] == 2 && an_event.value[14] == 5);
+          an_event.value[13] == 2 && an_event.value[14] == 5 && an_event.value[15] >= 0);
     memset(&a_cost, 0, sizeof(a_cost));
 
     /* no simulated arm (the run of the APU that is up has written none) */

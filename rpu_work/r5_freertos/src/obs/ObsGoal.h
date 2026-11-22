@@ -191,6 +191,7 @@ public:
 		obs_receiver_set_clock(&m_stR, apNow);
 	}
 	const obs_cost_t&	Cost() const { return m_stR.cost; }
+	void				ClearCost() { obs_cost_clear(&m_stR); }
 	/* what this class knows of the status: the caller adds response_max, contract_crc and method */
 	const obs_status_t&	Status() const { return m_stStatus; }
 
