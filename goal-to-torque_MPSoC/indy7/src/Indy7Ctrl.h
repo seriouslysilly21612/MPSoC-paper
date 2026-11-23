@@ -300,7 +300,7 @@ private:
 	CROS2PickBridge* m_pBridge{NULL};
 	CGoalSlot     m_appGoalSlot;
 	// -s with SIM_CAM=1: a camera of the simulation in place of the bridge
-	// (sim/SimCamera.h); 'y', 8 starts the application on its one object
+	// (sim/SimCamera.h); 'y', 8 starts the application on the next place of its object
 	CSimCamera*   m_pSimCam{NULL};
 	BOOL          InitSimCamera           (	);
 	// the methods other than M1 (--method, obs/ObsMethod.h): the camera side
@@ -336,6 +336,7 @@ private:
 	CGoalFilter::Params AppFilter         (	) const;
 	void          ObsStep                 (const task_slots::ST_STATE_SLOT& astState);   // Trajectory task
 	double        m_dAppHover{0.05};
+	double        m_adAppHoverXY[2]{0.0, 0.0};	// APP_HOVER_XY_M: the goal beside the object as well
 	double        m_dAppT{0.0};           // length of a run of the application [s], 0: until 'x'
 	void          InitBridge              (	);
 	unsigned long m_uHlAllocs0{0};

@@ -309,6 +309,10 @@ def test_the_profile_that_ships_with_the_pipeline():
     shipped = os.path.join(here, '..', '..', 'system_bringup_pkg', 'config', 'mode_profile.yaml')
     profile = load_profile(shipped)
     assert sorted(profile.modes) == [MODE_416, MODE_320]
+    # the table that ships beside it: both modes pass check 3 with its margin in 1 ms
+    table = load_response_table(os.path.join(os.path.dirname(shipped), 'response_v5n.csv'))
+    assert sorted(table) == [MODE_416, MODE_320]
+    assert all(t + profile.response_margin_s <= 1e-3 for t in table.values())
 
 
 def test_the_response_table_keeps_the_worst_row_of_a_mode(tmp_path):

@@ -7,11 +7,16 @@ pipeline): one row per image, with the decision and every candidate that was loo
   checks      of the rejected images with candidates: how many failed the time check, the error check and the
               response check
   prediction  the age at which the rule expected the result of a run image to be used first
+  decided at  the age of the images when the rule decided (capture -> release), of all decisions with a status:
+              acquisition_ms of mode_profile.yaml (the profile lines below have the run images only, which the
+              time check chose by their age, I-132 B3)
 With the log of the camera results of the control application of the same run (obs_<method>_*.csv with its
 .json), the images that were run are joined to the results by their capture time, and it prints
   arrival     how many of the run images reached the control task, and their verdicts there
   realized    the period that took the result against the first use that the rule predicted: the rule holds its
               promise when the result is there no later than predicted
+  profile     per mode, capture -> release and release -> publication in the mailbox: the numbers of
+              mode_profile.yaml (acquisition_ms, release_to_publication_ms) as the run measured them
 
 Usage:
   python3 tools/admission_log.py DECISIONS.csv [OBS.csv]
@@ -57,7 +62,11 @@ def results_by_capture(obs_path):
     """the results of the control application's log: [(capture on the clock of the tasks [s], row)], sorted"""
     with open(os.path.splitext(obs_path)[0] + '.json') as f:
         meta = json.load(f)
-    start_s = meta['t_start_ticks'] / meta['ticks_per_s']
+    # with S2 the ticks are the R5's counter, not the clock of the decision log (I-119): its start on that clock
+    if 't_start_monotonic_ns' in meta:
+        start_s = meta['t_start_monotonic_ns'] * 1e-9
+    else:
+        start_s = meta['t_start_ticks'] / meta['ticks_per_s']
     return start_s, sorted((start_s + float(row['t_e']), row) for row in read_rows(obs_path))
 
 
@@ -95,6 +104,10 @@ def report(decisions, obs_path=None, out=sys.stdout):
         line('  of the %d with candidates, no mode passed: %s' % (
             len(with_candidates), ', '.join('the %s check in %d' % (name, sum(1 for f in failed if f[name]))
                                             for _, name in CHECKS)))
+    decided = [float(row['release_s']) - float(row['capture_s']) for row in decisions if row.get('status_age_ms')]
+    if decided:
+        line('  age of the image when decided, the %d decisions with a status: median %.1f, p90 %.1f, p99 %.1f ms' % (
+            len(decided), quantile(decided, 0.5) * 1e3, quantile(decided, 0.9) * 1e3, quantile(decided, 0.99) * 1e3))
     ran = [row for row in decisions if row['action'] == 'run']
     if ran:
         ages = [run_candidate(row)[1] for row in ran]
@@ -121,6 +134,25 @@ def report(decisions, obs_path=None, out=sys.stdout):
              '%+.1f ms, largest %+.1f ms; later than predicted: %d of %d' % (
                  quantile(late, 0.5) * 1e3, quantile(late, 0.9) * 1e3, max(late) * 1e3,
                  sum(1 for x in late if x > 0), len(late)))
+    for line_text in profile_lines(arrived, start_s):
+        line(line_text)
+
+
+def profile_lines(arrived, start_s):
+    """the numbers of mode_profile.yaml as this run measured them (I-122 2): per mode, capture -> release
+    (acquisition_ms) and release -> publication in the mailbox (release_to_publication_ms)"""
+    lines = []
+    for mode in sorted(set(row['mode'] for row, result in arrived if result.get('f', '') != '')):
+        rows = [(row, result) for row, result in arrived if row['mode'] == mode and result.get('f', '') != '']
+        acq = [float(row['release_s']) - float(row['capture_s']) for row, _ in rows]
+        r2p = [start_s + float(result['f']) -
+               (float(row['release_s']) + float(row['capture_task_s']) - float(row['capture_s']))
+               for row, result in rows]
+        lines.append('  mode %s (%d results): capture -> release median %.1f, p90 %.1f ms; release -> publication '
+                     'median %.1f, p90 %.1f, p99 %.1f ms' % (
+                         mode, len(rows), quantile(acq, 0.5) * 1e3, quantile(acq, 0.9) * 1e3,
+                         quantile(r2p, 0.5) * 1e3, quantile(r2p, 0.9) * 1e3, quantile(r2p, 0.99) * 1e3))
+    return lines
 
 
 def main():

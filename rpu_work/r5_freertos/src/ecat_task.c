@@ -40,10 +40,12 @@
  * what the control task told of its last period; its torque is compared, not used.  A cycle in which it ran ends
  * with it, not with its send: t_e and the overrun rule take it in, the send deadline does not.
  *
- * Or, with CONTROL_TASK (control_link.c; S2): the control task itself runs after the send, on the measured state of
- * this cycle and the commands and goals of the APU, and the drives get its torque with the send of the next cycle
- * in place of the Torque slot.  A servo on or off is then the control task's to ask (its interlock), not the
- * Command slot's.
+ * Or, with CONTROL_TASK (control_link.c; S2): the control task itself, in a task of its own below this one
+ * (control_task.c), gets the cycle after the send and runs on the measured state of this cycle and the commands and
+ * goals of the APU, and the drives get its torque with the send of the next cycle in place of the Torque slot.  The
+ * record of a cycle then waits for the end of its step: it is closed in the next cycle, after the send, with t_e up
+ * to that end; a step not done by then is an overrun whose t_e reaches only the start of the next cycle.
+ * A servo on or off is then the control task's to ask (its interlock), not the Command slot's.
  */
 #include "FreeRTOS.h"
 #include "task.h"
@@ -64,6 +66,9 @@
 #include "obs_link.h"
 #include "shadow_link.h"
 #include "control_link.h"
+#if CONTROL_TASK
+#include "control_task.h"
+#endif
 
 volatile int ecat_status = ECAT_STATUS_STARTING;
 
@@ -245,6 +250,37 @@ static void take_apu_slots(uint64_t now)
 #endif
 }
 
+#if CONTROL_TASK
+/* The record of the cycle handed over last, until its step is done; ctl_given: it was handed over (and not yet
+ * begun while this task runs on in that cycle) */
+static cycle_times_t  ctl_times;
+static cycle_record_t ctl_record;
+static int            ctl_pending, ctl_given;
+static int            control_report_due;   /* the control lines of a status report wait for a quiet control task */
+
+/* the record kept by the cycle before: with the end and the times of its step when that is done, else an overrun
+ * whose end is `now` (the start of this cycle, past the next release); then the rules of loop_timing.c */
+static void control_record_close(uint32_t now)
+{
+    uint32_t end;
+    int32_t traj_ns, ctrl_ns;
+
+    if (!ctl_pending) return;
+    if (ctl_given) {
+        if (control_link_result(ctl_record.period, &end, &traj_ns, &ctrl_ns)) {
+            ctl_times.end     = end;
+            ctl_record.hl_ns  = traj_ns;
+            ctl_record.dyn_ns = ctrl_ns;
+        } else {
+            ctl_times.end = now;
+        }
+    }
+    loop_timing_end(&ctl_times, &ctl_record);
+    cycle_record_push(&ctl_record);
+    ctl_pending = 0;
+}
+#endif
+
 /* ----------------------------------------------------------------------- */
 /* One 1 kHz cycle: receive -> logic -> send                               */
 /* ----------------------------------------------------------------------- */
@@ -310,16 +346,11 @@ static void ecat_cycle(uint32_t planned_tick)
     t.end = t.send_end;                 /* the end of the cycle, unless the second controller runs: what follows
                                            it is the record of its times */
     cycle_record_init(&record);
-#if SHADOW_CONTROL || CONTROL_TASK
+#if SHADOW_CONTROL
     {
         int32_t traj_ns, ctrl_ns;
 
-#if CONTROL_TASK
-        if (stop_step == STOP_NONE &&
-            control_link_step(cycle_index, wkc >= ecat_expected_wkc, t.release, &traj_ns, &ctrl_ns)) {
-#else
         if (stop_step == STOP_NONE && shadow_link_step(&traj_ns, &ctrl_ns)) {
-#endif
             t.end = sys_counter_low();
             record.hl_ns  = traj_ns;
             record.dyn_ns = ctrl_ns;
@@ -331,8 +362,17 @@ static void ecat_cycle(uint32_t planned_tick)
                     ((link_flags & IPC_STATE_SERVO_ON) ? RECORD_SERVO : 0u);
     if (stop_step != STOP_NONE) record.flags |= RECORD_STOP;
     else if (wkc < ecat_expected_wkc) record.flags |= RECORD_WKC;
+#if CONTROL_TASK
+    control_record_close(t.start);      /* the cycle before, whose step had this task's idle time */
+    ctl_times   = t;
+    ctl_record  = record;
+    ctl_pending = 1;
+    ctl_given   = stop_step == STOP_NONE && control_link_give(cycle_index, wkc >= ecat_expected_wkc, t.release);
+    if (ctl_given) control_task_wake();
+#else
     loop_timing_end(&t, &record);
     cycle_record_push(&record);
+#endif
 }
 
 /* [ticks of the system counter] -> [us], rounded */
@@ -370,6 +410,9 @@ static void post_status_report(uint32_t cycles)
         e->value[7] = (int32_t)loop_timing.late;
         e->value[8] = (int32_t)loop_timing.missed;
         e->value[9] = (int32_t)loop_timing.overruns;
+#if CONTROL_TASK
+        e->value[10] = (int32_t)control_link_late_total();
+#endif
         event_publish();
     }
 #if !CONTROL_TASK
@@ -379,7 +422,7 @@ static void post_status_report(uint32_t cycles)
     shadow_link_report();
 #endif
 #if CONTROL_TASK
-    control_link_report();
+    control_report_due = 1;             /* control_link_report() when the control task is in no step */
 #endif
     loop_timing_reset_window();
     event_budget = EVENTS_PER_REPORT;
@@ -439,8 +482,17 @@ void ecat_task(void *arg)
         if ((cycles % (1000u * REPORT_PERIOD_S)) == 0u) {
             post_status_report(cycles);
         }
+#if CONTROL_TASK
+        if (control_report_due && (ctl_given || control_link_idle())) {
+            control_link_report();
+            control_report_due = 0;
+        }
+#endif
     }
 
+#if CONTROL_TASK
+    control_record_close(sys_counter_low());     /* the last cycle: nothing was handed over in the stop */
+#endif
     /* stopped on request; the last cycle sent no frame, so none is in flight */
     post_slave_al_states();                          /* every drive's final AL state and last statusword */
     vTaskDelay(pdMS_TO_TICKS(100));                  /* the log task (every 20 ms) prints the queued lines first */

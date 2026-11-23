@@ -3,22 +3,37 @@
 The tag is the AprilTag (36h11) of the hand-eye calibration, moved to the flange. Its centre in the
 camera frame comes from the four corners and the side of its black square (solvePnP, IPPE_SQUARE),
 as in goal-to-torque_MPSoC/calib/calib_cpo.py, whose tag poses made the calibration: the same
-corner order, the same model of the marker. pick_target_3d_node looks for it in the color image of
-each capture the detector found the object in; the control task adds the object minus the tag to
-the tag position that the joint angles of that capture give.
+corner order, the same model of the marker. vitis_ai_detector_node looks for it in each image that
+it runs (TagSearch), pick_target_3d_node pairs the result with the object of the same capture
+(TagResults); the control task adds the object minus the tag to the tag position that the joint
+angles of that capture give.
 
   ToolTagFinder.find(gray, t_s)   the tag in a grayscale image: first in a window around where it
                                   was last seen (it moves little between two captures), then in the
                                   whole image, with the plain detector; AprilTag corner refinement
                                   only in a window (on a whole image it takes about 20 times as
                                   long). After a whole image without the tag the next one waits
-                                  whole_image_period_s: a result then has no tag ('not_searched')
+                                  whole_image_period_s: a result then has no tag ('not_searched').
+                                  whole_image_scale < 1: the whole image is searched in a copy
+                                  that much smaller, and the corners found are taken again at full
+                                  size in a window around them (I-129: the whole image is the cost
+                                  under memory pressure)
   gray_of_image(...)              a grayscale view of a sensor_msgs/Image's fields (rgb8, bgr8,
                                   mono8)
+  TagSearch(finder, done)         the search beside the inference (I-122): vitis_ai_detector_node
+                                  offers each image that it runs; a thread of its own finds the tag
+                                  in it while the DPU runs, and done() publishes the result
+  TagResults(keep_s)              those results by capture, for pick_target_3d_node: the object of
+                                  a capture waits a bounded time for the tag of the same capture
 
 Tests: python3 -m pytest src/target_3d_pkg/test/test_tool_tag.py (OpenCV with aruco, numpy)."""
 
+from collections import OrderedDict
 from dataclasses import dataclass
+import sys
+import threading
+import time
+import traceback
 
 import cv2
 import numpy as np
@@ -69,9 +84,11 @@ class ToolTagFinder:
     """Finds one tag (tag_id, black square size_m) in grayscale images of one camera."""
 
     def __init__(self, tag_id, size_m, refine='apriltag', window_margin_px=48, window_keep_s=0.5,
-                 whole_image_period_s=0.2):
+                 whole_image_period_s=0.2, whole_image_scale=1.0):
         if not size_m > 0.0:
             raise ValueError(f'tag size {size_m!r} m: the side of the black square, > 0')
+        if not 0.25 <= whole_image_scale <= 1.0:
+            raise ValueError(f'whole image scale {whole_image_scale!r}: from 0.25 to 1')
         if refine not in ('apriltag', 'subpix', 'none'):
             raise ValueError(f"tag corner refinement {refine!r} is none of apriltag, subpix, none")
         self.tag_id = int(tag_id)
@@ -90,11 +107,13 @@ class ToolTagFinder:
         self.margin = int(window_margin_px)
         self.keep_s = float(window_keep_s)
         self.whole_period_s = float(whole_image_period_s)
+        self.whole_scale = float(whole_image_scale)
         self.K = None
         self.D = None
         self._last_box = None  # (u0, v0, u1, v1) of the corners the last time
         self._last_t = None
         self._miss_t = None  # when the whole image last had no tag of ours
+        self._full_next = False  # the copy missed: the next whole image at full size
         self.seen_ids = ()  # the ids of the last image with tags but not ours (to find tag_id)
 
     def set_camera(self, k, d):
@@ -148,6 +167,28 @@ class ToolTagFinder:
         )
         return box if box[2] - box[0] >= 16 and box[3] - box[1] >= 16 else None
 
+    def _whole(self, gray, w, h):
+        """the corners in the whole image by the plain detector, or a reason; at whole_scale < 1
+        in a smaller copy, then again at full size in the window around them. A tag that the
+        window misses is not found: the corners of the copy are too coarse for its pose (I-135
+        C8). The copy misses a small tag (OpenCV 4.5.4 of the board, rendered: below about
+        36 px across in the full image, a 65 mm tag from 1.1 m, 80 mm from 1.4 m), so after a
+        miss the next whole image is searched at full size, and after that at the copy again"""
+        s = self.whole_scale
+        if s >= 1.0 or self._full_next:
+            self._full_next = False
+            return self._corners_in(gray, (0, 0, w, h), [self.coarse])
+        sw, sh = max(16, round(w * s)), max(16, round(h * s))
+        small = cv2.resize(gray, (sw, sh), interpolation=cv2.INTER_AREA)
+        pts, reason = self._corners_in(small, (0, 0, sw, sh), [self.coarse])
+        if pts is not None:
+            pts = (pts + 0.5) * np.array([w / sw, h / sh]) - 0.5  # pixel centres: copy -> full
+            box = self._window(self._corner_box(pts), w, h)
+            pts, reason = (self._corners_in(gray, box, [self.coarse]) if box
+                           else (None, 'not_found'))
+        self._full_next = pts is None
+        return pts, reason
+
     def find(self, gray, t_s=None):
         """TagResult for one grayscale image taken at t_s [s] (for the window and the wait after
         a whole image without the tag; None: neither)."""
@@ -173,7 +214,7 @@ class ToolTagFinder:
                 and 0.0 <= t_s - self._miss_t < self.whole_period_s
             ):
                 return TagResult(False, 'not_searched')
-            pts, reason = self._corners_in(gray, (0, 0, w, h), [self.coarse])
+            pts, reason = self._whole(gray, w, h)
             if pts is None:
                 self._miss_t = t_s
                 return TagResult(False, reason)
@@ -213,3 +254,106 @@ def gray_of_image(data, height, width, step, encoding):
         img = rows[:, : width * 3].reshape(height, width, 3)
         return cv2.cvtColor(img, cv2.COLOR_RGB2GRAY if encoding == 'rgb8' else cv2.COLOR_BGR2GRAY)
     return None
+
+
+class TagSearch:
+    """The tag search in a thread of its own, one image at a time (I-122).
+
+    offer(key, stamp_ns, image): image (BGR or grayscale, not written to afterwards) taken at
+    stamp_ns; key goes back with its result. done(key, result, search_ms) is called from the
+    thread. An image offered while another one waits replaces it, and the replaced one gets
+    done(key, TagResult(False, 'busy'), 0.0) from the caller of offer(): every image offered gets
+    one result, so the side that pairs them never waits for a result that will not come. A search
+    that raises gives 'search_error' and the thread goes on (I-127).
+    """
+
+    def __init__(self, finder, done):
+        self.finder = finder
+        self.done = done
+        self._cv = threading.Condition()
+        self._next = None  # (key, stamp_ns, image) waiting for the thread
+        self._stop = False
+        self._told = set()  # the kinds of error already printed: one traceback each
+        self._thread = threading.Thread(target=self._loop, name='tool_tag_search', daemon=True)
+        self._thread.start()
+
+    def offer(self, key, stamp_ns, image):
+        with self._cv:
+            replaced, self._next = self._next, (key, stamp_ns, image)
+            self._cv.notify()
+        if replaced is not None:
+            self.done(replaced[0], TagResult(False, 'busy'), 0.0)
+
+    def stop(self, timeout_s=1.0):
+        with self._cv:
+            self._stop = True
+            self._cv.notify()
+        self._thread.join(timeout_s)
+
+    def _loop(self):
+        while True:
+            with self._cv:
+                while self._next is None and not self._stop:
+                    self._cv.wait()
+                if self._stop:
+                    return
+                key, stamp_ns, image = self._next
+                self._next = None
+            t0 = time.perf_counter_ns()
+            try:
+                gray = image if image.ndim == 2 else cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+                res = self.finder.find(gray, 1e-9 * stamp_ns)
+            except Exception:  # one bad image must not end the search of every later one
+                self._tell('search')
+                res = TagResult(False, 'search_error')
+            try:
+                self.done(key, res, (time.perf_counter_ns() - t0) / 1e6)
+            except Exception:  # e.g. a publish while the node shuts down
+                self._tell('done')
+
+    def _tell(self, where):
+        if where not in self._told:
+            self._told.add(where)
+            print(f'tool_tag: the {where} of an image raised (once per kind; the thread goes on):',
+                  file=sys.stderr)
+            traceback.print_exc()
+
+
+class TagResults:
+    """The tag results by capture stamp (pick_target_3d_node): put() from the subscription,
+    wait() from the callback of the object, in another thread. Results older than keep_s behind
+    the newest are dropped."""
+
+    def __init__(self, keep_s=1.0, same_capture_ns=1_000_000):
+        self.keep_ns = int(keep_s * 1e9)
+        self.same_ns = int(same_capture_ns)  # two images are 33 ms apart: within this, the same
+        self._cv = threading.Condition()
+        self._by_stamp = OrderedDict()  # stamp_ns -> value, in the order they came
+
+    def put(self, stamp_ns, value):
+        with self._cv:
+            self._by_stamp[int(stamp_ns)] = value
+            newest = int(stamp_ns)
+            while self._by_stamp:
+                oldest = next(iter(self._by_stamp))
+                if newest - oldest <= self.keep_ns:
+                    break
+                del self._by_stamp[oldest]
+            self._cv.notify_all()
+
+    def _find(self, stamp_ns):
+        for s in reversed(self._by_stamp):
+            if abs(s - stamp_ns) < self.same_ns:
+                return self._by_stamp[s]
+        return None
+
+    def wait(self, stamp_ns, timeout_s):
+        """the result of the capture at stamp_ns, waiting at most timeout_s for it; None: none"""
+        deadline = time.monotonic() + max(0.0, timeout_s)
+        with self._cv:
+            while True:
+                value = self._find(int(stamp_ns))
+                left = deadline - time.monotonic()
+                if value is not None or left <= 0.0:
+                    return value
+                self._cv.wait(left)

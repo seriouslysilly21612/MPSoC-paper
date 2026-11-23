@@ -36,14 +36,18 @@ CSimCamera::Start(const Config& astCfg, const char* astrURDF, const CHighLevelRT
 	const Config& c = astCfg;
 	bool bOk = apState != NULL && apSlot != NULL && std::isfinite(c.dHz) && c.dHz > 0.0 && c.dHz <= 1000.0 &&
 	           std::isfinite(c.dLatencyS) && c.dLatencyS >= 0.0 && c.dLatencyS * c.dHz <= (double)(PENDING - 2) &&
-	           std::isfinite(c.dNoiseM) && c.dNoiseM >= 0.0 && c.nStateAge >= 0 && c.tPeriod > 0;
+	           std::isfinite(c.dNoiseM) && c.dNoiseM >= 0.0 && c.nStateAge >= 0 && c.tPeriod > 0 &&
+	           c.nPlaces >= 1 && c.nPlaces <= (int)PLACES;
 	for (int k = 0; k < 3; k++)
-		bOk = bOk && std::isfinite(c.adObject[k]) && std::isfinite(c.adBias[k]) && std::isfinite(c.adTagOffset[k]);
+		bOk = bOk && std::isfinite(c.adBias[k]) && std::isfinite(c.adTagOffset[k]);
+	for (int p = 0; bOk && p < c.nPlaces; p++)
+		for (int k = 0; k < 3; k++)
+			bOk = bOk && std::isfinite(c.aadObject[p][k]);
 	if (!bOk)
 	{
 		DBG_LOG_ERROR("(CSimCamera) SIM_CAM_HZ above 0 up to 1000; SIM_CAM_LATENCY_MS not negative and below %d "
-		              "captures; SIM_CAM_NOISE_MM not negative; SIM_CAM_OBJECT_M and SIM_CAM_BIAS_MM three numbers",
-		              (int)PENDING - 2);
+		              "captures; SIM_CAM_NOISE_MM not negative; SIM_CAM_OBJECT_M three numbers a place, "
+		              "1 to %d places; SIM_CAM_BIAS_MM three numbers", (int)PENDING - 2, (int)PLACES);
 		return FALSE;
 	}
 	if (FALSE == m_cFk.Init(astrURDF, (double)c.tPeriod * 1e-9, astHl))
@@ -53,14 +57,19 @@ CSimCamera::Start(const Config& astCfg, const char* astrURDF, const CHighLevelRT
 	m_pObs = apObs;
 	m_pSlot = apSlot;
 	m_cFilter.SetParams(c.stFilter);
+	m_uPlace.store(0);
+	m_uPlaceSeen = 0;
 	m_bStop.store(false);
 	m_th = std::thread(&CSimCamera::Run, this);
 	const bool bTag = (apObs != NULL && c.bTagFormat);
 	printf("[SIMCAM] a camera in place of the bridge: an object at (%.3f, %.3f, %.3f) m, %.0f results a second, each "
-	       "%.0f ms after its capture, noise %.1f mm; %s\n", c.adObject[0], c.adObject[1], c.adObject[2], c.dHz,
-	       c.dLatencyS * 1e3, c.dNoiseM * 1e3,
+	       "%.0f ms after its capture, noise %.1f mm; %s\n", c.aadObject[0][0], c.aadObject[0][1], c.aadObject[0][2],
+	       c.dHz, c.dLatencyS * 1e3, c.dNoiseM * 1e3,
 	       apObs == NULL ? "in the base frame, through the checks and the average of the bridge into the goal slot" :
 	       bTag ? "relative to the tool tag, into the mailbox" : "in the base frame, into the mailbox");
+	// always, so that a list cut short in the cfg shows (one place where five were meant)
+	printf("[SIMCAM] %d place%s of the object (SIM_CAM_OBJECT_M): run r of the application puts it at place "
+	       "(r - 1) mod %d + 1\n", c.nPlaces, c.nPlaces == 1 ? "" : "s", c.nPlaces);
 	if (!bTag && (c.adBias[0] != 0.0 || c.adBias[1] != 0.0 || c.adBias[2] != 0.0))
 		printf("[SIMCAM] error of the calibration (%.1f, %.1f, %.1f) mm on every result\n", c.adBias[0] * 1e3,
 		       c.adBias[1] * 1e3, c.adBias[2] * 1e3);
@@ -83,8 +92,29 @@ CSimCamera::Stop()
 		printf(": %ld written into the mailbox, %ld not written", m_pObs->Count(CObsWriter::eWritten), nNot);
 	}
 	else
-		printf(": %ld goals into the slot", m_cFilter.Count(CGoalFilter::eAccepted));
-	printf("; %ld captures without a new state, %ld dropped (too many on their way)\n", m_nNoState, m_nDropped);
+		printf(": %ld goals into the slot", m_nGoalsBefore + m_cFilter.Count(CGoalFilter::eAccepted));
+	printf("; %ld captures without a new state, %ld dropped (too many on their way)", m_nNoState, m_nDropped);
+	if (m_stCfg.nPlaces > 1)
+		printf("; the object moved %ld times, %ld results of the place before dropped", m_nMoves, m_nStale);
+	printf("\n");
+}
+
+int
+CSimCamera::SetPlace(unsigned auRun, double* adOut)
+{
+	const unsigned uPlace = auRun % (unsigned)(m_stCfg.nPlaces > 0 ? m_stCfg.nPlaces : 1);
+	m_uPlace.store(uPlace, std::memory_order_release);
+	for (int k = 0; k < 3; k++)
+		adOut[k] = m_stCfg.aadObject[uPlace][k];
+	return (int)uPlace;
+}
+
+void
+CSimCamera::Place(double* adOut) const
+{
+	const unsigned uPlace = m_uPlace.load(std::memory_order_acquire);
+	for (int k = 0; k < 3; k++)
+		adOut[k] = m_stCfg.aadObject[uPlace][k];
 }
 
 void
@@ -97,6 +127,19 @@ CSimCamera::Run()
 	while (!m_bStop.load())
 	{
 		const uint64_t tNow = CObsWriter::NowNs();
+		const unsigned uPlace = m_uPlace.load(std::memory_order_acquire);
+		if (uPlace != m_uPlaceSeen)		// the object moved: the estimate starts again, as for another target
+		{
+			m_uPlaceSeen = uPlace;
+			m_nMoves++;
+			if (m_pObs != NULL)
+				m_pObs->NextTarget();
+			else
+			{
+				m_nGoalsBefore += m_cFilter.Count(CGoalFilter::eAccepted);	// Reset() clears the counts too
+				m_cFilter.Reset();
+			}
+		}
 		if (tNow >= tNext)
 		{
 			Capture();
@@ -132,8 +175,10 @@ CSimCamera::Capture()
 		m_cFk.ToolPoint(stState.adQ, m_stCfg.adTagOffset, adTag);
 	Result stR;
 	stR.tCapture = (uint64_t)stState.tRelease - (uint64_t)m_stCfg.nStateAge * (uint64_t)m_stCfg.tPeriod;
+	stR.uPlace = m_uPlaceSeen;
+	const double* const adObj = m_stCfg.aadObject[m_uPlaceSeen];
 	for (int k = 0; k < 3; k++)
-		stR.adZ[k] = m_stCfg.adObject[k] - adTag[k] + (bTag ? 0.0 : m_stCfg.adBias[k]) + m_stCfg.dNoiseM * Normal(m_uRng);
+		stR.adZ[k] = adObj[k] - adTag[k] + (bTag ? 0.0 : m_stCfg.adBias[k]) + m_stCfg.dNoiseM * Normal(m_uRng);
 	m_aPending[m_uHead++ % PENDING] = stR;
 	m_nCaptures++;
 }
@@ -142,6 +187,11 @@ CSimCamera::Capture()
 void
 CSimCamera::Deliver(const Result& astR)
 {
+	if (astR.uPlace != m_uPlaceSeen)	// seen before the object moved: not of the target now
+	{
+		m_nStale++;
+		return;
+	}
 	m_nResults++;
 	if (m_pObs != NULL)
 	{

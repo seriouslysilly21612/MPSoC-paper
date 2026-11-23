@@ -151,7 +151,7 @@ tools: $(BIN_DIR)/hl_check $(BIN_DIR)/goal_filter_check $(BIN_DIR)/slot_check $(
        $(BIN_DIR)/obs_mailbox_check $(BIN_DIR)/obs_receiver_check $(BIN_DIR)/obs_estimate_check \
        $(BIN_DIR)/obs_goal_check $(BIN_DIR)/obs_status_check $(BIN_DIR)/r5_link_check \
        $(BIN_DIR)/fw_cfg_header $(BIN_DIR)/rbdl_model_code $(BIN_DIR)/ctrl_numbers_header $(BIN_DIR)/shadow_check \
-       $(BIN_DIR)/control_check $(BIN_DIR)/s2_link_check \
+       $(BIN_DIR)/control_check $(BIN_DIR)/s2_link_check $(BIN_DIR)/obs_command_check \
        $(BIN_DIR)/console_check \
        $(if $(filter 1,$(MUJOCO)),$(BIN_DIR)/model_check)
 
@@ -255,6 +255,13 @@ $(BIN_DIR)/shadow_check: $(TOOLS_DIR)/shadow_check.cpp $(TOOL_OBJS) $(SHADOW_OBJ
 
 # the control task without its operating system (src/shadow/ControlCycle.h; S2), with a second controller on its reports
 CONTROL_OBJS := $(OBJ_DIR)/shadow/ControlCycle.o $(OBJ_DIR)/shadow/ShadowControl.o $(OBJ_DIR)/TrajectoryRT.o $(OBJ_DIR)/base/Config.o
+# the command of a method with the mailbox and the receiver's cost in the control cycle (I-137 D4)
+$(BIN_DIR)/obs_command_check: $(TOOLS_DIR)/obs_command_check.cpp $(TOOL_OBJS) $(CONTROL_OBJS) \
+                              $(SRC_DIR)/shadow/ShadowParams.h $(SRC_DIR)/ipc/ipc_layout.h $(SRC_DIR)/ipc/FwCfg.h \
+                              $(SRC_DIR)/obs/ObsContract.h
+	@mkdir -p $(BIN_DIR)
+	$(CXX) $(CXXFLAGS) $(INCLUDES) -o $@ $< $(TOOL_OBJS) $(CONTROL_OBJS) $(LDLIBS)
+
 $(BIN_DIR)/control_check: $(TOOLS_DIR)/control_check.cpp $(TOOL_OBJS) $(CONTROL_OBJS) $(SRC_DIR)/shadow/ShadowWriter.h \
                           $(SRC_DIR)/shadow/ShadowParams.h $(SRC_DIR)/shadow/control_vectors.h $(SRC_DIR)/ipc/ipc_layout.h \
                           $(SRC_DIR)/shadow/shadow_vectors.h $(SRC_DIR)/ipc/FwCfg.h

@@ -1,0 +1,5 @@
+mode,level,response_us,run
+0,p800,495.5,s2a_tt_off
+1,p800,478.0,s2a_m1_p800
+0,idle,478.5,s2a_m416_idle
+1,idle,448.8,s2a_m320_idle

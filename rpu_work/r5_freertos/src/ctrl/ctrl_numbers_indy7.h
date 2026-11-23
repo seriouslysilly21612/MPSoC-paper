@@ -62,9 +62,9 @@ static const double CTRL_NUMBERS[CTRL_NUMBERS_COUNT] =
 };
 
 /* the receiver: other values refuse the methods with the mailbox (IPC_CMD_OBS), not the controller */
-#define CTRL_OBS_NUMBERS_CRC   0x108279EDu	/* of the numbers below: IPC_CMD_OBS brings the APU's */
+#define CTRL_OBS_NUMBERS_CRC   0x2A516F19u	/* of the numbers below: IPC_CMD_OBS brings the APU's */
 #define CTRL_CONTRACT_CRC      0x2E7B0347u	/* of [CONTRACT] (obs/ObsContract.h): the camera side compares it */
-#define CTRL_OBS_NUMBERS_COUNT 25
+#define CTRL_OBS_NUMBERS_COUNT 27
 
 static const double CTRL_OBS_NUMBERS[CTRL_OBS_NUMBERS_COUNT] =
 {
@@ -93,6 +93,8 @@ static const double CTRL_OBS_NUMBERS[CTRL_OBS_NUMBERS_COUNT] =
 	0x1p+0,	/* 1: smoothing gap [s] */
 	0x1p+0,	/* 1: target lost after [s] */
 	0x1p+1,	/* 2: age of the joint angles of a period [periods] */
+	-0x1.999999999999ap-5,	/* -0.05: hover offset x [m] */
+	0x0p+0,	/* 0: hover offset y [m] */
 };
 
 #endif /* CTRL_NUMBERS_H */

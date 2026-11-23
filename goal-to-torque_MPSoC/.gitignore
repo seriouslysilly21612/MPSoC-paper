@@ -14,6 +14,7 @@ ros2/log/
 
 # the results of the runs
 indy7/jt_*/
+indy7/trial_batch.cfg
 humanoid/summary_*.txt
 humanoid/hl_goals.csv
 humanoid/joint_test.csv

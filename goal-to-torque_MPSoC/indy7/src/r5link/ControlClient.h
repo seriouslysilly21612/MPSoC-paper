@@ -53,6 +53,7 @@ public:
 		long	nCommands;			// written
 		long	nRefused;			// ... that the R5 refused
 		long	nQueueFull;			// commands that found the queue full: not written
+		long	nSentAgain;			// commands written once more after a refusal (SendAgain)
 		long	nGoals;				// goals written
 		long	nCtrlFaults;		// controller faults of the R5 since the first report of this run ...
 		long	nDriveStops;		// ... and its stops of the drives (a dropout, a servo on that ran out) ...
@@ -70,12 +71,13 @@ public:
 	                   m_bAnswer(false), m_bReport(false), m_bSample(false), m_uMotion(0), m_uStates(0), m_bStates(false),
 	                   m_bStatesSim(false), m_uStatePeriod(0), m_uFaults0(0), m_uStops0(0), m_uNoState0(0), m_uPlans0(0),
 	                   m_uIks0(0), m_uPlanLate0(0), m_uGoals0(0),
-	                   m_pGoalSlot(NULL), m_uGoalSeen(0)
+	                   m_pGoalSlot(NULL), m_uGoalSeen(0), m_uGoalSeenAtStart(0)
 	{
 		memset(&m_stReport, 0, sizeof(m_stReport));
 		memset(&m_stSample, 0, sizeof(m_stSample));
 		memset(&m_stCounts, 0, sizeof(m_stCounts));
 		memset(m_astQueue, 0, sizeof(m_astQueue));
+		memset(&m_stLastSent, 0, sizeof(m_stLastSent));
 		m_adGoalOffset[0] = m_adGoalOffset[1] = m_adGoalOffset[2] = 0.0;
 		m_auHlCounts[0] = m_auHlCounts[1] = m_auHlCounts[2] = m_auHlCounts[3] = 0;
 	}
@@ -235,6 +237,9 @@ public:
 		if (m_nQueued == 0 || m_uSent != m_uAnswered || !m_bReport)
 			return;
 		m_uSentCmd = m_astQueue[0].cmd;
+		m_stLastSent = m_astQueue[0];
+		if (m_uSentCmd == IPC_CMD_START)
+			m_uGoalSeenAtStart = m_uGoalSeen;	// SendAgain: the goals after it go again
 		m_uSent = m_pLink->SendControlCommand(m_astQueue[0]);
 		m_nQueued--;
 		for (int n = 0; n < m_nQueued; n++)
@@ -242,6 +247,26 @@ public:
 		m_stCounts.nCommands++;
 	}
 	bool IsSettled() const { return m_nQueued == 0 && m_uSent == m_uAnswered; }
+	/* the command written last, with its numbers, again at the head of the queue (after its answer: a refusal
+	 * that one period can cause, such as IPC_REFUSED_NO_STATE). A start: the goal of the slot leaves again behind
+	 * it, as TRACK on the R5 counts the goals that arrive from its start on (I-127). false: none written yet, its
+	 * answer not there yet, or the queue is full */
+	bool SendAgain()
+	{
+		if (m_uSent == 0 || m_uSent != m_uAnswered || m_nQueued >= (int)QUEUE)
+			return false;
+		for (int n = m_nQueued; n > 0; n--)
+			m_astQueue[n] = m_astQueue[n - 1];
+		m_astQueue[0] = m_stLastSent;
+		m_nQueued++;
+		m_stCounts.nSentAgain++;
+		if (m_stLastSent.cmd == IPC_CMD_START)		// as Queue(): the counts of the motion begin again
+		{
+			m_auHlCounts[0] = m_auHlCounts[1] = m_auHlCounts[2] = m_auHlCounts[3] = 0;
+			m_uGoalSeen = m_uGoalSeenAtStart;
+		}
+		return true;
+	}
 	/* once per command: TRUE with the command and what the R5 did with it (IPC_DONE_OK or IPC_REFUSED_*); the
 	 * numbers of a start that was refused are in the report */
 	bool TakeAnswer(uint32_t* apuCmd, uint32_t* apuResult)
@@ -298,7 +323,7 @@ public:
 	void UseGoalSlot(const CGoalSlot* apSlot, const double* adOffset)
 	{
 		m_pGoalSlot = apSlot;
-		m_uGoalSeen = apSlot->Count();
+		m_uGoalSeen = m_uGoalSeenAtStart = apSlot->Count();
 		for (int k = 0; k < 3; k++)
 			m_adGoalOffset[k] = adOffset[k];
 	}
@@ -328,6 +353,7 @@ private:
 	CR5Link*		m_pLink;
 	double			m_dTs;
 	ipc_command_t	m_astQueue[QUEUE];
+	ipc_command_t	m_stLastSent;		// the command written last, for SendAgain
 	int				m_nQueued;
 	uint32_t		m_uSent;			// the number of the command written last (0: none yet) ...
 	uint32_t		m_uSentCmd;			// ... and what it was
@@ -347,6 +373,7 @@ private:
 	uint32_t		m_uNoState0, m_uPlans0, m_uIks0, m_uPlanLate0, m_uGoals0;
 	const CGoalSlot* m_pGoalSlot;
 	unsigned int	m_uGoalSeen;
+	unsigned int	m_uGoalSeenAtStart;	// m_uGoalSeen when the last start was written (SendAgain)
 	double			m_adGoalOffset[3];
 	Counts			m_stCounts;
 };

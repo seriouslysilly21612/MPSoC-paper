@@ -83,7 +83,8 @@ enum
 	OBS_N_TAG = OBS_N_EPS_M + 2,
 	OBS_N_BOX = OBS_N_TAG + 3,
 	OBS_N_R_MAX = OBS_N_BOX + 6, OBS_N_FLOOR, OBS_N_HOVER, OBS_N_KAPPA, OBS_N_GAP, OBS_N_LOSS, OBS_N_STATE_AGE,
-	OBS_NUMBERS
+	OBS_N_HOVER_XY,		// 2: the horizontal hover offset x, y (APP_HOVER_XY_M)
+	OBS_NUMBERS = OBS_N_HOVER_XY + 2
 };
 
 /* the check value of a controller: of its numbers (ShadowNumbersCrc of shadow/ShadowParams.h) and of its model

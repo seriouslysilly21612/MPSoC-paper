@@ -95,6 +95,7 @@ CControlCycle::SetObsLink(const ObsLink& astLink)
 		bOk = bOk && std::isfinite(n[OBS_N_EPS_M + m]) && n[OBS_N_EPS_M + m] >= 0.0;
 	for (int k = 0; k < 3; k++)
 		bOk = bOk && std::isfinite(n[OBS_N_TAG + k]);
+	bOk = bOk && CGoalFilter::HoverXYOk(&n[OBS_N_HOVER_XY]);
 	if (!bOk)
 		return FALSE;
 	CObsGoal::Config& c = m_stObsCfg;
@@ -115,6 +116,8 @@ CControlCycle::SetObsLink(const ObsLink& astLink)
 	c.stFilter.dRMax = n[OBS_N_R_MAX];
 	c.stFilter.dFloor = n[OBS_N_FLOOR];
 	c.stFilter.dHover = n[OBS_N_HOVER];
+	for (int k = 0; k < 2; k++)
+		c.stFilter.adHoverXY[k] = n[OBS_N_HOVER_XY + k];
 	c.stFilter.dKappa = n[OBS_N_KAPPA];
 	c.stFilter.dGapS = n[OBS_N_GAP];
 	c.dLossS = n[OBS_N_LOSS];
@@ -163,6 +166,8 @@ CControlCycle::ObsCommand(const ipc_command_t& astCommand)
 		}
 		m_uObsMethod = uMethod;
 	}
+	// the cost of eq. (6) is that of this run of the application: the receiver goes on between runs (I-135 C1)
+	m_cObs.ClearCost();
 	return IPC_DONE_OK;
 }
 
@@ -199,6 +204,8 @@ CControlCycle::ObsStep(const Input& astIn)
 	if (m_bObsGoals && m_cObsSlot.Read(adP, &uCount) && uCount != m_uObsSeen)
 	{
 		m_uObsSeen = uCount;
+		adP[0] += m_adObsNumbers[OBS_N_HOVER_XY];
+		adP[1] += m_adObsNumbers[OBS_N_HOVER_XY + 1];
 		adP[2] += m_adObsNumbers[OBS_N_HOVER];
 		m_cGoal.Write(adP);
 	}
@@ -208,6 +215,7 @@ CControlCycle::ObsStep(const Input& astIn)
 void
 CControlCycle::StopMotion()
 {
+	m_bObsGoals = false;      // its TRACK ended: the results of the camera are no goals any more (I-106)
 	if (m_cTraj.IsRunning())
 		m_cTraj.End(CTrajectoryRT::eAborted);
 	m_pCtl->SetControlMode(C::eGravityCompensation);

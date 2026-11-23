@@ -10,7 +10,8 @@
  * its servo request in the next cycle, once; on the bench without a simulated arm there is no state; the report;
  * the controller is built on the link region and the counter, and one whose receiver of the camera results cannot
  * start runs and says so; the step has the release of its cycle, and the response (release to torque) of the
- * period before that had a state, once. */
+ * period before that had a state, once.  The hand-over (I-143): a step is the control task's from its hand-over to
+ * its end; a cycle that finds it not done keeps the torque it gave, hands nothing over and says so once a run. */
 #include <stdio.h>
 #include <string.h>
 #include "control_link.h"
@@ -41,6 +42,10 @@ int      control_ctrl_build(volatile uint32_t *region, double ticks_per_s)
 }
 uint32_t control_ctrl_check_value(void) { return 0xC0FFEE02u; }
 uint32_t control_ctrl_obs_check_value(void) { return 0x0B5C0FFEu; }
+static uint64_t (*obs_clock_set)(void);
+static obs_cost_t a_cost;
+void     control_ctrl_set_obs_clock(uint64_t (*now)(void)) { obs_clock_set = now; }
+int      control_ctrl_obs_cost(obs_cost_t *out) { *out = a_cost; return 1; }
 void     control_ctrl_step(const control_in_t *in, control_out_t *out, ipc_report_t *r)
 {
     steps++;
@@ -83,15 +88,32 @@ void axis_control_torque_input(int fresh, int usable, const double tau[AXIS_COUN
 }
 
 /* ---- the counter: the end of a period with a state is its response ---- */
-static uint64_t counter;
-uint64_t host_test_counter(void) { return counter; }
+static uint64_t counter, counter_step;        /* counter_step: every read is that much later */
+uint64_t host_test_counter(void) { counter += counter_step; return counter; }
 
 /* ---- events, console ---- */
 static event_t an_event; static int events, fail_lines;
 event_t *event_reserve(uint32_t id, int budgeted) { (void)budgeted; memset(&an_event, 0, sizeof(an_event)); an_event.id = id; return &an_event; }
 void event_publish(void) { events++; }
+static int posts, posted[3]; static uint32_t posted_id;
+void event_post(uint32_t id, int budgeted, int a, int b, int c)
+{
+    (void)budgeted; posts++; posted_id = id; posted[0] = a; posted[1] = b; posted[2] = c;
+}
 static int obs_lines;
 void xil_printf(const char *f, ...) { if (strstr(f, "FAIL") != NULL) fail_lines++; if (strstr(f, "IPC_CMD_OBS") != NULL) obs_lines++; }
+
+/* a cycle handed over and its step run, as the EtherCAT task and the control task do it: 1 with the two times */
+static int step_once(uint32_t period, int bus_state, uint64_t release, int32_t *traj_ns, int32_t *ctrl_ns)
+{
+    uint32_t end;
+    int32_t t, c;
+
+    if (!control_link_give(period, bus_state, release)) return 0;
+    CHECK(!control_link_idle() && !control_link_result(period, &end, &t, &c));   /* the control task's now */
+    CHECK(control_link_run() == 1 && control_link_run() == 0 && control_link_idle());
+    return control_link_result(period, &end, traj_ns, ctrl_ns);
+}
 
 int main(void)
 {
@@ -100,7 +122,7 @@ int main(void)
 
     /* not built: said so, never runs, the drives get no torque */
     CHECK(control_link_start() == 0 && fail_lines == 1);
-    CHECK(control_link_step(1, 1, 1000ull, &traj_ns, &ctrl_ns) == 0 && steps == 0 && reports == 0 && traj_ns == 7);
+    CHECK(step_once(1, 1, 1000ull, &traj_ns, &ctrl_ns) == 0 && steps == 0 && reports == 0 && traj_ns == 7);
     control_link_drives();
     CHECK(inputs == 1 && input_usable == 0 && input_fresh == 0 && input_tau[0] == 0.0 && servo_calls == 0);
 
@@ -109,7 +131,9 @@ int main(void)
     CHECK(control_link_start() == 1 && fail_lines == 1 && obs_lines == 1);
     CHECK(built_region == (volatile uint32_t *)OCM_LINK_BASE && built_ticks_per_s == (double)SYSCNT_HZ);
     can_build = 1;
+    counter_step = 26u;                              /* the cost of one read of the clock, measured at the start */
     CHECK(control_link_start() == 1 && fail_lines == 1 && obs_lines == 1);
+    counter_step = 0u;
 
     /* a simulated arm: its new state is the state of the step, and the torque goes back with its step number */
     sim_result = 1;
@@ -124,7 +148,7 @@ int main(void)
     report.in.flags = IPC_SHADOW_CTRL; report.traj_ns = 60000; report.ctrl_ns = 180000;
     report.n_plans = 1; report.plan_us = 900; report.n_iks = 1; report.ik_us = 7000; report.n_goals = 1;
     counter = 100000ull + 99999ull;                  /* the period ends 1 ms after its release */
-    CHECK(control_link_step(100, 0, 100000ull, &traj_ns, &ctrl_ns) == 1 && steps == 1 && traj_ns == 60000 && ctrl_ns == 180000);
+    CHECK(step_once(100, 0, 100000ull, &traj_ns, &ctrl_ns) == 1 && steps == 1 && traj_ns == 60000 && ctrl_ns == 180000);
     CHECK(stepped.release == 100000ull && stepped.response < 0.0f);     /* no period before it */
     CHECK(stepped.period == 100 && stepped.state == 1 && stepped.sim_arm == 1 && stepped.servo_on == 1 &&
           stepped.not_ready == 0x4u && stepped.sim_step == 41 && stepped.q[5] == 0.1 * 6 && stepped.qd[0] == -0.2 &&
@@ -146,18 +170,18 @@ int main(void)
     sim_result = 0;
     report.state = IPC_CTL_SIM_ARM; report.in.flags = 0; report.traj_ns = 0; report.ctrl_ns = 0;
     answer.torque = 0; answer.servo = 0;
-    CHECK(control_link_step(101, 1, 101000ull, &traj_ns, &ctrl_ns) == 1 && steps == 2 && traj_ns == -1 && ctrl_ns == -1);
+    CHECK(step_once(101, 1, 101000ull, &traj_ns, &ctrl_ns) == 1 && steps == 2 && traj_ns == -1 && ctrl_ns == -1);
     CHECK(stepped.state == 0 && stepped.sim_arm == 1 && !had_command && !had_goal && sim_torques == 1);
     CHECK(stepped.response > 0.000999f && stepped.response < 0.001001f);     /* release to torque of the period 100 */
     CHECK(reports == 1);                    /* nothing to report: the report of the period with a state stays to be read */
     command.seq = 20; command.cmd = IPC_CMD_HOLD_ON; have_command = 1;
-    CHECK(control_link_step(101, 1, 101000ull, &traj_ns, &ctrl_ns) == 1 && stepped.state == 0 && had_command && sim_torques == 1);
+    CHECK(step_once(101, 1, 101000ull, &traj_ns, &ctrl_ns) == 1 && stepped.state == 0 && had_command && sim_torques == 1);
     CHECK(stepped.response < 0.0f);         /* a period without a state has no response: given once */
     CHECK(reports == 1);                    /* nor with a command that the period took: the next report answers it */
     /* a torque that is not usable and no request: said so */
     sim_result = 1; sim.step = 42;
     report.state = IPC_CTL_STATE | IPC_CTL_SIM_ARM;
-    CHECK(control_link_step(102, 1, 102000ull, &traj_ns, &ctrl_ns) == 1 && sim_torques == 2 && sim_torque.step == 42 && sim_torque.flags == 0u);
+    CHECK(step_once(102, 1, 102000ull, &traj_ns, &ctrl_ns) == 1 && sim_torques == 2 && sim_torque.step == 42 && sim_torque.flags == 0u);
     CHECK(reports == 2 && published.in.period == 102 && report_at < sim_torque_at);
     control_link_drives();
     CHECK(servo_calls == 1 && input_usable == 0);
@@ -169,6 +193,19 @@ int main(void)
           an_event.value[6] == 2);
     CHECK(an_event.value[7] == 1 && an_event.value[8] == 900 && an_event.value[9] == 1 && an_event.value[10] == 7000 &&
           an_event.value[11] == 0 && an_event.value[12] == 1 && an_event.value[15] == 1);
+    /* the receiver's cost: the clock is set at the start; a report once it has measured periods (ticks -> ns) */
+    CHECK(obs_clock_set != NULL);
+    a_cost.slots = 4u; a_cost.periods = 3u; a_cost.total_max = 1000u; a_cost.drain_max[0] = 100u;
+    a_cost.drain_max[2] = 300u; a_cost.drain_max[5] = 500u; a_cost.drain_periods[2] = 1u; a_cost.drain_periods[5] = 1u;
+    a_cost.select_max[3] = 70u; a_cost.select_max[8] = 90u;
+    control_link_report();
+    CHECK(events == 3 && an_event.id == EVENT_OBS_COST_REPORT && an_event.value[0] == 4 && an_event.value[1] == 3 &&
+          an_event.value[2] == (int32_t)(1000ull * 1000000000ull / SYSCNT_HZ) && an_event.value[5] > an_event.value[3] &&
+          an_event.value[7] == (int32_t)(500ull * 1000000000ull / SYSCNT_HZ) && an_event.value[6] == 0 &&
+          an_event.value[10] == (int32_t)(70ull * 1000000000ull / SYSCNT_HZ) && an_event.value[12] > an_event.value[10] &&
+          an_event.value[13] == 2 && an_event.value[14] == 5 &&
+          an_event.value[15] == (int32_t)(26ull * 1000000000ull / SYSCNT_HZ));
+    memset(&a_cost, 0, sizeof(a_cost));
 
     /* no simulated arm (the run of the APU that is up has written none) */
     sim_result = -1;
@@ -178,7 +215,7 @@ int main(void)
     report.state = IPC_CTL_STATE | IPC_CTL_ENABLED; report.in.flags = IPC_SHADOW_CTRL; report.ctrl_ns = 170000;
     report.cmd_result = IPC_REFUSED_FAULT; report.n_ctrl_faults = 2; report.n_drive_stops = 3;
     command.seq = 10; command.cmd = IPC_CMD_SERVO_ON; have_command = 1;
-    CHECK(control_link_step(103, 1, 103000ull, &traj_ns, &ctrl_ns) == 1 && traj_ns == -1 && ctrl_ns == 170000 && sim_torques == 2);
+    CHECK(step_once(103, 1, 103000ull, &traj_ns, &ctrl_ns) == 1 && traj_ns == -1 && ctrl_ns == 170000 && sim_torques == 2);
     if (AXIS_COUNT == IPC_CTRL_DOF) {
     /* the arm of the bus: the State of the cycle, and the drives get the torque and the request in the next, once */
     CHECK(stepped.state == 1 && stepped.sim_arm == 0 && stepped.servo_on == 1 && stepped.not_ready == 0x20u &&
@@ -187,10 +224,10 @@ int main(void)
     CHECK(servo_calls == 2 && servo_last == 1 && input_fresh == 1 && input_usable == 1 && input_tau[0] == 10.0 && input_tau[5] == 15.0);
     control_link_drives();                  /* a cycle without a step between (the firmware stopping) */
     CHECK(servo_calls == 2 && input_fresh == 0 && input_usable == 1 && input_tau[5] == 15.0);
-    CHECK(control_link_step(104, 0, 104000ull, &traj_ns, &ctrl_ns) == 1 && stepped.state == 0);      /* the frame did not come back */
+    CHECK(step_once(104, 0, 104000ull, &traj_ns, &ctrl_ns) == 1 && stepped.state == 0);      /* the frame did not come back */
     CHECK(reports == 4);                    /* ... and the period reports all the same: no simulated arm waits for a report */
     answer.servo = IPC_CMD_SERVO_OFF; answer.torque = 0;
-    CHECK(control_link_step(105, 1, 105000ull, &traj_ns, &ctrl_ns) == 1 && stepped.state == 1);
+    CHECK(step_once(105, 1, 105000ull, &traj_ns, &ctrl_ns) == 1 && stepped.state == 1);
     control_link_drives();
     CHECK(servo_calls == 3 && servo_last == 0 && input_fresh == 1 && input_usable == 0);
     } else {
@@ -200,7 +237,7 @@ int main(void)
     CHECK(servo_calls == 1 && input_usable == 0 && input_tau[0] == 0.0);
     }
     control_link_report();
-    CHECK(events == 2 && an_event.value[3] == 1 && an_event.value[4] == 1 && an_event.value[13] == 2 &&
+    CHECK(events == 4 && an_event.value[3] == 1 && an_event.value[4] == 1 && an_event.value[13] == 2 &&
           an_event.value[14] == 3 && an_event.value[15] == 0 && an_event.value[12] == 0);
 
     /* from the arm of the bus to a simulated one: the drives off, and nothing of the controller reaches them, neither
@@ -209,16 +246,53 @@ int main(void)
     answer.torque = 1; answer.servo = IPC_CMD_SERVO_ON;
     servo_calls = 0; servo_last = -1;
     i = reports;
-    CHECK(control_link_step(110, 1, 110000ull, &traj_ns, &ctrl_ns) == 1);
+    CHECK(step_once(110, 1, 110000ull, &traj_ns, &ctrl_ns) == 1);
     CHECK(reports == i + 1);                /* without a simulated arm every period reports, the bench's (no state) too */
     sim_result = 1; sim.step = 50;
-    CHECK(control_link_step(111, 1, 111000ull, &traj_ns, &ctrl_ns) == 1 && servo_calls == 1 && servo_last == 0);
+    CHECK(step_once(111, 1, 111000ull, &traj_ns, &ctrl_ns) == 1 && servo_calls == 0);   /* off by the EtherCAT task: */
     control_link_drives();
-    CHECK(servo_calls == 1 && input_usable == 0 && input_fresh == 0 && input_tau[0] == 0.0);
+    CHECK(servo_calls == 1 && servo_last == 0 && input_usable == 0 && input_fresh == 0 && input_tau[0] == 0.0);
     sim.step = 51;
-    CHECK(control_link_step(112, 1, 112000ull, &traj_ns, &ctrl_ns) == 1);
+    CHECK(step_once(112, 1, 112000ull, &traj_ns, &ctrl_ns) == 1);
     control_link_drives();
     CHECK(servo_calls == 1 && input_usable == 0 && input_fresh == 0 && input_tau[0] == 0.0);
+
+    /* a step that runs past the next release: the cycle gives the drives what they had, not fresh, hands nothing
+       over, and says so once for the cycles in a row; the step ends, and the next cycle gives its torque */
+    {
+        uint32_t end;
+
+        sim_result = -1;
+        answer.torque = 1; answer.servo = 0;
+        for (i = 0; i < IPC_CTRL_DOF; i++) answer.tau[i] = 20.0 + i;
+        CHECK(step_once(120, 1, 120000ull, &traj_ns, &ctrl_ns) == 1);
+        control_link_drives();
+        CHECK(input_fresh == 1 && control_link_late_total() == 0 && posts == 0);
+        i = steps;
+        CHECK(control_link_give(121, 1, 121000ull) == 1 && !control_link_idle());      /* begun, then interrupted */
+        bus.q[0] = 99.0;                     /* the next cycle's State: the step has the one of its own cycle */
+        control_link_drives();
+        CHECK(input_fresh == 0 && control_link_late_total() == 1 && posts == 1 && posted_id == EVENT_CONTROL_LATE &&
+              posted[0] == 121 && posted[1] == 1);
+        CHECK(control_link_give(122, 1, 122000ull) == 0 && steps == i);                 /* nothing over meanwhile */
+        control_link_drives();
+        CHECK(input_fresh == 0 && control_link_late_total() == 2 && posts == 1);        /* said once */
+        if (AXIS_COUNT == IPC_CTRL_DOF)
+            CHECK(input_usable == 1 && input_tau[0] == 20.0 && input_tau[5] == 25.0);   /* the torque it had */
+        CHECK(!control_link_result(121, &end, &traj_ns, &ctrl_ns));
+        counter = 123456789ull;
+        CHECK(control_link_run() == 1 && steps == i + 1 && stepped.period == 121 && control_link_idle());
+        if (AXIS_COUNT == IPC_CTRL_DOF)
+            CHECK(stepped.q[0] == 1.0);
+        CHECK(control_link_result(121, &end, &traj_ns, &ctrl_ns) == 1 && end == 123456789u &&
+              !control_link_result(122, &end, &traj_ns, &ctrl_ns));
+        control_link_drives();
+        CHECK(input_fresh == 1 && control_link_late_total() == 2);
+        CHECK(control_link_give(123, 1, 123000ull) == 1);                               /* a new run of them */
+        control_link_drives();
+        CHECK(control_link_late_total() == 3 && posts == 2 && posted[0] == 123);
+        CHECK(control_link_run() == 1);
+    }
 
     printf(fails ? "test_control_link: %d FAILED\n" : "test_control_link OK\n", fails);
     return fails != 0;

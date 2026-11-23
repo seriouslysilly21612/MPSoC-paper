@@ -128,12 +128,15 @@ typedef struct stConfigSystem
 	TSTRING	strCalibDir;
 	/* the camera application ('p', 'y' 8) */
 	INT32	nAppBridge;
+	INT32	nAppObsSlots;				// APP_OBS_SLOTS: B, the slots of the mailbox in use (1..8, eq. (6))
 	INT32	nAppResultFormat;			// APP_RESULT_FORMAT: 0 base, 1 tag (the tool tag of the image), -1 neither
 	std::vector<double> vAppGoalBox;
 	double	dAppGoalRMax, dAppGoalFloor, dAppHover, dAppKappa, dAppGapS, dAppLossS, dAppDurationS;
+	double	adAppHoverXY[2];			// APP_HOVER_XY_M: the hover point beside the object [m, base frame]
+	bool	bAppHoverXYOk;				// it is two finite numbers within CGoalFilter::HOVER_XY_MAX
 	/* the camera of the simulation (sim/SimCamera.h) */
 	INT32	nSimCam;					// SIM_CAM: 1 in place of the bridge (-s only)
-	std::vector<double> vSimCamObject;	// the object [m, base frame]
+	std::vector<double> vSimCamObject;	// the places of the object, three numbers each [m, base frame]
 	double	dSimCamHz, dSimCamLatencyS, dSimCamNoiseM;
 	INT32	nSimCamFormat;				// SIM_CAM_FORMAT: 0 tag, 1 base, -1 neither
 	std::vector<double> vSimCamBias;	// SIM_CAM_BIAS_MM [m]

@@ -13,7 +13,32 @@
 #include "ctrl/control_ctrl.h"
 #include "ctrl/ctrl_port.h"
 
+#if defined(__arm__) && !defined(HOST_TEST)
+#define MEMORY_BARRIER()    __asm__ volatile ("dmb" : : : "memory")
+#else
+#define MEMORY_BARRIER()    __asm__ volatile ("" : : : "memory")
+#endif
+
 _Static_assert(EVENT_VALUES >= 16, "the report of control_link_report() has 16 values");
+
+/* the clock of the receiver's cost (eq. (6)): the low word, one read (the cost takes differences mod 2^32, a period
+ * is far below its 42.9 s); each mark of the cost holds one read of it, obs_clock_ticks */
+static uint64_t obs_clock(void) { return sys_counter_low(); }
+static uint32_t obs_clock_ticks;
+
+/* one read of the clock: the least of 16 differences of two reads in a row */
+static uint32_t obs_clock_cost(void)
+{
+    uint32_t i, a, d, least = 0xFFFFFFFFu;
+
+    for (i = 0u; i < 16u; i++) {
+        a = sys_counter_low();
+        d = sys_counter_low() - a;
+        if (d < least)
+            least = d;
+    }
+    return least;
+}
 
 /* the bus has the joints of the controller (the Indy7).  An expression, not a condition of the preprocessor:
    IPC_CTRL_DOF is an enumerator, which #if takes for 0 */
@@ -30,9 +55,25 @@ static uint32_t n_steps, n_no_state, n_commands, n_refused, step_ns_max;
 static uint32_t n_faults, n_drive_stops, n_goals, n_goals_before;
 static uint32_t n_plans, n_iks, n_plan_late, n_plans_before, n_iks_before, plan_us_max, ik_us_max;
 
+/* Between the EtherCAT task and the control task (control_task.c), on one core, the EtherCAT task above it.  The
+ * EtherCAT task runs only while the control task waits or was interrupted, so it hands a cycle over, and takes what
+ * a step decided, only when the two generations are equal (the step it handed over is done): then the control task
+ * is in none of hand, result, held and drives_off.  The control task writes them before gen_done. */
+static volatile uint32_t gen_given, gen_done;
+static struct { uint32_t period; int bus_state; uint64_t release; ipc_state_t state; } hand;
+static struct { uint32_t period, end; int32_t traj_ns, ctrl_ns; } result;
+static int      drives_off;                         /* the arm became the simulated one: the drives of the bus off */
+static int      given_usable;                       /* what the drives got last: they keep it while a step is late */
+static double   given_tau[AXIS_COUNT];
+static uint32_t n_late, late_run;                   /* cycles that found the step of the cycle before not done */
+
 int control_link_start(void)
 {
     built = control_ctrl_build((volatile uint32_t *)OCM_LINK_BASE, (double)SYSCNT_HZ);
+    if (built) {
+        obs_clock_ticks = obs_clock_cost();
+        control_ctrl_set_obs_clock(obs_clock);
+    }
     ctrl_port_loop();                                /* from here the classes print nothing */
     if (built == 2) {
         xil_printf("[control] the receiver of the camera results cannot use its numbers of this build ([CONTRACT],"
@@ -52,24 +93,85 @@ int control_link_start(void)
     return 1;
 }
 
+int control_link_idle(void)
+{
+    return gen_done == gen_given;
+}
+
+uint32_t control_link_late_total(void)
+{
+    return n_late;
+}
+
 void control_link_drives(void)
 {
-    double tau[AXIS_COUNT];
-    int i, usable = 0;
+    int i;
 
-    for (i = 0; i < AXIS_COUNT; i++) tau[i] = 0.0;
+    if (!control_link_idle()) {                      /* the step of the cycle before ran past this release */
+        n_late++;
+        if (late_run++ == 0u) event_post(EVENT_CONTROL_LATE, 1, (int)hand.period, (int)n_late, 0);
+        axis_control_torque_input(0, given_usable, given_tau);   /* not fresh: TORQUE_STALE_LIMIT in a row stop */
+        return;
+    }
+    late_run = 0u;
+    if (drives_off) {
+        axis_control_servo(0);
+        drives_off = 0;
+    }
+    given_usable = 0;
+    for (i = 0; i < AXIS_COUNT; i++) given_tau[i] = 0.0;
     if (BUS_IS_ARM) {
         if (held.servo == IPC_CMD_SERVO_ON)       axis_control_servo(1);
         else if (held.servo == IPC_CMD_SERVO_OFF) axis_control_servo(0);
-        usable = held.torque;
-        for (i = 0; i < AXIS_COUNT; i++) tau[i] = held.tau[i];
+        given_usable = held.torque;
+        for (i = 0; i < AXIS_COUNT; i++) given_tau[i] = held.tau[i];
     }
     held.servo = 0;
-    axis_control_torque_input(held_fresh, usable, tau);
+    axis_control_torque_input(held_fresh, given_usable, given_tau);
     held_fresh = 0;
 }
 
-int control_link_step(uint32_t period, int bus_state, uint64_t release, int32_t *traj_ns, int32_t *ctrl_ns)
+int control_link_give(uint32_t period, int bus_state, uint64_t release)
+{
+    if (!built || !control_link_idle()) return 0;
+    hand.period    = period;
+    hand.bus_state = bus_state;
+    hand.release   = release;
+    hand.state     = *ocm_link_state();              /* a copy: the next cycle writes its own State there */
+    MEMORY_BARRIER();
+    gen_given = gen_given + 1u;
+    return 1;
+}
+
+int control_link_result(uint32_t period, uint32_t *end, int32_t *traj_ns, int32_t *ctrl_ns)
+{
+    if (!control_link_idle() || result.period != period) return 0;
+    *end     = result.end;
+    *traj_ns = result.traj_ns;
+    *ctrl_ns = result.ctrl_ns;
+    return 1;
+}
+
+static int step(uint32_t period, int bus_state, uint64_t release, int32_t *traj_ns, int32_t *ctrl_ns);
+
+int control_link_run(void)
+{
+    const uint32_t gen = gen_given;
+    int32_t traj_ns = -1, ctrl_ns = -1;
+
+    if (gen == gen_done) return 0;
+    MEMORY_BARRIER();                                /* the hand-over before its generation was written */
+    (void)step(hand.period, hand.bus_state, hand.release, &traj_ns, &ctrl_ns);
+    result.end     = sys_counter_low();
+    result.period  = hand.period;
+    result.traj_ns = traj_ns;
+    result.ctrl_ns = ctrl_ns;
+    MEMORY_BARRIER();
+    gen_done = gen;
+    return 1;
+}
+
+static int step(uint32_t period, int bus_state, uint64_t release, int32_t *traj_ns, int32_t *ctrl_ns)
 {
     static float response = -1.0f;                   /* [s] of the period before that had a state; < 0: none */
     static control_in_t     in;
@@ -95,9 +197,9 @@ int control_link_step(uint32_t period, int bus_state, uint64_t release, int32_t 
     in.goal    = ocm_link_take_goal(&goal) ? &goal : NULL;
     in.command = ocm_link_take_command(&command) ? &command : NULL;
     if (sim_new >= 0) {
-        if (!sim_arm) {                              /* the arm is no longer that of the bus: its drives off, and */
-            axis_control_servo(0);                   /* nothing of the controller for them */
-            memset(&held, 0, sizeof(held));
+        if (!sim_arm) {                              /* the arm is no longer that of the bus: its drives off */
+            drives_off = 1;                          /* (by the EtherCAT task, control_link_drives), and */
+            memset(&held, 0, sizeof(held));          /* nothing of the controller for them */
             held_fresh = 0;
         }
         sim_arm = 1;
@@ -114,7 +216,7 @@ int control_link_step(uint32_t period, int bus_state, uint64_t release, int32_t 
     } else {
         sim_arm = 0;
         if (BUS_IS_ARM) {                            /* on another bus there is no state */
-            const ipc_state_t *state = ocm_link_state();     /* what this cycle's frame brought */
+            const ipc_state_t *state = &hand.state;          /* what the frame of that cycle brought */
 
             in.state     = bus_state;
             in.servo_on  = (state->flags & IPC_STATE_SERVO_ON) != 0u;
@@ -172,6 +274,51 @@ int control_link_step(uint32_t period, int bus_state, uint64_t release, int32_t 
     return 1;
 }
 
+static int32_t ticks_ns(uint32_t ticks)
+{
+    return (int32_t)((uint64_t)ticks * 1000000000ull / SYSCNT_HZ);
+}
+
+/* the receiver's cost (eq. (6)) in this run of the application (cleared by each IPC_CMD_OBS of a method with the
+ * mailbox), once it has measured periods: B, the periods, the longest period; the longest look at the slots by the
+ * results taken (0, 1, 2, 3, 4 or more); the longest choice by the results held (0, 1, 2-3, 4-7, 8); the periods that
+ * took a result; the most results taken in one period; one read of the clock, which each of the times holds.  [ns] */
+static void obs_cost_report(void)
+{
+    obs_cost_t c;
+    event_t *e;
+    uint32_t i, more = 0u, held47 = 0u, taken_periods = 0u, most = 0u;
+
+    if (!control_ctrl_obs_cost(&c) || c.periods == 0u)
+        return;
+    e = event_reserve(EVENT_OBS_COST_REPORT, 0);
+    if (e == NULL)
+        return;
+    for (i = 4u; i <= (uint32_t)OBS_SLOTS; i++)
+        if (c.drain_max[i] > more) more = c.drain_max[i];
+    for (i = 4u; i < (uint32_t)OBS_HELD; i++)
+        if (c.select_max[i] > held47) held47 = c.select_max[i];
+    for (i = 1u; i <= (uint32_t)OBS_SLOTS; i++) {
+        taken_periods += c.drain_periods[i];
+        if (c.drain_periods[i] != 0u) most = i;
+    }
+    e->value[0] = (int32_t)c.slots;
+    e->value[1] = (int32_t)c.periods;
+    e->value[2] = ticks_ns(c.total_max);
+    for (i = 0u; i < 4u; i++)
+        e->value[3 + i] = ticks_ns(c.drain_max[i]);
+    e->value[7] = ticks_ns(more);
+    e->value[8] = ticks_ns(c.select_max[0]);
+    e->value[9] = ticks_ns(c.select_max[1]);
+    e->value[10] = ticks_ns(c.select_max[2] > c.select_max[3] ? c.select_max[2] : c.select_max[3]);
+    e->value[11] = ticks_ns(held47);
+    e->value[12] = ticks_ns(c.select_max[OBS_HELD]);
+    e->value[13] = (int32_t)taken_periods;
+    e->value[14] = (int32_t)most;
+    e->value[15] = ticks_ns(obs_clock_ticks);
+    event_publish();
+}
+
 void control_link_report(void)
 {
     event_t *e = event_reserve(EVENT_CONTROL_REPORT, 0);
@@ -195,6 +342,7 @@ void control_link_report(void)
         e->value[15] = sim_arm;
         event_publish();
     }
+    obs_cost_report();
     n_steps = 0u; n_no_state = 0u; n_commands = 0u; n_refused = 0u; step_ns_max = 0u;
     n_plans_before = n_plans; n_iks_before = n_iks; plan_us_max = 0u; ik_us_max = 0u; n_goals_before = n_goals;
 }

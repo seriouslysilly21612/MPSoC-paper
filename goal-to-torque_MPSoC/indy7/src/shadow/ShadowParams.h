@@ -82,6 +82,8 @@ inline void ObsNumbers(const CConfig& acConfig, double* adNumbers)
 	n[OBS_N_GAP]       = stS.dAppGapS;
 	n[OBS_N_LOSS]      = stS.dAppLossS;
 	n[OBS_N_STATE_AGE] = (double)stS.nSimStateDelay;
+	for (int k = 0; k < 2; k++)
+		n[OBS_N_HOVER_XY + k] = stS.adAppHoverXY[k];
 }
 
 /* the check value of anCount numbers: their count, then each as 8 bytes, least significant first */

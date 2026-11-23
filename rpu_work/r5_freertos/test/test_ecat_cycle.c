@@ -4,7 +4,9 @@
  *       -Itest/stub -Isrc test/test_ecat_cycle.c src/loop_timing.c src/cycle_record.c -lm -o /tmp/t_cycle && /tmp/t_cycle
  * and once more with -DCONTROL_TASK=1: the control task in the place of the second controller.  Then the State says
  * so, the cycle takes neither command nor torque of the APU but gives the drives what the control task decided, and
- * the control task gets the period and whether the frame came back.
+ * hands the control task the period and whether the frame came back; the record of a cycle is closed when its
+ * step is done (here right after the cycle, as the next cycle would), and a step not done by the next cycle makes
+ * the record of its cycle an overrun up to that start and that cycle hands nothing over (I-143).
  * It checks, cycle by cycle: the release goes into the State slot and to the slots of the APU; one record per cycle
  * with the period of the State and the flags OP, WKC, SERVO, STOP; a late send is counted in the record of its
  * cycle and in the State of the next; a cycle in which the second controller ran ends with it, has its two times
@@ -71,17 +73,41 @@ int  shadow_link_step(int32_t *traj_ns, int32_t *ctrl_ns)
 void shadow_link_report(void) { }
 
 /* ---- the control task (CONTROL_TASK): for the clock as the second controller; what the cycle gives it ---- */
-static int control_drives, control_bus_state = -1;
-static uint32_t control_period;
+static int control_drives, control_bus_state = -1, wakes;
+static uint32_t control_period, c_given, c_done, c_end;
+static int32_t c_traj = -1;
 static uint64_t control_release;
 int  control_link_start(void) { return 1; }
 void control_link_drives(void) { control_drives++; }
-int  control_link_step(uint32_t period, int bus_state, uint64_t release, int32_t *traj_ns, int32_t *ctrl_ns)
+int  control_link_idle(void) { return c_given == c_done; }
+int  control_link_give(uint32_t period, int bus_state, uint64_t release)
 {
-    control_period = period; control_bus_state = bus_state; control_release = release;
-    return shadow_link_step(traj_ns, ctrl_ns);
+    if (!control_link_idle()) return 0;
+    control_period = period; control_bus_state = bus_state; control_release = release; c_given = period;
+    return 1;
 }
+int  control_link_result(uint32_t period, uint32_t *end, int32_t *traj_ns, int32_t *ctrl_ns)
+{
+    if (!control_link_idle() || c_done != period) return 0;
+    *end = c_end; *traj_ns = c_traj; *ctrl_ns = -1;
+    return 1;
+}
+uint32_t control_link_late_total(void) { return 0u; }
 void control_link_report(void) { }
+void control_task_wake(void) { wakes++; }
+/* the control task, after the cycle that handed a step over: as the second controller (the fourth part) */
+static uint64_t clock_now;
+static uint32_t part_ticks[4];
+static void control_runs(void)
+{
+    int32_t ignored;
+
+    if (control_link_idle()) return;
+    c_traj = -1;
+    if (shadow_link_step(&c_traj, &ignored)) c_end = (uint32_t)(clock_now + part_ticks[3]);
+    else c_end = (uint32_t)clock_now;
+    c_done = c_given;
+}
 #define ST(flags)   ((flags) | (CONTROL_TASK ? IPC_STATE_CONTROL : 0u))     /* the State flags of this build */
 
 /* ---- events, console, FreeRTOS, caches ---- */
@@ -100,8 +126,7 @@ void Xil_DCacheInvalidateRange(INTPTR adr, uint32_t len) { (void)adr; (void)len;
 
 /* ---- the clock: the test sets when a cycle starts and how long each of its parts takes [ticks] ---- */
 uint8_t host_test_ring[RECORD_RING_BYTES];
-static uint64_t clock_now;
-static uint32_t wake_ticks, part_ticks[4];     /* how long the receive, the logic, the send and the second controller take */
+static uint32_t wake_ticks;                    /* part_ticks: how long the receive, the logic, the send and the second controller take */
 static int part;
 uint64_t host_test_counter(void) { clock_now += part_ticks[part++ % 4]; return clock_now; }    /* every read is one part later */
 int  loop_timing_start(void) { return 1; }
@@ -111,6 +136,18 @@ void loop_timing_begin(uint32_t planned_tick, cycle_times_t *t)
     part = 0;
     t->start = (uint32_t)clock_now; t->wake = wake_ticks; t->release = clock_now - wake_ticks;
 }
+
+/* one cycle; with the control task, its step and the close of its record, as the next cycle would close it */
+static void cycle(uint32_t tick)
+{
+    ecat_cycle(tick);
+#if CONTROL_TASK
+    control_runs();
+    control_record_close((uint32_t)clock_now);
+#endif
+}
+
+#define MORE    (CONTROL_TASK ? 3 : 0)          /* the cycles of the late step before the stop */
 
 static int fails;
 #define CHECK(c) do { if (!(c)) { printf("FAIL line %d: %s\n", __LINE__, #c); fails++; } } while (0)
@@ -143,7 +180,7 @@ int main(void)
 
     /* an ordinary cycle: 5 us late, the receive 10 us, the logic 20 us, the send 30 us */
     next_wkc = ecat_expected_wkc; wake_ticks = 500; part_ticks[0] = 1000; part_ticks[1] = 2000; part_ticks[2] = 3000;
-    ecat_cycle(1000);
+    cycle(1000);
     CHECK(cycle_index == 1 && state.n == 1 && state.period == 1 && state.flags == ST(IPC_STATE_OP));
 #if CONTROL_TASK      /* the camera results are the control task's: it has the release, the old reader is not polled */
     CHECK(apu_takes == 0 && control_drives == 1 && control_period == 1 && control_bus_state == 1);
@@ -161,12 +198,12 @@ int main(void)
 
     /* a payload of the control task: the second controller runs after the send, 250 us; the cycle ends with it */
     shadow_payload = 1; part_ticks[3] = 25000;
-    ecat_cycle(1001);
+    cycle(1001);
     r = last_record();
     CHECK(shadow_steps == 1 && r.period == 2 && r.flags == (RECORD_BUS | RECORD_OP) && frames_sent == 2);
     CHECK(r.s_ns == 60001 && r.e_ns == 310003 && r.hl_ns == 123456 && r.dyn_ns == -1);
     part_ticks[3] = TICKS_PER_CYCLE;                       /* it runs into the next release: an overrun, the send in time */
-    ecat_cycle(1002);
+    cycle(1002);
     r = last_record();
     CHECK(shadow_steps == 2 && r.flags == (RECORD_BUS | RECORD_OP | RECORD_OVERRUN) && loop_timing.missed == 0);
     shadow_payload = 0; part_ticks[3] = 0;
@@ -174,14 +211,14 @@ int main(void)
 
     /* every axis enabled: SERVO in the record */
     servo_flag = IPC_STATE_SERVO_ON;
-    ecat_cycle(1003);
+    cycle(1003);
     r = last_record();
     CHECK(r.period == 4 && r.flags == (RECORD_BUS | RECORD_OP | RECORD_SERVO) && record_count() == 4);
     servo_flag = 0;
 
     /* a lost frame: no OP, WKC in the record and in the State, torque 0, the frame goes out all the same */
     next_wkc = ecat_expected_wkc - 3;
-    ecat_cycle(1004);
+    cycle(1004);
     r = last_record();
     CHECK(r.period == 5 && r.flags == (RECORD_BUS | RECORD_WKC) && state.flags == ST(IPC_STATE_OP | IPC_STATE_WKC_ERR));
 #if CONTROL_TASK
@@ -192,43 +229,61 @@ int main(void)
 
     /* a send past the deadline: in the record of its cycle, in the State of the next one */
     part_ticks[2] = 37000;                                 /* release -> send returns: 500 + 1000 + 2000 + 37000 = 405 us */
-    ecat_cycle(1005);
+    cycle(1005);
     r = last_record();
     CHECK(r.flags == (RECORD_BUS | RECORD_OP | RECORD_MISSED) && state.faults.missed == 0 && loop_timing.missed == 1);
     part_ticks[2] = 3000;
-    ecat_cycle(1006);
+    cycle(1006);
     r = last_record();
     CHECK(r.flags == (RECORD_BUS | RECORD_OP) && state.faults.missed == 1 && state.period == 7);
     /* a cycle that starts more than a period late and so ends after the next release */
     wake_ticks = TICKS_PER_CYCLE + 1u;
-    ecat_cycle(1007);
+    cycle(1007);
     r = last_record();
     CHECK(r.flags == (RECORD_BUS | RECORD_OP | RECORD_LATE | RECORD_MISSED | RECORD_OVERRUN));
     wake_ticks = 500;
-    ecat_cycle(1008);
+    cycle(1008);
     CHECK(state.faults.late == 1 && state.faults.overruns == 1 && state.faults.missed == 2 && state.faults.wkc == 1);
     CHECK(record_count() == 9 && cycle_index == 9 && frames_sent == 9);
 
+#if CONTROL_TASK
+    /* a step not done by the next release: that cycle closes the record of the one before as an overrun up to its
+       own start, and hands nothing over; the step ends in it, and its own record has no step */
+    i = wakes;
+    ecat_cycle(1009);                                      /* handed over; the control task has not run yet */
+    CHECK(wakes == i + 1 && !control_link_idle() && record_count() == 9 && control_period == 10);
+    ecat_cycle(1010);
+    r = last_record();
+    CHECK(wakes == i + 1 && control_period == 10 && record_count() == 10 && r.period == 10);
+    CHECK((r.flags & RECORD_OVERRUN) && r.hl_ns == -1 && r.e_ns == (int32_t)(1000ull * TICKS_PER_CYCLE * 1000000000ull / SYSCNT_HZ / 1000ull));
+    control_runs();                                        /* it ends in that cycle */
+    control_record_close((uint32_t)clock_now);
+    r = last_record();
+    CHECK(record_count() == 11 && r.period == 11 && !(r.flags & RECORD_OVERRUN) && r.hl_ns == -1 && r.e_ns == 60001);
+    cycle(1011);                                           /* and the next hands over again */
+    CHECK(wakes == i + 2 && control_period == 12 && record_count() == 12);
+    memset(&loop_timing, 0, sizeof(loop_timing)); loop_timing_reset_window();
+#endif
     /* Linux asks for a stop: STOP from that cycle on, the working counter falling is no WKC fault, and the last
      * cycle sends no frame; every cycle of the stop has its record */
     CTL_CMD = CTL_CMD_STOP;
     shadow_payload = 1;                                    /* not during a stop */
-    ecat_cycle(1009);
+    cycle(1009);
     r = last_record();
     CHECK(stop_step == STOP_HOLD && stop_events == 1 && (r.flags & RECORD_STOP) && (state.flags & IPC_STATE_STOP));
 #if CONTROL_TASK
-    CHECK(control_drives == 10 && control_period == 9 && apu_takes == 0);  /* the drives of this cycle still; no step in a stop */
+    CHECK(control_drives == 10 + MORE && control_period == 9 + MORE && apu_takes == 0);  /* the drives of this cycle still; no step in a stop */
 #else
     CHECK(apu_takes == 20);
 #endif
     next_wkc = 0;                                          /* the drives leave OP */
     for (cycles = 0; stop_step != STOP_DONE && cycles < 5000; cycles++) {
-        ecat_cycle(1010u + (uint32_t)cycles);
+        cycle(1010u + (uint32_t)cycles);
         r = last_record();
         if (!(r.flags & RECORD_STOP) || (r.flags & (RECORD_WKC | RECORD_OP))) break;
     }
     CHECK(stop_step == STOP_DONE && state.faults.wkc == 1 && zeros >= (int)STOP_HOLD_MS);
-    CHECK(frames_sent == 10 + cycles - 1 && record_count() == 10u + (uint32_t)cycles && shadow_steps == 2);   /* the last cycle: a record, no frame */
+    CHECK(frames_sent == 10 + MORE + cycles - 1 && record_count() == 10u + MORE + (uint32_t)cycles && shadow_steps == 2);   /* the last cycle: a record, no frame */
     CHECK(CTL_STATE == ECAT_STATUS_STOPPING);
 
     printf(fails ? "test_ecat_cycle: %d FAILED\n" : "test_ecat_cycle OK\n", fails);

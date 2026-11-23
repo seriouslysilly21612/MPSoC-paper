@@ -1,13 +1,16 @@
 # The tool tag in rendered images of a known pose (target_3d_pkg/tool_tag.py). No ROS.
 import os
 import sys
+import threading
+import time
 
 import cv2
 import numpy as np
 import pytest
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
-from target_3d_pkg.tool_tag import ToolTagFinder, gray_of_image, marker_points  # noqa: E402
+from target_3d_pkg.tool_tag import (  # noqa: E402
+    TagResults, TagSearch, ToolTagFinder, gray_of_image, marker_points)
 
 W, H = 848, 480
 K = np.array(
@@ -58,8 +61,8 @@ def render(tags, k=K):
     return cv2.GaussianBlur(img, (3, 3), 0.6)
 
 
-def finder(tag_id=0, size_m=0.065):
-    f = ToolTagFinder(tag_id, size_m)
+def finder(tag_id=0, size_m=0.065, scale=1.0):
+    f = ToolTagFinder(tag_id, size_m, whole_image_scale=scale)
     f.set_camera(K.flatten(), [0.0] * 5)
     return f
 
@@ -72,9 +75,10 @@ def finder(tag_id=0, size_m=0.065):
         ((0.20, 0.05, 0.60), (0.0, 0.5, -1.0)),
     ],
 )
-def test_the_centre_of_a_rendered_tag(t, r):
+@pytest.mark.parametrize('scale', [1.0, 0.5])
+def test_the_centre_of_a_rendered_tag(t, r, scale):
     t = np.array(t)
-    res = finder().find(render([(0, 0.065, rot(*r), t)]))
+    res = finder(scale=scale).find(render([(0, 0.065, rot(*r), t)]))
     assert res.found, res.reason
     assert np.abs(res.p_cam[:2] - t[:2]).max() < 2e-3  # across the view: within 2 mm at 0.6-1.0 m
     # in depth, the weak axis of one tag: a few tenths of a pixel on a 40-65 px square are 1 % of
@@ -173,12 +177,59 @@ def test_after_a_whole_image_without_the_tag_the_next_one_waits():
     assert finder().find(blank).reason == 'not_found'
 
 
+@pytest.mark.parametrize('z', [0.55, 0.80, 1.00])     # the board's OpenCV 4.5.4: up to about 1 m
+def test_the_whole_image_at_half_size_then_the_corners_at_full_size(z):
+    # the search of I-134: the copy is a quarter of the pixels; the corners come from the full
+    # image, so the centre is as good as with the whole image at full size
+    f = finder(scale=0.5)
+    seen = []
+    inner = f.coarse
+    f.coarse = lambda gray: (seen.append(gray.shape), inner(gray))[1]
+    f.in_window = [f.fine, f.coarse]
+    t = np.array([0.08, -0.04, z])
+    img = render([(0, 0.065, rot(0.2, -0.3, 0.1), t)])
+    res = f.find(img, t_s=0.0)
+    full = finder().find(img)
+    assert res.found and full.found and not res.window
+    assert seen[0] == (H // 2, W // 2) and seen[1][0] < H / 2      # the copy, then a window
+    assert np.linalg.norm(res.p_cam - full.p_cam) < 1e-3
+    assert f.find(np.full((H, W), 255, np.uint8), t_s=5.0).reason == 'not_found'
+
+
+def test_a_tag_too_small_for_the_copy_is_searched_at_full_size_next():
+    # the detector of the board's OpenCV misses a small tag in the copy (I-135): here it misses
+    # every tag there, whatever the OpenCV of this machine reads
+    f = finder(scale=0.5)
+    seen = []
+    inner = f.coarse
+
+    def coarse(gray):
+        seen.append(gray.shape)
+        return (None, None) if gray.shape[0] < H else inner(gray)
+
+    f.coarse = coarse
+    f.in_window = [f.fine, f.coarse]
+    t = np.array([0.05, -0.03, 1.00])
+    img = render([(0, 0.065, rot(0.2, -0.3, 0.1), t)])
+    first = f.find(img, t_s=0.0)
+    assert not first.found and first.reason == 'not_found' and seen == [(H // 2, W // 2)]
+    assert f.find(img, t_s=0.1).reason == 'not_searched'            # the wait after a miss
+    second = f.find(img, t_s=0.25)
+    assert second.found and seen[-1] == (H, W)                      # the full size this time
+    assert np.linalg.norm(second.p_cam - t) < 12e-3
+    f.find(np.full((H, W), 255, np.uint8), t_s=5.0)                 # no tag: the copy again
+    assert seen[-1] == (H // 2, W // 2)
+
+
 def test_no_camera_info_and_bad_size():
     assert ToolTagFinder(0, 0.065).find(np.zeros((H, W), np.uint8)).reason == 'no_camera_info'
     with pytest.raises(ValueError):
         ToolTagFinder(0, 0.0)
     with pytest.raises(ValueError):
         ToolTagFinder(0, 0.065, refine='bogus')
+    for bad in (0.2, 1.5):
+        with pytest.raises(ValueError):
+            ToolTagFinder(0, 0.065, whole_image_scale=bad)
 
 
 def test_gray_of_image():
@@ -193,3 +244,96 @@ def test_gray_of_image():
     assert gray_of_image(b'\x01\x02\x03\x04', 2, 2, 2, 'mono8').tolist() == [[1, 2], [3, 4]]
     assert gray_of_image(b'\x00' * 8, 2, 2, 4, '16UC1') is None
     assert gray_of_image(b'\x00' * 3, 2, 2, 2, 'mono8') is None  # short data
+
+
+# ----- the search beside the inference (I-122) -----
+
+
+def test_the_search_thread_finds_the_tag_of_each_image_it_is_offered():
+    got, done = [], threading.Event()
+
+    def on_done(key, res, ms):
+        got.append((key, res.found, ms))
+        if len(got) == 2:
+            done.set()
+
+    s = TagSearch(finder(), on_done)
+    img = render([(0, 0.065, rot(0.1, 0.0, 0.0), np.array([0.0, 0.0, 0.8]))])
+    s.offer('a', 1_000_000_000, img)
+    deadline = time.monotonic() + 5.0
+    while not got and time.monotonic() < deadline:    # the first done before the second comes
+        time.sleep(0.01)
+    s.offer('b', 1_033_000_000, np.repeat(img[:, :, None], 3, axis=2))   # BGR too
+    assert done.wait(5.0)
+    s.stop()
+    assert [(k, f) for k, f, _ in got] == [('a', True), ('b', True)]
+    assert all(ms > 0 for _, _, ms in got)
+
+
+def test_an_image_offered_while_one_waits_replaces_it_and_the_replaced_one_is_told_busy():
+    gate, got = threading.Event(), []
+
+    class Slow:
+        def find(self, gray, t_s):
+            gate.wait(5.0)
+            return finder().find(gray, t_s)
+
+    s = TagSearch(Slow(), lambda key, res, ms: got.append((key, res.reason)))
+    img = render([])
+    s.offer('first', 1, img)          # the thread takes it and waits in find
+    time.sleep(0.1)
+    s.offer('second', 2, img)         # waits ...
+    s.offer('third', 3, img)          # ... and is replaced: every image gets one result
+    assert ('second', 'busy') in got
+    gate.set()
+    deadline = time.monotonic() + 5.0
+    while len(got) < 3 and time.monotonic() < deadline:
+        time.sleep(0.01)
+    s.stop()
+    assert sorted(k for k, _ in got) == ['first', 'second', 'third']
+    assert dict(got)['first'] == 'not_found'
+    assert dict(got)['third'] in ('not_found', 'not_searched')
+
+
+def test_a_search_that_raises_gives_search_error_and_the_thread_goes_on(capsys):
+    # I-127: before, any error but cv2.error ended the thread, and every later capture went
+    # without its result
+    class Raises:
+        def __init__(self):
+            self.n = 0
+
+        def find(self, gray, t_s):
+            self.n += 1
+            if self.n == 2:
+                raise ValueError('a bad image')
+            return finder().find(gray, t_s)
+
+    got = []
+    s = TagSearch(Raises(), lambda key, res, ms: got.append((key, res.reason)))
+    img = render([])
+    for k in range(4):
+        s.offer(k, k, img)
+        deadline = time.monotonic() + 5.0
+        while len(got) <= k and time.monotonic() < deadline:   # one at a time: none is busy
+            time.sleep(0.01)
+    s.stop()
+    assert [k for k, _ in got] == [0, 1, 2, 3] and got[1][1] == 'search_error'
+    assert capsys.readouterr().err.count('ValueError: a bad image') == 1   # one traceback
+
+
+def test_the_result_of_a_capture_is_waited_for_and_found_by_its_stamp():
+    r = TagResults(keep_s=1.0)
+    threading.Timer(0.05, lambda: r.put(5_000_000_300, 'tag')).start()   # 0.3 us off: the same
+    t0 = time.monotonic()
+    assert r.wait(5_000_000_000, 1.0) == 'tag' and time.monotonic() - t0 < 0.5
+    assert r.wait(5_033_000_000, 0.0) is None          # the next image: none, at once
+    t0 = time.monotonic()
+    assert r.wait(5_033_000_000, 0.05) is None and time.monotonic() - t0 >= 0.045
+
+
+def test_old_results_are_dropped():
+    r = TagResults(keep_s=0.5)
+    r.put(1_000_000_000, 'old')
+    r.put(1_400_000_000, 'mid')
+    r.put(1_600_000_000, 'new')        # 0.6 s after the first
+    assert r.wait(1_000_000_000, 0.0) is None and r.wait(1_400_000_000, 0.0) == 'mid'

@@ -26,6 +26,22 @@ uint32_t control_ctrl_obs_check_value(void)
     return CTRL_OBS_NUMBERS_CRC;
 }
 
+void control_ctrl_set_obs_clock(uint64_t (*now)(void))
+{
+    CControlCycle *const ctl = controller.load();
+    if (ctl != NULL)
+        ctl->SetObsClock(now);
+}
+
+int control_ctrl_obs_cost(obs_cost_t *out)
+{
+    const CControlCycle *const ctl = controller.load();
+    if (ctl == NULL)
+        return 0;
+    std::memcpy(out, &ctl->ObsCost(), sizeof(*out));     // the control task writes it meanwhile: words of one moment
+    return 1;
+}
+
 int control_ctrl_build(volatile uint32_t *region, double ticks_per_s)
 {
     if (controller.load() != NULL)

@@ -10,6 +10,7 @@
 
 #include <stdint.h>
 #include "../ipc/ipc_layout.h"
+#include "../obs/obs_receiver.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -48,6 +49,12 @@ int      control_ctrl_build(volatile uint32_t *region, double ticks_per_s);
 uint32_t control_ctrl_check_value(void);
 /* the check value of the receiver's numbers of this build (CTRL_OBS_NUMBERS_CRC): IPC_CMD_OBS must bring it */
 uint32_t control_ctrl_obs_check_value(void);
+/* After control_ctrl_build() returned 1 or 2, before the periods: the clock (ticks_per_s of the build) of what the
+ * receiver's work of a period takes (eq. (6)); without this call it is not measured. */
+void     control_ctrl_set_obs_clock(uint64_t (*now)(void));
+/* What that work took so far in the run of the receiver (obs_receiver.h, obs_cost_t).  Any task; words, no lock.
+ * 0: no controller. */
+int      control_ctrl_obs_cost(obs_cost_t *out);
 
 /* One period.  Only after control_ctrl_build() returned 1.  No memory is taken.  Should a class throw, there is no
  * torque, the servo is asked off, the report has IPC_CTL_FAULT, and the cycle goes on. */

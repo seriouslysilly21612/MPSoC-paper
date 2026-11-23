@@ -109,9 +109,9 @@ CROS2PickBridge::Init(const Config& astCfg, CGoalSlot* apSlot)
 		       astCfg.pStatus != NULL ? TOPIC_STATUS : "");
 	else
 		printf("[bridge] up: %s -> goal slot (box x [%.2f, %.2f] y [%.2f, %.2f] z [%.2f, %.2f] m, r <= %.2f m, "
-		       "floor %.2f m, hover %.2f m; kappa %.2f, restart after %.1f s), %s at 20 Hz\n",
+		       "floor %.2f m, hover %.2f m beside x %+.2f y %+.2f m; kappa %.2f, restart after %.1f s), %s at 20 Hz\n",
 		       TOPIC_TARGET, p.adBox[0], p.adBox[1], p.adBox[2], p.adBox[3], p.adBox[4], p.adBox[5], p.dRMax, p.dFloor,
-		       p.dHover, p.dKappa, p.dGapS, TOPIC_JOINTS);
+		       p.dHover, p.adHoverXY[0], p.adHoverXY[1], p.dKappa, p.dGapS, TOPIC_JOINTS);
 	printf("[bridge] 'p' the object menu: a digit sets desired_class of %s and the arm follows the object; "
 	       "'y', 8 follows the class chosen with 'p'\n", PICK_LOGIC_NODE);
 	return TRUE;

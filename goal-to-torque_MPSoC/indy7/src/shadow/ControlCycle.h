@@ -126,6 +126,11 @@ public:
 	/* after Init(), before the periods. FALSE: a number of the receiver cannot be used, and IPC_CMD_OBS is
 	 * refused, as it is without this call */
 	BOOL	SetObsLink	(const ObsLink& astLink);
+	/* the clock of the receiver's cost (eq. (6)), ticks of the counter of SetObsLink; NULL (the default): none.
+	 * Before the periods. */
+	void	SetObsClock	(uint64_t (*apNow)(void)) { m_cObs.SetClock(apNow); }
+	/* what the receiver's work of a period took so far in its run (another task may read it: words, no lock) */
+	const obs_cost_t&	ObsCost	(	) const { return m_cObs.Cost(); }
 	BOOL	IsInit		(	) const { return m_pCtl != NULL; }
 
 	/* one period. No allocation. */

@@ -56,7 +56,8 @@ const char* ObsName(int i)
 		"contract: eps_m of mode 1 (320) [m]", "tool tag offset x [m]", "tool tag offset y [m]", "tool tag offset z [m]",
 		"goal box x0 [m]", "goal box x1 [m]", "goal box y0 [m]", "goal box y1 [m]", "goal box z0 [m]", "goal box z1 [m]",
 		"goal r max [m]", "goal floor [m]", "hover height [m]", "smoothing kappa", "smoothing gap [s]",
-		"target lost after [s]", "age of the joint angles of a period [periods]" };
+		"target lost after [s]", "age of the joint angles of a period [periods]", "hover offset x [m]",
+		"hover offset y [m]" };
 	static_assert(sizeof(s_apcObs) / sizeof(s_apcObs[0]) == OBS_NUMBERS, "a name per number");
 	return s_apcObs[i];
 }

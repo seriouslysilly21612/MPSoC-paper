@@ -12,6 +12,8 @@
   <depend>std_msgs</depend>
   <depend>cv_bridge</depend>
   <depend>my_interfaces</depend>
+  <!-- the tool tag finder (tool_tag:=true): target_3d_pkg.tool_tag -->
+  <exec_depend>target_3d_pkg</exec_depend>
 
   <test_depend>ament_copyright</test_depend>
   <test_depend>ament_flake8</test_depend>

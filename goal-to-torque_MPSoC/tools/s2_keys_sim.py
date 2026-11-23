@@ -199,7 +199,8 @@ def end(c):
     c.send('q')
     m1 = c.expect(r'\[S2\] reports of the R5\'s control task: (\d+) taken, (\d+) of a period with a state of the arm; '
                   r'(\d+) of such a period not taken', 15)
-    m2 = c.expect(r'\[S2\] commands: (\d+) written, (\d+) refused by the R5, (\d+) dropped here', 5)
+    m2 = c.expect(r'\[S2\] commands: (\d+) written, (\d+) refused by the R5, \d+ written again[^,]*, '
+                  r'(\d+) dropped here', 5)
     return int(m1.group(3)), int(m2.group(1)), int(m2.group(2)), int(m2.group(3))
 
 

@@ -4,23 +4,44 @@
 # file. The measurement error of a mode is not here: it is a constant of the
 # contract ([CONTRACT] EPS_M_MM of the control application).
 #
-# FIRST VALUES (2026-11-18), not a characterization. One run of the camera
-# application with YOLOv3-tiny 416 beside the control application gave, from
-# the capture to the result in the mailbox, a median of 176 ms and a p90 of
-# 227 ms (cut off at 250 ms). The mode characterization replaces every number
-# below; until then the energy and the DDR traffic of a mode are unknown (0).
+# MEASURED (2026-11-22/23, I-129, I-130, I-133, I-142): YOLOv5n 416 and 320, one model
+# per run (FULL), the tool tag off, the memory pressure of 800 MB/s per worker
+# (run_timing --memrate-mbs 800, the worst load of the batch), the arch S2,
+# admission_log's profile lines. About the p99, so that about one result in a
+# hundred is later than predicted (the rule admits work that is used in time;
+# the receiver on the R5 refuses a late one by its own age cap). The profile
+# is one value per mode for every load. The values change the load they are
+# measured under: a rule that admits more keeps the detector busy, and the
+# images are older when it decides (I-133), so a value is checked in a run
+# with itself. The energy and the DDR bytes of an inference (I-136): runs of
+# FULL with one model, no load, tools/mode_energy.py (the power of the board
+# and the DDR ports S1-S5 while it infers, against the same run before its
+# first inference); their weights stay 0.
 
 # time between two images of the camera
 frame_period_ms: 33.35
-# capture -> the detector has the image
-acquisition_ms: 60.0
+# capture -> the detector has the image: used for the next image of SKIP.
+# The median age of all decisions in the run with 138 below (s2b_p138_416,
+# 104.3 ms; p90 146.6). Not the capture -> release of the admitted images
+# (416 p90 67.6 ms): the old rule let through only those younger than its
+# threshold. SKIP cannot happen with these values: the result of the next
+# image could be used 33.35 + 104 + 138 + 1 = 276 ms after this capture with
+# 416 alone, past the age cap of 250 ms of any older result; with 320,
+# 247 ms, which needs a result in use from an image less than 3 ms older
+# than this one, and images are 33 ms apart. (With 97 for 320, one SKIP in
+# 11656 decisions of s2d_p97_320, I-142: why was not looked at.)
+acquisition_ms: 104.0
 # a status of the control task older than this is not trusted: no inference
 # by the admission rule
 status_max_age_ms: 100.0
 # M2, A2: the tool speed that turns the latency of a mode into an error
 reference_speed_mps: 0.2
-# admission rule, check 3: margin on the measured response of the control task
-response_margin_us: 0.0
+# admission rule, check 3: margin M on the measured response of the control
+# task, which must stay within D_c = the control period (1 ms: the torque of a
+# period goes out with the send of the next one, and a computation past the
+# period delays that send). 100 us: room for a tail the runs did not show
+# (measured largest 495.5 us, I-129; a largest measured value is no WCET)
+response_margin_us: 100.0
 # the cost of a candidate: error * bound^2 [1/m^2] + energy * E [1/J] + ddr * bytes [1/byte]
 weights:
   error: 1.0
@@ -30,12 +51,22 @@ weights:
 modes:
   0:
     name: "416"
-    # start of the inference -> result in the mailbox
-    release_to_publication_ms: 180.0
-    energy_j: 0.0
-    ddr_bytes: 0.0
+    # start of the inference -> result in the mailbox. 138: the run with 117
+    # (the p99 117.4 of a run where the old rule kept the detector idle) had
+    # 4.97 % of its results later than predicted and a p99 of 137.1 (s2b_p99_416);
+    # with 138, 0.64 % later and a p99 of 133.4 (s2b_p138_416, I-133)
+    release_to_publication_ms: 138.0
+    # 26.3 and 29.1 mJ (s2c_en_416b, s2c_en_416), 27.2 against a run of its own
+    energy_j: 0.027
+    # 59 MB (s2c_en_416b; the DDR of s2c_en_416 was lost to a second recording)
+    ddr_bytes: 59000000.0
   1:
     name: "320"
-    release_to_publication_ms: 170.0
-    energy_j: 0.0
-    ddr_bytes: 0.0
+    # 97 (the p99 of s2a_m1_p800, under the old rule) gave 3.3 % of its results
+    # later than predicted and a p99 of 108.5 (s2d_p97_320); with 109, 1.1 %
+    # and a p99 of 110.6 (s2d_p109_320, 320 alone, I-142)
+    release_to_publication_ms: 109.0
+    # 18.1 mJ (s2c_en_320), 17.3 against a run of its own
+    energy_j: 0.018
+    # 42 MB (s2c_en_320)
+    ddr_bytes: 42000000.0

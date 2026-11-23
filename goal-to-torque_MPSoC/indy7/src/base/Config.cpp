@@ -3,8 +3,10 @@
 *	Description: The configuration file of the controller. See Config.h.
 *****************************************************************************/
 #include "Config.h"
+#include "GoalFilter.h"
 
 #include <cctype>
+#include <cmath>
 #include <cerrno>
 #include <climits>
 #include <cstdlib>
@@ -77,11 +79,14 @@ stConfigSystem::stConfigSystem()
 	nServoOnTimeoutMs = 2000;
 	strCalibDir = "calib_data";
 	nAppBridge = 0;
+	nAppObsSlots = 8;
 	nAppResultFormat = 0;
 	vAppGoalBox = {0.30, 0.94, -0.37, 0.63, 0.10, 0.50};
 	dAppGoalRMax = 0.92;
 	dAppGoalFloor = 0.25;
 	dAppHover = 0.05;
+	adAppHoverXY[0] = adAppHoverXY[1] = 0.0;
+	bAppHoverXYOk = true;
 	dAppKappa = 0.4;
 	dAppGapS = 1.0;
 	dAppLossS = 1.0;
@@ -262,6 +267,32 @@ public:
 			avOut[i] = dVal;
 			pcCur = pcEnd;
 		}
+	}
+	/* a list of any length: every number in the file (none in the file: avOut stays). FALSE: text that is
+	 * not a number is left (a comma; a ';' starts a comment, so the rest of the line is gone before this) */
+	BOOL ListAll(const char* apcSec, const char* apcKey, std::vector<double>& avOut)
+	{
+		const TSTRING* p = Get(apcSec, apcKey);
+		if (p == NULL || p->empty())
+			return TRUE;
+		std::vector<double> vRead;
+		const char* pcCur = p->c_str();
+		for (;;)
+		{
+			char* pcEnd = NULL;
+			const double dVal = strtod(pcCur, &pcEnd);
+			if (pcEnd == pcCur)
+				break;
+			vRead.push_back(dVal);
+			pcCur = pcEnd;
+		}
+		while (isspace((unsigned char)*pcCur))
+			pcCur++;
+		if (*pcCur != '\0')
+			return FALSE;
+		if (!vRead.empty())
+			avOut = vRead;
+		return TRUE;
 	}
 	/* a list of anN numbers: the values in the file, the rest 0 */
 	void ListN(const char* apcSec, const char* apcKey, std::vector<double>& avOut, int anN)
@@ -529,10 +560,21 @@ CConfig::Parse()
 
 	cF.String(S, "CALIB_DIR", s.strCalibDir);
 	cF.Int(S, "APP_BRIDGE", s.nAppBridge);
+	cF.Int(S, "APP_OBS_SLOTS", s.nAppObsSlots);
 	cF.List(S, "APP_GOAL_BOX_M", s.vAppGoalBox);
 	cF.Double(S, "APP_GOAL_RMAX_M", s.dAppGoalRMax);
 	cF.Double(S, "APP_GOAL_FLOOR_M", s.dAppGoalFloor);
 	cF.Double(S, "APP_HOVER_M", s.dAppHover);
+	{
+		std::vector<double> v = {0.0, 0.0, NAN};   // a third number: more than x and y
+		cF.List(S, "APP_HOVER_XY_M", v);
+		s.bAppHoverXYOk = std::isnan(v[2]) && CGoalFilter::HoverXYOk(v.data());
+		for (int k = 0; k < 2; k++)
+			s.adAppHoverXY[k] = s.bAppHoverXYOk ? v[k] : 0.0;
+		if (!s.bAppHoverXYOk)
+			fprintf(stderr, "[cfg] APP_HOVER_XY_M is not x y within %.2f m: 0 0, and no bridge\n",
+			        CGoalFilter::HOVER_XY_MAX);
+	}
 	cF.Double(S, "APP_EMA_KAPPA", s.dAppKappa);
 	cF.Double(S, "APP_GAP_S", s.dAppGapS);
 	cF.Double(S, "APP_LOSS_S", s.dAppLossS);
@@ -544,7 +586,11 @@ CConfig::Parse()
 		                     (strcasecmp(str.c_str(), "tag") == 0) ? 1 : -1;
 	}
 	cF.Int(S, "SIM_CAM", s.nSimCam);
-	cF.List(S, "SIM_CAM_OBJECT_M", s.vSimCamObject);
+	if (FALSE == cF.ListAll(S, "SIM_CAM_OBJECT_M", s.vSimCamObject))	// three numbers a place (sim/SimCamera.h)
+	{
+		DBG_LOG_ERROR("(CConfig) [SYSTEM] SIM_CAM_OBJECT_M: numbers separated by spaces only, three a place");
+		return FALSE;
+	}
 	cF.Double(S, "SIM_CAM_HZ", s.dSimCamHz);
 	cF.Double(S, "SIM_CAM_LATENCY_MS", s.dSimCamLatencyS, 1e-3);
 	cF.Double(S, "SIM_CAM_NOISE_MM", s.dSimCamNoiseM, 1e-3);

@@ -6,6 +6,8 @@
  *   ecat_task (ecat_task.c)       prio MAX-2  EtherCAT bring-up, then the 1 kHz process-data loop; the APU's
  *                                 Command / Torque / State slots (ocm_link.c) are served inside that loop.
  *   event_log_task (event_log.c)  prio 1      prints the events the 1 kHz loop posts (it never prints itself).
+ *   control_task (control_task.c) prio MAX-3  with CONTROL_TASK: the control step of every cycle, after its send;
+ *                                 the next release interrupts it, so the send of the EtherCAT task stays on time.
  *   planner_task (planner_task.c) prio 2      with SHADOW_CONTROL or CONTROL_TASK: the IK and the plans that the
  *                                 controller asks for in the loop, in the time a period leaves.
  *
@@ -25,6 +27,12 @@
 #include "ecat_task.h"
 #include "event_log.h"
 #include "planner_task.h"
+#if CONTROL_TASK
+#include "control_task.h"
+
+_Static_assert(CONTROL_TASK_PRIORITY < configMAX_PRIORITIES - 2 && CONTROL_TASK_PRIORITY > tskIDLE_PRIORITY + 2,
+               "the control task is below the EtherCAT task and above the planner");
+#endif
 
 /* r5log.c (src/oshw/freertos/).  Declared here instead of #include "r5log.h" so that this file does not depend on
  * that folder being in the include path.  If r5log.c is not part of the build this is a LINK error, which is the
@@ -51,6 +59,12 @@ int main(void)
 
    if (xTaskCreate(event_log_task, "ecatlog", 1024, NULL, tskIDLE_PRIORITY + 1, NULL) != pdPASS)
       xil_printf("[main] WARN: could not start the log task (FreeRTOS heap full?) - event lines will not be printed\r\n");
+
+#if CONTROL_TASK
+   if (xTaskCreate(control_task, "control", CONTROL_TASK_STACK_WORDS, NULL, CONTROL_TASK_PRIORITY,
+                   &control_task_handle) != pdPASS)
+      xil_printf("[main] FAIL: could not create control_task (FreeRTOS heap too small? raise total_heap_size)\r\n");
+#endif
 
 #if SHADOW_CONTROL || CONTROL_TASK
    /* without it the controller gets no plan: its reference stays where a motion started */

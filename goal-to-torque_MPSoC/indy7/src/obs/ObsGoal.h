@@ -97,6 +97,7 @@ public:
 		    !(astCfg.dTolM > 0.0) || astCfg.nStateAge < 0 || astCfg.nStateAge > (int)MAX_STATE_AGE ||
 		    !obs_receiver_start(&m_stR, &s))
 			return false;
+		obs_receiver_set_clock(&m_stR, m_pNow);		// the start cleared it
 		m_pBox = apBox;
 		m_pSlot = apSlot;
 		m_stCfg = astCfg;
@@ -183,6 +184,14 @@ public:
 				nOutside += m_anWorkspace[v];
 		return nOutside;
 	}
+	/* the clock of the reader's cost (eq. (6), obs_receiver.h) from now on and after every Init(); NULL: none */
+	void SetClock(uint64_t (*apNow)(void))
+	{
+		m_pNow = apNow;
+		obs_receiver_set_clock(&m_stR, apNow);
+	}
+	const obs_cost_t&	Cost() const { return m_stR.cost; }
+	void				ClearCost() { obs_cost_clear(&m_stR); }
 	/* what this class knows of the status: the caller adds response_max, contract_crc and method */
 	const obs_status_t&	Status() const { return m_stStatus; }
 
@@ -210,6 +219,7 @@ private:
 	Config					m_stCfg{};
 	uint64_t				m_uStateAge{0};		// [ticks]
 	obs_receiver_t			m_stR{};
+	uint64_t				(*m_pNow)(void){NULL};	// of SetClock()
 	CGoalFilter				m_cCheck;			// Check() only: the average is that of m_cEst
 	CObsEstimate			m_cEst;
 	Entry					m_aEntry[OBS_RECORDS]{};

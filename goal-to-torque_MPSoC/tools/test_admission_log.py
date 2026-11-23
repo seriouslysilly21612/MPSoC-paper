@@ -93,3 +93,37 @@ def test_report_without_the_log_of_the_control_application():
     out = io.StringIO()
     admission_log.report([decision('reject', 600.0, reason='no_status')], None, out)
     assert out.getvalue() == '1 decisions: 0 run, 0 skipped, 1 rejected\n  rejected: 1 no_status\n'
+
+
+def test_an_s2_log_starts_on_the_clock_of_the_decisions(tmp_path):
+    # --arch S2 (I-119): the ticks of the log are the R5's counter; t_start_monotonic_ns is the same start on the
+    # clock of the decision log, and the join goes by it
+    path = write_obs(tmp_path, [result(600.0, 0.15)])
+    with open(path[:-4] + '.json', 'w') as f:
+        json.dump({'t_start_ticks': 123456789012, 'ticks_per_s': 99999000.0,
+                   't_start_monotonic_ns': int(RUN_START * 1e9)}, f)
+    start_s, results = admission_log.results_by_capture(path)
+    assert abs(start_s - RUN_START) < 1e-6
+    assert abs(results[0][0] - 600.0) < 1e-6
+
+
+def test_the_profile_of_each_mode_from_the_joined_results():
+    # released 60 ms after the capture (task clock = system clock here), published 120 ms after the release
+    row = decision('run', 600.0)
+    row['capture_s'], row['release_s'] = '600.000000', '600.060000'
+    result = {'t_e': '%.6f' % (600.0 - RUN_START), 'f': '%.6f' % (600.18 - RUN_START), 'verdict': 'accepted'}
+    lines = admission_log.profile_lines([(row, result)], RUN_START)
+    assert len(lines) == 1 and 'capture -> release median 60.0' in lines[0]
+    assert 'release -> publication median 120.0' in lines[0]
+    assert admission_log.profile_lines([(row, {'t_e': '0', 'verdict': 'accepted'})], RUN_START) == []
+
+
+def test_the_age_when_decided_counts_every_decision_with_a_status():
+    rows = [decision('run', 600.0), decision('reject', 600.033, reason='no_candidate_passes', checks='011'),
+            decision('reject', 600.066, reason='no_status')]
+    for row in rows[:2]:
+        row['status_age_ms'] = '5.000'
+    rows[1]['release_s'] = '%.6f' % (float(rows[1]['capture_s']) + 0.150)     # an image that waited
+    out = io.StringIO()
+    admission_log.report(rows, None, out)
+    assert 'the 2 decisions with a status: median 150.0, p90 150.0, p99 150.0 ms' in out.getvalue()

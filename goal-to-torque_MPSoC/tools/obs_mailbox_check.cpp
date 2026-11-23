@@ -241,6 +241,38 @@ void Faults()
 	Expect(TakeIs(0, OBS_OK, &stR) && Matches(stR, &uK) && uK == 15, "magic and layout restored");
 }
 
+/* B of the head (eq. (6)): the writer uses the first B slots only; a head word that is no B means all of them */
+void SlotsInUse()
+{
+	const struct { unsigned uAsk, uUsed; } astCase[] = { { 1, 1 }, { 2, 2 }, { 4, 4 }, { 8, 8 }, { 0, 8 }, { 9, 8 } };
+	for (const auto& c : astCase)
+	{
+		memset(&g_stMb, 0, sizeof(g_stMb));
+		obs_reader_start(Mb());
+		obs_writer_start_slots(Mb(), c.uAsk);
+		g_uNow = 1000;
+		bool bOk = obs_slots_used(Mb()) == c.uUsed;
+		obs_desc_t stD;
+		for (unsigned k = 0; k < c.uUsed; k++)
+		{
+			Fill(&stD, k + 1);
+			bOk = bOk && obs_put(Mb(), &stD, Now) == OBS_OK && State(k) == OBS_READY;
+		}
+		Fill(&stD, 99);
+		bOk = bOk && obs_put(Mb(), &stD, Now) == OBS_FULL && ipc_load32(&Mb()->dropped_full) == 1u;
+		for (unsigned b = c.uUsed; b < OBS_SLOTS; b++)
+			bOk = bOk && State(b) == OBS_FREE;
+		char acWhat[96];
+		snprintf(acWhat, sizeof(acWhat), "B asked %u: %u slots used, the next result dropped, the rest FREE", c.uAsk,
+		         c.uUsed);
+		Expect(bOk, acWhat);
+	}
+	ipc_store32(&Mb()->slots_used, 0xDEADBEEFu);
+	Expect(obs_slots_used(Mb()) == OBS_SLOTS, "a garbage B: all the slots");
+	obs_writer_start(Mb());
+	Expect(obs_slots_used(Mb()) == OBS_SLOTS, "obs_writer_start: all the slots");
+}
+
 /* the reader of --unsafe: frees the slot before copying it */
 int TakeUnsafe(unsigned b, obs_desc_t* ad)
 {
@@ -278,7 +310,8 @@ int main(int argc, char** argv)
 	       (unsigned)(offsetof(obs_mailbox_t, slot) - offsetof(obs_mailbox_t, state)), (unsigned)sizeof(obs_mailbox_t));
 	Payload();
 	Faults();
-	printf("payload and faults: %d checks failed\n", g_nFailed);
+	SlotsInUse();
+	printf("payload, faults and B: %d checks failed\n", g_nFailed);
 
 	// part 3
 	memset(&g_stMb, 0, sizeof(g_stMb));

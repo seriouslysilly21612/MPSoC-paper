@@ -12,6 +12,7 @@ rosidl_generate_interfaces(${PROJECT_NAME}
   "msg/PickTarget.msg"
   "msg/PickTarget3D.msg"
   "msg/ContractStatus.msg"
+  "msg/ToolTag.msg"
   DEPENDENCIES std_msgs builtin_interfaces
 )
 

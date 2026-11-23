@@ -613,6 +613,54 @@ void TwoInAPeriod()
 	       "the same with the older capture in the first slot");
 }
 
+/* the clock of the cost: + 7 ticks every read */
+uint64_t g_uCostClock = 0;
+uint64_t CostClock() { return g_uCostClock += 7; }
+
+/* B (eq. (6)): the reader looks at the writer's first B slots only; with a clock it measures its work of a period */
+void SlotsAndCost()
+{
+	int nFresh = 0;
+
+	Begin(OBS_CONTRACT);
+	obs_writer_start_slots(Mb(), 2);
+	obs_desc_t stD;
+	memset(&stD, 0, sizeof(stD));
+	stD.t_e = Ms(270.5);
+	stD.f = Ms(299.1);
+	stD.t_valid_until = Ms(470);
+	stD.flags = OBS_Z_TAG;
+	stD.sigma = SIG_IN;
+	stD.n = stD.n_check = 1;
+	stD.epoch = ipc_load32(&Mb()->epoch);
+	uint32_t au[OBS_DESC_WORDS];
+	memcpy(au, &stD, sizeof(au));
+	for (unsigned i = 0; i < OBS_DESC_WORDS; i++)		// a READY result in slot 3, outside B = 2
+		ipc_store32(&Mb()->slot[3][i], au[i]);
+	ipc_store32(&Mb()->state[3][0], OBS_READY);
+	const obs_held_t* p = Step(300, &nFresh);
+	Expect(p == NULL && g_stR.taken == 0 && ipc_load32(&Mb()->state[3][0]) == OBS_READY && g_stR.cost.periods == 0,
+	       "B = 2: slot 3 is not looked at; no clock, no cost");
+
+	obs_receiver_set_clock(&g_stR, CostClock);
+	const uint32_t nA = Put(Ms(271.5), Ms(300.2), Ms(471));
+	const uint32_t nB = Put(Ms(272.5), Ms(300.3), Ms(472));
+	const uint32_t nC = Put(Ms(273.5), Ms(300.4), Ms(473));		// no FREE slot among the two
+	p = Step(301, &nFresh);
+	Expect(nA != 0 && nB != 0 && nC == 0 && p != NULL && p->d.n == nB &&
+	       g_stR.taken == 2 && g_stR.cost.slots == 2 && g_stR.cost.periods == 1 && g_stR.cost.drain_periods[2] == 1 &&
+	       g_stR.cost.drain_max[2] == 7 && g_stR.cost.select_max[2] == 7 && g_stR.cost.total_max == 14,
+	       "B = 2: two results fill it, the third is dropped; the cost of the period: 2 taken, 2 held at the choice");
+	p = Step(302, &nFresh);
+	Expect(g_stR.cost.periods == 2 && g_stR.cost.drain_periods[0] == 1 && g_stR.cost.select_max[1] == 7,
+	       "a period with nothing taken and one result held");
+	obs_cost_clear(&g_stR);
+	Expect(g_stR.now == CostClock && g_stR.cost.periods == 0 && g_stR.cost.total_max == 0 && g_stR.n_held == 1,
+	       "obs_cost_clear: a new run of the cost; the clock and the results held stay");
+	obs_receiver_start(&g_stR, &g_stR.set);
+	Expect(g_stR.now == NULL && g_stR.cost.periods == 0, "the start clears the clock and the cost");
+}
+
 void Deadline()
 {
 	int nFresh = 0;
@@ -1202,6 +1250,7 @@ int main(int argc, char** argv)
 	NineHeld();
 	Formats();
 	NoWriterAndSettings();
+	SlotsAndCost();
 	printf("states and verdicts: %d checks failed\n", g_nFailed);
 	Random(OBS_CONTRACT, nPeriods);
 	Random(OBS_MAX_AGE, nPeriods);

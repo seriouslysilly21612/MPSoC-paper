@@ -546,13 +546,25 @@ the torque and the reference: what this firmware computes on the R5 against the 
 | File | What it does |
 |---|---|
 | `src/control_link.c` | between the slots of the APU, the control task and the drives (below) |
+| `src/control_task.c`, `.h` | the task of the control step, below `ecat` and above the planner (2026-11-23, below) |
 | `src/ctrl/control_ctrl.cpp` | the C calls of the control task: build, one step, the planner |
 | `src/ctrl/ControlCycle.cpp`, `TrajectoryRT.cpp`, `ShadowWriter.h`, `GoalSlot.h` | copies of the application's: the control task without its operating system (`shadow/ControlCycle.h`), the trajectory part, and the description of a period |
 
 - **The cycle.** Where the cycle without the control task takes the Command and the Torque slot, it gives the
   drives what the step of the cycle before decided (`control_link_drives()`): its torque, and a servo on or off.
-  After the send (`control_link_step()`): the measured state, the goal and the command of the APU that are new,
-  one period of the control task, its report. The planner task serves its planner as it serves the second
+  After the send it hands the cycle to the task `control` (`control_link_give()`, `control_task.c`, priority
+  `configMAX_PRIORITIES - 3`, stack 32 KB) and wakes it; that task runs the step (`control_link_run()`): the measured
+  state, the goal and the command of the APU that are new, one period of the control task, its report.
+- **Two tasks (2026-11-23, I-143).** Until then the step ran in `ecat` after the send, and a step past the next
+  release delayed the next receive and send. Now the next release interrupts it: that cycle gives the drives the
+  torque of the cycle before again, not as new, hands nothing over and posts `[control] WARN the step of period N
+  was not done by the next release` once a run; `TORQUE_STALE_LIMIT` (10) such cycles in a row switch the servo off
+  (`axis_control.c`). The record of a cycle waits for the end of its step and is closed by the next cycle after
+  its send, so t_e is still release-to-end of the step; a step not done by then is an overrun with t_e up to the
+  start of the next cycle. The `[ecat]` timing line has a second line with the cycles that found the step not
+  done. The EtherCAT task takes what a step decided, and prints the `[control]` lines, only while the control task
+  is in no step (one core: it runs only while that task waits or was interrupted).
+- The planner task serves its planner as it serves the second
   controller's. The State slot has `IPC_STATE_CONTROL`, by which the APU tells this firmware from one that wants
   its torque; `r5cmd.py run` refuses it.
 - **The order of the three slots of the APU.** The APU writes a command, then a goal, then the state of a simulated

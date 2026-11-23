@@ -455,6 +455,8 @@ CRobotIndy7::AppFilter() const
 	stP.dRMax  = stSys.dAppGoalRMax;
 	stP.dFloor = stSys.dAppGoalFloor;
 	stP.dHover = stSys.dAppHover;
+	for (int k = 0; k < 2; k++)
+		stP.adHoverXY[k] = stSys.adAppHoverXY[k];
 	stP.dKappa = stSys.dAppKappa;
 	stP.dGapS  = stSys.dAppGapS;
 	return stP;
@@ -528,7 +530,14 @@ CRobotIndy7::InitObs()
 		return FALSE;
 	}
 	const bool bR5 = (m_nArch == arch::eS2);
+	if (stSys.nAppObsSlots < 1 || stSys.nAppObsSlots > (int)OBS_SLOTS)
+	{
+		DBG_LOG_ERROR("(CRobotIndy7) APP_OBS_SLOTS %d: the slots of the mailbox in use, 1 to %d", (int)stSys.nAppObsSlots,
+		              (int)OBS_SLOTS);
+		return FALSE;
+	}
 	CObsWriter::Config stW = { stC.dAgeCapS, { (float)stC.vEpsM[0], (float)stC.vEpsM[1] } };
+	stW.uSlots = (unsigned)stSys.nAppObsSlots;
 	volatile obs_mailbox_t* pBox = &m_obsBox;
 	if (bR5)
 	{
@@ -560,8 +569,9 @@ CRobotIndy7::InitObs()
 	stM.nStateAge = stG.nStateAge;
 	for (int k = 0; k < 3; k++)
 		stM.adTagOffset[k] = m_adTagOffset[k];
-	printf("[APP] method %s: the camera results go through the mailbox%s; the control task uses one for at most %.0f ms "
-	       "after its capture%s\n", pcMethod, bR5 ? " to the R5" : "", stC.dAgeCapS * 1e3,
+	printf("[APP] method %s: the camera results go through the mailbox%s (%d of its %d slots); the control task uses "
+	       "one for at most %.0f ms after its capture%s\n", pcMethod, bR5 ? " to the R5" : "", (int)stSys.nAppObsSlots,
+	       (int)OBS_SLOTS, stC.dAgeCapS * 1e3,
 	       stG.stSet.policy == OBS_CONTRACT ? ", with the joint angles of the capture and the error bound of eq. (7)" :
 	       ", with the joint angles of its arrival");
 	if (stG.stSet.policy == OBS_CONTRACT)
@@ -591,14 +601,24 @@ CRobotIndy7::InitSimCamera()
 		return FALSE;
 	}
 	const bool bMailbox = obs_method::UsesMailbox(m_nMethod);
-	CSimCamera::Config stC;
+	CSimCamera::Config stC{};		// the places past nPlaces are copied too
 	stC.dHz = stSys.dSimCamHz;
 	stC.dLatencyS = stSys.dSimCamLatencyS;
 	stC.dNoiseM = stSys.dSimCamNoiseM;
 	stC.bTagFormat = (stSys.nSimCamFormat == 0);
+	const std::vector<double>& vObj = stSys.vSimCamObject;
+	if (vObj.empty() || vObj.size() % 3 != 0 || vObj.size() / 3 > (size_t)CSimCamera::PLACES)
+	{
+		DBG_LOG_ERROR("(CRobotIndy7) SIM_CAM_OBJECT_M: three numbers a place, 1 to %d places (%zu numbers)",
+		              (int)CSimCamera::PLACES, vObj.size());
+		return FALSE;
+	}
+	stC.nPlaces = (int)(vObj.size() / 3);
+	for (int p = 0; p < stC.nPlaces; p++)
+		for (int k = 0; k < 3; k++)
+			stC.aadObject[p][k] = vObj[3 * p + k];
 	for (int k = 0; k < 3; k++)
 	{
-		stC.adObject[k] = stSys.vSimCamObject[k];
 		stC.adBias[k] = stSys.vSimCamBias[k];
 		stC.adTagOffset[k] = m_pConfig->Contract().vTagOffset[k];
 	}
@@ -627,6 +647,8 @@ CRobotIndy7::InitBridge()
 {
 	const ST_CONFIG_SYSTEM& stSys = m_pConfig->System();
 	m_dAppHover = stSys.dAppHover;
+	for (int k = 0; k < 2; k++)
+		m_adAppHoverXY[k] = stSys.adAppHoverXY[k];
 	m_dAppT = stSys.dAppDurationS;
 	if (stSys.nAppBridge == 0 || m_pSimCam != NULL)		// the camera of the simulation is the only source then
 		return;
@@ -639,6 +661,11 @@ CRobotIndy7::InitBridge()
 	if (stSys.nAppResultFormat < 0)
 	{
 		printf("[APP] APP_RESULT_FORMAT is neither base nor tag - no bridge\n");
+		return;
+	}
+	if (!stSys.bAppHoverXYOk)
+	{
+		printf("[APP] APP_HOVER_XY_M is not x y within %.2f m - no bridge\n", CGoalFilter::HOVER_XY_MAX);
 		return;
 	}
 	m_pBridge = new CROS2PickBridge();
@@ -1043,9 +1070,9 @@ CRobotIndy7::PrintRtSummary() const
 		printf("[S2] reports of the R5's control task: %ld taken, %ld of a period with a state of the arm; %ld of such "
 		       "a period not taken (the tasks here came late: periods that the logs miss)\n", c.nReports,
 		       c.nStateReports, c.nStateMissed);
-		printf("[S2] commands: %ld written, %ld refused by the R5, %ld dropped here (it did not answer); goals "
-		       "written: %ld, taken by the R5 in this run: %ld\n", c.nCommands, c.nRefused, c.nQueueFull, c.nGoals,
-		       c.nGoalsTaken);
+		printf("[S2] commands: %ld written, %ld refused by the R5, %ld written again after a refusal for a period "
+		       "without a state, %ld dropped here (it did not answer); goals written: %ld, taken by the R5 in this run: "
+		       "%ld\n", c.nCommands, c.nRefused, c.nSentAgain, c.nQueueFull, c.nGoals, c.nGoalsTaken);
 		if (m_pObsRingR5 != NULL)		// the goals of the application are the receiver's there
 			printf("[S2] the receiver of the camera results on the R5 (since it started): %u results taken, %u object "
 			       "positions written (the goals of a run of the application); %u of its log entries were "
@@ -1906,11 +1933,12 @@ CRobotIndy7::DoInput()
 			printf("[HL] high-level tests - press 1-%d, any other key closes:\n"
 			       "     1 fixed goal   2 goal jump   3 goal noise (delta)   4 goal noise (delta = 0)\n"
 			       "     5 reference check   6 HOME   7 record q_r (this session)\n"
-			       "     8 camera application: goals from the camera through the bridge (%s), hover %.2f m\n"
+			       "     8 camera application: goals from the camera through the bridge (%s), hover %.2f m, "
+			       "beside the object x %+.2f y %+.2f m\n"
 			       "     goal [%.3f %.3f %.3f] m from the tool at q_r; jump [%.3f %.3f %.3f] m at %.2f m; "
 			       "noise %.1f mm at %.0f Hz for %.0f s; delta %.1f mm; friction FF %s\n",
 			       (int)HL_MENU, m_pSimCam != NULL ? "here: the camera of the simulation" :
-			       m_pBridge != NULL ? "up" : "not running", m_dAppHover,
+			       m_pBridge != NULL ? "up" : "not running", m_dAppHover, m_adAppHoverXY[0], m_adAppHoverXY[1],
 			       m_adHlGoalOff[0], m_adHlGoalOff[1], m_adHlGoalOff[2],
 			       m_adHlJump[0], m_adHlJump[1], m_adHlJump[2], m_dHlTrigger,
 			       m_dHlNoise * 1e3, m_dHlNoiseHz, m_dHlNoiseT, m_dHlDelta * 1e3, m_bHlFF ? "on" : "off");
