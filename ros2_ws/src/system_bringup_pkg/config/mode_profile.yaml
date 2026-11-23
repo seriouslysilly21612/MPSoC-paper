@@ -4,7 +4,7 @@
 # file. The measurement error of a mode is not here: it is a constant of the
 # contract ([CONTRACT] EPS_M_MM of the control application).
 #
-# MEASURED (2026-11-22, I-129, I-130, I-133): YOLOv5n 416 and 320, one model
+# MEASURED (2026-11-22/23, I-129, I-130, I-133, I-142): YOLOv5n 416 and 320, one model
 # per run (FULL), the tool tag off, the memory pressure of 800 MB/s per worker
 # (run_timing --memrate-mbs 800, the worst load of the batch), the arch S2,
 # admission_log's profile lines. About the p99, so that about one result in a
@@ -26,9 +26,10 @@ frame_period_ms: 33.35
 # (416 p90 67.6 ms): the old rule let through only those younger than its
 # threshold. SKIP cannot happen with these values: the result of the next
 # image could be used 33.35 + 104 + 138 + 1 = 276 ms after this capture with
-# 416 alone, past the age cap of 250 ms of any older result; with 320 too,
-# 235 ms, which needs a result in use from an image less than 15 ms older
-# than this one, and images are 33 ms apart.
+# 416 alone, past the age cap of 250 ms of any older result; with 320,
+# 247 ms, which needs a result in use from an image less than 3 ms older
+# than this one, and images are 33 ms apart. (With 97 for 320, one SKIP in
+# 11656 decisions of s2d_p97_320, I-142: why was not looked at.)
 acquisition_ms: 104.0
 # a status of the control task older than this is not trusted: no inference
 # by the admission rule
@@ -61,9 +62,10 @@ modes:
     ddr_bytes: 59000000.0
   1:
     name: "320"
-    # p99 96.8 (p90 75.8) of s2a_m1_p800, under the old rule (threshold 79 ms),
-    # not measured again: probably low by the same bias as 117 for 416 (I-133)
-    release_to_publication_ms: 97.0
+    # 97 (the p99 of s2a_m1_p800, under the old rule) gave 3.3 % of its results
+    # later than predicted and a p99 of 108.5 (s2d_p97_320); with 109, 1.1 %
+    # and a p99 of 110.6 (s2d_p109_320, 320 alone, I-142)
+    release_to_publication_ms: 109.0
     # 18.1 mJ (s2c_en_320), 17.3 against a run of its own
     energy_j: 0.018
     # 42 MB (s2c_en_320)
