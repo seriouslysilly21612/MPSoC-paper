@@ -133,3 +133,29 @@ def test_the_ddr_monitor_records_one_at_a_time(tmp_path):
     assert first is not None and A.take_lock(str(tmp_path / 'l')) is None
     first.close()
     assert A.take_lock(str(tmp_path / 'l')) is not None
+
+
+def test_the_ddr_monitor_without_dev_mem_leaves_no_lock_file(tmp_path, monkeypatch, capsys):
+    sys.path.insert(0, os.path.join(HERE, 'host'))
+    import ddr_apm as A
+    lock = tmp_path / 'l'
+    monkeypatch.setattr(A, 'LOCK', str(lock))
+    monkeypatch.setattr(sys, 'argv', ['ddr_apm', '--out', str(tmp_path / 'apm.csv'), '--duration', '1'])
+
+    def no_mem(base, write):
+        raise PermissionError(13, 'Permission denied')
+    monkeypatch.setattr(A, 'Regs', no_mem)
+    with pytest.raises(SystemExit) as ex:
+        A.main()
+    assert '/dev/mem' in str(ex.value) and not lock.exists()
+
+
+def test_the_ddr_monitor_names_a_lock_file_it_cannot_open(tmp_path, monkeypatch):
+    sys.path.insert(0, os.path.join(HERE, 'host'))
+    import ddr_apm as A
+    monkeypatch.setattr(A, 'LOCK', str(tmp_path / 'no_dir' / 'l'))
+    monkeypatch.setattr(sys, 'argv', ['ddr_apm', '--out', str(tmp_path / 'apm.csv'), '--duration', '1'])
+    monkeypatch.setattr(A, 'Regs', lambda base, write: object())
+    with pytest.raises(SystemExit) as ex:
+        A.main()
+    assert 'the lock file' in str(ex.value)

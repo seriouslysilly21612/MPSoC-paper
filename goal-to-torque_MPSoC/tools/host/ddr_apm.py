@@ -42,7 +42,8 @@ LOCK = '/run/lock/ddr_apm.lock' if os.path.isdir('/run/lock') else '/tmp/ddr_apm
 
 
 def take_lock(path):
-    """an open file holding the lock of one recording, or None while another one holds it"""
+    """an open file holding the lock of one recording, or None while another one holds it. Raises OSError when
+    the file cannot be opened (one left by another user where the kernel keeps root out of it)"""
     f = open(path, 'a')
     try:
         fcntl.flock(f, fcntl.LOCK_EX | fcntl.LOCK_NB)
@@ -139,13 +140,18 @@ def main():
         sys.exit('ddr_apm: --probe or --out')
     if not 0.05 <= a.period <= 1.0 or (a.duration is not None and not a.duration > 0):
         sys.exit('ddr_apm: --period 0.05 .. 1 s, --duration above 0')
-    lock = None if a.probe else take_lock(LOCK)
-    if not a.probe and lock is None:
-        sys.exit('ddr_apm: another recording runs (%s): wait for its end' % LOCK)
     try:
         regs = Regs(BASE, write=not a.probe)
     except OSError as ex:
         sys.exit('ddr_apm: /dev/mem at 0x%08X: %s (root?)' % (BASE, ex))
+    if not a.probe:
+        # after /dev/mem: a run without root must not leave the lock file as its own
+        try:
+            lock = take_lock(LOCK)
+        except OSError as ex:
+            sys.exit('ddr_apm: the lock file %s: %s (remove it as root)' % (LOCK, ex))
+        if lock is None:
+            sys.exit('ddr_apm: another recording runs (%s): wait for its end' % LOCK)
     if a.probe:
         print('\n'.join(probe(regs)))
         return 0

@@ -5,8 +5,10 @@
  *   t_w       release -> start of the cycle (how far the timer has counted when the task runs)
  *   t_s       start -> return of the send;  t_w + t_s <= t_b, the send deadline of the cfg (eq. (3) of the paper)
  *   t_e       start -> end of the cycle: the return of the send, or, in a cycle in which the second controller of
- *             --shadow ran after the send (shadow_link.h), its end.  The record of the times is written after it
- *             and is in neither.  t_w + t_e <= T: the cycle ends before the next release
+ *             --shadow ran after the send (shadow_link.h), its end, or the end of the control step of the cycle
+ *             (CONTROL_TASK, control_task.h; the next cycle closes the record).
+ *             The record of the times is written after it and is in neither.
+ *             t_w + t_e <= T: the cycle ends before the next release
  * The names and the rules of late, missed and overrun are those of the EtherCAT task of the APU controller
  * (TaskSlots.h, TimingLog.h).
  */

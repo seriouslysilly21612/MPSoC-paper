@@ -12,6 +12,7 @@
 #include "ecat_diag.h"
 #include "ecat_task.h"
 #include "robot_target.h"
+#include "app_config.h"
 
 #if defined(__arm__) && !defined(HOST_TEST)
 #define MEMORY_BARRIER()    __asm__ volatile ("dmb" : : : "memory")
@@ -113,6 +114,15 @@ static void print_event(const event_t *e)
                    (int)e->value[0], (int)e->value[1], (int)e->value[2], (int)e->value[3], (int)e->value[4],
                    (int)(FW_CFG_SEND_DEADLINE_NS / 1000), (int)e->value[5], (int)e->value[6], (int)e->value[7],
                    (int)e->value[8], (int)e->value[9]);
+#if CONTROL_TASK
+        xil_printf("[ecat]   cycles that found the control step of the cycle before not done: %d so far\r\n",
+                   (int)e->value[10]);
+#endif
+        break;
+    case EVENT_CONTROL_LATE:
+        xil_printf("[control] WARN the step of period %d was not done by the next release (%d cycles so far): the"
+                   " drives keep the torque they had; %d such cycles in a row switch the servo off\r\n",
+                   (int)e->value[0], (int)e->value[1], (int)TORQUE_STALE_LIMIT);
         break;
     case EVENT_CONTROL_REPORT:
         if (e->value[0] == 0) {
@@ -131,7 +141,8 @@ static void print_event(const event_t *e)
     case EVENT_OBS_COST_REPORT:     /* eq. (6): the reader of the mailbox in this run of the application */
         xil_printf("[obs] reader cost, B = %d slots, %d periods: longest %d ns | the look at the slots with 0/1/2/3/4+"
                    " results taken %d/%d/%d/%d/%d ns | the choice with 0/1/2-3/4-7/8 held %d/%d/%d/%d/%d ns | periods"
-                   " with a result %d, the most in one %d | each time holds a read of the clock, %d ns\r\n",
+                   " with a result %d, the most in one %d | a look and a choice each hold a read of the clock,"
+                   " the longest two: %d ns a read\r\n",
                    (int)e->value[0], (int)e->value[1], (int)e->value[2],
                    (int)e->value[3], (int)e->value[4], (int)e->value[5], (int)e->value[6], (int)e->value[7],
                    (int)e->value[8], (int)e->value[9], (int)e->value[10], (int)e->value[11], (int)e->value[12],
