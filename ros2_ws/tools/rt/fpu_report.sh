@@ -8,7 +8,7 @@
 #   usage: tools/rt/fpu_report.sh [outdir]     (default: evidence/fpu)
 set -u
 
-OUT=${1:-/home/ubuntu/ros2_ws/evidence/fpu}
+OUT=${1:-"$(cd "$(dirname "$0")/../.." && pwd)/evidence/fpu"}
 APP=/home/ubuntu/RAON-RT-Revision/App/Indy7
 BIN=$APP/bin/Indy7Ctrl.out
 URDF=$APP/indy7.urdf

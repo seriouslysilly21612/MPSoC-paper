@@ -78,6 +78,29 @@ from launch_ros.actions import Node
 from launch_ros.substitutions import FindPackageShare
 
 
+def _find_ros_ws():
+    """The ros2_ws this launch file belongs to, from its own path.
+
+    It runs from install/system_bringup_pkg/share/system_bringup_pkg/launch/ (or,
+    with --symlink-install, may resolve to src/system_bringup_pkg/launch/): the
+    workspace is the first directory above it that holds src/system_bringup_pkg.
+    Else ~/ros2_ws, as before.
+    """
+    d = os.path.dirname(os.path.abspath(__file__))
+    for _ in range(8):
+        if os.path.isdir(os.path.join(d, 'src', 'system_bringup_pkg')):
+            return d
+        parent = os.path.dirname(d)
+        if parent == d:
+            break
+        d = parent
+    return os.path.expanduser('~/ros2_ws')
+
+
+ROS_WS = _find_ros_ws()
+REPO = os.path.dirname(ROS_WS)      # the MPSoC-paper checkout: goal-to-torque_MPSoC/ is beside ros2_ws/
+
+
 def _point_latest_at(run_dir, metrics_dir):
     """Repoint <metrics_dir>/latest -> runs/<label> so tools can say
     `--base <metrics_dir>/latest` and always get the newest run.
@@ -400,7 +423,7 @@ def generate_launch_description():
             description='true = record performance+yield CSVs (all 4 nodes) and '
                         'start the resource sampler. Default false = no recording.'),
         DeclareLaunchArgument(
-            'metrics_dir', default_value='/home/ubuntu/ros2_ws/evidence/metrics',
+            'metrics_dir', default_value=os.path.join(ROS_WS, 'evidence', 'metrics'),
             description='absolute base dir; each run lands in runs/<label>/ under '
                         'it with performance/ resource/ yield/ subdirs'),
         DeclareLaunchArgument(
@@ -418,7 +441,7 @@ def generate_launch_description():
                         'runs, e.g. desired_class:=apple'),
         DeclareLaunchArgument(
             'sampler_script',
-            default_value='/home/ubuntu/ros2_ws/tools/metrics/resource_sampler.py',
+            default_value=os.path.join(ROS_WS, 'tools', 'metrics', 'resource_sampler.py'),
             description='path to tools/metrics/resource_sampler.py'),
         DeclareLaunchArgument(
             'model_path', default_value='',
@@ -472,7 +495,7 @@ def generate_launch_description():
                         'application with the same --method'),
         DeclareLaunchArgument(
             'contract_cfg',
-            default_value='~/goal-to-torque_MPSoC/indy7/INDY7.cfg',
+            default_value=os.path.join(REPO, 'goal-to-torque_MPSoC', 'indy7', 'INDY7.cfg'),
             description='configuration of the control application: its section '
                         '[CONTRACT] holds the constants both sides compute with '
                         '(methods other than M1)'),

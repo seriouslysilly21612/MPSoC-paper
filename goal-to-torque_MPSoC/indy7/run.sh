@@ -63,11 +63,14 @@ export MALLOC_ARENA_MAX=2
 
 if ldd ./bin/indy7_ctrl 2>/dev/null | grep -q librclcpp && \
    [[ "${AMENT_PREFIX_PATH:-}" != *my_interfaces* ]]; then
-    if [ -f "$HOME/ros2_ws/install/setup.bash" ]; then
+    # the ros2_ws of this repository (../../ros2_ws from here), else ~/ros2_ws as before
+    ROS_WS="$(cd ../../ros2_ws 2>/dev/null && pwd)"
+    [ -f "$ROS_WS/install/setup.bash" ] || ROS_WS="$HOME/ros2_ws"
+    if [ -f "$ROS_WS/install/setup.bash" ]; then
         source /opt/ros/humble/setup.bash
-        source "$HOME/ros2_ws/install/setup.bash"
+        source "$ROS_WS/install/setup.bash"
     else
-        echo "run.sh: note: ~/ros2_ws/install/setup.bash is missing - the bridge will not start"
+        echo "run.sh: note: $ROS_WS/install/setup.bash is missing - the bridge will not start"
     fi
 fi
 

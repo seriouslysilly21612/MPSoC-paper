@@ -8,7 +8,7 @@
 # production metrics run 은 지금 코드로 그대로 쓸 수 있다:
 #   bash tools/metrics/ab_one_run.sh my_label
 LABEL="$1"; shift
-WS=/home/ubuntu/ros2_ws
+WS="$(cd "$(dirname "$0")/../.." && pwd)"
 LOG="/tmp/ab_${LABEL}.log"
 RUN_DIR="$WS/evidence/metrics/runs/$LABEL"
 

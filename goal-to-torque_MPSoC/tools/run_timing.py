@@ -105,8 +105,12 @@ from jt_run_sim import APP, Console, FAIL_START, CTRL_ON, GRAV_COMP  # noqa: E40
 PATH_KEYS = ('URDF_PATH', 'SIM_MJCF_PATH', 'JOINT_TEST_LOG_DIR', 'CALIB_DIR', 'HL_TEST_NOISE_FILE')
 STRESS_ARGS = ['--cpu', '3', '--vm', '1', '--vm-bytes', '10%', '--timeout', '0', '--quiet']   # KV260: 3 cores, 3.8 GB
 PERCEPTION = ('realsense2_camera_node', 'vitis_ai_detector_node', 'pick_target_base_node')
-VISION = ('source /opt/ros/humble/setup.bash && source "$HOME/ros2_ws/install/setup.bash" && '
-          'exec ros2 launch system_bringup_pkg pick_place_vitis_ai.launch.py')            # as run.sh sources them
+# the ros2_ws of this repository (../../ros2_ws from here), else ~/ros2_ws as before; as run.sh sources it
+ROS_WS = os.path.normpath(os.path.join(HERE, '..', '..', 'ros2_ws'))
+if not os.path.isfile(os.path.join(ROS_WS, 'install', 'setup.bash')):
+    ROS_WS = os.path.expanduser('~/ros2_ws')
+VISION = ('source /opt/ros/humble/setup.bash && source "%s/install/setup.bash" && '
+          'exec ros2 launch system_bringup_pkg pick_place_vitis_ai.launch.py' % ROS_WS)
 # the line of vitis_ai_detector_node once its worker has loaded the model; the loads start only after it: under
 # them the worker missed the node's 30 s startup limit (11-15, run 04 of the quick batch)
 VISION_READY = 'Vitis-AI worker ready'
