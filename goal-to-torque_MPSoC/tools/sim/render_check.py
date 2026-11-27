@@ -19,6 +19,7 @@ Rendering is offscreen; on Linux without a display set MUJOCO_GL=egl or osmesa.
 """
 import argparse
 import csv
+import json
 import math
 import os
 import subprocess
@@ -202,6 +203,8 @@ def main():
     ap.add_argument('--speed', type=float, default=0.10, help='apple speed on the table [m/s]')
     ap.add_argument('--onnx', default='')
     ap.add_argument('--classes', default='apple,banana,orange,tennis_ball,cup')
+    ap.add_argument('--meta', default='',
+                    help='decode_meta.json of the compiled model: class names (in order) from it, overrides --classes')
     ap.add_argument('--hover-x', type=float, default=-0.13,
                     help='tool goal x offset from the apple [m]; -0.13: tag and apple both in view (cfg -0.05: the tag hides the apple from above)')
     ap.add_argument('--apple-obj', default='',
@@ -211,6 +214,8 @@ def main():
     ap.add_argument('--show', action='store_true')
     ap.add_argument('--yolo-pass', action='store_true', help=argparse.SUPPRESS)
     a = ap.parse_args()
+    if a.meta:
+        a.classes = ','.join(json.load(open(a.meta))['names'])
     os.makedirs(os.path.join(a.out, 'frames'), exist_ok=True)
     if a.yolo_pass:
         return yolo_pass(a)
