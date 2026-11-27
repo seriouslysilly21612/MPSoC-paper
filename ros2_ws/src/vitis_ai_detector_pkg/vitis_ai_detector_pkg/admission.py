@@ -20,11 +20,15 @@ never asked to wait, and it checks every result again when it arrives.
   choose_by_score()  the mode of the methods M2 and A2: measurement error plus
                      the way of the tool during the latency. No look at the
                      control task, no skip.
+  DynamicLatency     L_m of every mode from the latencies its results had in
+                     this run, in place of the fixed value of the profile
+                     (launch dynamic_latency:=true)
 
 Times are seconds on one clock (the node uses that of the image stamps).
 Pure stdlib + PyYAML, no ROS needed:
     python3 -m pytest src/vitis_ai_detector_pkg/test/test_admission.py
 """
+import collections
 import csv
 import math
 from dataclasses import dataclass, field
@@ -55,6 +59,7 @@ class Status:
     result_capture_s: float        # the result used last: its capture
     result_valid_until_s: float    # its deadline
     result_mode: int               # its mode
+    result_n: int = 0              # number of that result (0: none so far); a new one = new number
 
 
 @dataclass(frozen=True)
@@ -80,6 +85,10 @@ class Profile:
     weight_ddr: float              # w_b [1/byte]
     response_margin_s: float       # margin M on a measured response
     modes: dict = field(default_factory=dict)   # mode number -> ModeProfile
+    latency_window: int = 100        # dynamic L_m: the newest samples of a mode it looks at
+    latency_quantile: float = 0.9    # dynamic L_m: this quantile of them
+    latency_min_samples: int = 20    # dynamic L_m: fewer samples -> the value of the profile
+    latency_clamp: tuple = (0.5, 1.5)   # dynamic L_m: within these multiples of the profile
 
 
 @dataclass(frozen=True)
@@ -145,6 +154,26 @@ def load_profile(path):
             energy_j=_positive(entry.get('energy_j'), where + 'energy_j', path, allow_zero=True),
             ddr_bytes=_positive(entry.get('ddr_bytes'), where + 'ddr_bytes', path,
                                 allow_zero=True))
+    dynamic = raw.get('dynamic_latency', {})
+    if not isinstance(dynamic, dict):
+        raise ProfileError(f'{path}: dynamic_latency must be a mapping')
+    window = dynamic.get('window', 100)
+    min_samples = dynamic.get('min_samples', 20)
+    for name, value in (('window', window), ('min_samples', min_samples)):
+        if isinstance(value, bool) or not isinstance(value, int) or value < 1:
+            raise ProfileError(f'{path}: dynamic_latency.{name} must be a whole number above 0')
+    if min_samples > window:
+        raise ProfileError(f'{path}: dynamic_latency.min_samples is above its window')
+    quantile = _positive(dynamic.get('quantile', 0.9), 'dynamic_latency.quantile', path)
+    if quantile > 1.0:
+        raise ProfileError(f'{path}: dynamic_latency.quantile must be at most 1')
+    clamp = dynamic.get('clamp', [0.5, 1.5])
+    if not isinstance(clamp, (list, tuple)) or len(clamp) != 2:
+        raise ProfileError(f'{path}: dynamic_latency.clamp must be [low, high]')
+    low = _positive(clamp[0], 'dynamic_latency.clamp[0]', path)
+    high = _positive(clamp[1], 'dynamic_latency.clamp[1]', path)
+    if low > high:
+        raise ProfileError(f'{path}: dynamic_latency.clamp: low above high')
     return Profile(
         frame_period_s=1e-3 * _positive(raw.get('frame_period_ms'), 'frame_period_ms', path),
         acquisition_s=1e-3 * _positive(raw.get('acquisition_ms'), 'acquisition_ms', path),
@@ -156,7 +185,57 @@ def load_profile(path):
         weight_ddr=_positive(weights.get('ddr'), 'weights.ddr', path, allow_zero=True),
         response_margin_s=1e-6 * _positive(raw.get('response_margin_us'), 'response_margin_us',
                                            path, allow_zero=True),
-        modes=modes)
+        modes=modes,
+        latency_window=window, latency_quantile=quantile, latency_min_samples=min_samples,
+        latency_clamp=(low, high))
+
+
+class DynamicLatency:
+    """L_m of every mode from the latencies its results had in this run (2026-11-26).
+
+    A sample is taken when the status of the control task first names a new
+    result: the time of that status minus the release of the inference minus
+    one control period, i.e. release -> the result reached the control task,
+    as release_to_publication_s of the profile. The status comes every 20 ms
+    from the bridge, so a sample is up to about 20 ms late (on the safe side).
+
+    value(mode): the quantile of the newest window samples of the mode, held
+    within the clamp around the value of the profile; the value of the profile
+    while the mode has fewer than min_samples. The rule only spends work with
+    it: a result it lets through too late is refused by the control task.
+    """
+
+    def __init__(self, profile):
+        self.profile = profile
+        self.samples = {mode: collections.deque(maxlen=profile.latency_window)
+                        for mode in profile.modes}
+        self.taken = dict.fromkeys(profile.modes, 0)
+
+    def add(self, mode, latency_s):
+        if mode in self.samples and math.isfinite(latency_s) and latency_s > 0.0:
+            self.samples[mode].append(latency_s)
+            self.taken[mode] += 1
+
+    def value(self, mode):
+        fixed_s = self.profile.modes[mode].release_to_publication_s
+        samples = self.samples[mode]
+        if len(samples) < self.profile.latency_min_samples:
+            return fixed_s
+        ordered = sorted(samples)
+        rank = max(1, math.ceil(self.profile.latency_quantile * len(ordered)))   # nearest rank
+        low, high = self.profile.latency_clamp
+        return min(max(ordered[rank - 1], low * fixed_s), high * fixed_s)
+
+    def values(self):
+        """{mode: L_m [s]} for every mode of the profile."""
+        return {mode: self.value(mode) for mode in self.profile.modes}
+
+
+def latency_of(profile, mode, latency_s=None):
+    """L_m [s] of a mode: from latency_s ({mode: s}) when it has the mode, else the profile."""
+    if latency_s and mode in latency_s:
+        return latency_s[mode]
+    return profile.modes[mode].release_to_publication_s
 
 
 def load_response_table(path):
@@ -179,9 +258,10 @@ def load_response_table(path):
     return table
 
 
-def _run_candidate(mode, capture_s, now_s, status, contract, profile, response_table):
+def _run_candidate(mode, capture_s, now_s, status, contract, profile, response_table,
+                   latency_s=None):
     mode_profile = profile.modes[mode]
-    arrival_s = now_s + mode_profile.release_to_publication_s
+    arrival_s = now_s + latency_of(profile, mode, latency_s)
     first_use_s = arrival_s + status.control_period_s      # one period later, to be safe
     age_s = first_use_s - capture_s
     error_bound_m = contract.error_bound(mode, age_s)
@@ -200,7 +280,7 @@ def _run_candidate(mode, capture_s, now_s, status, contract, profile, response_t
               + profile.weight_ddr * mode_profile.ddr_bytes))
 
 
-def _skip_candidate(modes, capture_s, status, contract, profile):
+def _skip_candidate(modes, capture_s, status, contract, profile, latency_s=None):
     """Return SKIP as a candidate, or None while no result is in use.
 
     Skipping this image means waiting for the next one. The result in use has
@@ -208,7 +288,7 @@ def _skip_candidate(modes, capture_s, status, contract, profile):
     """
     if not status.result_in_use:
         return None
-    fastest_s = min(profile.modes[mode].release_to_publication_s for mode in modes)
+    fastest_s = min(latency_of(profile, mode, latency_s) for mode in modes)
     next_use_s = (capture_s + profile.frame_period_s + profile.acquisition_s + fastest_s
                   + status.control_period_s)
     age_s = next_use_s - status.result_capture_s
@@ -222,12 +302,14 @@ def _skip_candidate(modes, capture_s, status, contract, profile):
         cost=profile.weight_error * error_bound_m ** 2)
 
 
-def decide(capture_s, now_s, status, contract, profile, modes, method, response_table=None):
+def decide(capture_s, now_s, status, contract, profile, modes, method, response_table=None,
+           latency_s=None):
     """Decide what to do with the image captured at capture_s, now (Alg. 2).
 
     status: the newest Status of the control task, or None. modes: the mode
     numbers that can run now, each with an entry in the profile. method: the
-    method this side runs with.
+    method this side runs with. latency_s: {mode: L_m [s]} in place of the
+    profile's (DynamicLatency); None: the profile.
     """
     if status is None:
         return Decision(REJECT, -1, 'no_status')
@@ -241,12 +323,13 @@ def decide(capture_s, now_s, status, contract, profile, modes, method, response_
         return Decision(REJECT, -1, 'bad_status')
 
     candidates = []
-    skip = _skip_candidate(modes, capture_s, status, contract, profile)
+    skip = _skip_candidate(modes, capture_s, status, contract, profile, latency_s)
     if skip is not None:
         candidates.append(skip)       # first: with equal cost, no inference wins
     for mode in modes:
         candidates.append(
-            _run_candidate(mode, capture_s, now_s, status, contract, profile, response_table))
+            _run_candidate(mode, capture_s, now_s, status, contract, profile, response_table,
+                           latency_s))
     feasible = [candidate for candidate in candidates if candidate.feasible]
     if not feasible:
         return Decision(REJECT, -1, 'no_candidate_passes', tuple(candidates))

@@ -34,8 +34,25 @@ acquisition_ms: 104.0
 # a status of the control task older than this is not trusted: no inference
 # by the admission rule
 status_max_age_ms: 100.0
-# M2, A2: the tool speed that turns the latency of a mode into an error
-reference_speed_mps: 0.2
+# M2, A2: the tool speed that turns the latency of a mode into an error.
+# 0 since 2026-11-27: the same speed as the contract's EPS_V of the run (a
+# target that does not move: 0), so that M2 and FULL choose their mode on the
+# same assumption (E1 of 11-26: 0.2 made M2 run 320 and FULL 416). For a
+# moving target set both to the task's largest target speed.
+reference_speed_mps: 0.0
+# A3, FULL with dynamic_latency:=true: L_m of a mode from the latencies its
+# results had in this run, in place of release_to_publication_ms below. The
+# quantile of the newest `window` samples; the value below while fewer than
+# min_samples; held within clamp x the value below. A sample: the status that
+# first names the result - the release - one control period (up to about
+# 20 ms late: the bridge sends the status every 20 ms). p90, not p99: a late
+# prediction only costs a result the control task refuses by its age cap
+# (2026-11-26: the fixed p99 rejected about 20 % of images that were in time).
+dynamic_latency:
+  window: 100
+  quantile: 0.9
+  min_samples: 20
+  clamp: [0.5, 1.5]
 # admission rule, check 3: margin M on the measured response of the control
 # task, which must stay within D_c = the control period (1 ms: the torque of a
 # period goes out with the send of the next one, and a computation past the

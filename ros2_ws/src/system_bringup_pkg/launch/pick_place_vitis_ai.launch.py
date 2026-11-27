@@ -187,6 +187,8 @@ def launch_setup(context, *args, **kwargs):
             FindPackageShare('system_bringup_pkg'), 'config', 'mode_profile.yaml']),
         'response_table_path': response_table,
         'decision_log_path': LaunchConfiguration('decision_log').perform(context).strip(),
+        'dynamic_latency': LaunchConfiguration('dynamic_latency').perform(context).strip().lower()
+        in ('true', '1', 'yes', 'on'),
     }
     for key in ('response_table_path', 'decision_log_path'):
         if method_params[key]:
@@ -505,6 +507,11 @@ def generate_launch_description():
                         'responses of the control task (empty = '
                         'config/response_v5n.csv of this package, off = that '
                         'check is off)'),
+        DeclareLaunchArgument(
+            'dynamic_latency', default_value='false',
+            description='A3, FULL: true = L_m of every mode from the latencies of its results '
+                        'in this run (config/mode_profile.yaml dynamic_latency); false = the '
+                        'fixed L_m of the profile'),
         DeclareLaunchArgument(
             'decision_log', default_value='',
             description='A3, FULL: CSV file for the decision on every image, '

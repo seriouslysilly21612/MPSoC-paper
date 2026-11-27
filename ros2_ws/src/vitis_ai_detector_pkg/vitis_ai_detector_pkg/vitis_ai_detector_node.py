@@ -156,6 +156,8 @@ class VitisAiDetectorNode(Node):
         self.declare_parameter("mode_profile_path", "")     # mode_profile.yaml
         self.declare_parameter("response_table_path", "")   # 검사 3의 표. 비우면 검사 3을 끈다
         self.declare_parameter("decision_log_path", "")     # A3, FULL의 결정 기록. 비우면 쓰지 않는다
+        # A3, FULL: L_m을 이 run에서 잰 지연(mode별 최근 표본의 분위수)으로. false면 profile의 고정값
+        self.declare_parameter("dynamic_latency", False)
         # the tool tag (D-22, I-122): searched here, in the image that runs, in a thread of its own
         # beside the inference, and published for pick_target_3d_node (my_interfaces/ToolTag), so
         # that the search is not on the path of the result. Off by default.
@@ -232,6 +234,7 @@ class VitisAiDetectorNode(Node):
                     self.model_path,
                     str(self.get_parameter("response_table_path").value),
                     self.model_path_2,
+                    bool(self.get_parameter("dynamic_latency").value),
                 )
             except GateError as error:
                 raise RuntimeError(f"method {self.method}: {error}") from None
@@ -356,7 +359,8 @@ class VitisAiDetectorNode(Node):
                 + f"; modes that can run {gate.modes}, age cap "
                 f"{1e3 * gate.contract.age_cap_s:.0f} ms, contract check value "
                 f"0x{gate.contract.crc():08X}, response check "
-                f"{'on' if gate.response_table is not None else 'off'}"
+                f"{'on' if gate.response_table is not None else 'off'}, L_m "
+                f"{'dynamic' if gate.dynamic_latency else 'of the profile'}"
             )
 
     def color_info_callback(self, msg):
@@ -416,6 +420,7 @@ class VitisAiDetectorNode(Node):
             result_capture_s=stamp_to_seconds(msg.result_capture),
             result_valid_until_s=stamp_to_seconds(msg.result_valid_until),
             result_mode=int(msg.result_mode),
+            result_n=int(msg.result_n),
         ))
 
     def frame_passes_gate(self, msg):
@@ -931,6 +936,13 @@ class VitisAiDetectorNode(Node):
             f"method {self.method}: {counts[admission.RUN]} frames run, "
             f"{counts[admission.SKIP]} skipped, {counts[admission.REJECT]} rejected"
         )
+        latencies = self.frame_gate.latencies()
+        self.get_logger().info(
+            "L_m at the end ("
+            + ("dynamic, used" if self.frame_gate.dynamic_latency else "measured, not used")
+            + "): " + ", ".join(f"mode {mode} {1e3 * value:.1f} ms from {taken} samples"
+                                for mode, (value, taken) in sorted(latencies.items()))
+            + f"; {self.frame_gate.unmatched_results} results not matched to a run")
         if not self.decision_log_path:
             return
         try:

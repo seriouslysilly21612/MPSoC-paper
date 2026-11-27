@@ -219,3 +219,65 @@ def test_two_models_of_one_mode_are_refused(files, tmp_path):
     a, b = two_models(tmp_path, sizes=(320, 320))
     with pytest.raises(GateError):
         FrameGate('FULL', cfg, profile, a, '', b)
+
+
+# ---- dynamic L_m (2026-11-27) ------------------------------------------------
+
+def test_the_gate_measures_the_latency_of_its_runs_from_the_status(files):
+    cfg, profile, model = files
+    gate = FrameGate('FULL', cfg, profile, model)
+    gate.on_status(status_of(gate))
+    capture_s = NOW - 0.040
+    assert gate.decide(capture_s, NOW).action == admission.RUN
+    # the status first names that result 70 ms later: 70 - 1 (one period) = 69 ms
+    named = status_of(gate, stamp_s=NOW + 0.070, result_n=1, result_in_use=True,
+                      result_capture_s=capture_s + 0.0005, result_mode=1)
+    gate.on_status(named)
+    gate.on_status(replace(named, stamp_s=NOW + 0.090))      # the same result again: no sample
+    assert list(gate.latency.samples[1]) == pytest.approx([0.069])
+    assert gate.latencies()[1] == (pytest.approx(0.080), 1)   # 1 < 20 samples: the profile
+    # a result of no run of this gate is counted, not taken
+    gate.on_status(replace(named, result_n=2, result_capture_s=NOW - 5.0))
+    assert gate.unmatched_results == 1 and gate.latency.taken[1] == 1
+
+
+def test_with_dynamic_latency_the_rule_uses_what_was_measured(files, tmp_path):
+    cfg, profile, model = files
+    fixed = FrameGate('FULL', cfg, profile, model)
+    dynamic = FrameGate('FULL', cfg, profile, model, dynamic_latency=True)
+    for gate in (fixed, dynamic):
+        for n in range(1, 21):                    # 20 results of 320, each 50 ms
+            release_s = NOW - 10.0 + 0.1 * n
+            gate._pending[release_s - 0.030] = (release_s, 1)
+            gate.on_status(status_of(gate, stamp_s=release_s + 0.051, result_n=n,
+                                     result_capture_s=release_s - 0.030))
+        gate.on_status(status_of(gate))
+    # an image 180 ms old: 180 + 80 (profile) + 1 > 250 rejected; 180 + 50 + 1 in time
+    assert fixed.decide(NOW - 0.180, NOW).action == admission.REJECT
+    assert dynamic.decide(NOW - 0.180, NOW).action == admission.RUN
+    path = tmp_path / 'decisions.csv'
+    dynamic.save_log(str(path))
+    row = list(csv.DictReader(open(path, encoding='utf-8')))[-1]
+    assert (row['m1_lm_ms'], row['m1_lm_samples'], row['lm_used']) == (
+        '50.000', '20', 'dynamic')
+    fixed.save_log(str(path))
+    row = list(csv.DictReader(open(path, encoding='utf-8')))[-1]
+    assert (row['m1_lm_ms'], row['lm_used']) == ('50.000', 'profile')   # measured, not used
+
+
+def test_dynamic_latency_goes_with_the_rule_only(files):
+    cfg, profile, model = files
+    for method in ('M2', 'A2'):
+        with pytest.raises(GateError, match='dynamic_latency'):
+            FrameGate(method, cfg, profile, model, dynamic_latency=True)
+    assert FrameGate('A3', cfg, profile, model, dynamic_latency=True).dynamic_latency
+
+
+def test_a_run_whose_result_never_came_is_forgotten(files):
+    cfg, profile, model = files
+    gate = FrameGate('FULL', cfg, profile, model)
+    gate.on_status(status_of(gate))
+    gate.decide(NOW - 0.040, NOW)
+    assert len(gate._pending) == 1
+    gate.on_status(status_of(gate, stamp_s=NOW + 2.5))
+    assert gate._pending == {}

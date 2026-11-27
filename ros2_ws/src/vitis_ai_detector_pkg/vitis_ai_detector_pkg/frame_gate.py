@@ -11,12 +11,18 @@ stands there:
             the control task; every decision is kept for the log
 
 One FrameGate per run. on_status() is called by the thread that receives the
-status, decide() by the worker loop. Pure stdlib, no ROS needed:
+status, decide() by the worker loop.
+
+A3 and FULL also measure the latency of every mode in the run: a run's
+release is kept until the status first names its result (DynamicLatency).
+With dynamic_latency the rule computes with those latencies; without, it
+computes with the profile and the log still shows what they were. Pure stdlib, no ROS needed:
     python3 -m pytest src/vitis_ai_detector_pkg/test/test_frame_gate.py
 """
 import csv
 import json
 import os
+import threading
 import time
 
 from vitis_ai_detector_pkg import admission
@@ -33,7 +39,13 @@ LOG_COLUMNS = (
     'm0_first_use_ms', 'm0_age_ms', 'm0_bound_mm', 'm0_in_time', 'm0_within_tolerance',
     'm0_response_ok', 'm0_cost',
     'm1_first_use_ms', 'm1_age_ms', 'm1_bound_mm', 'm1_in_time', 'm1_within_tolerance',
-    'm1_response_ok', 'm1_cost')
+    'm1_response_ok', 'm1_cost',
+    'm0_lm_ms', 'm0_lm_samples', 'm1_lm_ms', 'm1_lm_samples', 'lm_used')
+
+# a run's release is forgotten when no status named its result by then
+PENDING_KEEP_S = 2.0
+# a status names the image of a run within this (images are 33 ms apart)
+CAPTURE_MATCH_S = 0.005
 
 
 class GateError(Exception):
@@ -68,7 +80,7 @@ class FrameGate:
     """The gate of one run with a method other than M1."""
 
     def __init__(self, method, contract_cfg_path, profile_path, model_path,
-                 response_table_path='', model_path_2=''):
+                 response_table_path='', model_path_2='', dynamic_latency=False):
         if method not in METHODS_WITH_SCORE + METHODS_WITH_RULE:
             raise GateError(f'method {method!r} has no gate of this kind ({METHODS})')
         self.method = method
@@ -91,13 +103,51 @@ class FrameGate:
             modes.append(mode)
         self.modes = tuple(modes)
         self.uses_status = method in METHODS_WITH_RULE
+        self.dynamic_latency = bool(dynamic_latency)
+        if self.dynamic_latency and not self.uses_status:
+            raise GateError(f'dynamic_latency goes with {METHODS_WITH_RULE}: {method} reads no '
+                            f'status')
+        self.latency = admission.DynamicLatency(self.profile)
+        self._pending = {}             # capture_s of a run -> (release_s, mode)
+        self._last_result_n = None
+        self._lock = threading.Lock()  # _pending and latency: two threads
         self._status = None
         self.rows = []
         self.counts = {admission.RUN: 0, admission.SKIP: 0, admission.REJECT: 0}
+        self.unmatched_results = 0     # results the status named with no run of this gate known
 
     def on_status(self, status):
         """Take the newest admission.Status of the control task."""
         self._status = status
+        if not self.uses_status:
+            return
+        with self._lock:
+            new_result = (status.result_n > 0 and status.result_n != self._last_result_n)
+            self._last_result_n = status.result_n
+            if new_result:
+                self._take_sample(status)
+            for capture_s in [capture_s for capture_s, (release_s, _) in self._pending.items()
+                              if status.stamp_s - release_s > PENDING_KEEP_S]:
+                del self._pending[capture_s]
+
+    def _take_sample(self, status):
+        """A sample of L_m from the status that first names a result."""
+        match = None
+        for capture_s in self._pending:
+            if abs(capture_s - status.result_capture_s) <= CAPTURE_MATCH_S:
+                match = capture_s
+                break
+        if match is None:
+            self.unmatched_results += 1
+            return
+        release_s, mode = self._pending.pop(match)
+        self.latency.add(mode, status.stamp_s - release_s - status.control_period_s)
+
+    def latencies(self):
+        """{mode: (L_m [s] it would compute with, samples taken)}."""
+        with self._lock:
+            return {mode: (self.latency.value(mode), self.latency.taken[mode])
+                    for mode in self.modes}
 
     def decide(self, capture_s, now_s):
         """Return the admission.Decision for the image captured at capture_s."""
@@ -106,10 +156,21 @@ class FrameGate:
             mode = admission.choose_by_score(self.contract, self.profile, self.modes, {})
             return admission.Decision(admission.RUN, mode, '')
         status = self._status           # one read: the other thread may replace it
+        latencies = self.latencies()
+        latency_s = ({mode: value for mode, (value, _) in latencies.items()}
+                     if self.dynamic_latency else None)
         decision = admission.decide(capture_s, now_s, status, self.contract, self.profile,
-                                    self.modes, self.method, self.response_table)
+                                    self.modes, self.method, self.response_table, latency_s)
+        if decision.action == admission.RUN:
+            with self._lock:
+                self._pending[capture_s] = (now_s, decision.mode)
         self.counts[decision.action] += 1
-        self.rows.append(self._log_row(capture_s, now_s, status, decision))
+        row = self._log_row(capture_s, now_s, status, decision)
+        for mode, (value, taken) in latencies.items():
+            row[f'm{mode}_lm_ms'] = f'{1e3 * value:.3f}'
+            row[f'm{mode}_lm_samples'] = taken
+        row['lm_used'] = 'dynamic' if self.dynamic_latency else 'profile'
+        self.rows.append(row)
         return decision
 
     @staticmethod

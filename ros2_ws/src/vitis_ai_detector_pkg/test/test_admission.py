@@ -333,3 +333,87 @@ def test_a_response_table_that_cannot_be_used_is_refused(tmp_path, broken):
         load_response_table(_write(tmp_path, 't.csv', broken))
     with pytest.raises(ProfileError, match='cannot read'):
         load_response_table(str(tmp_path / 'none.csv'))
+
+
+# ---- dynamic L_m (2026-11-27) ------------------------------------------------
+
+def test_dynamic_latency_keeps_the_profile_until_it_has_enough_samples():
+    from vitis_ai_detector_pkg.admission import DynamicLatency
+    latency = DynamicLatency(PROFILE)             # window 100, p90, 20 samples, clamp 0.5-1.5
+    for _ in range(19):
+        latency.add(MODE_416, 0.070)
+    assert close(latency.value(MODE_416), 0.100)  # 19 < 20: the profile
+    latency.add(MODE_416, 0.070)
+    assert close(latency.value(MODE_416), 0.070)
+    assert close(latency.value(MODE_320), 0.080)  # no sample of 320: its profile
+    assert latency.taken == {MODE_416: 20, MODE_320: 0}
+
+
+def test_dynamic_latency_is_the_quantile_of_the_newest_window_within_the_clamp():
+    from vitis_ai_detector_pkg.admission import DynamicLatency
+    latency = DynamicLatency(PROFILE)
+    for ms in range(1, 101):                      # 1 .. 100 ms: the nearest-rank p90 is 90 ms
+        latency.add(MODE_416, 1e-3 * ms + 0.050)
+    assert close(latency.value(MODE_416), 0.140)  # 90 + 50 ms
+    for _ in range(100):                          # the window forgets the old ones
+        latency.add(MODE_416, 0.010)
+    assert close(latency.value(MODE_416), 0.050)  # clamped to 0.5 x 100 ms
+    for _ in range(100):
+        latency.add(MODE_416, 1.0)
+    assert close(latency.value(MODE_416), 0.150)  # clamped to 1.5 x 100 ms
+    for bad in (float('nan'), float('inf'), 0.0, -0.1):
+        latency.add(MODE_416, bad)                # not samples
+    assert latency.taken[MODE_416] == 300
+
+
+def test_the_rule_computes_with_the_latency_it_is_given():
+    # 416 from a capture 100 ms old: 100 + 100 + 1 = 201 ms with the profile, in time;
+    # with an L_m of 150 ms, 251 ms: past the age cap
+    capture_s = NOW - 0.100
+    assert run(capture_s, modes=(MODE_416,)).action == RUN
+    late = decide(capture_s, NOW, status(), CONTRACT, PROFILE, (MODE_416,), 'FULL', None,
+                  {MODE_416: 0.150})
+    assert (late.action, late.reason) == (REJECT, 'no_candidate_passes')
+    # 160 ms old: rejected with the profile, in time with an L_m of 80 ms
+    assert run(NOW - 0.160, modes=(MODE_416,)).action == REJECT
+    early = decide(NOW - 0.160, NOW, status(), CONTRACT, PROFILE, (MODE_416,), 'FULL', None,
+                   {MODE_416: 0.080})
+    assert (early.action, early.mode) == (RUN, MODE_416)
+    assert close(early.candidates[0].first_use_s, NOW + 0.081)
+
+
+def test_the_profile_reads_its_dynamic_latency_block(tmp_path):
+    base = """\
+frame_period_ms: 33.0
+acquisition_ms: 50.0
+status_max_age_ms: 100.0
+reference_speed_mps: 0.0
+response_margin_us: 0.0
+weights: {error: 1.0, energy: 0.0, ddr: 0.0}
+modes:
+  0: {name: "416", release_to_publication_ms: 100.0, energy_j: 0.0, ddr_bytes: 0.0}
+"""
+    path = tmp_path / 'p.yaml'
+    path.write_text(base, encoding='utf-8')
+    profile = load_profile(str(path))             # without the block: the defaults
+    assert (profile.latency_window, profile.latency_quantile, profile.latency_min_samples,
+            profile.latency_clamp) == (100, 0.9, 20, (0.5, 1.5))
+    path.write_text(base + 'dynamic_latency: {window: 50, quantile: 0.5, min_samples: 10, '
+                    'clamp: [0.8, 1.2]}\n', encoding='utf-8')
+    profile = load_profile(str(path))
+    assert (profile.latency_window, profile.latency_quantile, profile.latency_min_samples,
+            profile.latency_clamp) == (50, 0.5, 10, (0.8, 1.2))
+    for bad in ('[1]', '{window: 0}', '{window: 10, min_samples: 11}', '{quantile: 1.5}',
+                '{quantile: 0}', '{clamp: [1.2, 0.8]}', '{clamp: [1.0]}', '{window: true}'):
+        path.write_text(base + f'dynamic_latency: {bad}\n', encoding='utf-8')
+        with pytest.raises(ProfileError, match='dynamic_latency'):
+            load_profile(str(path))
+
+
+def test_the_shipped_profile_reads_and_scores_with_no_speed():
+    shipped = os.path.join(os.path.dirname(__file__), '..', '..', 'system_bringup_pkg', 'config',
+                           'mode_profile.yaml')
+    profile = load_profile(shipped)
+    assert profile.reference_speed_mps == 0.0     # as EPS_V of a target at rest
+    # with no speed the score is the measurement error alone: 416 (2 mm) before 320 (3 mm)
+    assert choose_by_score(CONTRACT, profile, BOTH, {}) == MODE_416
