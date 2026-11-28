@@ -363,9 +363,11 @@ def main():
             render_sum += t_p - t_r
             k += 1
             if time.time() - last_print > 5.0:
+                ua, va = min(max(int(round(u)), 0), W - 1), min(max(int(round(v)), 0), H - 1)
                 print(f'hil_camera: {k} images, {k / (time.time() - t0):.1f} /s, render {render_sum / k * 1e3:.1f} ms, '
                       f'offset {off * 1e3:+.2f} ms (rtt {rtt * 1e3:.2f}), arm '
-                      f'{"board" if arm is not None else "parked"}', flush=True)
+                      f'{"board" if arm is not None else "parked"}; depth at the apple {depth_mm[va, ua]} mm, '
+                      f'{(depth_mm == 0).mean():.0%} of the depth 0', flush=True)
                 last_print = time.time()
             delay = nxt - time.perf_counter()
             if delay > 0:
