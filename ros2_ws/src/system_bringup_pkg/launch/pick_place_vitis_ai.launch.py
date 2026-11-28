@@ -71,6 +71,7 @@ from launch.actions import (
     OpaqueFunction,
     SetEnvironmentVariable,
 )
+from launch.conditions import IfCondition
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.substitutions import LaunchConfiguration, PathJoinSubstitution
 
@@ -319,6 +320,9 @@ def launch_setup(context, *args, **kwargs):
             ],
             scoped=True,
             forwarding=False,
+            # camera:=false (HIL, tools/sim/hil_camera.py): another machine publishes the
+            # camera topics, camera_info, the depth->color extrinsics and the camera_link TFs
+            condition=IfCondition(LaunchConfiguration('camera')),
         ),
 
         Node(
@@ -512,6 +516,10 @@ def generate_launch_description():
             description='A3, FULL: true = L_m of every mode from the latencies of its results '
                         'in this run (config/mode_profile.yaml dynamic_latency); false = the '
                         'fixed L_m of the profile'),
+        DeclareLaunchArgument(
+            'camera', default_value='true',
+            description='true = the RealSense node; false = no camera here: the camera topics come '
+                        'from another machine (tools/sim/hil_camera.py, hardware in the loop)'),
         DeclareLaunchArgument(
             'decision_log', default_value='',
             description='A3, FULL: CSV file for the decision on every image, '

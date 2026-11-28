@@ -75,7 +75,9 @@ def apple_texture(path):
     cv2.imwrite(path, np.clip(base * 255, 0, 255).astype(np.uint8))
 
 
-def build(out, apple_obj=''):
+def build(out, apple_obj='', camera=None):
+    """the bench; camera = (pos, x axis, y axis, fovy deg) of the MuJoCo camera, else the calibrated
+    camera_link with FX"""
     spec = mujoco.MjSpec.from_file(os.path.join(MODELS, 'indy7_mujoco.xml'))
     spec.visual.global_.offwidth, spec.visual.global_.offheight = W, H
     spec.visual.quality.shadowsize = 4096
@@ -129,10 +131,11 @@ def build(out, apple_obj=''):
     spec.worldbody.add_light(pos=[1.6, 0.6, 2.0], dir=[-0.6, -0.2, -1], diffuse=[0.7, 0.7, 0.7], castshadow=True)
     spec.worldbody.add_light(pos=[0.5, -0.8, 2.5], dir=[0, 0.3, -1], diffuse=[0.35, 0.35, 0.35], castshadow=False)
     # the camera: MuJoCo looks along -z with x right and y up; camera_link has x forward, y left, z up
-    R = quat_to_mat(CAM_Q_XYZW)
-    xaxis, yaxis = -R[:, 1], R[:, 2]
-    spec.worldbody.add_camera(name='d435', pos=list(CAM_T), xyaxes=list(xaxis) + list(yaxis),
-                              fovy=math.degrees(2 * math.atan(H / 2 / FX)))
+    if camera is None:
+        R = quat_to_mat(CAM_Q_XYZW)
+        camera = (CAM_T, -R[:, 1], R[:, 2], math.degrees(2 * math.atan(H / 2 / FX)))
+    pos, xaxis, yaxis, fovy = camera
+    spec.worldbody.add_camera(name='d435', pos=list(pos), xyaxes=list(xaxis) + list(yaxis), fovy=fovy)
     return spec.compile()
 
 
