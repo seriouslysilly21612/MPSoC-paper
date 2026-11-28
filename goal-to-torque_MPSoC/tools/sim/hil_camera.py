@@ -123,7 +123,10 @@ class HilNode(Node):
         self.q = None                 # (joint angles, desktop time received)
         self.lock = threading.Lock()
         self.create_timer(0.1, self.ping)
+        # latched, and again every second: a node that starts later (the launch of run_timing) or
+        # whose late-joiner delivery across the two machines misses them still gets them
         self.publish_static()
+        self.create_timer(1.0, self.publish_static)
 
     def ping(self):
         self.seq += 1
