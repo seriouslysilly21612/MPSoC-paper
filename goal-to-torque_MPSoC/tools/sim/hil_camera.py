@@ -191,6 +191,51 @@ class HilNode(Node):
         self.depth_info_pub.publish(self.info(stamp, 'camera_depth_optical_frame'))
 
 
+def self_check(m, d, r_opt, p_opt, colour, depth_r, apple_mocap):
+    """one image before the run: where the rendered depth puts the apple top and the table, against
+    the model (a wrong depth or a mesh of another size shows here, not in the pipeline)"""
+    d.mocap_pos[apple_mocap] = APPLE_C
+    d.qpos[:6] = rc.Q0
+    mujoco.mj_forward(m, d)
+    seg = mujoco.Renderer(m, H, W)
+    seg.enable_segmentation_rendering()
+    seg.update_scene(d, camera='d435')
+    ids = seg.render()[..., 0]
+    depth_r.update_scene(d, camera='d435')
+    z = depth_r.render()
+    apple_geoms = [g for g in range(m.ngeom) if m.geom_bodyid[g] == m.body('apple').id]
+    mask = np.isin(ids, apple_geoms)
+    vs, us = np.nonzero(mask)
+
+    def world(u, v):
+        zz = float(z[v, u])
+        return p_opt + r_opt @ np.array([(u - CX) / F * zz, (v - CY) / F * zz, zz]), zz
+    pc = r_opt.T @ (APPLE_C - p_opt)
+    print(f'self-check: apple centre {APPLE_C.round(3)} at pixel ({CX + F * pc[0] / pc[2]:.1f}, '
+          f'{CY + F * pc[1] / pc[2]:.1f}), depth {pc[2]:.3f} m', flush=True)
+    for g in apple_geoms:
+        if m.geom_type[g] == mujoco.mjtGeom.mjGEOM_MESH:
+            mid = m.geom_dataid[g]
+            v = m.mesh_vert[m.mesh_vertadr[mid]:m.mesh_vertadr[mid] + m.mesh_vertnum[mid]]
+            w = (d.geom_xmat[g].reshape(3, 3) @ v.T).T + d.geom_xpos[g]
+            print(f'self-check: apple mesh in the world: x {w[:, 0].min():.3f}..{w[:, 0].max():.3f}, '
+                  f'y {w[:, 1].min():.3f}..{w[:, 1].max():.3f}, z {w[:, 2].min():.3f}..{w[:, 2].max():.3f} m',
+                  flush=True)
+    if len(us):
+        uc, vc = int(round(us.mean())), int(round(vs.mean()))
+        k = np.argmin(z[vs, us])
+        top, zt = world(us[k], vs[k])
+        cen, zc = world(uc, vc)
+        print(f'self-check: apple {len(us)} px, centroid ({uc}, {vc}) depth {zc:.3f} m -> world z {cen[2]:.3f}; '
+              f'nearest pixel depth {zt:.3f} m -> world z {top[2]:.3f}', flush=True)
+    else:
+        print('self-check: the apple is not in the image', flush=True)
+    table, _ = world(60, H - 40)
+    print(f'self-check: table pixel (60, {H - 40}) -> world z {table[2]:.4f} (the table top is {rc.TABLE_Z})',
+          flush=True)
+    seg.close()
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument('--out', required=True)
@@ -214,6 +259,8 @@ def main():
     depth_r = mujoco.Renderer(m, H, W)
     depth_r.enable_depth_rendering()
     tcp, apple_mocap = m.body('tcp').id, m.body('apple').mocapid[0]
+
+    self_check(m, d, r_opt, p_opt, colour, depth_r, apple_mocap)
 
     rclpy.init()
     clock = Clock()
