@@ -525,6 +525,10 @@ def main():
         extra = vision_args(a.vision_args)
     except ValueError as e:
         ap.error('--vision-args: %s' % e)
+    if 'camera:=false' in shlex.split(a.vision_args):
+        # hardware in the loop (tools/sim/hil_camera.py): the images come from another machine
+        global PERCEPTION
+        PERCEPTION = tuple(p for p in PERCEPTION if p != 'realsense2_camera_node')
     if extra and a.condition not in ('perception', 'pressure'):
         ap.error('--vision-args goes with the camera pipeline: --condition perception or pressure')
     if a.desired_class and a.condition not in ('perception', 'pressure'):
