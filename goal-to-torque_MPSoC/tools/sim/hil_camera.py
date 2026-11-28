@@ -227,15 +227,19 @@ def apple_place(m, y_shift=0.0):
     return body, body + mid, body[2] + hi[2]
 
 
-def self_check(m, d, r_opt, p_opt, colour, depth_r, apple_mocap):
+def self_check(m, d, r_opt, p_opt, apple_mocap):
     """one image before the run: where the rendered depth puts the apple top and the table, against
     the model (a wrong depth or a mesh of another size shows here, not in the pipeline)"""
     body, centre, top = apple_place(m)
     d.mocap_pos[apple_mocap] = body
     d.qpos[:6] = rc.Q0
     mujoco.mj_forward(m, d)
+    # renderers of its own, made before those of the run and never closed: closing one (EGL, NVIDIA)
+    # left the depth of the others all zeros (2026-11-28)
     seg = mujoco.Renderer(m, H, W)
     seg.enable_segmentation_rendering()
+    depth_r = mujoco.Renderer(m, H, W)
+    depth_r.enable_depth_rendering()
     seg.update_scene(d, camera='d435')
     ids = seg.render()[..., 0]
     depth_r.update_scene(d, camera='d435')
@@ -270,7 +274,7 @@ def self_check(m, d, r_opt, p_opt, colour, depth_r, apple_mocap):
     table, _ = world(60, H - 40)
     print(f'self-check: table pixel (60, {H - 40}) -> world z {table[2]:.4f} (the table top is {rc.TABLE_Z})',
           flush=True)
-    seg.close()
+    return seg, depth_r
 
 
 def main():
@@ -292,12 +296,11 @@ def main():
     fovy = math.degrees(2 * math.atan(H / 2 / F))
     m = rc.build(a.out, a.apple_obj, camera=(p_opt, r_opt[:, 0], -r_opt[:, 1], fovy))
     d = mujoco.MjData(m)
+    keep = self_check(m, d, r_opt, p_opt, m.body('apple').mocapid[0])  # noqa: F841 (kept open)
     colour = mujoco.Renderer(m, H, W)
     depth_r = mujoco.Renderer(m, H, W)
     depth_r.enable_depth_rendering()
     tcp, apple_mocap = m.body('tcp').id, m.body('apple').mocapid[0]
-
-    self_check(m, d, r_opt, p_opt, colour, depth_r, apple_mocap)
 
     rclpy.init()
     clock = Clock()
@@ -341,6 +344,8 @@ def main():
             depth_r.update_scene(d, camera='d435')
             z = depth_r.render()
             depth_mm = np.where((z > 0.1) & (z < 10.0), np.round(z * 1000.0), 0).astype(np.uint16)
+            if k == 0 and not depth_mm.any():
+                raise SystemExit('hil_camera: the rendered depth is all zeros (the depth renderer is broken)')
             t_p = time.perf_counter()
             node.publish(stamp, rgb, depth_mm)
             t_e = time.perf_counter()
