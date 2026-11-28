@@ -32,6 +32,7 @@ numpy 1): python3 -m venv --system-site-packages ~/hilenv && ~/hilenv/bin/pip in
 mujoco "opencv-contrib-python<4.11". Rendering uses EGL (MUJOCO_GL=egl) unless MUJOCO_GL is set.
 """
 import argparse
+import array
 import csv
 import math
 import os
@@ -182,7 +183,9 @@ class HilNode(Node):
             m = Image()
             m.header.stamp, m.header.frame_id = stamp, frame
             m.height, m.width, m.encoding, m.is_bigendian, m.step = H, W, enc, 0, step
-            m.data = img.tobytes()
+            # an array.array is taken as it is; bytes or a list would be checked element by element
+            # by the message (about 90 ms for the two images)
+            m.data = array.array('B', img.tobytes())
             pub.publish(m)
         self.color_info_pub.publish(self.info(stamp, 'camera_color_optical_frame'))
         self.depth_info_pub.publish(self.info(stamp, 'camera_depth_optical_frame'))
