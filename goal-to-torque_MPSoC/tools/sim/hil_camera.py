@@ -68,7 +68,7 @@ LINK_TO_COLOR_T = np.array([-5.0905517127830535e-05, 0.015085823833942413, 0.000
 LINK_TO_COLOR_Q = np.array([0.007408179808408021, -0.0008408292196691036, 0.0020767285022884607,
                             0.9999700784683228])
 OPTICAL_Q = np.array([-0.5, 0.5, -0.5, 0.5])   # frame -> optical frame (z forward, x right, y down)
-APPLE_C = np.array([0.753, -0.032, rc.TABLE_Z + rc.APPLE_R])   # the bench apple of I-112
+APPLE_C = np.array([0.753, -0.032, rc.TABLE_Z + rc.APPLE_R])   # the bench apple of I-112 (x, y of its centre)
 PREFIX = '/camera/camera'
 
 
@@ -191,10 +191,44 @@ class HilNode(Node):
         self.depth_info_pub.publish(self.info(stamp, 'camera_depth_optical_frame'))
 
 
+_EXTENT = {}
+
+
+def apple_extent(m):
+    """the box of the apple's largest geom in the frame of its body: (low, high) corners. A mesh keeps
+    the origin of its file (YCB: the bottom of the fruit), so the body is not the centre"""
+    if id(m) in _EXTENT:
+        return _EXTENT[id(m)]
+    d = mujoco.MjData(m)
+    d.mocap_pos[m.body('apple').mocapid[0]] = 0.0
+    mujoco.mj_forward(m, d)
+    geoms = [g for g in range(m.ngeom) if m.geom_bodyid[g] == m.body('apple').id]
+    g = max(geoms, key=lambda i: m.geom_rbound[i])
+    if m.geom_type[g] == mujoco.mjtGeom.mjGEOM_MESH:
+        mid = m.geom_dataid[g]
+        v = m.mesh_vert[m.mesh_vertadr[mid]:m.mesh_vertadr[mid] + m.mesh_vertnum[mid]]
+        w = (d.geom_xmat[g].reshape(3, 3) @ v.T).T + d.geom_xpos[g]
+        _EXTENT[id(m)] = w.min(axis=0), w.max(axis=0)
+    else:
+        r = m.geom_size[g][0]
+        _EXTENT[id(m)] = d.geom_xpos[g] - r, d.geom_xpos[g] + r
+    return _EXTENT[id(m)]
+
+
+def apple_place(m, y_shift=0.0):
+    """(body position, centre, top) of the apple resting on the table under APPLE_C, moved y_shift
+    along y: the centre is the middle of its box, the top its highest point"""
+    lo, hi = apple_extent(m)
+    mid = 0.5 * (lo + hi)
+    body = np.array([APPLE_C[0] - mid[0], APPLE_C[1] + y_shift - mid[1], rc.TABLE_Z - lo[2]])
+    return body, body + mid, body[2] + hi[2]
+
+
 def self_check(m, d, r_opt, p_opt, colour, depth_r, apple_mocap):
     """one image before the run: where the rendered depth puts the apple top and the table, against
     the model (a wrong depth or a mesh of another size shows here, not in the pipeline)"""
-    d.mocap_pos[apple_mocap] = APPLE_C
+    body, centre, top = apple_place(m)
+    d.mocap_pos[apple_mocap] = body
     d.qpos[:6] = rc.Q0
     mujoco.mj_forward(m, d)
     seg = mujoco.Renderer(m, H, W)
@@ -210,8 +244,8 @@ def self_check(m, d, r_opt, p_opt, colour, depth_r, apple_mocap):
     def world(u, v):
         zz = float(z[v, u])
         return p_opt + r_opt @ np.array([(u - CX) / F * zz, (v - CY) / F * zz, zz]), zz
-    pc = r_opt.T @ (APPLE_C - p_opt)
-    print(f'self-check: apple centre {APPLE_C.round(3)} at pixel ({CX + F * pc[0] / pc[2]:.1f}, '
+    pc = r_opt.T @ (centre - p_opt)
+    print(f'self-check: apple centre {centre.round(3)}, top z {top:.3f} at pixel ({CX + F * pc[0] / pc[2]:.1f}, '
           f'{CY + F * pc[1] / pc[2]:.1f}), depth {pc[2]:.3f} m', flush=True)
     for g in apple_geoms:
         if m.geom_type[g] == mujoco.mjtGeom.mjGEOM_MESH:
@@ -277,7 +311,7 @@ def main():
 
     f_motion = a.speed / (2 * math.pi * a.amp) if a.speed > 0 else 0.0
     fields = ['frame', 'stamp_board_s', 't_desktop_s', 'offset_ms', 'rtt_ms', 'apple_x', 'apple_y', 'apple_z',
-              'apple_vy', 'apple_u', 'apple_v', 'apple_depth_m', 'tcp_x', 'tcp_y', 'tcp_z', 'arm_age_ms',
+              'apple_top_z', 'apple_vy', 'apple_u', 'apple_v', 'apple_depth_m', 'tcp_x', 'tcp_y', 'tcp_z', 'arm_age_ms',
               'render_ms', 'publish_ms']
     truth = open(os.path.join(a.out, 'truth.csv'), 'w', newline='')
     wr = csv.DictWriter(truth, fieldnames=fields)
@@ -292,9 +326,9 @@ def main():
             stamp = t_desk + off
             ts = t_desk - t0
             phase = 2 * math.pi * f_motion * ts
-            apple = APPLE_C + np.array([0.0, a.amp * math.sin(phase) if f_motion else 0.0, 0.0])
+            body, apple, top = apple_place(m, a.amp * math.sin(phase) if f_motion else 0.0)
             vy = a.amp * 2 * math.pi * f_motion * math.cos(phase) if f_motion else 0.0
-            d.mocap_pos[apple_mocap] = apple
+            d.mocap_pos[apple_mocap] = body
             arm = node.arm() if a.arm == 'board' else None
             d.qpos[:6] = arm[0] if arm is not None else rc.Q0
             mujoco.mj_forward(m, d)
@@ -313,6 +347,7 @@ def main():
             wr.writerow(dict(frame=k, stamp_board_s=f'{stamp:.6f}', t_desktop_s=f'{t_desk:.6f}',
                              offset_ms=f'{off * 1e3:.3f}', rtt_ms=f'{rtt * 1e3:.3f}',
                              apple_x=f'{apple[0]:.5f}', apple_y=f'{apple[1]:.5f}', apple_z=f'{apple[2]:.5f}',
+                             apple_top_z=f'{top:.5f}',
                              apple_vy=f'{vy:.5f}', apple_u=f'{u:.2f}', apple_v=f'{v:.2f}',
                              apple_depth_m=f'{pc[2]:.4f}', tcp_x=f'{tool[0]:.5f}', tcp_y=f'{tool[1]:.5f}',
                              tcp_z=f'{tool[2]:.5f}',
