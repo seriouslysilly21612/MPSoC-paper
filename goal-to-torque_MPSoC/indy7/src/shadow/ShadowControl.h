@@ -75,8 +75,9 @@ enum
 /* the constants of the receiver of the camera results (obs/ObsGoal.h) that the control task on the R5 (S2) runs, as
  * CRobotIndy7::InitObs takes them from the configuration: [CONTRACT] (delta, the age cap, eq. (7), the measurement
  * errors of the two modes, the offset of the tool tag), the goal checks and the smoothing of the application
- * (APP_*), and the age of the joint angles of a period (SIM_STATE_DELAY_STEPS). Apart from those of the controller:
- * a firmware built from other values of them refuses the methods with the mailbox (IPC_CMD_OBS), and only them */
+ * (APP_*), and the age of the joint angles of a period (SIM_STATE_DELAY_STEPS). Apart from those of the controller.
+ * Those of OBS_SENT_INDEX come from the APU at its start (IPC_CMD_OBS_NUMBERS); with other values of the rest the
+ * firmware refuses the methods with the mailbox (IPC_CMD_OBS), and only them */
 enum
 {
 	OBS_N_DELTA = 0, OBS_N_AGE_CAP, OBS_N_E0, OBS_N_G, OBS_N_EPS_V, OBS_N_A_MAX, OBS_N_EPS_CAL, OBS_N_EPS_M,
@@ -84,8 +85,15 @@ enum
 	OBS_N_BOX = OBS_N_TAG + 3,
 	OBS_N_R_MAX = OBS_N_BOX + 6, OBS_N_FLOOR, OBS_N_HOVER, OBS_N_KAPPA, OBS_N_GAP, OBS_N_LOSS, OBS_N_STATE_AGE,
 	OBS_N_HOVER_XY,		// 2: the horizontal hover offset x, y (APP_HOVER_XY_M)
-	OBS_NUMBERS = OBS_N_HOVER_XY + 2
+	OBS_N_BETA = OBS_N_HOVER_XY + 2,	// the weight of a result on the velocity of the estimate (APP_EST_BETA; 0: the
+										// target rests, as before)
+	OBS_NUMBERS
 };
+/* IPC_CMD_OBS_NUMBERS: the numbers of the receiver that the APU sends at its start, in this order (ipc_layout.h):
+ * [CONTRACT] and the estimate. The R5 takes them in place of those of its build, the others stay */
+static constexpr int OBS_SENT_INDEX[] = { OBS_N_DELTA, OBS_N_AGE_CAP, OBS_N_E0, OBS_N_G, OBS_N_EPS_V, OBS_N_A_MAX,
+                                      OBS_N_EPS_CAL, OBS_N_EPS_M, OBS_N_EPS_M + 1, OBS_N_BETA };
+enum { OBS_SENT = (int)(sizeof(OBS_SENT_INDEX) / sizeof(OBS_SENT_INDEX[0])) };
 
 /* the check value of a controller: of its numbers (ShadowNumbersCrc of shadow/ShadowParams.h) and of its model
  * (the firmware: CTRL_NUMBERS_CRC and CTRL_MODEL_CRC of its two generated headers). Either alone changes it. */

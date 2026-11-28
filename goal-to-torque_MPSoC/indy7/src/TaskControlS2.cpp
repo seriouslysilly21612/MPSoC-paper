@@ -198,6 +198,13 @@ s2_take_report(CRobotIndy7* pRobot)
 			pRobot->m_nServoRefused++;
 			printf("[ARM] the R5 refused the servo on - %s\n", acWhy);
 		}
+		else if (uCmd == IPC_CMD_OBS_NUMBERS)
+		{
+			if (uResult != IPC_DONE_OK)
+				printf("[R5] the R5 refused [CONTRACT] and APP_EST_BETA of this configuration - %s\n", acWhy);
+			else
+				printf("[R5] the receiver of the R5 took [CONTRACT] and APP_EST_BETA of this configuration\n");
+		}
 		else if (uCmd == IPC_CMD_OBS)
 		{
 			pRobot->m_bS2ObsRefused = (uResult != IPC_DONE_OK);

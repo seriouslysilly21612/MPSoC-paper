@@ -510,6 +510,7 @@ CRobotIndy7::InitObs()
 	// itself has not been measured (paper, Sec. III-B).
 	stG.nStateAge = (int)stSys.nSimStateDelay;
 	stG.stFilter = AppFilter();
+	stG.dBeta = stSys.dAppBeta;
 	stG.dLossS = stSys.dAppLossS;
 	stG.pTagAt = [](void* apArg, const float* afQ, double* adP)
 	{
@@ -567,6 +568,8 @@ CRobotIndy7::InitObs()
 	}
 	stM.dTolM = stG.dTolM;
 	stM.nStateAge = stG.nStateAge;
+	stM.dKappa = stG.stFilter.dKappa;
+	stM.dBeta = stG.dBeta;
 	for (int k = 0; k < 3; k++)
 		stM.adTagOffset[k] = m_adTagOffset[k];
 	printf("[APP] method %s: the camera results go through the mailbox%s (%d of its %d slots); the control task uses "
@@ -1559,7 +1562,15 @@ CRobotIndy7::InitR5Link()
 		double adObs[OBS_NUMBERS];
 		ObsNumbers(*m_pConfig, adObs);
 		m_uS2ObsCheck = ObsNumbersCrc(adObs);
+		// [CONTRACT] and the estimate of this configuration go to the R5 first (IPC_CMD_OBS_NUMBERS), so that a
+		// firmware built from other values of them takes these; it takes them only with its receiver off (M1)
 		ipc_command_t stObsCmd;
+		memset(&stObsCmd, 0, sizeof(stObsCmd));
+		m_pS2->Queue(IPC_CMD_OBS, (uint32_t)obs_method::eM1, &stObsCmd);
+		stObsCmd.check = m_uS2ObsCheck;
+		for (int i = 0; i < OBS_SENT; i++)
+			ipc_command_set_number(&stObsCmd, i, adObs[OBS_SENT_INDEX[i]]);
+		m_pS2->Queue(IPC_CMD_OBS_NUMBERS, 0u, &stObsCmd);
 		memset(&stObsCmd, 0, sizeof(stObsCmd));
 		stObsCmd.check = m_uS2ObsCheck;
 		m_pS2->Queue(IPC_CMD_OBS, (uint32_t)m_nMethod, &stObsCmd);

@@ -48,6 +48,7 @@ public:
 		double				dTolM;		// the tolerance of every period: delta of the contract [m]
 		int					nStateAge;	// the joint angles of a period are this old at its release [periods]
 		CGoalFilter::Params	stFilter;	// the workspace checks; dKappa and dGapS: the estimate
+		double				dBeta;		// the estimate: the weight of a result on its velocity (0: the target rests)
 		double				dLossS;		// the target is lost after this time without a folded result [s]
 		/* the position adP[3] of the tool tag in the base frame at the joint angles afQ[OBS_DOF] */
 		void				(*pTagAt)(void* apArg, const float* afQ, double* adP);
@@ -85,7 +86,8 @@ public:
 	};
 
 	/* before the control task starts. false: a setting cannot be used (the tolerance and the terms of eq. (7) must
-	 * be finite and not negative, the tolerance above 0, the age cap below the record of the states) */
+	 * be finite and not negative, the tolerance above 0, the age cap below the record of the states, beta of the
+	 * estimate 0 <= beta < 4 - 2 alpha, alpha its weight on the position: the alpha-beta filter is stable) */
 	bool Init(volatile obs_mailbox_t* apBox, const Config& astCfg, CGoalSlot* apSlot)
 	{
 		const obs_settings_t& s = astCfg.stSet;
@@ -93,6 +95,10 @@ public:
 		for (double dTerm : adTerm)
 			if (!std::isfinite(dTerm) || dTerm < 0.0)
 				return false;
+		const double dAlpha = (astCfg.stFilter.dKappa > 0.0 && astCfg.stFilter.dKappa <= 1.0) ?
+		                      astCfg.stFilter.dKappa : 1.0;		// as CObsEstimate::SetParams takes it
+		if (!std::isfinite(astCfg.dBeta) || astCfg.dBeta < 0.0 || !(astCfg.dBeta < 4.0 - 2.0 * dAlpha))
+			return false;
 		if (apBox == NULL || apSlot == NULL || astCfg.pTagAt == NULL || !std::isfinite(astCfg.dTolM) ||
 		    !(astCfg.dTolM > 0.0) || astCfg.nStateAge < 0 || astCfg.nStateAge > (int)MAX_STATE_AGE ||
 		    !obs_receiver_start(&m_stR, &s))
@@ -103,7 +109,7 @@ public:
 		m_stCfg = astCfg;
 		m_uStateAge = (uint64_t)astCfg.nStateAge * s.period_ticks;
 		m_cCheck.SetParams(astCfg.stFilter);
-		const CObsEstimate::Params stE = { astCfg.stFilter.dKappa, 0.0, astCfg.stFilter.dGapS, astCfg.dLossS,
+		const CObsEstimate::Params stE = { astCfg.stFilter.dKappa, astCfg.dBeta, astCfg.stFilter.dGapS, astCfg.dLossS,
 		                                   s.ticks_per_s };		// beta 0: the target rests
 		m_cEst.SetParams(stE);
 		for (int v = 0; v < (int)CGoalFilter::eVerdicts; v++)

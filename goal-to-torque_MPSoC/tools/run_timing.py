@@ -7,11 +7,16 @@ intervals, 1-mm perturbations every 67 periods) for --duration s (with --desired
 in its place), the timing of every period (-t), and the summary of tools/timing_summary.py (the row of Table 6).
 
   python3 tools/run_timing.py --condition idle|stress|perception|pressure [--pressure 0|25|50|75|100 | --memrate-mbs N]
-                              [--duration 600] [--cfg indy7/INDY7.cfg] [--bus FILE] [--out DIR] [--settle 30]
+                              [--duration 600] [--cfg indy7/INDY7.cfg] [--set KEY=VALUE ...] [--bus FILE] [--out DIR]
+                              [--settle 30]
                               [--direct] [--no-hl-log] [--arch P0|S1|S2] [--shadow]
                               [--method M1|M2|A2|A3|FULL] [--desired-class CLASS] [--vision-args 'NAME:=VALUE ...']
                               [--model PATH|launch] [--model-2 PATH] [--pl-qos N]
 
+  --set KEY=VALUE  a value of the cfg of the run (the copy in OUT; repeatable), e.g. the contract of a HIL run:
+              --set EPS_CAL_MM=0 --set EPS_V_MPS=0.03 --set APP_EST_BETA=0.05. With --arch S2 [CONTRACT] and
+              APP_EST_BETA go to the R5 at the start (IPC_CMD_OBS_NUMBERS), and the camera launch gets the same
+              cfg (contract_cfg:=): no new firmware. Another value of the other APP_* needs one
   --bus FILE  another bus than that of the cfg (indy7 -B FILE, e.g. indy7/bench/L7N3_bus.cfg, the L7N
               bench); the arm and everything else stay those of the cfg; FILE is copied into OUT
   --arch S1   the EtherCAT task on the R5 (rpu_work/README_S1.md): the R5 runs the bus and must have it in OP, the
@@ -43,7 +48,8 @@ in its place), the timing of every period (-t), and the summary of tools/timing_
   --model-2 PATH
               the model of mode 1 (model_path_2:=, e.g. MODEL_320; D-23): only the gate of A3 and FULL chooses it
   --vision-args 'NAME:=VALUE ...'
-              more arguments of the camera launch, after method:= and decision_log:= (a name given twice takes
+              more arguments of the camera launch, after method:=, decision_log:= and contract_cfg:= (the cfg of
+              the run in OUT) (a name given twice takes
               the last value), e.g. model_path_2:= for the second mode of the detector (D-23)
   --pl-qos N  the static read and write QoS of the PL ports to the DDR (HPC0-1, HP0-3) to N (0-15) for the run, and
               back to their values before at its end (C3-4: the DPU raised against the R5). Through the root wrapper
@@ -293,12 +299,15 @@ def checks(a, rt_cpu):
         sys.exit('run_timing: indy7/bin/indy7_ctrl is missing: make')
 
 
-def cfg_copy(src, dst, out, duration, hl_log=True):
-    """the cfg of the run: the test values set, the relative paths of the source made absolute"""
+def cfg_copy(src, dst, out, duration, hl_log=True, more=()):
+    """the cfg of the run: the test values set, the values of --set, the relative paths of the source made absolute"""
     base = os.path.dirname(os.path.abspath(src))
     sets = {'HL_TEST_REF_S': '%g' % duration, 'VIEW_PORT': '0', 'JOINT_TEST_LOG_DIR': os.path.join(out, 'hl_logs')}
     if not hl_log:
         sets['HL_LOG'] = '0'
+    for kv in more:     # after ours: --set wins
+        k, v = kv.split('=', 1)
+        sets[k.strip()] = v.strip()
     lines, done = [], set()
     for line in open(src).read().split('\n'):
         m = re.match(r'^([A-Za-z0-9_]+)(\s*=\s*)(.*)$', line)
@@ -355,7 +364,10 @@ def start_vision(out, method='M1', extra=()):
         return None
     log = os.path.join(out, 'vision.txt')
     # decision_log: why the detector ran, skipped or rejected each image (A3, FULL; the others write none)
-    launch = VISION + ' method:=%s decision_log:=%s' % (shlex.quote(method), shlex.quote(os.path.join(out, 'decisions.csv')))
+    # contract_cfg: the [CONTRACT] of the cfg of this run (its copy in OUT), which the application also sends to
+    # the R5 with --arch S2 (IPC_CMD_OBS_NUMBERS): both sides of the mailbox compute with the same constants
+    launch = VISION + ' method:=%s decision_log:=%s contract_cfg:=%s' % (
+        shlex.quote(method), shlex.quote(os.path.join(out, 'decisions.csv')), shlex.quote(os.path.join(out, 'INDY7.cfg')))
     launch += ''.join(' ' + w for w in extra)      # after ours: a name given twice takes the last value
     print('run_timing: the camera launch: %s' % launch[launch.index('ros2 launch'):])
     p = subprocess.Popen(['bash', '-c', launch], stdout=open(log, 'w'), stderr=subprocess.STDOUT,
@@ -493,6 +505,10 @@ def main():
                          'place of --pressure: the same load on every configuration')
     ap.add_argument('--duration', type=float, default=600.0, help='[s] of the goal stream (Table 6: 600)')
     ap.add_argument('--cfg', default=os.path.join(APP, 'INDY7.cfg'))
+    ap.add_argument('--set', action='append', default=[], metavar='KEY=VALUE',
+                    help='a value of the cfg of the run (its copy in OUT), e.g. --set EPS_V_MPS=0.03 --set '
+                         'APP_EST_BETA=0.05; the key must be in the cfg. With --arch S2 [CONTRACT] and APP_EST_BETA '
+                         'go to the R5 at the start (no new firmware); other APP_* need one')
     ap.add_argument('--out', help='results (default ./timing_<condition>_<date>)')
     ap.add_argument('--settle', type=float, default=30.0, help='[s] in OP before the keys')
     ap.add_argument('--others', default=os.environ.get('OTHERS', '0-2'), help='CPUs of the stress-ng load')
@@ -547,7 +563,12 @@ def main():
     os.makedirs(os.path.join(out, 'hl_logs'), exist_ok=True)
     checks(a, rt_cpu)
     cfg = os.path.join(out, 'INDY7.cfg')
-    cfg_copy(src, cfg, out, a.duration, hl_log=not a.no_hl_log)
+    for kv in a.set:
+        if not re.match(r'^[A-Za-z0-9_]+=\S.*$', kv):
+            ap.error('--set %s: KEY=VALUE' % kv)
+    cfg_copy(src, cfg, out, a.duration, hl_log=not a.no_hl_log, more=a.set)
+    if a.set:
+        print('run_timing: the cfg of the run (%s) with %s' % (cfg, ', '.join(a.set)))
     refused = pl_qos_before(out, a.pl_qos)
     if refused:
         sys.exit('run_timing: %s' % refused)

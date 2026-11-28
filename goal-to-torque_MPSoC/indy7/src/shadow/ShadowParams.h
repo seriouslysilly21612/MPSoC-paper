@@ -12,6 +12,7 @@
 
 #include "base/Config.h"
 #include "ipc/FwCfg.h"
+#include "obs/ObsCrc.h"
 #include "shadow/ShadowControl.h"
 
 /* false: the arm of the configuration is not the arm of the controller (IPC_CTRL_DOF joints; the configuration
@@ -84,6 +85,7 @@ inline void ObsNumbers(const CConfig& acConfig, double* adNumbers)
 	n[OBS_N_STATE_AGE] = (double)stS.nSimStateDelay;
 	for (int k = 0; k < 2; k++)
 		n[OBS_N_HOVER_XY + k] = stS.adAppHoverXY[k];
+	n[OBS_N_BETA]      = stS.dAppBeta;
 }
 
 /* the check value of anCount numbers: their count, then each as 8 bytes, least significant first */
@@ -104,6 +106,6 @@ inline uint32_t NumbersCrc(const double* adNumbers, int anCount)
 }
 inline uint32_t ShadowNumbersCrc(const double* adNumbers) { return NumbersCrc(adNumbers, SHADOW_NUMBERS); }
 /* the receiver's: the APU sends it with IPC_CMD_OBS, and the R5 compares it with that of its own numbers */
-inline uint32_t ObsNumbersCrc(const double* adNumbers) { return NumbersCrc(adNumbers, OBS_NUMBERS); }
+inline uint32_t ObsNumbersCrc(const double* adNumbers) { return ObsNumbersCrcOf(adNumbers, OBS_NUMBERS); }	// = NumbersCrc
 
 #endif // G2T_SHADOW_PARAMS_H

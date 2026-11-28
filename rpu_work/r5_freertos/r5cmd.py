@@ -32,7 +32,7 @@ import sys
 import time
 
 OCM_ADDR, OCM_SIZE = 0xFFFC0000, 0x4000
-IPC_MAGIC, IPC_LAYOUT = 0x31435049, 7
+IPC_MAGIC, IPC_LAYOUT = 0x31435049, 8
 OFF_HEAD, OFF_STATE, OFF_TORQUE, OFF_COMMAND = 0x000, 0x040, 0x1C0, 0x800
 HEAD_R5, HEAD_APU = 0x00, 0x20                  # ipc_side_t: magic, layout, epoch (+5 reserved)
 CMD_SERVO_ON, CMD_SERVO_OFF, CMD_STOP = 1, 2, 3

@@ -88,6 +88,7 @@ stConfigSystem::stConfigSystem()
 	adAppHoverXY[0] = adAppHoverXY[1] = 0.0;
 	bAppHoverXYOk = true;
 	dAppKappa = 0.4;
+	dAppBeta = 0.0;
 	dAppGapS = 1.0;
 	dAppLossS = 1.0;
 	dAppDurationS = 0.0;
@@ -576,6 +577,7 @@ CConfig::Parse()
 			        CGoalFilter::HOVER_XY_MAX);
 	}
 	cF.Double(S, "APP_EMA_KAPPA", s.dAppKappa);
+	cF.Double(S, "APP_EST_BETA", s.dAppBeta);
 	cF.Double(S, "APP_GAP_S", s.dAppGapS);
 	cF.Double(S, "APP_LOSS_S", s.dAppLossS);
 	cF.Double(S, "APP_DURATION_S", s.dAppDurationS);

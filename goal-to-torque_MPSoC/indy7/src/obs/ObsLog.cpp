@@ -70,6 +70,7 @@ ObsFormat::Finish(FILE* fp, const char* astrCsv, const Meta& m, const Result& r,
 		fprintf(fp, "  \"delta\": %.6g,\n  \"e0\": %.6g,\n  \"g\": %.6g,\n  \"eps_v\": %.6g,\n  \"a_max\": %.6g,\n"
 		        "  \"eps_cal\": %.6g,\n", m.dTolM, m.stSet.e0, m.stSet.g, m.stSet.eps_v, m.stSet.a_max, m.stSet.eps_cal);
 		fprintf(fp, "  \"state_age_periods\": %d,\n", m.nStateAge);
+		fprintf(fp, "  \"kappa\": %.6g,\n  \"beta\": %.6g,\n", m.dKappa, m.dBeta);
 		testlog::PrintVec(fp, "tag_offset", m.adTagOffset, 3, "%.9g");
 		fprintf(fp, "  \"result\": \"%s\",\n", astrState);
 		fprintf(fp, "  \"rows\": %ld,\n  \"dropped\": %u,\n", anRows, anDrops);

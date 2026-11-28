@@ -57,7 +57,7 @@ const char* ObsName(int i)
 		"goal box x0 [m]", "goal box x1 [m]", "goal box y0 [m]", "goal box y1 [m]", "goal box z0 [m]", "goal box z1 [m]",
 		"goal r max [m]", "goal floor [m]", "hover height [m]", "smoothing kappa", "smoothing gap [s]",
 		"target lost after [s]", "age of the joint angles of a period [periods]", "hover offset x [m]",
-		"hover offset y [m]" };
+		"hover offset y [m]", "estimate beta (sent at the start: IPC_CMD_OBS_NUMBERS)" };
 	static_assert(sizeof(s_apcObs) / sizeof(s_apcObs[0]) == OBS_NUMBERS, "a name per number");
 	return s_apcObs[i];
 }
@@ -108,7 +108,8 @@ int main(int argc, char** argv)
 	for (int i = 0; i < SHADOW_NUMBERS; i++)
 		fprintf(pf, "\t%a,\t/* %.10g: %s */\n", adNumbers[i], adNumbers[i], Name(i).c_str());
 	fprintf(pf, "};\n\n"
-	            "/* the receiver: other values refuse the methods with the mailbox (IPC_CMD_OBS), not the controller */\n"
+	            "/* the receiver: [CONTRACT] and beta come from the APU at its start (IPC_CMD_OBS_NUMBERS); other values of\n"
+	            " * the rest refuse the methods with the mailbox (IPC_CMD_OBS), not the controller */\n"
 	            "#define CTRL_OBS_NUMBERS_CRC   0x%08Xu\t/* of the numbers below: IPC_CMD_OBS brings the APU's */\n"
 	            "#define CTRL_CONTRACT_CRC      0x%08Xu\t/* of [CONTRACT] (obs/ObsContract.h): the camera side compares it */\n"
 	            "#define CTRL_OBS_NUMBERS_COUNT %d\n\n"

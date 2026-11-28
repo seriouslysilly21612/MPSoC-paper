@@ -20,12 +20,19 @@ with the shortest round trip in the last 60 s). The arm is drawn in the pose the
 /joint_states (the simulated Indy7 of the bench, 20 Hz), or parked (--arm park).
 
 The ground truth of every published image goes to OUT/truth.csv: its stamp (board clock), the apple
-centre in base_link, its pixel and depth, the tool, the clock offset and the age of the arm pose.
+centre in base_link (apple_x, _y, _z: the centre of its mesh box; apple_top_z its top), the pixel of that
+centre (apple_u, _v) and its depth along the optical axis (apple_depth_m: of the centre, not of the rendered
+surface), the tool, the clock offset and the age of the arm pose.
 
   board:    python3 clock_echo.py
   desktop:  source /opt/ros/humble/setup.bash && python3 hil_camera.py --out DIR
-                [--apple-obj textured.obj] [--speed 0.10 --amp 0.15] [--arm board|park]
-                [--duration S] [--save-every 30]
+                [--apple-obj textured.obj] [--speed 0.10 --amp 0.15] [--profile sine|stage]
+                [--accel 0.2 --dwell 1.0] [--arm board|park] [--duration S] [--save-every 30]
+
+The apple moves along y between -amp and +amp: --profile sine (the default) with the peak speed --speed;
+--profile stage as the linear stage of the paper (Sec. V-C): from rest with --accel to --speed, at that speed,
+--accel down to rest, --dwell s at rest, and back (the tuning and the evaluation runs of the estimate use
+different profiles).
 
 Python 3.10 of Ubuntu 22.04 with ROS 2 Humble; numpy < 2 (the ROS messages are built against
 numpy 1): python3 -m venv --system-site-packages ~/hilenv && ~/hilenv/bin/pip install "numpy<2"
@@ -277,12 +284,38 @@ def self_check(m, d, r_opt, p_opt, apple_mocap):
     return seg, depth_r
 
 
+def stage_profile(t, amp, speed, accel, dwell):
+    """y and vy at t of the stage profile: -amp -> +amp -> -amp, each leg accel / constant / decel / dwell"""
+    dist = 2.0 * amp
+    v = min(speed, math.sqrt(accel * dist))         # a leg too short for the speed: a triangle
+    ta = v / accel
+    da = 0.5 * accel * ta * ta
+    tc = (dist - 2.0 * da) / v
+    leg = 2.0 * ta + tc + dwell
+    tl = math.fmod(t, 2.0 * leg)
+    sgn = 1.0 if tl < leg else -1.0
+    tl = tl if tl < leg else tl - leg
+    if tl < ta:
+        s, vs = 0.5 * accel * tl * tl, accel * tl
+    elif tl < ta + tc:
+        s, vs = da + v * (tl - ta), v
+    elif tl < 2.0 * ta + tc:
+        td = tl - ta - tc
+        s, vs = da + v * tc + v * td - 0.5 * accel * td * td, v - accel * td
+    else:
+        s, vs = dist, 0.0
+    return (-amp + s, vs) if sgn > 0 else (amp - s, -vs)
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument('--out', required=True)
     ap.add_argument('--apple-obj', default='')
     ap.add_argument('--speed', type=float, default=0.0, help='peak speed of the apple along y [m/s]; 0 = still')
     ap.add_argument('--amp', type=float, default=0.15, help='amplitude of the motion along y [m]')
+    ap.add_argument('--profile', choices=('sine', 'stage'), default='sine', help='the motion along y')
+    ap.add_argument('--accel', type=float, default=0.2, help='--profile stage: acceleration [m/s^2]')
+    ap.add_argument('--dwell', type=float, default=1.0, help='--profile stage: rest at each end [s]')
     ap.add_argument('--arm', choices=('board', 'park'), default='board')
     ap.add_argument('--fps', type=float, default=30.0)
     ap.add_argument('--duration', type=float, default=0.0, help='s; 0 = until Ctrl-C')
@@ -332,8 +365,12 @@ def main():
             stamp = t_desk + off
             ts = t_desk - t0
             phase = 2 * math.pi * f_motion * ts
-            body, apple, top = apple_place(m, a.amp * math.sin(phase) if f_motion else 0.0)
-            vy = a.amp * 2 * math.pi * f_motion * math.cos(phase) if f_motion else 0.0
+            if a.profile == 'stage' and a.speed > 0:
+                y_cmd, vy = stage_profile(ts, a.amp, a.speed, a.accel, a.dwell)
+            else:
+                y_cmd = a.amp * math.sin(phase) if f_motion else 0.0
+                vy = a.amp * 2 * math.pi * f_motion * math.cos(phase) if f_motion else 0.0
+            body, apple, top = apple_place(m, y_cmd)
             d.mocap_pos[apple_mocap] = body
             arm = node.arm() if a.arm == 'board' else None
             d.qpos[:6] = arm[0] if arm is not None else rc.Q0

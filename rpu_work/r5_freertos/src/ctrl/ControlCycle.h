@@ -124,7 +124,7 @@ public:
 	/* builds the controller (heap: before the periods start), as CShadowControl::Init. The controller is off. */
 	BOOL	Init		(const char* astrURDF, const double* adNumbers, uint32_t auCrc);
 	/* after Init(), before the periods. FALSE: a number of the receiver cannot be used, and IPC_CMD_OBS is
-	 * refused, as it is without this call */
+	 * refused, as it is without this call. IPC_CMD_OBS_NUMBERS replaces those of OBS_SENT_INDEX later */
 	BOOL	SetObsLink	(const ObsLink& astLink);
 	/* the clock of the receiver's cost (eq. (6)), ticks of the counter of SetObsLink; NULL (the default): none.
 	 * Before the periods. */
@@ -145,6 +145,8 @@ private:
 	void		StopMotion	(	);
 	void		ServoOff	(Output* apOut);
 	uint32_t	ObsCommand	(const ipc_command_t& astCommand);
+	uint32_t	ObsNumbersCommand(const ipc_command_t& astCommand);
+	bool		ObsSettings	(const double* adN, double adTicksPerS, CObsGoal::Config* apCfg);
 	void		ObsStep		(const Input& astIn);
 	static void	TagAt		(void* apArg, const float* afQ, double* adP);
 

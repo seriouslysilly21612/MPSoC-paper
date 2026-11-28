@@ -42,6 +42,7 @@ struct ObsFormat
 		double			dTolM;
 		int				nStateAge;
 		double			adTagOffset[3];
+		double			dKappa, dBeta;		// the estimate (APP_EMA_KAPPA, APP_EST_BETA)
 	};
 	struct Result {							// during the run
 		CObsGoal::Counts stCounts;			// the control task's side

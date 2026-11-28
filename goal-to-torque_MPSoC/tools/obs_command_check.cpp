@@ -24,6 +24,7 @@
 
 #include "base/Config.h"
 #include "obs/ObsContract.h"
+#include "obs/ObsCrc.h"
 #include "obs/ObsMethod.h"
 #include "obs/obs_ring.h"
 #include "shadow/ControlCycle.h"
@@ -129,6 +130,70 @@ int main(int argc, char** argv)
 	const uint32_t uAfterM1 = cCtl.ObsCost().periods;
 	Periods(20, true);
 	Expect(cCtl.ObsCost().periods == uAfterM1, "M1: the receiver is off, its cost stays");
+
+	// IPC_CMD_OBS_NUMBERS (B of 2026-11-28): the APU's [CONTRACT] and beta in place of those of the build
+	auto Numbers = [&](const double* adFrom, uint32_t auCheck) {
+		ipc_command_t stC;
+		memset(&stC, 0, sizeof(stC));
+		stC.cmd = IPC_CMD_OBS_NUMBERS;
+		stC.check = auCheck;
+		for (int i = 0; i < OBS_SENT; i++)
+			ipc_command_set_number(&stC, i, adFrom[OBS_SENT_INDEX[i]]);
+		stC.seq = ++uSeq;
+		Period(&stC, true);
+		return stRep.cmd_result;
+	};
+	auto ObsWith = [&](uint32_t auMethod, uint32_t auCheck) {
+		ipc_command_t stC;
+		memset(&stC, 0, sizeof(stC));
+		stC.cmd = IPC_CMD_OBS;
+		stC.arg = auMethod;
+		stC.check = auCheck;
+		stC.seq = ++uSeq;
+		Period(&stC, true);
+		return stRep.cmd_result;
+	};
+	auto StatusCrc = [&]() {
+		obs_status_t stS;
+		uint32_t auStamp[2];
+		memset(&stS, 0, sizeof(stS));
+		obs_status_read(stObs.pStatus, &stS, auStamp);
+		return stS.contract_crc;
+	};
+	double adApu[OBS_NUMBERS];				// another configuration of the APU: eps_v, eps_m, eps_cal and beta
+	memcpy(adApu, adObs, sizeof(adApu));
+	adApu[OBS_N_EPS_V] = 0.03;
+	adApu[OBS_N_EPS_M] = 0.0054;
+	adApu[OBS_N_EPS_CAL] = 0.0;
+	adApu[OBS_N_BETA] = 0.1;
+	const uint32_t uApu = ObsNumbersCrc(adApu);
+	const double adApuContract[OBS_CONTRACT_CONSTANTS] = { adApu[OBS_N_DELTA], adApu[OBS_N_AGE_CAP], adApu[OBS_N_E0],
+	                                                       adApu[OBS_N_G], adApu[OBS_N_EPS_V], adApu[OBS_N_A_MAX],
+	                                                       adApu[OBS_N_EPS_CAL], adApu[OBS_N_EPS_M], adApu[OBS_N_EPS_M + 1] };
+	Expect(ObsWith(obs_method::eFULL, uApu) == IPC_REFUSED_OBS, "numbers: FULL with the APU's check value is refused before");
+	Expect(Numbers(adApu, uApu) == IPC_DONE_OK, "numbers: taken with the receiver off");
+	Expect(ObsWith(obs_method::eFULL, uApu) == IPC_DONE_OK, "numbers: FULL with the APU's check value is taken");
+	Periods(3, true);
+	Expect(StatusCrc() == ObsContractCrcOf(adApuContract) && StatusCrc() != ObsContractCrc(cConfig.Contract()),
+	       "numbers: the status has the check value of the APU's [CONTRACT]");
+	Expect(Numbers(adObs, stObs.uNumbersCrc) == IPC_REFUSED_OBS, "numbers: refused while FULL runs");
+	Expect(ObsWith(obs_method::eM1, 0u) == IPC_DONE_OK, "numbers: M1");
+	double adOther[OBS_NUMBERS];			// another APP_* (the goal floor): not sent, so another check value
+	memcpy(adOther, adApu, sizeof(adOther));
+	adOther[OBS_N_FLOOR] += 0.01;
+	Expect(Numbers(adOther, ObsNumbersCrc(adOther)) == IPC_REFUSED_OBS, "numbers: another APP_* is refused");
+	double adBad[OBS_NUMBERS];				// beta at which the alpha-beta filter is unstable (4 - 2 kappa)
+	memcpy(adBad, adApu, sizeof(adBad));
+	adBad[OBS_N_BETA] = 4.0 - 2.0 * adBad[OBS_N_KAPPA];
+	Expect(Numbers(adBad, ObsNumbersCrc(adBad)) == IPC_REFUSED_OBS, "numbers: an unstable beta is refused");
+	adBad[OBS_N_BETA] = 0.1;
+	adBad[OBS_N_EPS_V] = -0.01;
+	Expect(Numbers(adBad, ObsNumbersCrc(adBad)) == IPC_REFUSED_OBS, "numbers: a negative term of eq. (7) is refused");
+	Expect(ObsWith(obs_method::eFULL, uApu) == IPC_DONE_OK, "numbers: after the refusals the receiver keeps the APU's");
+	Expect(ObsWith(obs_method::eM1, 0u) == IPC_DONE_OK && Numbers(adObs, stObs.uNumbersCrc) == IPC_DONE_OK &&
+	       ObsWith(obs_method::eFULL, stObs.uNumbersCrc) == IPC_DONE_OK, "numbers: those of the build again");
+	Periods(3, true);
+	Expect(StatusCrc() == ObsContractCrc(cConfig.Contract()), "numbers: the status has the build's check value again");
 	printf("%s: %d checks failed\n", g_nFailed == 0 ? "PASS" : "FAIL", g_nFailed);
 	return g_nFailed == 0 ? 0 : 1;
 }

@@ -133,6 +133,7 @@ typedef struct stConfigSystem
 	std::vector<double> vAppGoalBox;
 	double	dAppGoalRMax, dAppGoalFloor, dAppHover, dAppKappa, dAppGapS, dAppLossS, dAppDurationS;
 	double	adAppHoverXY[2];			// APP_HOVER_XY_M: the hover point beside the object [m, base frame]
+	double	dAppBeta;					// APP_EST_BETA: the weight of a result on the velocity of the estimate (0: none)
 	bool	bAppHoverXYOk;				// it is two finite numbers within CGoalFilter::HOVER_XY_MAX
 	/* the camera of the simulation (sim/SimCamera.h) */
 	INT32	nSimCam;					// SIM_CAM: 1 in place of the bridge (-s only)

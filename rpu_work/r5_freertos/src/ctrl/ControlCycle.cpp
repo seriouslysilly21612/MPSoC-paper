@@ -8,10 +8,13 @@
 #include <cmath>
 #include <cstring>
 
+#include "obs/ObsCrc.h"
 #include "obs/ObsMethod.h"
 
 static_assert((int)OBS_WORKSPACE_VERDICTS == (int)CGoalFilter::eVerdicts, "obs_counts_t.workspace");
 static_assert((int)OBS_DOF == (int)CControlCycle::DOF, "the joints of a recorded state");
+static_assert((int)OBS_SENT <= (int)IPC_COMMAND_NUMBERS && OBS_SENT_INDEX[OBS_CONTRACT_CONSTANTS] == (int)OBS_N_BETA,
+              "IPC_CMD_OBS_NUMBERS: the constants of [CONTRACT] first, then beta, in one command");
 
 typedef CControllerFullDynamicsRT C;
 
@@ -76,18 +79,13 @@ CControlCycle::TagAt(void* apArg, const float* afQ, double* adP)
 	pThis->m_cTraj.HighLevel().ToolPoint(adQ, adTag, adP);
 }
 
-// The settings of the receiver from the numbers, as CRobotIndy7::InitObs takes them from the configuration, on
-// the counter of the releases; the checks are those of InitObs and of CObsGoal::Init
-BOOL
-CControlCycle::SetObsLink(const ObsLink& astLink)
+// The settings of the receiver from the numbers adN (OBS_NUMBERS), as CRobotIndy7::InitObs takes them from the
+// configuration, on the counter of the releases adTicksPerS; the checks are those of InitObs (those of
+// CObsGoal::Init follow when it takes them). false: a number cannot be used. No side effect.
+bool
+CControlCycle::ObsSettings(const double* adN, double adTicksPerS, CObsGoal::Config* apCfg)
 {
-	m_bObsLink = false;
-	if (m_pCtl == NULL || astLink.pBox == NULL || astLink.pStatus == NULL || astLink.pRing == NULL ||
-	    astLink.pNumbers == NULL || !(astLink.dTicksPerS > 0.0) || !std::isfinite(astLink.dTicksPerS))
-		return FALSE;
-	for (int i = 0; i < OBS_NUMBERS; i++)
-		m_adObsNumbers[i] = astLink.pNumbers[i];
-	const double* const n = m_adObsNumbers;
+	const double* const n = adN;
 	const double dTs = m_dTs;
 	const double dCap = n[OBS_N_AGE_CAP], dAge = n[OBS_N_STATE_AGE];
 	bool bOk = std::isfinite(dCap) && dCap > 0.0 && dCap < 1e3 && dTs > 0.0 && dAge == std::floor(dAge);
@@ -97,13 +95,13 @@ CControlCycle::SetObsLink(const ObsLink& astLink)
 		bOk = bOk && std::isfinite(n[OBS_N_TAG + k]);
 	bOk = bOk && CGoalFilter::HoverXYOk(&n[OBS_N_HOVER_XY]);
 	if (!bOk)
-		return FALSE;
-	CObsGoal::Config& c = m_stObsCfg;
+		return false;
+	CObsGoal::Config& c = *apCfg;
 	memset(&c, 0, sizeof(c));
 	c.stSet.policy = OBS_CONTRACT;
-	c.stSet.ticks_per_s = astLink.dTicksPerS;
-	c.stSet.period_ticks = (uint64_t)std::llround(dTs * astLink.dTicksPerS);
-	c.stSet.age_cap_ticks = (uint64_t)std::llround(dCap * astLink.dTicksPerS);
+	c.stSet.ticks_per_s = adTicksPerS;
+	c.stSet.period_ticks = (uint64_t)std::llround(dTs * adTicksPerS);
+	c.stSet.age_cap_ticks = (uint64_t)std::llround(dCap * adTicksPerS);
 	c.stSet.e0 = n[OBS_N_E0];
 	c.stSet.g = n[OBS_N_G];
 	c.stSet.eps_v = n[OBS_N_EPS_V];
@@ -120,11 +118,27 @@ CControlCycle::SetObsLink(const ObsLink& astLink)
 		c.stFilter.adHoverXY[k] = n[OBS_N_HOVER_XY + k];
 	c.stFilter.dKappa = n[OBS_N_KAPPA];
 	c.stFilter.dGapS = n[OBS_N_GAP];
+	c.dBeta = n[OBS_N_BETA];
 	c.dLossS = n[OBS_N_LOSS];
 	c.pTagAt = &CControlCycle::TagAt;
 	c.pTagArg = this;
+	return true;
+}
+
+// The receiver from the numbers of the link (those of the build on the R5)
+BOOL
+CControlCycle::SetObsLink(const ObsLink& astLink)
+{
+	m_bObsLink = false;
+	if (m_pCtl == NULL || astLink.pBox == NULL || astLink.pStatus == NULL || astLink.pRing == NULL ||
+	    astLink.pNumbers == NULL || !(astLink.dTicksPerS > 0.0) || !std::isfinite(astLink.dTicksPerS))
+		return FALSE;
+	for (int i = 0; i < OBS_NUMBERS; i++)
+		m_adObsNumbers[i] = astLink.pNumbers[i];
+	if (!ObsSettings(m_adObsNumbers, astLink.dTicksPerS, &m_stObsCfg))
+		return FALSE;
 	// once here, so that a number that the receiver cannot use is known before any command
-	if (!m_cObs.Init(astLink.pBox, c, &m_cObsSlot))
+	if (!m_cObs.Init(astLink.pBox, m_stObsCfg, &m_cObsSlot))
 		return FALSE;
 	m_stObs = astLink;
 	m_stObs.pNumbers = NULL;				// copied
@@ -135,6 +149,40 @@ CControlCycle::SetObsLink(const ObsLink& astLink)
 	m_uObsEntries = 0;
 	m_bObsLink = true;
 	return TRUE;
+}
+
+// IPC_CMD_OBS_NUMBERS: the numbers of [CONTRACT] and of the estimate of the APU's configuration in place of those
+// the receiver has (OBS_SENT_INDEX), while no method with the mailbox runs. The check value of the command is that
+// of all the APU's numbers: with the numbers sent, those of the receiver must have it (the rest, APP_*, are the
+// build's). Refused: the receiver keeps its numbers, and IPC_CMD_OBS with the APU's check value is refused too.
+uint32_t
+CControlCycle::ObsNumbersCommand(const ipc_command_t& astCommand)
+{
+	if (!m_bObsLink || m_uObsMethod != OBS_RING_OFF)
+		return IPC_REFUSED_OBS;
+	double adN[OBS_NUMBERS];
+	for (int i = 0; i < OBS_NUMBERS; i++)
+		adN[i] = m_adObsNumbers[i];
+	for (int i = 0; i < OBS_SENT; i++)
+		adN[OBS_SENT_INDEX[i]] = ipc_command_number(&astCommand, i);
+	const uint32_t uCrc = ObsNumbersCrcOf(adN, OBS_NUMBERS);
+	CObsGoal::Config c;
+	if (uCrc != astCommand.check || !ObsSettings(adN, m_stObs.dTicksPerS, &c))
+		return IPC_REFUSED_OBS;
+	if (!m_cObs.Init(m_stObs.pBox, c, &m_cObsSlot))
+	{
+		m_cObs.Init(m_stObs.pBox, m_stObsCfg, &m_cObsSlot);		// the settings it had, which it took before
+		return IPC_REFUSED_OBS;
+	}
+	for (int i = 0; i < OBS_NUMBERS; i++)
+		m_adObsNumbers[i] = adN[i];
+	m_stObsCfg = c;
+	m_stObs.uNumbersCrc = uCrc;
+	double adContract[OBS_CONTRACT_CONSTANTS];
+	for (int i = 0; i < OBS_CONTRACT_CONSTANTS; i++)
+		adContract[i] = adN[OBS_SENT_INDEX[i]];		// the first nine sent are the constants, in that order
+	m_stObs.uContractCrc = ObsContractCrcOf(adContract);
+	return IPC_DONE_OK;
 }
 
 // IPC_CMD_OBS: the receiver with the policy of the method, started again only when the method changes; M1 has
@@ -335,6 +383,9 @@ CControlCycle::Command(const ipc_command_t& astCommand, const Input& astIn, bool
 			break;
 		case IPC_CMD_OBS:
 			uResult = ObsCommand(astCommand);
+			break;
+		case IPC_CMD_OBS_NUMBERS:
+			uResult = ObsNumbersCommand(astCommand);
 			break;
 		case IPC_CMD_SERVO_OFF:
 		case IPC_CMD_STOP:				// shortcut: a servo off, as in the firmware without the control task

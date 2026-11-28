@@ -291,9 +291,9 @@ public:
 			case IPC_REFUSED_NOT_READY:   snprintf(apcOut, auLen, "a drive in Switch on disabled, or the drives went off in that period"); break;
 			case IPC_REFUSED_UNKNOWN:     snprintf(apcOut, auLen, "the firmware does not know this command"); break;
 			case IPC_REFUSED_OBS:         snprintf(apcOut, auLen, "the receiver of the camera results on the R5 has other "
-			                                       "[CONTRACT] or APP_* values than this cfg, or cannot use them: build the "
-			                                       "firmware from this cfg (bin/ctrl_numbers_header; the check values are in "
-			                                       "the [S2] line here and the [control] line of the firmware)"); break;
+			                                       "APP_* values than this cfg ([CONTRACT] and APP_EST_BETA come from here), "
+			                                       "or cannot use them, or a method runs there: build the firmware from this "
+			                                       "cfg (bin/ctrl_numbers_header) after a change of the other APP_*"); break;
 			case IPC_REFUSED_ARGUMENT:
 				if (m_stReport.refusal_joint < 0)
 					snprintf(apcOut, auLen, "the goal threshold %.4g m is outside [0, %.4g]", m_stReport.refusal_value,

@@ -657,6 +657,34 @@ On the board, with this firmware running and its bus in OP (the application's RE
 A run of the application that ends with `q` leaves the control task as it is after a start of this firmware:
 controller off, servo not asked. One that is killed leaves it as it was, and it goes on.
 
+## [CONTRACT] and the estimate from the APU (`IPC_CMD_OBS_NUMBERS`, IPC layout 8; 2026-11-28)
+
+Until layout 7 the receiver of the camera results took all its numbers (`CTRL_OBS_NUMBERS` of
+`src/ctrl/ctrl_numbers_indy7.h`) from the build, and `IPC_CMD_OBS` with the check value of the APU's numbers was
+refused when one differed: another `EPS_V_MPS` or `EPS_M_MM` was a new header and a new firmware. Now the application
+sends, at its start and before the method, the numbers of `OBS_SENT_INDEX` (`src/ctrl/ShadowControl.h`): the nine
+constants of `[CONTRACT]` and `APP_EST_BETA`, the weight of a result on the velocity of the estimate
+(`obs/ObsEstimate.h`, an alpha-beta filter with alpha = `APP_EMA_KAPPA`; 0, the default, is the moving average of
+before). The order of the commands: `IPC_CMD_OBS` M1 (the receiver off), `IPC_CMD_OBS_NUMBERS`, `IPC_CMD_OBS` of
+the method.
+
+- `IPC_CMD_OBS_NUMBERS` carries the ten numbers in `delta`, `q_ready`, `target` of the Command slot
+  (`ipc_command_number()` of `ipc_layout.h`) and in `check` the check value of all the APU's numbers. The R5 puts
+  the ten in place of its own, and takes them only if its numbers then have that check value (the other `APP_*` are
+  still the build's), the receiver can use them (`ControlCycle::ObsSettings`, `CObsGoal::Init`: the terms of eq. (7)
+  finite and not negative, 0 <= beta < 4 - 2 alpha), and no method with the mailbox runs. Otherwise
+  `IPC_REFUSED_OBS`, and the receiver keeps what it had.
+- The check value of `[CONTRACT]` in the status of the receiver (`contract_crc`, which the camera side compares) is
+  then that of the numbers taken (`obs/ObsCrc.h`, the same function on both sides; `CTRL_CONTRACT_CRC` of the build
+  unchanged, 0x2E7B0347 for `INDY7.cfg`).
+- `CTRL_OBS_NUMBERS` has 28 numbers (beta the last); its check value for `INDY7.cfg` is 0x2D33FE1C (0x2A516F19 with
+  27). The controller's check value (0x9B2C0F75) and the bus's (0xB2DB751F) are unchanged.
+- `tools/run_timing.py --set KEY=VALUE` sets a value in the cfg of the run, and the camera launch gets that cfg
+  (`contract_cfg:=`), e.g. a HIL run with `--set EPS_CAL_MM=0 --set EPS_V_MPS=0.03 --set APP_EST_BETA=0.05`.
+- Checked on a PC (`make tools`): `bin/obs_command_check` (the command taken with the receiver off and refused while
+  a method runs, for another `APP_*`, an unstable beta, a negative term; the status's check value), and the other
+  checks of `make tools` as before. Not checked here: the Vitis build and the board.
+
 ## The split into modules (2026-11-15)
 
 `cia402_soem.c` (953 lines) became the modules in the table above, at the request of the firmware's

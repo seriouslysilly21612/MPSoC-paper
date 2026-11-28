@@ -48,7 +48,7 @@
 #endif
 
 #define IPC_MAGIC	0x31435049u		/* "IPC1" */
-#define IPC_LAYOUT	7u				/* + 1 with every change of this file */
+#define IPC_LAYOUT	8u				/* + 1 with every change of this file */
 enum { IPC_MAX_DOF = 8 };			/* MAX_DOF of TaskSlots.h */
 enum { IPC_CTRL_DOF = 6 };			/* the joints of the controller (CHighLevelRT::DOF) */
 
@@ -113,8 +113,13 @@ enum
 	IPC_CMD_MOTION_STOP = 6,						/* 'x', 'g': the motion ends, gravity compensation */
 	IPC_CMD_HOLD_ON = 7, IPC_CMD_HOLD_OFF = 8,		/* 'k' */
 	IPC_CMD_START = 9,								/* TRACK or HOME from the measured state (arg, delta, q_ready, target) */
-	IPC_CMD_OBS = 10								/* the method of the camera application (arg: obs/ObsMethod.h; check):
+	IPC_CMD_OBS = 10,								/* the method of the camera application (arg: obs/ObsMethod.h; check):
 													 * its receiver on the R5 (obs/obs_ring.h) */
+	IPC_CMD_OBS_NUMBERS = 11						/* the numbers of [CONTRACT] and of the estimate of the APU's
+													 * configuration (OBS_SENT_INDEX of ShadowControl.h, in that order,
+													 * ipc_command_number()), for the receiver in place of those of the
+													 * build; check: ObsNumbersCrc of all the APU's numbers. Taken only
+													 * while no method with the mailbox runs */
 };
 /* arg of IPC_CMD_START. IPC_START_OBS_GOALS: the TRACK of the application; the objects of the receiver of the camera
  * results are its goals, those after the start. Without it the goals of the Goal slot are */
@@ -146,8 +151,26 @@ enum
 	IPC_REFUSED_ARGUMENT = 9,		/* a start: a number of the command is not finite or outside its range (refusal_*:
 									 * joint -1 the goal threshold, else that joint of the ready posture) */
 	IPC_REFUSED_OBS = 10			/* IPC_CMD_OBS: no such method; the receiver's numbers of the firmware are not those of
-									 * the APU ([CONTRACT], APP_*: another check value), or the receiver cannot use them */
+									 * the APU ([CONTRACT], APP_*: another check value), or the receiver cannot use them.
+									 * IPC_CMD_OBS_NUMBERS: a method with the mailbox runs; with the numbers sent the
+									 * receiver's numbers would not have the check value of the APU (another APP_*), or
+									 * it cannot use them; the receiver keeps those it had */
 };
+/* the numbers of a command, in the order delta, q_ready, target (IPC_CMD_OBS_NUMBERS) */
+enum { IPC_COMMAND_NUMBERS = 1 + 2 * IPC_CTRL_DOF };
+static inline double ipc_command_number(const ipc_command_t* c, int i)
+{
+	return i == 0 ? c->delta : (i <= IPC_CTRL_DOF ? c->q_ready[i - 1] : c->target[i - 1 - IPC_CTRL_DOF]);
+}
+static inline void ipc_command_set_number(ipc_command_t* c, int i, double v)
+{
+	if (i == 0)
+		c->delta = v;
+	else if (i <= IPC_CTRL_DOF)
+		c->q_ready[i - 1] = v;
+	else
+		c->target[i - 1 - IPC_CTRL_DOF] = v;
+}
 
 /* APU -> R5 with --shadow: the control task's period, as far as a second controller needs it to compute the
  * same torque (shadow/ShadowWriter.h writes it, shadow/ShadowControl.h follows it). The torque of the APU goes

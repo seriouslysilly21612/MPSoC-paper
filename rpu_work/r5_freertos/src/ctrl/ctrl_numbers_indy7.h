@@ -61,10 +61,11 @@ static const double CTRL_NUMBERS[CTRL_NUMBERS_COUNT] =
 	0x0p+0,	/* 0: step baseline (0, 1) */
 };
 
-/* the receiver: other values refuse the methods with the mailbox (IPC_CMD_OBS), not the controller */
-#define CTRL_OBS_NUMBERS_CRC   0x2A516F19u	/* of the numbers below: IPC_CMD_OBS brings the APU's */
+/* the receiver: [CONTRACT] and beta come from the APU at its start (IPC_CMD_OBS_NUMBERS); other values of
+ * the rest refuse the methods with the mailbox (IPC_CMD_OBS), not the controller */
+#define CTRL_OBS_NUMBERS_CRC   0x2D33FE1Cu	/* of the numbers below: IPC_CMD_OBS brings the APU's */
 #define CTRL_CONTRACT_CRC      0x2E7B0347u	/* of [CONTRACT] (obs/ObsContract.h): the camera side compares it */
-#define CTRL_OBS_NUMBERS_COUNT 27
+#define CTRL_OBS_NUMBERS_COUNT 28
 
 static const double CTRL_OBS_NUMBERS[CTRL_OBS_NUMBERS_COUNT] =
 {
@@ -95,6 +96,7 @@ static const double CTRL_OBS_NUMBERS[CTRL_OBS_NUMBERS_COUNT] =
 	0x1p+1,	/* 2: age of the joint angles of a period [periods] */
 	-0x1.999999999999ap-5,	/* -0.05: hover offset x [m] */
 	0x0p+0,	/* 0: hover offset y [m] */
+	0x0p+0,	/* 0: estimate beta (sent at the start: IPC_CMD_OBS_NUMBERS) */
 };
 
 #endif /* CTRL_NUMBERS_H */
